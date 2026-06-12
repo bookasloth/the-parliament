@@ -2,6 +2,8 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL!,
   authSecret: process.env.AUTH_SECRET!,
   authUrl: process.env.AUTH_URL ?? "http://localhost:3000",
+  googleClientId: process.env.AUTH_GOOGLE_ID ?? "",
+  googleClientSecret: process.env.AUTH_GOOGLE_SECRET ?? "",
   razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
   smtpHost: process.env.SMTP_HOST ?? "",

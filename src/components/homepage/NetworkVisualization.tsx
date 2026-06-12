@@ -107,7 +107,7 @@ export function NetworkVisualization() {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
           <p className="text-[10px] font-semibold text-gold-500 uppercase tracking-wider">Discover</p>
-          <p className="text-xs font-semibold text-navy-500">Your Network</p>
+          <p className="text-xs font-semibold text-brand">Your Network</p>
         </div>
       </div>
     </div>

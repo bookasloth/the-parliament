@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -9,29 +10,34 @@ const pool = new pg.Pool({
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 async function main() {
-  const school = await prisma.school.create({
-    data: {
+  const school = await prisma.school.upsert({
+    where: { slug: "ngp" },
+    update: {},
+    create: {
       name: "Jawahar Navodaya Vidyalaya, Navegaon Khairi, Nagpur",
       slug: "ngp",
     },
   });
 
-  const division = await prisma.division.create({
-    data: { name: "Nagpur", school: { connect: { id: school.id } } },
-  });
+  const interests = [
+    { slug: "mentorship", name: "Mentorship" },
+    { slug: "networking", name: "Networking" },
+    { slug: "jobs", name: "Jobs" },
+    { slug: "business", name: "Business" },
+    { slug: "events", name: "Events" },
+    { slug: "donations", name: "Donations" },
+    { slug: "volunteering", name: "Volunteering" },
+  ];
 
-  await prisma.karmaThreshold.createMany({
-    data: [
-      { level: 0, title: "Reader", minKarma: 0 },
-      { level: 1, title: "Commenter", minKarma: 25 },
-      { level: 2, title: "Poster", minKarma: 50 },
-      { level: 3, title: "Poller", minKarma: 100 },
-      { level: 4, title: "Group Leader", minKarma: 250 },
-      { level: 5, title: "Mentor", minKarma: 500 },
-    ],
-  });
+  for (const interest of interests) {
+    await prisma.interest.upsert({
+      where: { slug: interest.slug },
+      update: {},
+      create: interest,
+    });
+  }
 
-  console.log("Seeded school, division, and karma thresholds.");
+  console.log("Seeded school and interests.");
 }
 
 main()

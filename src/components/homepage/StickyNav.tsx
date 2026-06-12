@@ -48,7 +48,7 @@ export function StickyNav({
         )}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-navy-500">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand">
             <Users className="h-5 w-5 text-white" />
           </div>
           <span
@@ -67,7 +67,7 @@ export function StickyNav({
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-medium text-charcoal-500 hover:text-navy-500 transition-colors"
+              className="text-sm font-medium text-charcoal-500 hover:text-brand transition-colors"
             >
               {link.label}
             </a>
@@ -77,13 +77,13 @@ export function StickyNav({
         <div className="hidden md:flex items-center gap-3">
           <a
             href="/auth/signin"
-            className="text-sm font-medium text-charcoal-500 hover:text-navy-500 transition-colors px-4 py-2"
+            className="text-sm font-medium text-charcoal-500 hover:text-brand transition-colors px-4 py-2"
           >
             Login
           </a>
           <a
             href="/auth/signup"
-            className="rounded-full bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-600 transition-all shadow-sm hover:shadow-md"
+            className="rounded bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-sm hover:shadow-md"
           >
             {ctaLabel}
           </a>
@@ -91,7 +91,7 @@ export function StickyNav({
 
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden rounded-lg p-2 text-charcoal-500 hover:bg-charcoal-100 transition-colors"
+          className="md:hidden rounded p-2 text-charcoal-500 hover:bg-charcoal-100 transition-colors"
           aria-label="Toggle menu"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -111,7 +111,7 @@ export function StickyNav({
                 <a
                   key={link.label}
                   href={link.href}
-                  className="block text-sm font-medium text-charcoal-500 hover:text-navy-500 py-2"
+                  className="block text-sm font-medium text-charcoal-500 hover:text-brand py-2"
                 >
                   {link.label}
                 </a>
@@ -125,7 +125,7 @@ export function StickyNav({
               </a>
               <a
                 href="/auth/signup"
-                className="block text-center rounded-full bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white"
+                className="block text-center rounded bg-brand px-5 py-2.5 text-sm font-semibold text-white"
               >
                 {ctaLabel}
               </a>

@@ -11,7 +11,7 @@ export function FinalCTA({
 }: FinalCTAProps) {
   return (
     <section className="relative py-24 lg:py-36 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-500 via-navy-600 to-navy-800" />
+      <div className="absolute inset-0 bg-gradient-to-br from-brand via-brand-600 to-brand-800" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.08)_0%,transparent_60%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(212,168,0,0.06)_0%,transparent_60%)]" />
 
@@ -22,13 +22,13 @@ export function FinalCTA({
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <a
             href="/auth/signup"
-            className="rounded-full bg-white px-8 py-3.5 text-sm font-bold text-navy-600 hover:bg-gold-50 transition-all shadow-lg hover:shadow-xl"
+            className="rounded bg-white px-8 py-3.5 text-sm font-bold text-brand hover:bg-gold-50 transition-all shadow-lg hover:shadow-xl"
           >
             {primaryCta}
           </a>
           <a
             href="#"
-            className="rounded-full border border-white/20 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/20 transition-all backdrop-blur-sm"
+            className="rounded border border-white/20 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/20 transition-all backdrop-blur-sm"
           >
             {secondaryCta}
           </a>

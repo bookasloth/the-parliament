@@ -24,7 +24,7 @@ export function Testimonials({ testimonials = [] }: TestimonialsProps) {
     <section className="py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             What Alumni Say
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">
@@ -32,7 +32,7 @@ export function Testimonials({ testimonials = [] }: TestimonialsProps) {
           </p>
         </div>
 
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {testimonials.map((t, i) => {
             const hc = houseColors[t.house] || "#1a3a6b";
             return (

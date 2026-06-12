@@ -16,13 +16,19 @@
 ## Project Structure
 ```
 src/
+  middleware.ts # Route protection + onboarding gate (active redirect layer)
   app/          # Next.js App Router routes
     (auth)/     # Auth route group (signin, signup)
-    (main)/     # Authenticated route group
-    api/        # Route handlers (API endpoints)
+    (main)/     # Authenticated route group (dashboard, feed, profile/[username], settings)
+    (onboarding)/ # Onboarding wizard route group (/onboarding/[step])
+    api/        # Route handlers (auth, onboarding, houses, schools, membership)
   components/   # Shared UI components
-  config/       # App configuration (karma.ts, env.ts)
-  lib/          # Shared utilities (prisma.ts, auth.ts, utils.ts)
+    homepage/   # Landing page sections
+    onboarding/ # Onboarding wizard steps (OnboardingWizard + StepX)
+    shared/     # Cross-feature components (AlumniProfileCard)
+  config/       # App configuration (karma.ts, env.ts, schools.ts)
+  lib/          # Shared utilities (prisma.ts, auth.ts, onboarding.ts, use-autosave.ts)
+  types/        # Ambient type decls (next-auth.d.ts — Session/JWT augmentation)
   modules/      # Feature modules
     auth/       # Authentication
     karma/      # Karma reputation system
@@ -40,8 +46,8 @@ src/
     notifications/ # Notifications
   generated/    # Prisma client (auto-generated, do not edit)
 prisma/
-  schema.prisma # Full platform schema (40+ models)
-  migrations/   # Prisma migrations
+  schema.prisma # Full platform schema (50+ models)
+  migrations/   # Prisma migrations (latest: onboarding_flow, google_auth_onboarding)
 docker/
   docker-compose.yml  # PostgreSQL 16 for local dev
 scripts/
@@ -74,21 +80,35 @@ scripts/
 - `prisma.config.ts` contains the config — `datasource.url` from `process.env.DATABASE_URL`
 - After schema changes: `npx prisma generate && npx prisma migrate dev --name <name>`
 - PrismaClient requires `{ adapter: new PrismaPg(pool) }` in constructor
+- Recently added model groups: onboarding/interests (`Interest`, `UserInterest`, `OnboardingProgress`), feed engagement (`SavedPost`, `PostAward`, `Poll`/`PollOption`/`PollVote`, `Hashtag`/`PostHashtag`), `Notification`, and per-school `KarmaThreshold`. `Post` now carries denormalized `upvoteCount`/`downvoteCount`/`commentCount`/`shareCount`.
 
 ### Auth
-- Auth.js config in `src/lib/auth.ts`
+- Auth.js config in `src/lib/auth.ts` — **Google OAuth + Credentials** providers
 - Sign-in page at `/auth/signin`, sign-up at `/auth/signup`
-- Redirect proxy at root `proxy.ts` (Next.js 16, not middleware)
-- Session via JWT — user ID in `token.sub`
+- Route protection + onboarding gate in `src/middleware.ts` (matcher-configured; this is the active layer). The older root `proxy.ts` predates it and is now redundant.
+- Session via JWT — user ID in `token.sub`. Session/JWT augmented with `username`, `onboardingStep`, `onboardingCompleted`, `membershipStatus` (typed in `src/types/next-auth.d.ts`, populated in the `jwt`/`session` callbacks)
+- `username` is auto-generated (slug from name + uniqueness suffix) on both credentials signup and first Google sign-in — see `generateUsername`/`ensureUniqueUsername`
 - User model fields: `legalName` (not `name`), `passwordHash` (not `hashedPassword`)
-- School is optional at signup (`schoolId String?`)
+- School is optional at signup (`schoolId String?`); new users default `status: "active"`, `onboardingStep: "profile"`
+- ⚠️ **Auth is currently commented out for UI testing** in `src/middleware.ts` and the `/api/onboarding/*` route handlers — all routes are public and onboarding saves return mocked success. Re-enable (uncomment) before shipping.
+
+### Onboarding
+- Multi-step wizard, route group `(onboarding)` → `/onboarding/[step]` rendered by `components/onboarding/OnboardingWizard`
+- Steps (canonical order in `src/lib/onboarding.ts`): `profile → jnv → interests → membership → complete`
+- `src/lib/onboarding.ts` holds step config, labels, per-step data shapes, and static option lists (gender, status, interests, membership plans)
+- Autosave via `src/lib/use-autosave.ts` (debounced POST to `/api/onboarding/save`)
+- API under `src/app/api/onboarding/*`: `save`, `progress`, `complete`, plus per-step (`profile`, `jnv`, `interests`, `membership`)
+- Progress tracked on `User` (`onboardingStep`, `onboardingCompleted`, `profileCompletion`) and in the `OnboardingProgress` model
 
 ### User Model
 Key fields (from `prisma/schema.prisma`):
-- `id` (UUID), `email`, `legalName`, `displayName`, `passwordHash`
+- `id` (UUID), `email`, `username?` (unique, auto-generated), `legalName`, `displayName`, `passwordHash`
 - `schoolId?` (optional), `memberType` (defaults to `"alumni"`)
-- `dateOfBirth?`, `currentClass?`, `mobileE164?`
-- `status` (default `"pending"`), `isVerified`
+- `dateOfBirth?`, `gender?`, `currentClass?`, `yearsStudied?`, `currentStatus?`, `mobileE164?`
+- `status` (default `"active"`), `isVerified`, `verificationStatus` (default `"pending"`)
+- Onboarding: `onboardingStep` (default `"profile"`), `onboardingCompleted`, `profileCompletion`
+- Membership: `membershipStatus` (default `"free"`), `membershipExpiresAt?`
+- JSON blobs: `verificationData?`, `membershipData?`, `connectionsData?`
 
 ## Database
 - Local: `docker compose -f docker/docker-compose.yml up -d`
@@ -115,12 +135,14 @@ AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET  # when Google OAuth is configured
 
 ## Karma System (from `src/config/karma.ts`)
 - Thresholds: 0 Reader · 25 Commenter · 50 Poster · 100 Poller · 250 Group Leader · 500 Mentor
+- Thresholds are also persisted per-school in the `KarmaThreshold` model (DB-backed, seeded from the config defaults) to support future multi-school overrides
 - Content: like (1/1), comment (1.5/2), share (2/3), downvote (0/-2 or 0/-1)
 - Caps: 30 likes/day, 20 comments/day, 10 shares/day, 5 pair-likes/24h, -10 negative/day
 - 80% karma retained on unlock spend
 - Game karma hard-capped at 0
 
 ## Design Decisions
+- Source of truth for scope/stack: `DECISIONS.md`. Client's full feature vision / backlog: `CLIENT_REQUIREMENTS.md` (distilled from the NNAWCA Developer Doc — aspirational, not committed scope).
 - Legal entity: **Nagpur Navodaya Alumni Welfare and Charitable Association (NNAWCA)**
 - School: Jawahar Navodaya Vidyalaya, Navegaon Khairi, Nagpur (JNV Nagpur)
 - School ID codes: **NGP** (Nagpur), **JND** (Jindi) — see `src/config/schools.ts`

@@ -46,7 +46,7 @@ export function ImpactDashboard({ metrics = [] }: ImpactDashboardProps) {
     <section className="py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             Community Impact
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">
@@ -64,7 +64,7 @@ export function ImpactDashboard({ metrics = [] }: ImpactDashboardProps) {
               transition={{ duration: 0.4, delay: i * 0.1 }}
               className="rounded-[20px] bg-white p-8 card-shadow text-center hover:shadow-lg transition-all"
             >
-              <p className="text-4xl sm:text-5xl font-extrabold text-navy-500 tabular-nums">
+              <p className="text-4xl sm:text-5xl font-extrabold text-brand tabular-nums">
                 <Counter value={metric.value} suffix={metric.suffix} />
               </p>
               <p className="mt-2 text-sm font-medium text-charcoal-400">

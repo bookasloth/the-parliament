@@ -12,10 +12,10 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
   if (businesses.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28 bg-navy-50/20">
+    <section className="py-20 lg:py-28 bg-brand-50/20">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             Alumni Business Showcase
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">
@@ -23,20 +23,18 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {businesses.map((biz, i) => (
-            <motion.a
+            <motion.div
               key={biz.id}
-              href={biz.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="group rounded-[20px] bg-white p-6 card-shadow hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center"
+              transition={{ duration: 0.4, delay: i * 0.06 }}
+              className="group rounded-xl bg-white card-shadow hover:shadow-lg transition-all duration-300 border border-gray-100 overflow-hidden flex"
             >
-              <div className="h-20 w-20 rounded-2xl overflow-hidden mb-4 bg-charcoal-50 ring-1 ring-charcoal-100 group-hover:ring-navy-200 transition-all">
+              {/* Left 30% - Photo */}
+              <div className="w-[30%] flex-shrink-0 overflow-hidden bg-gray-50">
                 <img
                   src={biz.logo}
                   alt={biz.name}
@@ -44,29 +42,37 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
                   loading="lazy"
                 />
               </div>
-              <h3 className="font-bold text-sm text-charcoal-800 group-hover:text-navy-500 transition-colors">
-                {biz.name}
-              </h3>
-              <p className="text-xs text-charcoal-400 mt-0.5">by {biz.founder}</p>
-              <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
-                <span className="rounded-full bg-charcoal-50 px-2.5 py-0.5 text-[10px] font-medium text-charcoal-500">
-                  {biz.category}
-                </span>
-                <span className="rounded-full bg-charcoal-50 px-2.5 py-0.5 text-[10px] font-medium text-charcoal-500">
-                  {biz.city}
-                </span>
+
+              {/* Right 70% - Content */}
+              <div className="w-[70%] p-4 flex flex-col justify-between min-h-0">
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900 leading-snug">{biz.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">
+                    {biz.bio}
+                  </p>
+                </div>
+                <div className="mt-2">
+                  <p className="text-xs text-gray-400">
+                    by <span className="font-medium text-gray-600">{biz.founder}</span>
+                  </p>
+                  <a
+                    href={biz.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-600 transition-colors"
+                  >
+                    Visit <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-navy-500 opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0">
-                Visit <ExternalLink className="h-3 w-3" />
-              </span>
-            </motion.a>
+            </motion.div>
           ))}
         </div>
 
         <div className="mt-10 text-center">
           <a
             href="#"
-            className="inline-flex items-center gap-2 rounded-full border border-charcoal-200 bg-white px-7 py-3 text-sm font-semibold text-charcoal-600 hover:bg-charcoal-50 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
           >
             Explore All Businesses
           </a>

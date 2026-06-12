@@ -37,10 +37,10 @@ export function WhyJoin({ cards = [] }: WhyJoinProps) {
   if (cards.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28 bg-navy-50/20">
+    <section className="py-20 lg:py-28 bg-brand-50/20">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             Why Join NNAWCA
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">

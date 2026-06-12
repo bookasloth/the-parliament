@@ -30,7 +30,7 @@ export function HousePride({ houses = [] }: HousePrideProps) {
     <section className="py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             House Pride
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">
@@ -78,18 +78,18 @@ export function HousePride({ houses = [] }: HousePrideProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                <div className="grid grid-cols-2 gap-x-2 gap-y-3">
                   {houseInfo.map((info) => {
                     const Icon = info.icon;
                     const val = house[info.key];
                     return (
-                      <div key={info.key} className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: house.color }} />
+                      <div key={info.key} className="flex items-center gap-2.5">
+                        <Icon className="h-5 w-5 shrink-0" style={{ color: house.color }} />
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-charcoal-700 leading-tight tabular-nums">
+                          <p className="text-sm font-bold text-charcoal-700 leading-tight tabular-nums">
                             {info.format ? info.format(val as number) : val}
                           </p>
-                          <p className="text-[9px] text-charcoal-400 leading-tight truncate">
+                          <p className="text-xs text-charcoal-400 leading-tight truncate">
                             {info.label}
                           </p>
                         </div>

@@ -1,6 +1,5 @@
 import { StickyNav } from "./StickyNav";
 import { HeroSection } from "./HeroSection";
-import { LiveActivityFeed } from "./LiveActivityFeed";
 import { WhyJoin } from "./WhyJoin";
 import { FeaturedAlumni } from "./FeaturedAlumni";
 import { BusinessShowcase } from "./BusinessShowcase";
@@ -17,7 +16,6 @@ interface HomepageProps {
   sections?: {
     nav: boolean;
     hero: boolean;
-    activity: boolean;
     whyJoin: boolean;
     alumni: boolean;
     businesses: boolean;
@@ -35,7 +33,6 @@ export function Homepage({
   sections = {
     nav: true,
     hero: true,
-    activity: true,
     whyJoin: true,
     alumni: true,
     businesses: true,
@@ -51,7 +48,7 @@ export function Homepage({
     <div className="flex min-h-screen flex-col">
       {sections.nav && <StickyNav {...content.nav} />}
       {sections.hero && <HeroSection content={content.hero} />}
-      {sections.activity && <LiveActivityFeed activities={content.activities} />}
+      {/* activity section removed */}
       {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />}
       {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />}
       {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />}

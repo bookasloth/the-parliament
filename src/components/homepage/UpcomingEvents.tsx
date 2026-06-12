@@ -15,7 +15,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
     <section className="py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-500">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
             Upcoming Events
           </h2>
           <p className="mt-4 text-base text-charcoal-400 max-w-2xl mx-auto">
@@ -42,7 +42,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-navy-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-brand">
                     <Calendar className="h-3 w-3" />
                     {event.date}
                   </span>
@@ -64,7 +64,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
                 </div>
                 <a
                   href="#"
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-navy-500 hover:text-navy-600 transition-colors group/cta"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-600 transition-colors group/cta"
                 >
                   Register Now
                   <ArrowRight className="h-3 w-3 transition-transform group-hover/cta:translate-x-0.5" />
@@ -77,7 +77,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
         <div className="mt-10 text-center">
           <a
             href="#"
-            className="inline-flex items-center gap-2 rounded-full border border-charcoal-200 bg-white px-7 py-3 text-sm font-semibold text-charcoal-600 hover:bg-charcoal-50 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 rounded border border-charcoal-200 bg-white px-7 py-3 text-sm font-semibold text-charcoal-600 hover:bg-charcoal-50 transition-all shadow-sm"
           >
             View All Events
           </a>

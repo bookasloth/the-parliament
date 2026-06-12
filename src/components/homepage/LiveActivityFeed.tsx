@@ -48,7 +48,7 @@ export function LiveActivityFeed({
   const colorClass = typeColors[current.type];
 
   return (
-    <section className="py-10 bg-navy-50/50">
+    <section className="py-10 bg-brand-50/50">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex items-center justify-center gap-2 mb-2">
           <span className="relative flex h-2 w-2">

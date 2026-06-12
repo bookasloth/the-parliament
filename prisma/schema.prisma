@@ -14,7 +14,8 @@ datasource db {
 model School {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(200)
-  slug      String   @db.VarChar(80)
+  slug      String   @unique @db.VarChar(80)
+  logoUrl   String?  @map("logo_url")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   houses    House[]
@@ -33,17 +34,20 @@ model School {
   spotlights       Spotlight[]
   posts            Post[]
   businesses       Business[]
+  karmaThresholds  KarmaThreshold[]
 
   @@map("schools")
 }
 
 model House {
-  id        String   @id @default(uuid()) @db.Uuid
-  schoolId  String   @map("school_id") @db.Uuid
-  name      String   @db.VarChar(80)
-  colorName String   @map("color_name") @db.VarChar(30)
-  colorHex  String   @map("color_hex") @db.Char(7)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id         String   @id @default(uuid()) @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  name       String   @db.VarChar(80)
+  colorName  String   @map("color_name") @db.VarChar(30)
+  colorHex   String   @map("color_hex") @db.Char(7)
+  slogan     String?  @db.VarChar(200)
+  isGirlsOnly Boolean @default(false) @map("is_girls_only")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   profiles Profile[]
@@ -90,9 +94,10 @@ model Batch {
 
 model User {
   id              String    @id @default(uuid()) @db.Uuid
-  schoolId        String    @map("school_id") @db.Uuid
+  schoolId        String?   @map("school_id") @db.Uuid
   email           String    @db.VarChar()
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  username        String?   @unique @db.VarChar(60)
   mobileE164      String?   @map("mobile_e164") @db.VarChar(20)
   mobileVerifiedAt DateTime? @map("mobile_verified_at") @db.Timestamptz
   passwordHash    String?   @map("password_hash")
@@ -100,16 +105,28 @@ model User {
   displayName     String    @default("") @map("display_name") @db.VarChar(120)
   memberType      String    @default("alumni") @map("member_type") @db.VarChar(20)
   dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  gender          String?   @db.VarChar(20)
   currentClass    Int?      @map("current_class")
+  yearsStudied    Int?      @map("years_studied")
+  currentStatus   String?   @map("current_status") @db.VarChar(20)
   isVerified      Boolean   @default(false) @map("is_verified")
   verifiedAt      DateTime? @map("verified_at") @db.Timestamptz
-  status          String    @default("pending") @db.VarChar(20)
-  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  status          String    @default("active") @db.VarChar(20)
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz
+  onboardingStep   String   @default("profile") @map("onboarding_step") @db.VarChar(30)
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
+  profileCompletion Int     @default(0) @map("profile_completion")
+  verificationStatus String @default("pending") @map("verification_status") @db.VarChar(20)
+  membershipStatus String   @default("free") @map("membership_status") @db.VarChar(20)
+  membershipExpiresAt DateTime? @map("membership_expires_at") @db.Timestamptz
+  verificationData   Json?     @map("verification_data")
+  membershipData     Json?     @map("membership_data")
+  connectionsData    Json?     @map("connections_data")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
 
-  school School? @relation(fields: [schoolId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
 
   profile Profile?
   credentials UserCredential[]
@@ -151,7 +168,13 @@ model User {
   activityEvents ActivityEvent[]
   userBadges UserBadge[]
   karmaRedemptions KarmaRedemption[]
-  sentMessages Message[] @relation("message_sender")
+  sentMessages  Message[]      @relation("message_sender")
+  savedPosts    SavedPost[]
+  postAwards    PostAward[]
+  pollVotes     PollVote[]
+  notifications Notification[]
+  interests     UserInterest[]
+  onboardingProgress OnboardingProgress[]
 
   @@unique([email])
   @@index([status])
@@ -161,11 +184,14 @@ model User {
 }
 
 model UserCredential {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  provider    String   @db.VarChar(40)
-  providerUid String   @map("provider_uid") @db.VarChar(255)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  provider     String    @db.VarChar(40)
+  providerUid  String    @map("provider_uid") @db.VarChar(255)
+  accessToken  String?   @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -192,6 +218,51 @@ model UserSession {
   @@unique([refreshTokenHash])
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+// ─────────────────────────────────────────────
+// 1b. Interests & Onboarding
+// ─────────────────────────────────────────────
+
+model Interest {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(80)
+  slug      String   @unique @db.VarChar(80)
+  icon      String?  @db.VarChar(40)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  users UserInterest[]
+
+  @@index([slug])
+  @@map("interests")
+}
+
+model UserInterest {
+  userId     String   @map("user_id") @db.Uuid
+  interestId String   @map("interest_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([userId, interestId])
+  @@map("user_interests")
+}
+
+model OnboardingProgress {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  step      String   @default("profile") @db.VarChar(30)
+  data      Json     @default("{}")
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_progress")
 }
 
 model MfaFactor {
@@ -238,6 +309,10 @@ model Profile {
   profession           String?  @db.VarChar(160)
   company              String?  @db.VarChar(160)
   industry             String?  @db.VarChar(120)
+  designation          String?  @db.VarChar(160)
+  higherEducation      String?  @map("higher_education") @db.VarChar(200)
+  skills               Json     @default("[]")
+  linkedinUrl          String?  @map("linkedin_url")
   headline             String?  @db.VarChar(200)
   socialLinks          Json     @default("{}") @map("social_links")
   whatsappOptIn        Boolean  @default(false) @map("whatsapp_opt_in")
@@ -380,6 +455,10 @@ model Post {
   isPinned        Boolean   @default(false) @map("is_pinned")
   isEdited        Boolean   @default(false) @map("is_edited")
   editedAt        DateTime? @map("edited_at") @db.Timestamptz
+  upvoteCount     Int       @default(0) @map("upvote_count")
+  downvoteCount   Int       @default(0) @map("downvote_count")
+  commentCount    Int       @default(0) @map("comment_count")
+  shareCount      Int       @default(0) @map("share_count")
   qualityScore    Decimal   @default(0) @map("quality_score") @db.Decimal(8, 3)
   engagementScore Decimal   @default(0) @map("engagement_score") @db.Decimal(8, 3)
   reportPenalty   Decimal   @default(0) @map("report_penalty") @db.Decimal(8, 3)
@@ -393,9 +472,13 @@ model Post {
   category  PostCategory @relation(fields: [categoryId], references: [id])
   group     Group?       @relation(fields: [groupId], references: [id])
 
-  comments Comment[]
-  shares   PostShare[]
-  mentions PostMention[]
+  comments   Comment[]
+  shares     PostShare[]
+  mentions   PostMention[]
+  savedBy    SavedPost[]
+  awards     PostAward[]
+  hashtags   PostHashtag[]
+  poll       Poll?
 
   @@index([authorId])
   @@index([createdAt])
@@ -506,6 +589,109 @@ model ContentReport {
 }
 
 // ─────────────────────────────────────────────
+// 6b. Bookmarked Posts, Awards, Polls, Hashtags
+// ─────────────────────────────────────────────
+
+model SavedPost {
+  userId  String   @map("user_id") @db.Uuid
+  postId  String   @map("post_id") @db.Uuid
+  savedAt DateTime @default(now()) @map("saved_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@map("saved_posts")
+}
+
+model PostAward {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  awardType String   @map("award_type") @db.VarChar(40)
+  karmaCost Decimal  @map("karma_cost") @db.Decimal(8, 2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([userId])
+  @@map("post_awards")
+}
+
+model Poll {
+  id         String    @id @default(uuid()) @db.Uuid
+  postId     String    @unique @map("post_id") @db.Uuid
+  question   String    @db.VarChar(500)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz
+  isMultiple Boolean   @default(false) @map("is_multiple")
+  totalVotes Int       @default(0) @map("total_votes")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([postId])
+  @@map("polls")
+}
+
+model PollOption {
+  id        String @id @default(uuid()) @db.Uuid
+  pollId    String @map("poll_id") @db.Uuid
+  label     String @db.VarChar(200)
+  voteCount Int    @default(0) @map("vote_count")
+  sortOrder Int    @default(0) @map("sort_order")
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+  @@map("poll_options")
+}
+
+model PollVote {
+  userId   String   @map("user_id") @db.Uuid
+  pollId   String   @map("poll_id") @db.Uuid
+  optionId String   @map("option_id") @db.Uuid
+  votedAt  DateTime @default(now()) @map("voted_at") @db.Timestamptz
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, pollId])
+  @@index([pollId])
+  @@map("poll_votes")
+}
+
+model Hashtag {
+  id        String   @id @default(uuid()) @db.Uuid
+  tag       String   @unique @db.VarChar(100)
+  useCount  Int      @default(0) @map("use_count")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  posts PostHashtag[]
+
+  @@index([useCount])
+  @@map("hashtags")
+}
+
+model PostHashtag {
+  postId    String   @map("post_id") @db.Uuid
+  hashtagId String   @map("hashtag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId])
+  @@map("post_hashtags")
+}
+
+// ─────────────────────────────────────────────
 // 7. Messaging — Phase 2
 // ─────────────────────────────────────────────
 
@@ -546,6 +732,29 @@ model Message {
 }
 
 // ─────────────────────────────────────────────
+// 8. Notifications
+// ─────────────────────────────────────────────
+
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  type       String    @db.VarChar(40)
+  title      String    @db.VarChar(200)
+  body       String?
+  entityType String?   @map("entity_type") @db.VarChar(30)
+  entityId   String?   @map("entity_id") @db.Uuid
+  imageUrl   String?   @map("image_url")
+  isRead     Boolean   @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
 // 12. Age-Tier Safety
 // ─────────────────────────────────────────────
 
@@ -567,6 +776,23 @@ model GuardianConsent {
 // ─────────────────────────────────────────────
 // 11. Karma & Ledger
 // ─────────────────────────────────────────────
+
+model KarmaThreshold {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  name      String   @db.VarChar(40)
+  label     String   @db.VarChar(80)
+  minKarma  Decimal  @map("min_karma") @db.Decimal(10, 2)
+  color     String?  @db.VarChar(20)
+  iconUrl   String?  @map("icon_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@map("karma_thresholds")
+}
 
 model UserKarma {
   userId        String   @id @map("user_id") @db.Uuid
@@ -642,6 +868,7 @@ model Event {
   groupId        String?   @map("group_id") @db.Uuid
   title          String    @db.VarChar(200)
   description    String?
+  bannerUrl      String?   @map("banner_url")
   startsAt       DateTime  @map("starts_at") @db.Timestamptz
   endsAt         DateTime? @map("ends_at") @db.Timestamptz
   mode           String    @db.VarChar(20)
@@ -737,6 +964,7 @@ model Business {
   website            String?
   contactEmail       String?  @map("contact_email") @db.VarChar()
   contactPhone       String?  @map("contact_phone") @db.VarChar(20)
+  city               String?  @db.VarChar(120)
   offersAlumniDiscount Boolean @default(false) @map("offers_alumni_discount")
   ratingAvg          Decimal  @default(0) @map("rating_avg") @db.Decimal(3, 2)
   ratingCount        Int      @default(0) @map("rating_count")

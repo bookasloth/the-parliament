@@ -29,14 +29,21 @@ export interface WhyJoinCard {
   description: string;
 }
 
+export type Membership = "student" | "associate" | "premium" | "life" | "inactive" | "committee"
+
 export interface AlumniCard {
   id: string;
   name: string;
   batch: string;
+  batchLabel: string;
+  batchAlt: string;
   house: string;
   company: string;
   achievement: string;
   image: string;
+  location?: string;
+  membership?: Membership;
+  bio?: string;
 }
 
 export interface BusinessCard {
@@ -47,6 +54,7 @@ export interface BusinessCard {
   city: string;
   logo: string;
   website: string;
+  bio: string;
 }
 
 export interface EventCard {
@@ -191,55 +199,85 @@ export const defaultHomepageContent: HomepageContent = {
       id: "1",
       name: "Arun Sharma",
       batch: "B1",
+      batchLabel: "2006–2013",
+      batchAlt: "Batch #1",
       house: "Aravali",
       company: "Indian Administrative Service",
       achievement: "IAS Officer",
-      image: "/images/alumni/placeholder-1.jpg",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face",
+      location: "Delhi, India",
+      membership: "life",
+      bio: "Serving the nation as an IAS officer",
     },
     {
       id: "2",
       name: "Dr. Neha Gupta",
       batch: "B2",
+      batchLabel: "2007–2014",
+      batchAlt: "Batch #2",
       house: "Nilgiri",
       company: "AIIMS Delhi",
       achievement: "Senior Cardiologist",
-      image: "/images/alumni/placeholder-2.jpg",
+      image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&h=200&fit=crop&crop=face",
+      location: "Delhi, India",
+      membership: "associate",
+      bio: "Healing hearts at AIIMS Delhi",
     },
     {
       id: "3",
       name: "Rahul Verma",
       batch: "B3",
+      batchLabel: "2008–2015",
+      batchAlt: "Batch #3",
       house: "Udaigiri",
       company: "TechStartup Inc.",
       achievement: "Founder & CEO",
-      image: "/images/alumni/placeholder-3.jpg",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face",
+      location: "Bangalore, India",
+      membership: "premium",
+      bio: "Building the next big thing in tech",
     },
     {
       id: "4",
       name: "Priya Patel",
       batch: "B4",
+      batchLabel: "2009–2016",
+      batchAlt: "Batch #4",
       house: "Indira",
       company: "ISRO",
       achievement: "Space Scientist",
-      image: "/images/alumni/placeholder-4.jpg",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=face",
+      location: "Bangalore, India",
+      membership: "life",
+      bio: "Reaching for the stars at ISRO",
     },
     {
       id: "5",
       name: "Dr. Suresh Reddy",
       batch: "B2",
+      batchLabel: "2007–2014",
+      batchAlt: "Batch #2",
       house: "Shiwalik",
       company: "Apollo Hospitals",
       achievement: "Neurosurgeon",
-      image: "/images/alumni/placeholder-5.jpg",
+      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop&crop=face",
+      location: "Hyderabad, India",
+      membership: "associate",
+      bio: "Transforming lives through neurosurgery",
     },
     {
       id: "6",
       name: "Ananya Singh",
       batch: "B5",
+      batchLabel: "2010–2017",
+      batchAlt: "Batch #5",
       house: "Laxmi",
       company: "Google",
       achievement: "Software Engineer",
-      image: "/images/alumni/placeholder-6.jpg",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face",
+      location: "Bangalore, India",
+      membership: "premium",
+      bio: "Crafting code that connects billions",
     },
   ],
   businessShowcase: [
@@ -251,6 +289,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Nagpur",
       logo: "https://images.unsplash.com/photo-1523050854058-8df90110c7f1?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Affordable test prep and career counselling for rural students across Maharashtra.",
     },
     {
       id: "2",
@@ -260,6 +299,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Pune",
       logo: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Farm-to-table organic produce delivering fresh vegetables to 500+ homes weekly.",
     },
     {
       id: "3",
@@ -269,6 +309,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Bangalore",
       logo: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Full-stack development studio building SaaS products for early-stage startups.",
     },
     {
       id: "4",
@@ -278,6 +319,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Delhi",
       logo: "https://images.unsplash.com/photo-1551076805-e1869033e561?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Chain of affordable primary care clinics with online consultation across NCR.",
     },
     {
       id: "5",
@@ -287,6 +329,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Nagpur",
       logo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Authentic Nagpurian snacks and sweets delivered fresh across India.",
     },
     {
       id: "6",
@@ -296,6 +339,7 @@ export const defaultHomepageContent: HomepageContent = {
       city: "Mumbai",
       logo: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=200&h=200&fit=crop",
       website: "#",
+      bio: "Branding and UI/UX design studio with a portfolio of 50+ D2C brands.",
     },
   ],
   upcomingEvents: [
@@ -410,6 +454,26 @@ export const defaultHomepageContent: HomepageContent = {
       quote: "Forty years after leaving JNV, I still remember every corner of that campus. NNAWCA didn't just connect me with old friends — it connected me with my younger self.",
       rating: 5,
       image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face",
+    },
+    {
+      id: "8",
+      name: "Meera Joshi",
+      batch: "B3",
+      house: "Indira",
+      role: "Marketing Director, Unilever",
+      quote: "The mentorship I found here shaped my career trajectory. From interview prep to leadership advice, fellow Navodayans have been my secret weapon. This is more than a network — it's family.",
+      rating: 5,
+      image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face",
+    },
+    {
+      id: "9",
+      name: "Rajesh Nair",
+      batch: "B4",
+      house: "Shiwalik",
+      role: "VP Engineering, Stripe",
+      quote: "I've hired three Navodayans on my team and they've outperformed every time. The discipline and curiosity JNV instilled in us is unmatched. Proud to give back by mentoring current students.",
+      rating: 5,
+      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
     },
   ],
   houses: [
