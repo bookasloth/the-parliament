@@ -19,14 +19,24 @@ src/
   middleware.ts # Route protection + onboarding gate (active redirect layer)
   app/          # Next.js App Router routes
     (auth)/     # Auth route group (signin, signup)
-    (main)/     # Authenticated route group (dashboard, feed, profile/[username], settings)
+    (main)/     # Gated route group — shared layout.tsx mounts PrivateNavbar on every page.
+                # Pages: feed, profile/[username], profile/edit, connections, directory,
+                # companies/[slug], groups (+/[slug]), events (+/[slug] +/register),
+                # membership, notifications, settings, compose, feed/[postId] (+/edit +/analytics),
+                # messages (master-detail: layout + ChatSidebar + [conversationId])
     (onboarding)/ # Onboarding wizard route group (/onboarding/[step])
+    admin/      # Admin console — own layout.tsx (dark slate sidebar + indigo accent, separate
+                # from the member brand-blue). admin-ui.tsx holds shared admin primitives.
+                # Built: dashboard, users, verification, moderation, events, groups, membership,
+                # karma, themes (festive chat themes), settings. Coming-soon stubs:
+                # analytics, businesses, jobs, games, rewards, messaging, notifications, audit-logs
     api/        # Route handlers (auth, onboarding, houses, schools, membership)
   components/   # Shared UI components
     homepage/   # Landing page sections
     onboarding/ # Onboarding wizard steps (OnboardingWizard + StepX)
-    shared/     # Cross-feature components (AlumniProfileCard)
-  config/       # App configuration (karma.ts, env.ts, schools.ts)
+    shared/     # Cross-feature components — see "Frontend / UI" below
+                # (AlumniProfileCard, FeedCard, ComposeTrigger, PrivateNavbar, ChatDecorations)
+  config/       # App configuration (karma.ts, env.ts, schools.ts, chat-themes.ts)
   lib/          # Shared utilities (prisma.ts, auth.ts, onboarding.ts, use-autosave.ts)
   types/        # Ambient type decls (next-auth.d.ts — Session/JWT augmentation)
   modules/      # Feature modules
@@ -75,7 +85,9 @@ scripts/
 - **Polymorphic relations** (Reaction, ContentReport) use plain fields + app-layer joins (no Prisma FK)
 
 ### Prisma
-- Import from `@/generated/prisma` (NOT `@prisma/client`)
+- Generated client (NOT `@prisma/client`). The Prisma 7 `prisma-client` generator's entry point is
+  `@/generated/prisma/client` — `src/lib/prisma.ts` imports `PrismaClient` from there. Generated
+  types/enums live under `@/generated/prisma/*` (e.g. `models`, `enums`).
 - Client singleton in `src/lib/prisma.ts` (uses `@prisma/adapter-pg`)
 - `prisma.config.ts` contains the config — `datasource.url` from `process.env.DATABASE_URL`
 - After schema changes: `npx prisma generate && npx prisma migrate dev --name <name>`
@@ -109,6 +121,69 @@ Key fields (from `prisma/schema.prisma`):
 - Onboarding: `onboardingStep` (default `"profile"`), `onboardingCompleted`, `profileCompletion`
 - Membership: `membershipStatus` (default `"free"`), `membershipExpiresAt?`
 - JSON blobs: `verificationData?`, `membershipData?`, `connectionsData?`
+
+## Frontend / UI
+
+> ⚠️ The member UI is currently built with **mock data** in `"use client"` pages (auth is
+> disabled for UI testing). Wire these to Prisma/server actions when re-enabling auth.
+
+### Layouts & route groups
+- **`(main)/layout.tsx`** is a server layout that renders `<PrivateNavbar/>` then the page.
+  Every gated page gets the navbar automatically — do **not** add a per-page logo/top bar.
+  Add new gated pages under `(main)/` and they inherit it.
+- **`PrivateNavbar`** (`components/shared/PrivateNavbar.tsx`): expanding search with Quora-style
+  scoped options (Profiles/Posts/Groups/Events/Businesses) + suggested searches, "Get Premium"
+  CTA, directory/events/messages icon nav, notifications dropdown, and a profile dropdown whose
+  **membership button supports all 6 tiers** and enforces the upgrade flow
+  `student → associate → premium → life` (life & committee can't upgrade). Height is `h-14`
+  (`3.5rem`) — full-height pages use `h-[calc(100dvh-3.5rem)]`.
+- **`admin/layout.tsx`** is a separate console shell (own nav, search, profile). A new module may
+  use its own colours/icons — admin uses **slate + indigo**, distinct from member **brand blue**.
+  Admin pages must avoid emoji icons (use lucide).
+- **`messages/`** is a master-detail shell: `messages/layout.tsx` (client) renders the chat list
+  (`ChatSidebar`) + the conversation/empty-state child. Desktop shows both panes; mobile shows the
+  list on `/messages` and the conversation on `/messages/[id]`. Mock data in `messages/chat-data.ts`.
+
+### Standard page width (consistency rule)
+- Full-content / list pages use **`mx-auto max-w-[1400px] px-4 sm:px-6`** — the same width as the
+  navbar, so content edges line up with it on every page (feed, directory, connections, events,
+  groups, profile/edit, post detail/analytics). Keep new app pages on this standard.
+- Narrower tiers (intentional): detail pages w/ sidebar ≈ `max-w-5xl`; centered forms/reading
+  (notifications, settings, event registration) ≈ `max-w-2xl`.
+
+### Shared components (`components/shared/`)
+- **`AlumniProfileCard`** — the canonical alumni card (membership stripe, batch + house badges,
+  square photo, headline, location). Used on the homepage Featured Alumni **and** directory,
+  connections, and group member grids. Optional props: `profileHref`, `verified`, `footer`,
+  `actions` (keep usages backward-compatible — all are optional). Render grids of these with the
+  `FeaturedAlumni` motion-stagger pattern.
+- **`FeedCard`** — the one true post card (colored avatar border, membership asterisk, verified
+  badge, rich text w/ @mentions & #tags, image grids, polls, quote blocks, question banners, full
+  reaction bar with award modal). Use it **everywhere a post renders** (main feed, group feed).
+  `FeedPost` type lives here.
+- **`ComposeTrigger`** — the standard "add post" entry (avatar + "Start a post…" + Photo/Poll/
+  Question/Quote shortcuts). Always links to **`/compose`** (the shared composer). Use it instead
+  of bespoke composers.
+- **`ChatDecorations`** — animated festive overlay for chat themes (see below).
+
+### Design tokens (`src/app/globals.css`)
+- Member brand blue `--color-brand: #009ae4` (+ `brand-50..900`); house colours
+  `--color-house-{aravali,nilgiri,shiwalik,udaigiri,indira,laxmi}`; navy/charcoal/gold scales.
+- Membership tier colours (stripes/buttons) are duplicated in `AlumniProfileCard` and
+  `PrivateNavbar` — student (green radial), associate (blue), premium (deep blue), life (gold
+  radial), inactive (grey), committee (pastel gradient).
+- Page background is `#f3f2ef`; cards are `bg-white border border-gray-200 rounded-xl`.
+- Fonts: Plus Jakarta Sans (headings) + Poppins (body) via CSS vars in `app/layout.tsx`.
+
+### Festive chat themes (`src/config/chat-themes.ts`)
+- 18 themes restyle the conversation pane (bubbles + background + decoration) for a date window.
+  `getActiveTheme(date)` resolves the live theme; scheduled themes auto-activate, on-demand
+  (scheduleless) themes are manual-only. `dark` flag flips timestamp/divider text to light.
+- Decorations: a generic floating-glyph renderer (hearts, confetti, rain, petals, bubbles, leaves,
+  stars, crescent) + bespoke snow / tricolour-chakra / diwali-diya. Keyframes in `globals.css`
+  (`festive-snowfall`, `festive-rise`, `festive-twinkle`, `festive-flicker`). Positions are
+  index-derived (no `Math.random`) to avoid hydration mismatch.
+- Admins schedule windows + toggle themes at **`/admin/themes`** (local state for now).
 
 ## Database
 - Local: `docker compose -f docker/docker-compose.yml up -d`
