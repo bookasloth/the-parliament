@@ -1,256 +1,275 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
-  Search, Plus, Calendar, MapPin, Users, Clock, ChevronRight,
-  Home, Menu, X, Filter, Video, Building2, Globe,
-  Star, TrendingUp, Ticket, Bell,
+  Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
+  X, Search, Home, Users, Menu, Video, MapPin, Globe,
 } from "lucide-react"
 
-type EventType = "all" | "upcoming" | "past" | "mine"
-type EventMode = "all" | "virtual" | "in-person" | "hybrid"
-
-interface Event {
+interface EventItem {
   id: string
   slug: string
   title: string
-  description: string
   date: string
   time: string
-  location: string
-  mode: "virtual" | "in-person" | "hybrid"
-  organizer: string
-  organizerAvatar: string
+  mode: "in-person" | "virtual" | "hybrid"
   cover: string
-  attending: number
-  interested: number
   isFree: boolean
   price?: number
-  myRsvp?: "attending" | "interested" | null
-  isPast?: boolean
-  isFeatured?: boolean
+  interested: boolean
   category: string
+  isPast?: boolean
 }
 
-const events: Event[] = [
-  { id: "1", slug: "alumni-reunion-2026", title: "JNV Nagpur Alumni Reunion 2026", description: "The grand annual reunion of all JNV Nagpur alumni. Two days of nostalgia, networking, and fun at our beloved campus.", date: "Oct 15–16, 2026", time: "10:00 AM", location: "JNV Nagpur Campus, Navegaon Khairi", mode: "in-person", organizer: "NNAWCA", organizerAvatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=400&fit=crop", attending: 287, interested: 512, isFree: false, price: 500, myRsvp: "interested", isFeatured: true, category: "Reunion" },
-  { id: "2", slug: "tech-talk-ai-careers", title: "Tech Talk: AI & Careers in 2026", description: "A virtual session with Navodayan techies working at top AI companies. Q&A and career guidance included.", date: "Jul 5, 2026", time: "7:00 PM IST", location: "Zoom Webinar", mode: "virtual", organizer: "Tech Navodayans Group", organizerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop", attending: 89, interested: 234, isFree: true, myRsvp: "attending", category: "Webinar" },
-  { id: "3", slug: "nagpur-chapter-meetup-july", title: "Nagpur Chapter Meetup – July 2026", description: "Monthly meetup for Nagpur-based alumni. Casual dinner, great conversations.", date: "Jul 20, 2026", time: "7:30 PM", location: "Nagpur Club, Civil Lines", mode: "in-person", organizer: "Nagpur Chapter", organizerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=400&fit=crop", attending: 34, interested: 56, isFree: true, myRsvp: null, category: "Meetup" },
-  { id: "4", slug: "startup-showcase-2026", title: "Navodayan Startup Showcase", description: "Alumni entrepreneurs pitch their startups. Network with investors and fellow founders from JNV Nagpur.", date: "Aug 3, 2026", time: "2:00 PM IST", location: "Google Meet + In-Person (Pune)", mode: "hybrid", organizer: "Navodayan Entrepreneurs Group", organizerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&h=400&fit=crop", attending: 54, interested: 128, isFree: false, price: 200, myRsvp: null, category: "Networking" },
-  { id: "5", slug: "cricket-tournament-may-2026", title: "Alumni Cricket Tournament 2026", description: "Annual inter-batch cricket tournament. Dust off those cricket whites!", date: "May 18, 2026", time: "9:00 AM", location: "JNV Nagpur Ground", mode: "in-person", organizer: "Sports Committee", organizerAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1461896836934-bd45ba8fcf9b?w=800&h=400&fit=crop", attending: 72, interested: 145, isFree: true, myRsvp: "attending", isPast: true, category: "Sports" },
-  { id: "6", slug: "mentorship-program-launch", title: "Mentorship Program Launch", description: "Official launch of NNAWCA's mentorship program connecting alumni professionals with current students.", date: "Jun 1, 2026", time: "6:00 PM IST", location: "Zoom Webinar", mode: "virtual", organizer: "NNAWCA", organizerAvatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face", cover: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&h=400&fit=crop", attending: 112, interested: 289, isFree: true, myRsvp: "attending", isPast: true, category: "Webinar" },
+const initialEvents: EventItem[] = [
+  { id: "1", slug: "alumni-reunion-2026", title: "JNV Nagpur Alumni Reunion 2026", date: "Mon, Oct 15, 2026", time: "10:00 AM", mode: "in-person", cover: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop", isFree: false, price: 500, interested: true, category: "Reunion" },
+  { id: "2", slug: "tech-talk-ai-careers", title: "Tech Talk: AI & Careers in 2026", date: "Sat, Jul 5, 2026", time: "7:00 PM", mode: "virtual", cover: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&h=400&fit=crop", isFree: true, interested: false, category: "Webinar" },
+  { id: "3", slug: "nagpur-chapter-meetup-july", title: "Nagpur Chapter Meetup – July", date: "Sun, Jul 20, 2026", time: "7:30 PM", mode: "in-person", cover: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop", isFree: true, interested: false, category: "Meetup" },
+  { id: "4", slug: "startup-showcase-2026", title: "Navodayan Startup Showcase", date: "Mon, Aug 3, 2026", time: "2:00 PM", mode: "hybrid", cover: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=600&h=400&fit=crop", isFree: false, price: 200, interested: false, category: "Networking" },
+  { id: "5", slug: "womens-leadership-summit", title: "Women Alumni Leadership Summit", date: "Sun, Sep 14, 2026", time: "11:00 AM", mode: "hybrid", cover: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop", isFree: false, price: 300, interested: true, category: "Conference" },
+  { id: "6", slug: "blood-donation-camp", title: "Alumni Blood Donation Camp", date: "Sat, Jul 26, 2026", time: "9:00 AM", mode: "in-person", cover: "https://images.unsplash.com/photo-1615461066159-fea0960485d5?w=600&h=400&fit=crop", isFree: true, interested: false, category: "Social Service" },
+  { id: "7", slug: "cricket-tournament-2026", title: "Inter-Batch Cricket Tournament", date: "Sat, May 18, 2026", time: "9:00 AM", mode: "in-person", cover: "https://images.unsplash.com/photo-1461896836934-bd45ba8fcf9b?w=600&h=400&fit=crop", isFree: true, interested: true, category: "Sports", isPast: true },
+  { id: "8", slug: "agm-2026", title: "Annual General Meeting 2026", date: "Sat, Mar 22, 2026", time: "5:00 PM", mode: "in-person", cover: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=400&fit=crop", isFree: true, interested: false, category: "Official", isPast: true },
 ]
 
-const MODE_ICONS = { virtual: Video, "in-person": Building2, hybrid: Globe }
-const MODE_COLORS = { virtual: "text-blue-500 bg-blue-50", "in-person": "text-green-600 bg-green-50", hybrid: "text-purple-500 bg-purple-50" }
-const CATEGORIES = ["All", "Reunion", "Webinar", "Meetup", "Sports", "Networking", "Workshop"]
+const MODE_LABEL: Record<EventItem["mode"], string> = { "in-person": "Offline", virtual: "Online", hybrid: "Hybrid" }
+const MODE_ICON: Record<EventItem["mode"], typeof Video> = { "in-person": MapPin, virtual: Video, hybrid: Globe }
+
+type Tab = "upcoming" | "mine" | "past"
+
+function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: string) => void }) {
+  const [shareOpen, setShareOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const ModeIcon = MODE_ICON[event.mode]
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShareOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [])
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col hover:shadow-card transition-shadow">
+      {/* Image + badge */}
+      <div className="relative">
+        <a href={`/events/${event.slug}`}>
+          <img src={event.cover} alt={event.title} className="w-full h-36 object-cover" />
+        </a>
+        <span className={`absolute top-2 right-2 rounded-md px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
+          {event.isFree ? "Free" : `₹${event.price}`}
+        </span>
+      </div>
+
+      {/* Body */}
+      <div className="relative px-4 pb-4 flex flex-col flex-1">
+        {/* Mode tag overlapping the image */}
+        <a
+          href={`/events/${event.slug}`}
+          className="inline-flex items-center gap-1 self-start -mt-3 mb-2 rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
+        >
+          <ModeIcon className="h-3 w-3" /> {MODE_LABEL[event.mode]}
+        </a>
+
+        <h6 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">
+          <a href={`/events/${event.slug}`} className="hover:text-brand transition-colors">{event.title}</a>
+        </h6>
+
+        <p className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar className="h-3.5 w-3.5" /> {event.date}</p>
+        <p className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5"><Clock className="h-3.5 w-3.5" /> {event.time}</p>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            onClick={() => onToggle(event.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-semibold transition-colors ${
+              event.interested
+                ? "border-green-500 bg-green-500 text-white"
+                : "border-green-500 bg-white text-green-600 hover:bg-green-50"
+            }`}
+          >
+            <ThumbsUp className={`h-3.5 w-3.5 ${event.interested ? "fill-white" : ""}`} />
+            {event.interested ? "Interested" : "Interested"}
+          </button>
+
+          <div className="relative" ref={ref}>
+            <button
+              onClick={() => setShareOpen(!shareOpen)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
+            {shareOpen && (
+              <div className="absolute right-0 bottom-full mb-1 z-20 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {[
+                  { icon: <Share2 className="h-3.5 w-3.5" />, label: "Share on Facebook" },
+                  { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "Share on WhatsApp" },
+                  { divider: true, icon: null, label: "" },
+                  { icon: <Link2 className="h-3.5 w-3.5" />, label: "Copy Link" },
+                ].map((item, i) =>
+                  item.divider ? (
+                    <hr key={i} className="my-1 border-gray-100" />
+                  ) : (
+                    <button key={i} onClick={() => setShareOpen(false)} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">
+                      {item.icon} {item.label}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function EventsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [tab, setTab] = useState<EventType>("upcoming")
-  const [mode, setMode] = useState<EventMode>("all")
+  const [events, setEvents] = useState(initialEvents)
+  const [tab, setTab] = useState<Tab>("upcoming")
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("All")
-  const [rsvpStates, setRsvpStates] = useState<Record<string, string | null>>({
-    "1": "interested", "2": "attending", "5": "attending", "6": "attending"
-  })
+  const [alertOpen, setAlertOpen] = useState(true)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  function toggleInterested(id: string) {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, interested: !e.interested } : e))
+  }
 
   const filtered = events.filter(e => {
     if (tab === "upcoming" && e.isPast) return false
     if (tab === "past" && !e.isPast) return false
-    if (tab === "mine" && !rsvpStates[e.id]) return false
-    if (mode !== "all" && e.mode !== mode) return false
-    if (category !== "All" && e.category !== category) return false
-    return e.title.toLowerCase().includes(search.toLowerCase())
+    if (tab === "mine" && !e.interested) return false
+    if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false
+    return true
   })
 
-  const featured = events.find(e => e.isFeatured && !e.isPast)
-
-  function EventCard({ event }: { event: Event }) {
-    const ModeIcon = MODE_ICONS[event.mode]
-    const rsvp = rsvpStates[event.id]
-    return (
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden group hover:shadow-md transition-shadow">
-        <a href={`/events/${event.slug}`} className="block relative overflow-hidden">
-          <img src={event.cover} alt={event.title}
-            className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          {event.isFeatured && (
-            <span className="absolute top-3 left-3 rounded-full bg-brand px-2.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1">
-              <Star className="h-2.5 w-2.5" /> Featured
-            </span>
-          )}
-          <span className={`absolute top-3 right-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${MODE_COLORS[event.mode]}`}>
-            <ModeIcon className="h-3 w-3" /> {event.mode}
-          </span>
-          <div className="absolute bottom-3 left-3">
-            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${event.isFree ? "bg-green-500 text-white" : "bg-white text-gray-800"}`}>
-              {event.isFree ? "FREE" : `₹${event.price}`}
-            </span>
-          </div>
-        </a>
-
-        <div className="p-4">
-          <a href={`/events/${event.slug}`}>
-            <h3 className="text-sm font-bold text-gray-900 hover:text-brand transition-colors line-clamp-2 leading-snug">{event.title}</h3>
-          </a>
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{event.description}</p>
-
-          <div className="space-y-1.5 mt-3">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Calendar className="h-3.5 w-3.5 text-brand flex-shrink-0" /> {event.date} · {event.time}
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <MapPin className="h-3.5 w-3.5 text-red-400 flex-shrink-0" /> <span className="truncate">{event.location}</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-gray-400">
-              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{event.attending} attending</span>
-              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5" />{event.interested} interested</span>
-            </div>
-          </div>
-
-          {!event.isPast && (
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setRsvpStates(s => ({ ...s, [event.id]: s[event.id] === "attending" ? null : "attending" }))}
-                className={`flex-1 rounded-full py-1.5 text-xs font-semibold transition-colors ${rsvp === "attending" ? "bg-brand text-white" : "border border-brand text-brand hover:bg-brand-50"}`}>
-                {rsvp === "attending" ? "✓ Attending" : "Attend"}
-              </button>
-              <button
-                onClick={() => setRsvpStates(s => ({ ...s, [event.id]: s[event.id] === "interested" ? null : "interested" }))}
-                className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-colors ${rsvp === "interested" ? "bg-gray-200 text-gray-700" : "border border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
-                {rsvp === "interested" ? "★ Interested" : "Interested"}
-              </button>
-            </div>
-          )}
-          {event.isPast && (
-            <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-center">
-              <p className="text-xs text-gray-500">This event has ended</p>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "upcoming", label: "Upcoming", count: events.filter(e => !e.isPast).length },
+    { key: "mine", label: "My Events", count: events.filter(e => e.interested).length },
+    { key: "past", label: "Past", count: events.filter(e => e.isPast).length },
+  ]
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-      <div className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex justify-end p-3 border-b"><button onClick={() => setSidebarOpen(false)}><X className="h-5 w-5 text-gray-400" /></button></div>
-      </div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-6 space-y-4">
 
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1000px] items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
-            <span className="text-base font-bold text-gray-900">Events</span>
+        {/* Upcoming event alert */}
+        {alertOpen && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+            <p className="text-sm text-green-800 flex-1">
+              <strong>Upcoming event:</strong> JNV Nagpur Alumni Reunion 2026 on Oct 15, 2026
+            </p>
+            <a href="/events/alumni-reunion-2026" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors text-center">
+              View event
+            </a>
+            <button onClick={() => setAlertOpen(false)} className="text-green-600 hover:text-green-800 self-end sm:self-center">
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <a href="/events/create" className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm">
-            <Plus className="h-3.5 w-3.5" /> Create Event
-          </a>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[1000px] px-4 sm:px-6 py-5 space-y-4">
-        {/* Featured Banner */}
-        {tab === "upcoming" && featured && (
-          <a href={`/events/${featured.slug}`} className="block relative overflow-hidden rounded-xl group">
-            <img src={featured.cover} alt="" className="w-full h-44 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="rounded-full bg-brand px-2.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1"><Star className="h-2.5 w-2.5" /> Featured</span>
-                <span className="rounded-full bg-green-500/80 backdrop-blur px-2 py-0.5 text-[10px] font-semibold text-white">{featured.category}</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white leading-snug">{featured.title}</h2>
-              <p className="text-sm text-white/70 mt-1">{featured.date} · {featured.location}</p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-white/60">
-                <span>{featured.attending} attending</span>
-                <span>{featured.interested} interested</span>
-              </div>
-            </div>
-          </a>
         )}
 
-        {/* Search + Filters */}
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search events…"
-              className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all" />
+        {/* Card */}
+        <div className="bg-white border border-gray-200 rounded-xl">
+          {/* Card header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 pt-4">
+            <h1 className="text-lg font-bold text-gray-900">Discover Events</h1>
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand/10 px-3 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Create event
+            </button>
           </div>
 
-          {/* Mode filter */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-            {(["all", "virtual", "in-person", "hybrid"] as EventMode[]).map(m => (
-              <button key={m} onClick={() => setMode(m)}
-                className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors capitalize ${mode === m ? "bg-brand text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
-                {m === "all" ? "All Modes" : m}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="flex overflow-x-auto scrollbar-none border-b border-gray-100">
-            {[
-              { key: "upcoming", label: "Upcoming" },
-              { key: "mine", label: "My Events", count: Object.values(rsvpStates).filter(Boolean).length },
-              { key: "past", label: "Past" },
-            ].map(t => (
-              <button key={t.key} onClick={() => setTab(t.key as EventType)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-5 py-3 text-xs font-semibold border-b-2 transition-colors ${tab === t.key ? "border-brand text-brand" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
-                {t.label}
-                {(t as any).count > 0 && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{(t as any).count}</span>
-                )}
-              </button>
-            ))}
+          {/* Tabs + search */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 sm:px-5 py-3">
+            <div className="flex gap-1 rounded-lg bg-gray-100 p-1 overflow-x-auto">
+              {tabs.map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${tab === t.key ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                  {t.label}
+                  <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === t.key ? "bg-brand/10 text-brand" : "bg-gray-200 text-gray-500"}`}>{t.count}</span>
+                </button>
+              ))}
+            </div>
+            <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events…"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors" />
+            </div>
           </div>
 
-          {/* Category chips */}
-          <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none">
-            {CATEGORIES.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${category === c ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Event Grid */}
-        {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(e => <EventCard key={e.id} event={e} />)}
-          </div>
-        ) : (
-          <div className="bg-white border border-gray-200 rounded-xl py-16 text-center">
-            <Calendar className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-500">
-              {tab === "mine" ? "You haven't RSVP'd to any events" : "No events found"}
-            </p>
-            {tab === "mine" && (
-              <button onClick={() => setTab("upcoming")} className="mt-4 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
-                Browse Events
-              </button>
+          {/* Grid */}
+          <div className="px-4 sm:px-5 pb-5">
+            {filtered.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {filtered.map(e => <EventCard key={e.id} event={e} onToggle={toggleInterested} />)}
+              </div>
+            ) : (
+              <div className="py-16 text-center">
+                <Calendar className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-500">No events here yet</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {tab === "mine" ? "Mark events as interested to see them here" : "Check back soon"}
+                </p>
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
+      {/* Create event modal (placeholder) */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCreateOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h5 className="text-base font-bold text-gray-900">Create Event</h5>
+              <button onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Event title</label>
+                <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10" placeholder="e.g. Batch 2015 Meetup" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
+                  <input type="date" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Time</label>
+                  <input type="time" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Mode</label>
+                <div className="flex gap-2">
+                  {(["in-person", "virtual", "hybrid"] as const).map(m => (
+                    <button key={m} className="flex-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:border-brand hover:text-brand transition-colors capitalize">
+                      {MODE_LABEL[m]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">
+              <button onClick={() => setCreateOpen(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setCreateOpen(false)} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 lg:hidden">
         <div className="flex items-center justify-around py-1.5">
           <a href="/feed" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Home className="h-5 w-5" /><span className="text-[10px] font-medium">Home</span></a>
           <a href="/connections" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Users className="h-5 w-5" /><span className="text-[10px] font-medium">Network</span></a>
-          <span className="flex flex-col items-center px-3 py-1 -mt-3">
+          <a href="/compose" className="flex flex-col items-center px-3 py-1 -mt-3">
             <div className="h-11 w-11 rounded-full bg-gradient-to-br from-brand to-brand-700 flex items-center justify-center shadow-md"><Plus className="h-5 w-5 text-white" /></div>
-          </span>
+          </a>
           <a href="/events" className="flex flex-col items-center gap-0.5 text-brand px-3 py-1"><Calendar className="h-5 w-5" /><span className="text-[10px] font-medium">Events</span></a>
-          <button onClick={() => setSidebarOpen(true)} className="flex flex-col items-center gap-0.5 text-gray-400 px-3 py-1"><Menu className="h-5 w-5" /><span className="text-[10px] font-medium">Menu</span></button>
+          <a href="/messages" className="flex flex-col items-center gap-0.5 text-gray-400 px-3 py-1"><Menu className="h-5 w-5" /><span className="text-[10px] font-medium">Menu</span></a>
         </div>
       </nav>
     </div>
