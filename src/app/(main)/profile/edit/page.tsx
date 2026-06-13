@@ -467,7 +467,7 @@ export default function EditProfilePage() {
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-6">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 sm:py-6">
         {/* Mobile settings toggle */}
         <button onClick={() => setNavOpen(true)} className="lg:hidden mb-4 flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-white"><SlidersHorizontal className="h-4 w-4" /></span>

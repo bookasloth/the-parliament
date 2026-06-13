@@ -69,7 +69,7 @@ export default function GroupsPage() {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1000px] items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-[52px] max-w-[1400px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
             <span className="text-base font-bold text-gray-900">Groups</span>
@@ -81,7 +81,7 @@ export default function GroupsPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1000px] px-4 sm:px-6 py-5 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -141,7 +141,7 @@ export default function GroupsPage() {
 
         {/* Groups Grid */}
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(g => (
               <div key={g.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden group hover:shadow-md transition-shadow">
                 {/* Cover */}

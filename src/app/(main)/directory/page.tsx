@@ -105,7 +105,7 @@ export default function DirectoryPage() {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1200px] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-[52px] max-w-[1400px] items-center gap-3 px-4 sm:px-6">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Users className="h-5 w-5 text-brand" />
@@ -122,7 +122,7 @@ export default function DirectoryPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-5 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {[

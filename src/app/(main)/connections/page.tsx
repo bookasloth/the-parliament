@@ -207,7 +207,7 @@ export default function ConnectionsPage() {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1100px] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-[52px] max-w-[1400px] items-center gap-3 px-4 sm:px-6">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100">
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
@@ -221,7 +221,7 @@ export default function ConnectionsPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1100px] px-4 sm:px-6 py-5 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
         {/* Tabs */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="flex overflow-x-auto scrollbar-none">
@@ -289,7 +289,7 @@ export default function ConnectionsPage() {
 
         {/* List */}
         {currentList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {currentList.map((u, i) => (
               <motion.div
                 key={u.id}

@@ -110,7 +110,7 @@ export default function PostAnalyticsPage() {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1100px] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-[52px] max-w-[1400px] items-center gap-3 px-4 sm:px-6">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100">
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
@@ -131,7 +131,7 @@ export default function PostAnalyticsPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 space-y-5">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 space-y-5">
         {/* Post Thumbnail */}
         <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
           <img src="https://images.unsplash.com/photo-1461896836934-bd45ba8fcf9b?w=120&h=80&fit=crop" alt="" className="h-16 w-24 rounded-lg object-cover flex-shrink-0" />

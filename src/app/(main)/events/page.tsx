@@ -150,7 +150,7 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 sm:py-6 space-y-4">
 
         {/* Upcoming event alert */}
         {alertOpen && (
