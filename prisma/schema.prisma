@@ -1484,3 +1484,82 @@ model AuditLog {
   @@index([entityType, entityId])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────
+// Email infrastructure (MEMBERSHIP_PLAN.md §12)
+// ─────────────────────────────────────────────
+
+model EmailTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(80)
+  subject   String   @db.VarChar(240)
+  htmlBody  String   @map("html_body")
+  textBody  String   @map("text_body")
+  category  String   @db.VarChar(30)
+  variables Json     @default("{}")
+  isActive  Boolean  @default(true) @map("is_active")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@index([category, isActive])
+  @@map("email_templates")
+}
+
+model EmailMessage {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  toAddress     String    @map("to_address") @db.VarChar(254)
+  templateCode  String    @map("template_code") @db.VarChar(80)
+  category      String    @db.VarChar(30)
+  subject       String    @db.VarChar(240)
+  status        String    @default("queued") @db.VarChar(20)
+  queuedAt      DateTime  @default(now()) @map("queued_at") @db.Timestamptz
+  sentAt        DateTime? @map("sent_at") @db.Timestamptz
+  error         String?
+  providerMsgId String?   @map("provider_msg_id") @db.VarChar(160)
+  metadata      Json      @default("{}")
+
+  @@index([userId, queuedAt])
+  @@index([templateCode])
+  @@index([category])
+  @@index([providerMsgId])
+  @@index([status, queuedAt])
+  @@map("email_messages")
+}
+
+model EmailPreference {
+  userId             String  @id @map("user_id") @db.Uuid
+  transactional      Boolean @default(true)
+  lifecycle          Boolean @default(true)
+  reminders          Boolean @default(true)
+  wishes             Boolean @default(true)
+  festivalGreetings  Boolean @default(true) @map("festival_greetings")
+  engagement         Boolean @default(true)
+  digests            Boolean @default(true)
+  marketing          Boolean @default(true)
+  quietHoursStartIst Int?    @map("quiet_hours_start_ist")
+  quietHoursEndIst   Int?    @map("quiet_hours_end_ist")
+  language           String  @default("en") @db.VarChar(8)
+
+  @@map("email_preferences")
+}
+
+model EmailSuppression {
+  emailAddress String   @id @map("email_address") @db.VarChar(254)
+  reason       String   @db.VarChar(30)
+  suppressedAt DateTime @default(now()) @map("suppressed_at") @db.Timestamptz
+
+  @@map("email_suppressions")
+}
+
+model EmailUnsubscribeToken {
+  token     String   @id @db.VarChar(80)
+  userId    String   @map("user_id") @db.Uuid
+  category  String   @db.VarChar(30)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, category])
+  @@index([expiresAt])
+  @@map("email_unsubscribe_tokens")
+}
