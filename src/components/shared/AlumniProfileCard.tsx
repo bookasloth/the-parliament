@@ -1,4 +1,5 @@
-import { MapPin, ChevronRight } from "lucide-react"
+import type { ReactNode } from "react"
+import { MapPin, ShieldCheck } from "lucide-react"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import Link from "next/link"
 
@@ -51,13 +52,22 @@ function MembershipStripe({ membership }: { membership: Membership }) {
 
 interface AlumniProfileCardProps {
   alumni: AlumniCard
+  /** Override the profile link target (defaults to /alumni/[id]) */
+  profileHref?: string
+  /** Show a verified check next to the name */
+  verified?: boolean
+  /** Extra content rendered between location and the action buttons (e.g. mutual connections) */
+  footer?: ReactNode
+  /** Replace the default View Profile / Connect buttons */
+  actions?: ReactNode
 }
 
-export function AlumniProfileCard({ alumni }: AlumniProfileCardProps) {
+export function AlumniProfileCard({ alumni, profileHref, verified, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
+  const href = profileHref ?? `/alumni/${alumni.id}`
 
   return (
-    <div className="relative bg-white rounded-lg shadow-md flex flex-col items-center text-center max-w-[350px] mx-auto pt-3">
+    <div className="relative bg-white rounded-lg shadow-md flex flex-col items-center text-center w-full max-w-[350px] mx-auto pt-3">
       <MembershipStripe membership={membership} />
 
       {/* Batch badge - top left */}
@@ -78,13 +88,16 @@ export function AlumniProfileCard({ alumni }: AlumniProfileCardProps) {
       </div>
 
       {/* Name */}
-      <h3 className="text-xl font-bold text-gray-900 mb-1">
+      <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-1.5 px-4">
         <Link
-          href={`/alumni/${alumni.id}`}
+          href={href}
           className="text-inherit no-underline hover:text-brand transition-colors duration-300"
         >
           {alumni.name}
         </Link>
+        {verified && (
+          <ShieldCheck className="h-4.5 w-4.5 text-blue-500 fill-blue-100 flex-shrink-0" />
+        )}
       </h3>
 
       {/* Bio - primary color */}
@@ -100,20 +113,27 @@ export function AlumniProfileCard({ alumni }: AlumniProfileCardProps) {
         <span>{alumni.location || "India"}</span>
       </div>
 
+      {/* Extra footer info */}
+      {footer && <div className="-mt-2 mb-3 px-4 w-full">{footer}</div>}
+
       {/* Buttons */}
-      <div className="flex gap-3 w-full justify-center px-4 pb-4">
-        <Link
-          href={`/alumni/${alumni.id}`}
-          className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
-        >
-          View Profile
-        </Link>
-        <button
-          className="rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300"
-        >
-          Connect
-        </button>
-      </div>
+      {actions ? (
+        <div className="flex gap-3 w-full justify-center px-4 pb-4 flex-wrap">{actions}</div>
+      ) : (
+        <div className="flex gap-3 w-full justify-center px-4 pb-4">
+          <Link
+            href={href}
+            className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
+          >
+            View Profile
+          </Link>
+          <button
+            className="rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300"
+          >
+            Connect
+          </button>
+        </div>
+      )}
     </div>
   )
 }

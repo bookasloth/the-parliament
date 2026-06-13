@@ -1,15 +1,18 @@
 "use client"
 
 import { useState } from "react"
+import { motion } from "framer-motion"
 import {
-  Search, Filter, Grid, List, MapPin, Briefcase, GraduationCap,
+  Search, Grid, List, MapPin, GraduationCap,
   Users, UserPlus, MessageSquare, ShieldCheck, ChevronDown, X,
-  Home, Calendar, Menu, Plus, SlidersHorizontal, Star,
+  Home, Calendar, Menu, Plus, SlidersHorizontal, Check,
 } from "lucide-react"
+import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
+import type { AlumniCard as HomeAlumniCard, Membership } from "@/lib/homepage-data"
 
 type ViewMode = "grid" | "list"
 
-interface AlumniCard {
+interface DirectoryAlumni {
   id: string
   name: string
   headline: string
@@ -27,6 +30,23 @@ interface AlumniCard {
   connections: number
 }
 
+function toCard(a: DirectoryAlumni): HomeAlumniCard {
+  return {
+    id: a.id,
+    name: a.name,
+    batch: a.batch,
+    batchLabel: `${a.batch} Batch`,
+    batchAlt: a.batch,
+    house: a.house,
+    company: "",
+    achievement: "",
+    image: a.avatar,
+    location: a.location,
+    membership: a.membership as Membership,
+    bio: a.headline,
+  }
+}
+
 const MEMBERSHIP_COLORS: Record<string, string> = {
   associate: "text-amber-500", student: "text-green-500",
   premium: "text-blue-700", life: "text-yellow-600",
@@ -38,7 +58,7 @@ const MEMBERSHIP_BG: Record<string, string> = {
   inactive: "bg-gray-50", committee: "bg-pink-50",
 }
 
-const alumni: AlumniCard[] = [
+const alumni: DirectoryAlumni[] = [
   { id: "1", name: "Neha Gupta", headline: "IAS Officer · Gov. of India", batch: "20th", house: "Udaigiri", houseColor: "#ffe135", location: "Lucknow, UP", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop&crop=face", isVerified: true, membership: "life", membershipColor: "text-yellow-600", currentStatus: "Working Professional", mutualCount: 14, borderColor: "#D4A017", connections: 1243 },
   { id: "2", name: "Dr. Amit Verma", headline: "Cardiologist · AIIMS Delhi", batch: "15th", house: "Aravali", houseColor: "#5a9bd5", location: "New Delhi", avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop&crop=face", isVerified: true, membership: "committee", membershipColor: "text-pink-500", currentStatus: "Working Professional", mutualCount: 22, borderColor: "#5a9bd5", connections: 891 },
   { id: "3", name: "Priya Sharma", headline: "Software Engineer · Google", batch: "23rd", house: "Nilgiri", houseColor: "#70ad47", location: "Bangalore, KA", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face", isVerified: true, membership: "premium", membershipColor: "text-blue-700", currentStatus: "Working Professional", mutualCount: 8, borderColor: "#70ad47", connections: 567 },
@@ -194,40 +214,47 @@ export default function DirectoryPage() {
 
         {/* Grid View */}
         {view === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filtered.map(a => (
-              <div key={a.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden group hover:shadow-md transition-shadow">
-                {/* Membership stripe */}
-                <div className="h-1.5" style={{ background: `linear-gradient(to right, ${a.houseColor}, ${a.houseColor}88)` }} />
-                <div className="p-3 text-center">
-                  <div className="relative inline-block mb-2">
-                    <img src={a.avatar} alt={a.name}
-                      className="h-14 w-14 rounded-full object-cover mx-auto"
-                      style={{ border: `2px solid ${a.borderColor}` }} />
-                    {a.isVerified && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-4.5 w-4.5 rounded-full bg-white flex items-center justify-center">
-                        <ShieldCheck className="h-3.5 w-3.5 text-blue-500 fill-blue-100" />
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-xs font-semibold text-gray-900 leading-snug line-clamp-1">{a.name}</h4>
-                  <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-2 leading-snug">{a.headline}</p>
-                  <div className="flex items-center justify-center gap-1 mt-1.5">
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: a.houseColor, color: a.house === "Udaigiri" ? "#555" : "white" }}>
-                      {a.batch}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1 flex items-center justify-center gap-0.5">
-                    <MapPin className="h-2.5 w-2.5" />{a.location.split(",")[0]}
-                  </p>
-                  <button
-                    onClick={() => setConnected(c => c.includes(a.id) ? c.filter(x => x !== a.id) : [...c, a.id])}
-                    className={`mt-2.5 w-full rounded-full py-1 text-[11px] font-semibold transition-colors ${connected.includes(a.id) ? "bg-gray-100 text-gray-600" : "bg-brand text-white hover:bg-brand-600"}`}>
-                    {connected.includes(a.id) ? "Connected" : "+ Connect"}
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {filtered.map((a, i) => {
+              const isConnected = connected.includes(a.id)
+              return (
+                <motion.div
+                  key={a.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                >
+                  <AlumniProfileCard
+                    alumni={toCard(a)}
+                    profileHref={`/profile/${a.id}`}
+                    verified={a.isVerified}
+                    footer={
+                      <p className="text-xs text-gray-400">
+                        {a.connections.toLocaleString()} connections
+                        {a.mutualCount > 0 && <> · {a.mutualCount} mutual</>}
+                      </p>
+                    }
+                    actions={
+                      <>
+                        <a
+                          href={`/profile/${a.id}`}
+                          className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
+                        >
+                          View Profile
+                        </a>
+                        <button
+                          onClick={() => setConnected(c => c.includes(a.id) ? c.filter(x => x !== a.id) : [...c, a.id])}
+                          className={`flex items-center gap-1.5 rounded-md border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${isConnected ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"}`}
+                        >
+                          {isConnected ? <><Check className="h-3.5 w-3.5" /> Connected</> : <><UserPlus className="h-3.5 w-3.5" /> Connect</>}
+                        </button>
+                      </>
+                    }
+                  />
+                </motion.div>
+              )
+            })}
           </div>
         ) : (
           /* List View */
