@@ -160,6 +160,12 @@ h1, h2 {
   70%      { opacity: 0.75; transform: scaleY(0.94); }
 }
 
+@keyframes festive-rise {
+  0%   { transform: translateY(110%) translateX(0); opacity: 0; }
+  15%  { opacity: 0.9; }
+  100% { transform: translateY(-10%) translateX(-10px); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

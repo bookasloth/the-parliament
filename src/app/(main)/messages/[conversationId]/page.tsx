@@ -80,7 +80,7 @@ export default function ConversationPage() {
     })
   }
 
-  const isDarkTheme = theme.id === "diwali"
+  const isDarkTheme = theme.dark ?? false
 
   return (
     <div className="flex h-full flex-col">
@@ -123,8 +123,8 @@ export default function ConversationPage() {
               <Palette className="h-4 w-4" />
             </button>
             {themeMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 w-60 rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl">
-                <div className="px-3 py-1.5 flex items-center gap-1.5">
+              <div className="absolute right-0 top-full mt-1 z-30 w-60 max-h-[380px] overflow-y-auto rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl">
+                <div className="px-3 py-1.5 flex items-center gap-1.5 sticky top-0 bg-white">
                   <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                   <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Chat theme</p>
                 </div>

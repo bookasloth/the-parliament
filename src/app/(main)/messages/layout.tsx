@@ -14,18 +14,21 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
   const inConversation = pathname !== "/messages"
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] bg-[#f3f2ef] overflow-hidden">
-      {/* Chat list */}
-      <aside
-        className={`${inConversation ? "hidden lg:flex" : "flex"} w-full flex-col border-r border-gray-200 bg-white lg:w-[340px] xl:w-[380px] flex-shrink-0`}
-      >
-        <ChatSidebar />
-      </aside>
+    <div className="h-[calc(100dvh-3.5rem)] bg-[#f3f2ef] overflow-hidden p-0 sm:p-4 lg:px-6 lg:py-5">
+      {/* Floating chat card with gutters on all sides (full-bleed on mobile) */}
+      <div className="mx-auto flex h-full max-w-[1280px] overflow-hidden rounded-none border-0 bg-white sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm">
+        {/* Chat list */}
+        <aside
+          className={`${inConversation ? "hidden lg:flex" : "flex"} w-full flex-col border-r border-gray-200 bg-white lg:w-[340px] xl:w-[380px] flex-shrink-0`}
+        >
+          <ChatSidebar />
+        </aside>
 
-      {/* Detail (conversation or empty state) */}
-      <main className={`${inConversation ? "flex" : "hidden lg:flex"} min-w-0 flex-1 flex-col bg-white`}>
-        {children}
-      </main>
+        {/* Detail (conversation or empty state) */}
+        <main className={`${inConversation ? "flex" : "hidden lg:flex"} min-w-0 flex-1 flex-col bg-white`}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

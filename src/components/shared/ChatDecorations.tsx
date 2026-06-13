@@ -1,5 +1,6 @@
 "use client"
 
+import type { CSSProperties } from "react"
 import type { ChatDecoration } from "@/config/chat-themes"
 
 /**
@@ -9,12 +10,83 @@ import type { ChatDecoration } from "@/config/chat-themes"
 export function ChatDecorations({ decoration }: { decoration: ChatDecoration }) {
   if (decoration === "none") return null
 
+  const preset = GLYPH_PRESETS[decoration]
+
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       {decoration === "snow" && <Snow />}
       {decoration === "tricolour" && <Tricolour />}
       {decoration === "diwali" && <Diwali />}
+      {preset && <FloatingGlyphs preset={preset} />}
     </div>
+  )
+}
+
+/* ---------------- Generic floating-glyph decorations ----------------
+ * One small renderer drives hearts, confetti, rain, petals, bubbles,
+ * leaves, stars, and crescent themes. Positions are derived
+ * deterministically from the index (no Math.random) so server and client
+ * render identically — no hydration mismatch. */
+
+type GlyphMode = "fall" | "rise" | "twinkle"
+
+interface GlyphPreset {
+  glyphs: string[]
+  colors: string[]
+  mode: GlyphMode
+  /** [min, max] font size in px */
+  size: [number, number]
+  count: number
+  /** base animation duration in seconds */
+  dur: number
+}
+
+const GLYPH_PRESETS: Partial<Record<ChatDecoration, GlyphPreset>> = {
+  hearts: { glyphs: ["♥", "❥"], colors: ["#ff4d6d", "#ff8fab", "#ffb3c6"], mode: "fall", size: [10, 20], count: 11, dur: 9 },
+  confetti: { glyphs: ["●", "◆", "▰", "★", "▪"], colors: ["#ff5d8f", "#ffd119", "#4dc3ff", "#70ad47", "#a855f7"], mode: "fall", size: [6, 13], count: 16, dur: 7 },
+  rain: { glyphs: ["❘"], colors: ["#9ec5e8", "#bcd9ef"], mode: "fall", size: [12, 20], count: 18, dur: 4 },
+  petals: { glyphs: ["✿", "❀", "❁"], colors: ["#ffb3c6", "#ff8fab", "#ffd6e0"], mode: "fall", size: [11, 18], count: 12, dur: 10 },
+  bubbles: { glyphs: ["○", "◌", "°"], colors: ["#bde0fe", "#a2d2ff", "#ffffff"], mode: "rise", size: [8, 18], count: 14, dur: 9 },
+  leaves: { glyphs: ["❧", "❦", "✦"], colors: ["#70ad47", "#a7c957", "#5a8f3c"], mode: "fall", size: [11, 18], count: 11, dur: 11 },
+  stars: { glyphs: ["✦", "✧", "★", "⋆"], colors: ["#fff7df", "#ffe580", "#ffffff"], mode: "twinkle", size: [7, 13], count: 18, dur: 2 },
+  crescent: { glyphs: ["☾", "✦", "✧", "⋆"], colors: ["#ffe580", "#ffffff", "#d4a800"], mode: "twinkle", size: [9, 16], count: 14, dur: 2 },
+}
+
+function FloatingGlyphs({ preset }: { preset: GlyphPreset }) {
+  return (
+    <>
+      {Array.from({ length: preset.count }).map((_, i) => {
+        const left = (i * 37 + 7) % 100
+        const top = ((i * 29 + 11) % 70) + 6
+        const delay = ((i * 13) % 50) / 10
+        const dur = preset.dur + ((i * 7) % 5)
+        const sizeT = ((i * 53) % 100) / 100
+        const size = preset.size[0] + sizeT * (preset.size[1] - preset.size[0])
+        const glyph = preset.glyphs[i % preset.glyphs.length]
+        const color = preset.colors[i % preset.colors.length]
+
+        const animation =
+          preset.mode === "twinkle"
+            ? `festive-twinkle ${preset.dur + (i % 3) * 0.5}s ease-in-out ${delay}s infinite`
+            : preset.mode === "rise"
+            ? `festive-rise ${dur}s linear ${delay}s infinite`
+            : `festive-snowfall ${dur}s linear ${delay}s infinite`
+
+        const style: CSSProperties = {
+          left: `${left}%`,
+          fontSize: size,
+          color,
+          animation,
+          top: preset.mode === "twinkle" ? `${top}%` : 0,
+          textShadow: "0 1px 2px rgba(0,0,0,0.12)",
+        }
+        return (
+          <span key={i} className="absolute leading-none" style={style}>
+            {glyph}
+          </span>
+        )
+      })}
+    </>
   )
 }
 

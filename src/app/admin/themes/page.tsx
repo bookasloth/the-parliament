@@ -24,7 +24,7 @@ function dateToMonthDay(value: string): { month: number; day: number } {
 
 /** Small live preview of a themed conversation. */
 function MiniChatPreview({ theme }: { theme: ChatTheme }) {
-  const isDark = theme.id === "diwali"
+  const isDark = theme.dark ?? false
   const bubbles = [
     { me: false, text: "Happy festivities! 🎉" },
     { me: true, text: "Wishing you the same!" },
@@ -177,24 +177,35 @@ export default function AdminThemesPage() {
                   <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1 flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Active window
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={theme.schedule ? scheduleToDate(theme.schedule.startMonth, theme.schedule.startDay) : ""}
-                      onChange={(e) => updateSchedule(theme.id, "start", e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400"
-                    />
-                    <span className="text-xs text-slate-400">to</span>
-                    <input
-                      type="date"
-                      value={theme.schedule ? scheduleToDate(theme.schedule.endMonth, theme.schedule.endDay) : ""}
-                      onChange={(e) => updateSchedule(theme.id, "end", e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400"
-                    />
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-slate-400">
-                    Recurs every year · <span className="font-medium text-slate-600">{formatSchedule(theme.schedule)}</span>
-                  </p>
+                  {theme.schedule ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={scheduleToDate(theme.schedule.startMonth, theme.schedule.startDay)}
+                          onChange={(e) => updateSchedule(theme.id, "start", e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400"
+                        />
+                        <span className="text-xs text-slate-400">to</span>
+                        <input
+                          type="date"
+                          value={scheduleToDate(theme.schedule.endMonth, theme.schedule.endDay)}
+                          onChange={(e) => updateSchedule(theme.id, "end", e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400"
+                        />
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-slate-400">
+                        Recurs every year · <span className="font-medium text-slate-600">{formatSchedule(theme.schedule)}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[11px] text-slate-500">
+                        <span className="font-semibold text-slate-700">On-demand theme.</span> No automatic window —
+                        members can pick it manually from the chat theme menu.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 text-[11px] text-slate-500 space-y-1">
