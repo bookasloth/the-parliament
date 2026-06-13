@@ -1,71 +1,65 @@
-import { NextResponse } from "next/server"
-// Auth commented out for UI testing
-// import { auth } from "@/lib/auth"
-// import { prisma } from "@/lib/prisma"
+import { NextRequest } from "next/server"
+import { z } from "zod"
+import { prisma } from "@/lib/prisma"
+import { requireUser } from "@/modules/auth/session"
+import { handleError, ok } from "@/lib/api"
+import { saveStep } from "@/modules/onboarding/service"
 
-export async function POST() {
-  // const session = await auth()
-  // if (!session?.user?.id) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  // }
+const schema = z.object({
+  schoolId: z.string().uuid(),
+  batchYear: z.string().optional(),
+  houseId: z.string().uuid().optional(),
+  yearsStudied: z.string().optional(),
+  currentStatus: z.string().optional(),
+})
 
-  // const { schoolId, batchYear, houseId, yearsStudied, currentStatus } = await req.json()
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireUser()
+    const data = schema.parse(await req.json())
 
-  // if (!schoolId) {
-  //   return NextResponse.json({ error: "School is required" }, { status: 400 })
-  // }
+    const userUpdate: Record<string, unknown> = {
+      schoolId: data.schoolId,
+      currentStatus: data.currentStatus || "alumni",
+    }
+    if (data.yearsStudied) userUpdate.yearsStudied = parseInt(data.yearsStudied, 10)
 
-  // try {
-  //   const userUpdate: Record<string, unknown> = {
-  //     schoolId,
-  //     currentStatus: currentStatus || "alumni",
-  //     onboardingStep: "interests",
-  //   }
+    await prisma.user.update({ where: { id: user.id }, data: userUpdate })
 
-  //   if (yearsStudied) userUpdate.yearsStudied = parseInt(yearsStudied, 10)
+    const profileData: Record<string, unknown> = {}
+    if (data.houseId) profileData.houseId = data.houseId
+    if (data.batchYear) {
+      const batch = await prisma.batch.findFirst({
+        where: { schoolId: data.schoolId, label: data.batchYear },
+      })
+      if (batch) profileData.batchId = batch.id
+    }
 
-  //   const profileUpdate: Record<string, unknown> = {}
+    if (Object.keys(profileData).length > 0) {
+      await prisma.profile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, ...profileData },
+        update: profileData,
+      })
+    }
 
-  //   if (houseId) profileUpdate.houseId = houseId
-  //   if (batchYear) {
-  //     const batch = await prisma.batch.findFirst({
-  //       where: { schoolId, label: batchYear },
-  //     })
-  //     if (batch) profileUpdate.batchId = batch.id
-  //   }
+    await ensureDefaultDivision(user.id, data.schoolId)
+    await saveStep(user.id, "jnv", data)
 
-  //   if (Object.keys(profileUpdate).length > 0) {
-  //     await prisma.profile.upsert({
-  //       where: { userId: session.user.id },
-  //       create: { userId: session.user.id, ...profileUpdate },
-  //       update: profileUpdate,
-  //     })
-  //   }
+    return ok({ success: true })
+  } catch (e) {
+    return handleError(e)
+  }
+}
 
-  //   await prisma.user.update({
-  //     where: { id: session.user.id },
-  //     data: userUpdate,
-  //   })
-
-  //   await prisma.onboardingProgress.upsert({
-  //     where: { userId: session.user.id },
-  //     create: {
-  //       userId: session.user.id,
-  //       step: "interests",
-  //       data: { jnv: { schoolId, batchYear, houseId, yearsStudied, currentStatus } },
-  //     },
-  //     update: {
-  //       step: "interests",
-  //       data: { jnv: { schoolId, batchYear, houseId, yearsStudied, currentStatus } },
-  //     },
-  //   })
-
-  //   return NextResponse.json({ success: true })
-  // } catch (error) {
-  //   console.error("Onboarding JNV save error:", error)
-  //   return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  // }
-
-  // Mock success for UI testing
-  return NextResponse.json({ success: true })
+async function ensureDefaultDivision(userId: string, schoolId: string) {
+  const def = await prisma.division.findFirst({
+    where: { schoolId, isDefault: true },
+  })
+  if (!def) return
+  await prisma.userDivision.upsert({
+    where: { userId_divisionId: { userId, divisionId: def.id } },
+    create: { userId, divisionId: def.id, isProtected: true },
+    update: { isProtected: true },
+  })
 }

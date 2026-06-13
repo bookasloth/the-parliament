@@ -1,46 +1,27 @@
-import { NextResponse } from "next/server"
-// Auth commented out for UI testing
-// import { auth } from "@/lib/auth"
-// import { prisma } from "@/lib/prisma"
+import { NextRequest } from "next/server"
+import { z } from "zod"
+import { prisma } from "@/lib/prisma"
+import { requireUser } from "@/modules/auth/session"
+import { handleError, ok } from "@/lib/api"
+import { saveStep } from "@/modules/onboarding/service"
 
-export async function POST() {
-  // const session = await auth()
-  // if (!session?.user?.id) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  // }
+const schema = z.object({
+  selectedPlan: z.string().nullable().optional(),
+})
 
-  // const { selectedPlan } = await req.json()
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireUser()
+    const { selectedPlan } = schema.parse(await req.json())
 
-  // try {
-  //   const updates: Record<string, unknown> = {
-  //     onboardingStep: "complete",
-  //     membershipData: { selectedPlan },
-  //   }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { membershipData: selectedPlan ? { selectedPlan } : undefined },
+    })
 
-  //   await prisma.user.update({
-  //     where: { id: session.user.id },
-  //     data: updates,
-  //   })
-
-  //   await prisma.onboardingProgress.upsert({
-  //     where: { userId: session.user.id },
-  //     create: {
-  //       userId: session.user.id,
-  //       step: "complete",
-  //       data: { membership: { selectedPlan } },
-  //     },
-  //     update: {
-  //       step: "complete",
-  //       data: { membership: { selectedPlan } },
-  //     },
-  //   })
-
-  //   return NextResponse.json({ success: true })
-  // } catch (error) {
-  //   console.error("Onboarding membership save error:", error)
-  //   return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  // }
-
-  // Mock success for UI testing
-  return NextResponse.json({ success: true })
+    await saveStep(user.id, "membership", { selectedPlan: selectedPlan ?? null })
+    return ok({ success: true })
+  } catch (e) {
+    return handleError(e)
+  }
 }
