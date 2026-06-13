@@ -7,7 +7,7 @@ import {
   UsersRound, CreditCard, Sparkles, Settings, Menu, X, Search,
   Bell, ChevronDown, BarChart3, Briefcase, Building2, Gamepad2,
   Trophy, MessagesSquare, Megaphone, ScrollText, LogOut,
-  ExternalLink, ChevronRight, Landmark,
+  ExternalLink, ChevronRight, Landmark, Palette,
 } from "lucide-react"
 
 interface NavItem {
@@ -59,6 +59,7 @@ const NAV: NavGroup[] = [
     title: "Engagement",
     items: [
       { href: "/admin/karma", label: "Karma System", icon: <Sparkles className="h-4.5 w-4.5" /> },
+      { href: "/admin/themes", label: "Chat Themes", icon: <Palette className="h-4.5 w-4.5" /> },
       { href: "/admin/rewards", label: "Badges & Rewards", icon: <Trophy className="h-4.5 w-4.5" />, soon: true },
       { href: "/admin/games", label: "Games", icon: <Gamepad2 className="h-4.5 w-4.5" />, soon: true },
       { href: "/admin/messaging", label: "Messaging", icon: <MessagesSquare className="h-4.5 w-4.5" />, soon: true },

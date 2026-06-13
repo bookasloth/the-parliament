@@ -142,6 +142,24 @@ h1, h2 {
   50% { stroke-opacity: 0.6; stroke-width: 1.5; }
 }
 
+/* ---- Festive chat-theme decorations ---- */
+@keyframes festive-snowfall {
+  0%   { transform: translateY(-10%) translateX(0); opacity: 0; }
+  10%  { opacity: 0.9; }
+  100% { transform: translateY(110%) translateX(12px); opacity: 0; }
+}
+
+@keyframes festive-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%      { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes festive-flicker {
+  0%, 100% { opacity: 0.85; transform: scaleY(1); }
+  40%      { opacity: 1; transform: scaleY(1.12); }
+  70%      { opacity: 0.75; transform: scaleY(0.94); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
