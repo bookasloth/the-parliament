@@ -294,31 +294,6 @@ export function FeedContent({ userName }: { userName: string }) {
         </div>
       </div>
 
-      {/* Top Nav */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-[52px] max-w-[1400px] items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5 text-gray-600" />
-            </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-700 shadow-sm">
-              <Users className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-gray-900">The Parliament</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-xs text-gray-500">{userName}</span>
-            <div className="h-7 w-7 overflow-hidden rounded-full bg-gray-200 ring-1 ring-gray-300">
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" alt="" className="h-full w-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Feed Layout */}
       <div className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col lg:flex-row gap-8">

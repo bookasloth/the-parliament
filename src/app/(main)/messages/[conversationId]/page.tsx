@@ -91,7 +91,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#f3f2ef] overflow-hidden">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col bg-[#f3f2ef] overflow-hidden">
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Header */}
