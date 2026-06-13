@@ -55,7 +55,7 @@ export default async function ProfilePage({
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-6">
             <div className="h-24 w-24 shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500">
-              {user.legalName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              {user.legalName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-gray-900 truncate">
