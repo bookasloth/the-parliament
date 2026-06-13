@@ -1342,3 +1342,34 @@ model ActivityEvent {
   @@index([eventType, createdAt])
   @@map("activity_events")
 }
+
+// ─────────────────────────────────────────────
+// Cross-cutting: Rate Limiting + Audit Log
+// ─────────────────────────────────────────────
+
+model RateLimitCounter {
+  bucket    String   @db.VarChar(120)
+  windowKey String   @map("window_key") @db.VarChar(40)
+  count     Int      @default(0)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+
+  @@id([bucket, windowKey])
+  @@index([expiresAt])
+  @@map("rate_limit_counters")
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(60)
+  entityType String?  @map("entity_type") @db.VarChar(30)
+  entityId   String?  @map("entity_id") @db.Uuid
+  payload    Json     @default("{}")
+  ipInet     String?  @map("ip_inet")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

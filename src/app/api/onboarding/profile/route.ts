@@ -1,69 +1,55 @@
-import { NextResponse } from "next/server"
-// Auth commented out for UI testing
-// import { auth } from "@/lib/auth"
-// import { prisma } from "@/lib/prisma"
+import { NextRequest } from "next/server"
+import { z } from "zod"
+import { prisma } from "@/lib/prisma"
+import { requireUser } from "@/modules/auth/session"
+import { handleError, ok } from "@/lib/api"
+import { saveStep } from "@/modules/onboarding/service"
 
-export async function POST() {
-  // const session = await auth()
-  // if (!session?.user?.id) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  // }
+const schema = z.object({
+  mobile: z.string().optional(),
+  gender: z.string().optional(),
+  dob: z.string().optional(),
+  city: z.string().optional(),
+  profession: z.string().optional(),
+  bio: z.string().optional(),
+})
 
-  // const { mobile, gender, dob, city, profession, bio } = await req.json()
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireUser()
+    const data = schema.parse(await req.json())
 
-  // try {
-  //   const updates: Record<string, unknown> = {}
+    const userUpdate: Record<string, unknown> = {}
+    if (data.mobile) userUpdate.mobileE164 = data.mobile
+    if (data.gender) userUpdate.gender = data.gender
+    if (data.dob) userUpdate.dateOfBirth = new Date(data.dob)
 
-  //   if (mobile) {
-  //     updates.mobileE164 = mobile
-  //     updates.mobileVerifiedAt = null
-  //   }
-  //   if (gender) updates.gender = gender
-  //   if (dob) updates.dateOfBirth = new Date(dob)
-  //   if (city || profession || bio) {
-  //     const profileUpdate: Record<string, unknown> = {}
-  //     if (city) profileUpdate.city = city
-  //     if (profession) profileUpdate.profession = profession
-  //     if (bio !== undefined) profileUpdate.bio = bio
+    if (Object.keys(userUpdate).length > 0) {
+      await prisma.user.update({ where: { id: user.id }, data: userUpdate })
+    }
 
-  //     if (Object.keys(profileUpdate).length > 0) {
-  //       await prisma.profile.upsert({
-  //         where: { userId: session.user.id },
-  //         create: { userId: session.user.id, ...profileUpdate },
-  //         update: profileUpdate,
-  //       })
-  //     }
-  //   }
+    if (data.city || data.profession || data.bio !== undefined) {
+      const profileData: Record<string, unknown> = {}
+      if (data.city) profileData.city = data.city
+      if (data.profession) profileData.profession = data.profession
+      if (data.bio !== undefined) profileData.bio = data.bio
 
-  //   const filledFields = [mobile, city, profession].filter(Boolean).length
-  //   const completion = Math.min(Math.round((filledFields / 3) * 100), 100)
-  //   updates.profileCompletion = completion
-  //   updates.onboardingStep = "jnv"
+      await prisma.profile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, ...profileData },
+        update: profileData,
+      })
+    }
 
-  //   await prisma.user.update({
-  //     where: { id: session.user.id },
-  //     data: updates,
-  //   })
+    const filled = [data.mobile, data.city, data.profession, data.gender, data.dob, data.bio].filter(Boolean).length
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { profileCompletion: Math.min(Math.round((filled / 6) * 100), 100) },
+    })
 
-  //   await prisma.onboardingProgress.upsert({
-  //     where: { userId: session.user.id },
-  //     create: {
-  //       userId: session.user.id,
-  //       step: "jnv",
-  //       data: { profile: { mobile, gender, dob, city, profession, bio } },
-  //     },
-  //     update: {
-  //       step: "jnv",
-  //       data: { profile: { mobile, gender, dob, city, profession, bio } },
-  //     },
-  //   })
-
-  //   return NextResponse.json({ success: true })
-  // } catch (error) {
-  //   console.error("Onboarding profile save error:", error)
-  //   return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  // }
-
-  // Mock success for UI testing
-  return NextResponse.json({ success: true })
+    await saveStep(user.id, "profile", data)
+    return ok({ success: true })
+  } catch (e) {
+    return handleError(e)
+  }
 }
