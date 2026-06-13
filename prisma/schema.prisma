@@ -18,38 +18,37 @@ model School {
   logoUrl   String?  @map("logo_url")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  houses    House[]
-  divisions Division[]
-  batches   Batch[]
-  users     User[]
-  groups    Group[]
-  events    Event[]
-  games     Game[]
-  tournaments      Tournament[]
-  rewardItems      RewardItem[]
-  badges           Badge[]
-  membershipPlans  MembershipPlan[]
+  houses             House[]
+  divisions          Division[]
+  batches            Batch[]
+  users              User[]
+  groups             Group[]
+  events             Event[]
+  games              Game[]
+  tournaments        Tournament[]
+  rewardItems        RewardItem[]
+  badges             Badge[]
   businessCategories BusinessCategory[]
-  postCategories   PostCategory[]
-  spotlights       Spotlight[]
-  posts            Post[]
-  businesses       Business[]
-  karmaThresholds  KarmaThreshold[]
+  postCategories     PostCategory[]
+  spotlights         Spotlight[]
+  posts              Post[]
+  businesses         Business[]
+  karmaThresholds    KarmaThreshold[]
 
   @@map("schools")
 }
 
 model House {
-  id         String   @id @default(uuid()) @db.Uuid
-  schoolId   String   @map("school_id") @db.Uuid
-  name       String   @db.VarChar(80)
-  colorName  String   @map("color_name") @db.VarChar(30)
-  colorHex   String   @map("color_hex") @db.Char(7)
-  slogan     String?  @db.VarChar(200)
-  isGirlsOnly Boolean @default(false) @map("is_girls_only")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String   @id @default(uuid()) @db.Uuid
+  schoolId    String   @map("school_id") @db.Uuid
+  name        String   @db.VarChar(80)
+  colorName   String   @map("color_name") @db.VarChar(30)
+  colorHex    String   @map("color_hex") @db.Char(7)
+  slogan      String?  @db.VarChar(200)
+  isGirlsOnly Boolean  @default(false) @map("is_girls_only")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   profiles Profile[]
   events   Event[]
   groups   Group[]
@@ -65,7 +64,7 @@ model Division {
   isDefault Boolean  @default(false) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   userDivisions UserDivision[]
 
   @@unique([schoolId, name])
@@ -80,7 +79,7 @@ model Batch {
   label     String   @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   profiles Profile[]
   groups   Group[]
 
@@ -93,88 +92,100 @@ model Batch {
 // ─────────────────────────────────────────────
 
 model User {
-  id              String    @id @default(uuid()) @db.Uuid
-  schoolId        String?   @map("school_id") @db.Uuid
-  email           String    @db.VarChar()
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
-  username        String?   @unique @db.VarChar(60)
-  mobileE164      String?   @map("mobile_e164") @db.VarChar(20)
-  mobileVerifiedAt DateTime? @map("mobile_verified_at") @db.Timestamptz
-  passwordHash    String?   @map("password_hash")
-  legalName       String    @map("legal_name") @db.VarChar(160)
-  displayName     String    @default("") @map("display_name") @db.VarChar(120)
-  memberType      String    @default("alumni") @map("member_type") @db.VarChar(20)
-  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
-  gender          String?   @db.VarChar(20)
-  currentClass    Int?      @map("current_class")
-  yearsStudied    Int?      @map("years_studied")
-  currentStatus   String?   @map("current_status") @db.VarChar(20)
-  isVerified      Boolean   @default(false) @map("is_verified")
-  verifiedAt      DateTime? @map("verified_at") @db.Timestamptz
-  status          String    @default("active") @db.VarChar(20)
-  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz
-  onboardingStep   String   @default("profile") @map("onboarding_step") @db.VarChar(30)
-  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
-  profileCompletion Int     @default(0) @map("profile_completion")
-  verificationStatus String @default("pending") @map("verification_status") @db.VarChar(20)
-  membershipStatus String   @default("free") @map("membership_status") @db.VarChar(20)
-  membershipExpiresAt DateTime? @map("membership_expires_at") @db.Timestamptz
-  verificationData   Json?     @map("verification_data")
-  membershipData     Json?     @map("membership_data")
-  connectionsData    Json?     @map("connections_data")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  id                   String    @id @default(uuid()) @db.Uuid
+  schoolId             String?   @map("school_id") @db.Uuid
+  email                String    @db.VarChar()
+  emailVerifiedAt      DateTime? @map("email_verified_at") @db.Timestamptz
+  username             String?   @unique @db.VarChar(60)
+  mobileE164           String?   @map("mobile_e164") @db.VarChar(20)
+  mobileVerifiedAt     DateTime? @map("mobile_verified_at") @db.Timestamptz
+  passwordHash         String?   @map("password_hash")
+  legalName            String    @map("legal_name") @db.VarChar(160)
+  displayName          String    @default("") @map("display_name") @db.VarChar(120)
+  memberType           String    @default("alumni") @map("member_type") @db.VarChar(20)
+  dateOfBirth          DateTime? @map("date_of_birth") @db.Date
+  gender               String?   @db.VarChar(20)
+  currentClass         Int?      @map("current_class")
+  yearsStudied         Int?      @map("years_studied")
+  currentStatus        String?   @map("current_status") @db.VarChar(20)
+  isVerified           Boolean   @default(false) @map("is_verified")
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamptz
+  status               String    @default("active") @db.VarChar(20)
+  lastLoginAt          DateTime? @map("last_login_at") @db.Timestamptz
+  onboardingStep       String    @default("profile") @map("onboarding_step") @db.VarChar(30)
+  onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
+  profileCompletion    Int       @default(0) @map("profile_completion")
+  verificationStatus   String    @default("pending") @map("verification_status") @db.VarChar(20)
+  membershipStatus     String    @default("free") @map("membership_status") @db.VarChar(20)
+  membershipExpiresAt  DateTime? @map("membership_expires_at") @db.Timestamptz
+  membershipCycleStart DateTime? @map("membership_cycle_start") @db.Timestamptz
+  benefitTier          String    @default("base") @map("benefit_tier") @db.VarChar(20)
+  passOutYear          Int?      @map("pass_out_year")
+  isSuperAdmin         Boolean   @default(false) @map("is_super_admin")
+  verificationData     Json?     @map("verification_data")
+  membershipData       Json?     @map("membership_data")
+  connectionsData      Json?     @map("connections_data")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
 
   school School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
 
-  profile Profile?
-  credentials UserCredential[]
-  sessions UserSession[]
-  mfaFactors MfaFactor[]
-  verificationTokens VerificationToken[]
-  alumniVerifications AlumniVerification[]
-  userRoles UserRole[]
-  userDivisions UserDivision[]
-  reactions Reaction[]
-  contentReports ContentReport[]
-  conversations ConversationParticipant[]
-  eventsHosted Event[] @relation("event_host")
-  guardianConsents GuardianConsent[]
-  userKarma UserKarma?
-  karmaTransactions KarmaTransaction[]
-  karmaDailyCounters KarmaDailyCounter[]
-  karmaPairActor KarmaPairDay[] @relation("karma_actor")
-  karmaPairTarget KarmaPairDay[] @relation("karma_target")
-  connectionsRequested Connection[] @relation("connection_requester")
-  connectionsReceived Connection[] @relation("connection_addressee")
-  blocksGiven UserBlock[] @relation("blocker")
-  blocksReceived UserBlock[] @relation("blocked")
-  posts Post[]
-  comments Comment[]
-  postShares PostShare[]
-  eventRsvps EventRsvp[]
-  eventAttendance EventAttendance[]
-  eventFeedback EventFeedback[]
-  businesses Business[]
-  businessReviews BusinessReview[]
-  memberships Membership[]
-  payments Payment[]
-  donations Donation[]
-  groupMembers GroupMember[]
-  gameScores GameScore[]
-  matchParticipants MatchParticipant[]
-  tournamentEntries TournamentEntry[]
-  activityEvents ActivityEvent[]
-  userBadges UserBadge[]
-  karmaRedemptions KarmaRedemption[]
-  sentMessages  Message[]      @relation("message_sender")
-  savedPosts    SavedPost[]
-  postAwards    PostAward[]
-  pollVotes     PollVote[]
-  notifications Notification[]
-  interests     UserInterest[]
-  onboardingProgress OnboardingProgress[]
+  profile                  Profile?
+  credentials              UserCredential[]
+  sessions                 UserSession[]
+  mfaFactors               MfaFactor[]
+  verificationTokens       VerificationToken[]
+  alumniVerifications      AlumniVerification[]
+  userRoles                UserRole[]
+  userDivisions            UserDivision[]
+  reactions                Reaction[]
+  contentReports           ContentReport[]
+  conversations            ConversationParticipant[]
+  eventsHosted             Event[]                   @relation("event_host")
+  guardianConsents         GuardianConsent[]
+  userKarma                UserKarma?
+  karmaTransactions        KarmaTransaction[]
+  karmaDailyCounters       KarmaDailyCounter[]
+  karmaPairActor           KarmaPairDay[]            @relation("karma_actor")
+  karmaPairTarget          KarmaPairDay[]            @relation("karma_target")
+  connectionsRequested     Connection[]              @relation("connection_requester")
+  connectionsReceived      Connection[]              @relation("connection_addressee")
+  blocksGiven              UserBlock[]               @relation("blocker")
+  blocksReceived           UserBlock[]               @relation("blocked")
+  posts                    Post[]
+  comments                 Comment[]
+  postShares               PostShare[]
+  eventRsvps               EventRsvp[]
+  eventAttendance          EventAttendance[]
+  eventFeedback            EventFeedback[]
+  businesses               Business[]
+  businessReviews          BusinessReview[]
+  memberships              Membership[]
+  payments                 Payment[]
+  donations                Donation[]
+  groupMembers             GroupMember[]
+  gameScores               GameScore[]
+  matchParticipants        MatchParticipant[]
+  tournamentEntries        TournamentEntry[]
+  membershipOrders         MembershipOrder[]
+  membershipInvoices       MembershipInvoice[]
+  membershipRefunds        MembershipRefund[]        @relation("refund_initiator")
+  membershipEvents         MembershipEvent[]         @relation("event_subject")
+  membershipEventsActed    MembershipEvent[]         @relation("event_actor")
+  committeeInvitesReceived CommitteeInvite[]         @relation("committee_invitee")
+  committeeInvitesSent     CommitteeInvite[]         @relation("committee_inviter")
+  pollEligibilities        PollEligibility[]
+  activityEvents           ActivityEvent[]
+  userBadges               UserBadge[]
+  karmaRedemptions         KarmaRedemption[]
+  sentMessages             Message[]                 @relation("message_sender")
+  savedPosts               SavedPost[]
+  postAwards               PostAward[]
+  pollVotes                PollVote[]
+  notifications            Notification[]
+  interests                UserInterest[]
+  onboardingProgress       OnboardingProgress[]
 
   @@unique([email])
   @@index([status])
@@ -214,8 +225,8 @@ model UserSession {
   rotatedRef UserSession?  @relation("SessionRotation", fields: [rotatedFrom], references: [id])
   rotations  UserSession[] @relation("SessionRotation")
 
-  @@index([userId])
   @@unique([refreshTokenHash])
+  @@index([userId])
   @@index([expiresAt])
   @@map("user_sessions")
 }
@@ -322,7 +333,7 @@ model Profile {
   showOnMap            Boolean  @default(false) @map("show_on_map")
   isComplete           Boolean  @default(false) @map("is_complete")
   contactAlwaysShare   Boolean  @default(false) @map("contact_always_share")
-  connectionAutoAccept Boolean @default(false) @map("connection_auto_accept")
+  connectionAutoAccept Boolean  @default(false) @map("connection_auto_accept")
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -336,10 +347,10 @@ model Profile {
 }
 
 model UserDivision {
-  userId     String   @map("user_id") @db.Uuid
-  divisionId String   @map("division_id") @db.Uuid
-  isProtected Boolean @default(false) @map("is_protected")
-  addedAt    DateTime @default(now()) @map("added_at") @db.Timestamptz
+  userId      String   @map("user_id") @db.Uuid
+  divisionId  String   @map("division_id") @db.Uuid
+  isProtected Boolean  @default(false) @map("is_protected")
+  addedAt     DateTime @default(now()) @map("added_at") @db.Timestamptz
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   division Division @relation(fields: [divisionId], references: [id])
@@ -468,18 +479,18 @@ model Post {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
-  school School? @relation(fields: [schoolId], references: [id])
-  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category  PostCategory @relation(fields: [categoryId], references: [id])
-  group     Group?       @relation(fields: [groupId], references: [id])
+  school   School?      @relation(fields: [schoolId], references: [id])
+  author   User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category PostCategory @relation(fields: [categoryId], references: [id])
+  group    Group?       @relation(fields: [groupId], references: [id])
 
-  comments   Comment[]
-  shares     PostShare[]
-  mentions   PostMention[]
-  savedBy    SavedPost[]
-  awards     PostAward[]
-  hashtags   PostHashtag[]
-  poll       Poll?
+  comments Comment[]
+  shares   PostShare[]
+  mentions PostMention[]
+  savedBy  SavedPost[]
+  awards   PostAward[]
+  hashtags PostHashtag[]
+  poll     Poll?
 
   @@index([authorId])
   @@index([createdAt])
@@ -492,9 +503,9 @@ model Post {
 }
 
 model PostMention {
-  id          String @id @default(uuid()) @db.Uuid
-  postId      String @map("post_id") @db.Uuid
-  mentionType String @map("mention_type") @db.VarChar(10)
+  id          String  @id @default(uuid()) @db.Uuid
+  postId      String  @map("post_id") @db.Uuid
+  mentionType String  @map("mention_type") @db.VarChar(10)
   userId      String? @map("user_id") @db.Uuid
   houseId     String? @map("house_id") @db.Uuid
   batchId     String? @map("batch_id") @db.Uuid
@@ -521,7 +532,7 @@ model PostShare {
 
 model Spotlight {
   id          String    @id @default(uuid()) @db.Uuid
-  schoolId        String?   @map("school_id") @db.Uuid
+  schoolId    String?   @map("school_id") @db.Uuid
   subjectType String    @map("subject_type") @db.VarChar(12)
   subjectId   String    @map("subject_id") @db.Uuid
   headline    String?   @db.VarChar(200)
@@ -546,9 +557,9 @@ model Comment {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent   Comment? @relation("comment_parent", fields: [parentId], references: [id])
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("comment_parent", fields: [parentId], references: [id])
   children Comment[] @relation("comment_parent")
 
   @@index([postId])
@@ -584,8 +595,8 @@ model ContentReport {
 
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
-  @@index([entityType, entityId])
   @@unique([reporterId, entityType, entityId])
+  @@index([entityType, entityId])
   @@map("content_reports")
 }
 
@@ -796,12 +807,12 @@ model KarmaThreshold {
 }
 
 model UserKarma {
-  userId        String   @id @map("user_id") @db.Uuid
-  karmaBalance  Decimal  @default(0) @map("karma_balance") @db.Decimal(10, 2)
-  earnedKarma30d Decimal @default(0) @map("earned_karma_30d") @db.Decimal(10, 2)
-  lifetimeEarned Decimal @default(0) @map("lifetime_earned") @db.Decimal(12, 2)
-  computedAt    DateTime @default(now()) @map("computed_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  userId         String   @id @map("user_id") @db.Uuid
+  karmaBalance   Decimal  @default(0) @map("karma_balance") @db.Decimal(10, 2)
+  earnedKarma30d Decimal  @default(0) @map("earned_karma_30d") @db.Decimal(10, 2)
+  lifetimeEarned Decimal  @default(0) @map("lifetime_earned") @db.Decimal(12, 2)
+  computedAt     DateTime @default(now()) @map("computed_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -845,11 +856,11 @@ model KarmaDailyCounter {
 }
 
 model KarmaPairDay {
-  actorId       String  @map("actor_id") @db.Uuid
-  targetId      String  @map("target_id") @db.Uuid
+  actorId       String   @map("actor_id") @db.Uuid
+  targetId      String   @map("target_id") @db.Uuid
   dayIst        DateTime @map("day_ist") @db.Date
-  positiveGiven Decimal @default(0) @map("positive_given") @db.Decimal(8, 2)
-  likesGiven    Int     @default(0) @map("likes_given")
+  positiveGiven Decimal  @default(0) @map("positive_given") @db.Decimal(8, 2)
+  likesGiven    Int      @default(0) @map("likes_given")
 
   actor  User @relation("karma_actor", fields: [actorId], references: [id], onDelete: Cascade)
   target User @relation("karma_target", fields: [targetId], references: [id], onDelete: Cascade)
@@ -863,32 +874,32 @@ model KarmaPairDay {
 // ─────────────────────────────────────────────
 
 model Event {
-  id             String    @id @default(uuid()) @db.Uuid
-  schoolId       String    @map("school_id") @db.Uuid
-  hostId         String    @map("host_id") @db.Uuid
-  groupId        String?   @map("group_id") @db.Uuid
-  title          String    @db.VarChar(200)
-  description    String?
-  bannerUrl      String?   @map("banner_url")
-  startsAt       DateTime  @map("starts_at") @db.Timestamptz
-  endsAt         DateTime? @map("ends_at") @db.Timestamptz
-  mode           String    @db.VarChar(20)
-  venue          String?   @db.VarChar(240)
-  onlineUrl      String?   @map("online_url")
-  hostHouseId    String?   @map("host_house_id") @db.Uuid
-  isHouseSpecific Boolean  @default(false) @map("is_house_specific")
-  isFeatured     Boolean   @default(false) @map("is_featured")
-  visibility     String    @default("school") @db.VarChar(20)
-  status         String    @default("published") @db.VarChar(20)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id              String    @id @default(uuid()) @db.Uuid
+  schoolId        String    @map("school_id") @db.Uuid
+  hostId          String    @map("host_id") @db.Uuid
+  groupId         String?   @map("group_id") @db.Uuid
+  title           String    @db.VarChar(200)
+  description     String?
+  bannerUrl       String?   @map("banner_url")
+  startsAt        DateTime  @map("starts_at") @db.Timestamptz
+  endsAt          DateTime? @map("ends_at") @db.Timestamptz
+  mode            String    @db.VarChar(20)
+  venue           String?   @db.VarChar(240)
+  onlineUrl       String?   @map("online_url")
+  hostHouseId     String?   @map("host_house_id") @db.Uuid
+  isHouseSpecific Boolean   @default(false) @map("is_house_specific")
+  isFeatured      Boolean   @default(false) @map("is_featured")
+  visibility      String    @default("school") @db.VarChar(20)
+  status          String    @default("published") @db.VarChar(20)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id])
-  host   User   @relation("event_host", fields: [hostId], references: [id])
-  group  Group? @relation(fields: [groupId], references: [id])
-  hostHouse House? @relation(fields: [hostHouseId], references: [id])
-  rsvps     EventRsvp[]
+  school     School            @relation(fields: [schoolId], references: [id])
+  host       User              @relation("event_host", fields: [hostId], references: [id])
+  group      Group?            @relation(fields: [groupId], references: [id])
+  hostHouse  House?            @relation(fields: [hostHouseId], references: [id])
+  rsvps      EventRsvp[]
   attendance EventAttendance[]
-  feedback  EventFeedback[]
+  feedback   EventFeedback[]
 
   @@index([schoolId, startsAt])
   @@index([hostHouseId])
@@ -909,10 +920,10 @@ model EventRsvp {
 }
 
 model EventAttendance {
-  eventId      String    @map("event_id") @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  role         String    @default("attendee") @db.VarChar(20)
-  checkedInAt  DateTime? @map("checked_in_at") @db.Timestamptz
+  eventId     String    @map("event_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  role        String    @default("attendee") @db.VarChar(20)
+  checkedInAt DateTime? @map("checked_in_at") @db.Timestamptz
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -946,7 +957,7 @@ model BusinessCategory {
   label    String  @db.VarChar(80)
   isActive Boolean @default(true) @map("is_active")
 
-  school School? @relation(fields: [schoolId], references: [id])
+  school     School?    @relation(fields: [schoolId], references: [id])
   businesses Business[]
 
   @@unique([schoolId, key])
@@ -954,25 +965,25 @@ model BusinessCategory {
 }
 
 model Business {
-  id                 String   @id @default(uuid()) @db.Uuid
-  schoolId           String   @map("school_id") @db.Uuid
-  ownerId            String   @map("owner_id") @db.Uuid
-  categoryId         String   @map("category_id") @db.Uuid
-  name               String   @db.VarChar(200)
-  description        String?
-  logoUrl            String?  @map("logo_url")
-  bannerUrl          String?  @map("banner_url")
-  website            String?
-  contactEmail       String?  @map("contact_email") @db.VarChar()
-  contactPhone       String?  @map("contact_phone") @db.VarChar(20)
-  city               String?  @db.VarChar(120)
-  offersAlumniDiscount Boolean @default(false) @map("offers_alumni_discount")
-  ratingAvg          Decimal  @default(0) @map("rating_avg") @db.Decimal(3, 2)
-  ratingCount        Int      @default(0) @map("rating_count")
-  status             String   @default("pending") @db.VarChar(20)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                   String   @id @default(uuid()) @db.Uuid
+  schoolId             String   @map("school_id") @db.Uuid
+  ownerId              String   @map("owner_id") @db.Uuid
+  categoryId           String   @map("category_id") @db.Uuid
+  name                 String   @db.VarChar(200)
+  description          String?
+  logoUrl              String?  @map("logo_url")
+  bannerUrl            String?  @map("banner_url")
+  website              String?
+  contactEmail         String?  @map("contact_email") @db.VarChar()
+  contactPhone         String?  @map("contact_phone") @db.VarChar(20)
+  city                 String?  @db.VarChar(120)
+  offersAlumniDiscount Boolean  @default(false) @map("offers_alumni_discount")
+  ratingAvg            Decimal  @default(0) @map("rating_avg") @db.Decimal(3, 2)
+  ratingCount          Int      @default(0) @map("rating_count")
+  status               String   @default("pending") @db.VarChar(20)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School? @relation(fields: [schoolId], references: [id])
+  school   School?          @relation(fields: [schoolId], references: [id])
   owner    User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   category BusinessCategory @relation(fields: [categoryId], references: [id])
   reviews  BusinessReview[]
@@ -1000,41 +1011,141 @@ model BusinessReview {
 // MODULES: Membership & Payments
 // ─────────────────────────────────────────────
 
-model MembershipPlan {
-  id           String  @id @default(uuid()) @db.Uuid
-  schoolId     String  @map("school_id") @db.Uuid
-  name         String  @db.VarChar(80)
-  tier         String  @db.VarChar(20)
-  priceInr     Int     @map("price_inr")
-  durationDays Int?    @map("duration_days")
-  features     Json    @default("{}")
-  isActive     Boolean @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  school      School      @relation(fields: [schoolId], references: [id])
-  memberships Membership[]
-
-  @@map("membership_plans")
-}
-
 model Membership {
   id                     String    @id @default(uuid()) @db.Uuid
   userId                 String    @map("user_id") @db.Uuid
-  planId                 String    @map("plan_id") @db.Uuid
+  planCode               String    @map("plan_code") @db.VarChar(20)
+  benefitTier            String    @map("benefit_tier") @db.VarChar(20)
   status                 String    @default("active") @db.VarChar(20)
   startedAt              DateTime  @default(now()) @map("started_at") @db.Timestamptz
-  expiresAt              DateTime? @map("expires_at") @db.Timestamptz
-  autoPay                Boolean   @default(false) @map("auto_pay")
+  endsAt                 DateTime? @map("ends_at") @db.Timestamptz
+  amountPaise            Int       @default(0) @map("amount_paise")
+  source                 String    @default("purchase") @db.VarChar(30)
+  orderId                String?   @map("order_id") @db.Uuid
+  grantedByUserId        String?   @map("granted_by_user_id") @db.Uuid
   razorpaySubscriptionId String?   @map("razorpay_subscription_id") @db.VarChar(64)
+  autoPay                Boolean   @default(false) @map("auto_pay")
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan     MembershipPlan @relation(fields: [planId], references: [id])
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order    MembershipOrder? @relation(fields: [orderId], references: [id])
   payments Payment[]
 
-  @@index([userId, status])
-  @@index([expiresAt])
+  @@index([userId, status, endsAt])
+  @@index([endsAt])
+  @@index([razorpaySubscriptionId])
   @@map("memberships")
+}
+
+model MembershipOrder {
+  id                     String    @id @default(uuid()) @db.Uuid
+  userId                 String    @map("user_id") @db.Uuid
+  planCode               String    @map("plan_code") @db.VarChar(20)
+  amountPaise            Int       @map("amount_paise")
+  currency               String    @default("INR") @db.VarChar(3)
+  status                 String    @default("created") @db.VarChar(20)
+  razorpayOrderId        String?   @unique @map("razorpay_order_id") @db.VarChar(64)
+  razorpaySubscriptionId String?   @map("razorpay_subscription_id") @db.VarChar(64)
+  razorpayPaymentId      String?   @map("razorpay_payment_id") @db.VarChar(64)
+  razorpaySignature      String?   @map("razorpay_signature")
+  capturedAt             DateTime? @map("captured_at") @db.Timestamptz
+  errorCode              String?   @map("error_code") @db.VarChar(60)
+  errorReason            String?   @map("error_reason")
+  metadata               Json      @default("{}")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  invoice     MembershipInvoice?
+  refunds     MembershipRefund[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("membership_orders")
+}
+
+model MembershipInvoice {
+  id             String   @id @default(uuid()) @db.Uuid
+  orderId        String   @unique @map("order_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  invoiceNumber  String   @unique @map("invoice_number") @db.VarChar(40)
+  amountPaise    Int      @map("amount_paise")
+  gstAmountPaise Int?     @map("gst_amount_paise")
+  pdfKey         String?  @map("pdf_key")
+  issuedAt       DateTime @default(now()) @map("issued_at") @db.Timestamptz
+
+  order MembershipOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, issuedAt])
+  @@map("membership_invoices")
+}
+
+model MembershipRefund {
+  id                String    @id @default(uuid()) @db.Uuid
+  orderId           String    @map("order_id") @db.Uuid
+  razorpayRefundId  String    @unique @map("razorpay_refund_id") @db.VarChar(64)
+  amountPaise       Int       @map("amount_paise")
+  reason            String
+  status            String    @default("pending") @db.VarChar(20)
+  processedAt       DateTime? @map("processed_at") @db.Timestamptz
+  initiatedByUserId String    @map("initiated_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  order       MembershipOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  initiatedBy User            @relation("refund_initiator", fields: [initiatedByUserId], references: [id])
+
+  @@index([orderId])
+  @@map("membership_refunds")
+}
+
+model MembershipEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  type        String   @db.VarChar(40)
+  prevPlan    String?  @map("prev_plan") @db.VarChar(20)
+  newPlan     String?  @map("new_plan") @db.VarChar(20)
+  orderId     String?  @map("order_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user  User  @relation("event_subject", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("event_actor", fields: [actorUserId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@map("membership_events")
+}
+
+model CommitteeInvite {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  invitedByUserId String    @map("invited_by_user_id") @db.Uuid
+  status          String    @default("pending") @db.VarChar(20)
+  message         String?
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz
+  respondedAt     DateTime? @map("responded_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User @relation("committee_invitee", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User @relation("committee_inviter", fields: [invitedByUserId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("committee_invites")
+}
+
+model PollEligibility {
+  pollId     String   @map("poll_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  snapshotAt DateTime @default(now()) @map("snapshot_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, userId])
+  @@index([pollId])
+  @@map("poll_eligibility")
 }
 
 model Payment {
@@ -1049,7 +1160,7 @@ model Payment {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
   paidAt            DateTime? @map("paid_at") @db.Timestamptz
 
-  user       User       @relation(fields: [userId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
   membership Membership? @relation(fields: [membershipId], references: [id])
   donations  Donation[]
 
@@ -1077,23 +1188,23 @@ model Donation {
 // ─────────────────────────────────────────────
 
 model RewardItem {
-  id           String    @id @default(uuid()) @db.Uuid
-  schoolId     String    @map("school_id") @db.Uuid
-  title        String    @db.VarChar(160)
-  description  String?
-  imageUrl     String?   @map("image_url")
-  category     String    @db.VarChar(40)
-  karmaCost    Decimal   @map("karma_cost") @db.Decimal(8, 2)
-  quantity     Int?
-  deliveryType String    @map("delivery_type") @db.VarChar(20)
-  assetUrl     String?   @map("asset_url")
-  codePool     Json?     @map("code_pool")
-  eligibility  Json      @default("{}")
-  isFeatured   Boolean   @default(false) @map("is_featured")
+  id            String    @id @default(uuid()) @db.Uuid
+  schoolId      String    @map("school_id") @db.Uuid
+  title         String    @db.VarChar(160)
+  description   String?
+  imageUrl      String?   @map("image_url")
+  category      String    @db.VarChar(40)
+  karmaCost     Decimal   @map("karma_cost") @db.Decimal(8, 2)
+  quantity      Int?
+  deliveryType  String    @map("delivery_type") @db.VarChar(20)
+  assetUrl      String?   @map("asset_url")
+  codePool      Json?     @map("code_pool")
+  eligibility   Json      @default("{}")
+  isFeatured    Boolean   @default(false) @map("is_featured")
   featuredUntil DateTime? @map("featured_until") @db.Timestamptz
-  popularity   Int       @default(0)
-  isActive     Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  popularity    Int       @default(0)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   school      School            @relation(fields: [schoolId], references: [id])
   redemptions KarmaRedemption[]
@@ -1103,17 +1214,17 @@ model RewardItem {
 }
 
 model KarmaRedemption {
-  id                String   @id @default(uuid()) @db.Uuid
-  userId            String   @map("user_id") @db.Uuid
-  rewardItemId      String   @map("reward_item_id") @db.Uuid
-  karmaSpent        Decimal  @map("karma_spent") @db.Decimal(8, 2)
-  karmaTransactionId String  @map("karma_transaction_id") @db.Uuid
-  status            String   @default("fulfilled") @db.VarChar(20)
-  deliveryChannel   String?  @map("delivery_channel") @db.VarChar(20)
-  deliveredUrl      String?  @map("delivered_url")
-  deliveredCode     String?  @map("delivered_code") @db.VarChar(80)
-  deliveredAt       DateTime? @map("delivered_at") @db.Timestamptz
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  rewardItemId       String    @map("reward_item_id") @db.Uuid
+  karmaSpent         Decimal   @map("karma_spent") @db.Decimal(8, 2)
+  karmaTransactionId String    @map("karma_transaction_id") @db.Uuid
+  status             String    @default("fulfilled") @db.VarChar(20)
+  deliveryChannel    String?   @map("delivery_channel") @db.VarChar(20)
+  deliveredUrl       String?   @map("delivered_url")
+  deliveredCode      String?   @map("delivered_code") @db.VarChar(80)
+  deliveredAt        DateTime? @map("delivered_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   rewardItem RewardItem @relation(fields: [rewardItemId], references: [id])
@@ -1131,7 +1242,7 @@ model Badge {
   iconUrl      String? @map("icon_url")
   autoCriteria Json?   @map("auto_criteria")
 
-  school School? @relation(fields: [schoolId], references: [id])
+  school     School?     @relation(fields: [schoolId], references: [id])
   userBadges UserBadge[]
 
   @@unique([schoolId, key])
@@ -1170,17 +1281,17 @@ model Group {
   createdBy     String?  @map("created_by") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id])
-  batch  Batch? @relation(fields: [refBatchId], references: [id])
-  house  House? @relation(fields: [refHouseId], references: [id])
+  school  School        @relation(fields: [schoolId], references: [id])
+  batch   Batch?        @relation(fields: [refBatchId], references: [id])
+  house   House?        @relation(fields: [refHouseId], references: [id])
   members GroupMember[]
   posts   Post[]
   events  Event[]
 
-  @@index([schoolId, type])
   @@unique([schoolId, refBatchId])
   @@unique([schoolId, refHouseId])
   @@unique([schoolId, refDepartment])
+  @@index([schoolId, type])
   @@map("groups")
 }
 
@@ -1214,10 +1325,10 @@ model Game {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id])
-  scores GameScore[]
-  matches GameMatch[]
-  challenges GameChallenge[]
+  school      School          @relation(fields: [schoolId], references: [id])
+  scores      GameScore[]
+  matches     GameMatch[]
+  challenges  GameChallenge[]
   tournaments Tournament[]
 
   @@map("games")
@@ -1250,8 +1361,8 @@ model GameMatch {
   endedAt      DateTime? @map("ended_at") @db.Timestamptz
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  game  Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  tournament Tournament? @relation(fields: [tournamentId], references: [id])
+  game         Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  tournament   Tournament?        @relation(fields: [tournamentId], references: [id])
   participants MatchParticipant[]
   challenges   GameChallenge[]
 
@@ -1259,11 +1370,11 @@ model GameMatch {
 }
 
 model MatchParticipant {
-  matchId      String   @map("match_id") @db.Uuid
-  userId       String   @map("user_id") @db.Uuid
-  score        Int      @default(0)
-  result       String?  @db.VarChar(12)
-  karmaAwarded Decimal  @default(0) @map("karma_awarded") @db.Decimal(8, 2)
+  matchId      String  @map("match_id") @db.Uuid
+  userId       String  @map("user_id") @db.Uuid
+  score        Int     @default(0)
+  result       String? @db.VarChar(12)
+  karmaAwarded Decimal @default(0) @map("karma_awarded") @db.Decimal(8, 2)
 
   match GameMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
   user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1281,27 +1392,27 @@ model GameChallenge {
   matchId      String?  @map("match_id") @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  game Game      @relation(fields: [gameId], references: [id])
+  game  Game       @relation(fields: [gameId], references: [id])
   match GameMatch? @relation(fields: [matchId], references: [id])
 
   @@map("game_challenges")
 }
 
 model Tournament {
-  id           String    @id @default(uuid()) @db.Uuid
-  schoolId     String    @map("school_id") @db.Uuid
-  gameId       String?   @map("game_id") @db.Uuid
-  name         String    @db.VarChar(160)
-  season       String?   @db.VarChar(40)
-  startsAt     DateTime  @map("starts_at") @db.Timestamptz
-  endsAt       DateTime  @map("ends_at") @db.Timestamptz
-  prizeBadgeId String?   @map("prize_badge_id") @db.Uuid
-  prizeKarma   Decimal?  @map("prize_karma") @db.Decimal(8, 2)
-  status       String    @default("upcoming") @db.VarChar(12)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @map("school_id") @db.Uuid
+  gameId       String?  @map("game_id") @db.Uuid
+  name         String   @db.VarChar(160)
+  season       String?  @db.VarChar(40)
+  startsAt     DateTime @map("starts_at") @db.Timestamptz
+  endsAt       DateTime @map("ends_at") @db.Timestamptz
+  prizeBadgeId String?  @map("prize_badge_id") @db.Uuid
+  prizeKarma   Decimal? @map("prize_karma") @db.Decimal(8, 2)
+  status       String   @default("upcoming") @db.VarChar(12)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school School @relation(fields: [schoolId], references: [id])
-  game   Game?  @relation(fields: [gameId], references: [id])
+  school  School            @relation(fields: [schoolId], references: [id])
+  game    Game?             @relation(fields: [gameId], references: [id])
   entries TournamentEntry[]
   matches GameMatch[]
 
