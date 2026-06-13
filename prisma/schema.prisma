@@ -301,6 +301,7 @@ model VerificationToken {
 model Profile {
   userId               String   @id @map("user_id") @db.Uuid
   photoUrl             String?  @map("photo_url")
+  coverUrl             String?  @map("cover_url")
   bio                  String?
   houseId              String?  @map("house_id") @db.Uuid
   batchId              String?  @map("batch_id") @db.Uuid

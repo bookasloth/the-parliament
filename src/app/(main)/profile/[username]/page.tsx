@@ -2,6 +2,33 @@ import { notFound } from "next/navigation"
 // Auth disabled for UI testing — profile page is public
 // import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { ProfileView, type ProfileViewData } from "./profile-view"
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+function formatDate(d: Date | null | undefined): string | null {
+  if (!d) return null
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+}
+
+/** Map the raw membershipStatus column to a display tier + asterisk color key. */
+function resolveMembership(status: string): ProfileViewData["membership"] {
+  switch (status) {
+    case "life":
+      return { label: "Life Member", tier: "life" }
+    case "premium":
+    case "active":
+      return { label: "Premium", tier: "premium" }
+    case "student":
+      return { label: "Student", tier: "student" }
+    case "associate":
+      return { label: "Associate", tier: "associate" }
+    case "committee":
+      return { label: "Committee", tier: "committee" }
+    default:
+      return { label: "Free", tier: "inactive" }
+  }
+}
 
 export default async function ProfilePage({
   params,
@@ -17,21 +44,33 @@ export default async function ProfilePage({
       id: true,
       legalName: true,
       displayName: true,
-      email: true,
       username: true,
-      status: true,
       memberType: true,
       currentStatus: true,
+      gender: true,
+      dateOfBirth: true,
+      membershipStatus: true,
+      isVerified: true,
+      verifiedAt: true,
+      verificationStatus: true,
+      profileCompletion: true,
       createdAt: true,
       profile: {
         select: {
           photoUrl: true,
+          coverUrl: true,
           bio: true,
           city: true,
           profession: true,
           company: true,
+          designation: true,
+          higherEducation: true,
+          skills: true,
+          linkedinUrl: true,
+          socialLinks: true,
           headline: true,
           house: { select: { name: true, colorHex: true } },
+          batch: { select: { startYear: true, endYear: true, label: true } },
         },
       },
       _count: {
@@ -49,57 +88,48 @@ export default async function ProfilePage({
 
   // const isOwnProfile = session?.user?.id === user.id
 
-  return (
-    <div className="min-h-screen bg-[#f3f2ef]">
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start gap-6">
-            <div className="h-24 w-24 shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500">
-              {user.legalName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900 truncate">
-                {user.legalName}
-              </h1>
-              {user.profile?.headline && (
-                <p className="text-sm text-gray-500 mt-0.5">{user.profile.headline}</p>
-              )}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {user.profile?.city && (
-                  <span className="rounded bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                    {user.profile.city}
-                  </span>
-                )}
-                {user.profile?.profession && (
-                  <span className="rounded bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                    {user.profile.profession}
-                  </span>
-                )}
-                {user.currentStatus && (
-                  <span className="rounded bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 capitalize">
-                    {user.currentStatus}
-                  </span>
-                )}
-                {user.profile?.house && (
-                  <span
-                    className="rounded px-2.5 py-1 text-xs font-medium text-white"
-                    style={{ backgroundColor: user.profile.house.colorHex }}
-                  >
-                    {user.profile.house.name}
-                  </span>
-                )}
-              </div>
-              {user.profile?.bio && (
-                <p className="mt-4 text-sm text-gray-600">{user.profile.bio}</p>
-              )}
-              <div className="flex gap-4 mt-4 text-sm text-gray-500">
-                <span>{user._count.posts} posts</span>
-                <span>{user._count.connectionsRequested} connections</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  const p = user.profile
+  const batch = p?.batch
+  const membership = resolveMembership(user.membershipStatus)
+  const gradYear = batch?.endYear ?? null
+  const yearsSince = gradYear ? new Date().getFullYear() - gradYear : null
+
+  const social = (p?.socialLinks ?? {}) as Record<string, string>
+
+  const data: ProfileViewData = {
+    name: user.legalName,
+    initials: user.legalName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase(),
+    photoUrl: p?.photoUrl ?? null,
+    coverUrl: p?.coverUrl ?? null,
+    headline: p?.headline ?? p?.designation ?? p?.profession ?? null,
+    profession: p?.profession ?? null,
+    company: p?.company ?? null,
+    city: p?.city ?? null,
+    bio: p?.bio ?? null,
+    house: p?.house ? { name: p.house.name, color: p.house.colorHex } : null,
+    batchLabel: batch ? batch.label || `${batch.startYear}–${batch.endYear}` : null,
+    yearsSince,
+    memberSince: formatDate(user.createdAt),
+    dateOfBirth: formatDate(user.dateOfBirth),
+    gender: user.gender ?? null,
+    currentStatus: user.currentStatus ?? null,
+    membership,
+    isVerified: user.isVerified,
+    verificationStatus: user.verificationStatus,
+    verifiedOn: formatDate(user.verifiedAt),
+    profileCompletion: user.profileCompletion,
+    connectionsCount: user._count.connectionsRequested,
+    postsCount: user._count.posts,
+    higherEducation: p?.higherEducation ?? null,
+    skills: Array.isArray(p?.skills) ? (p?.skills as string[]) : [],
+    linkedinUrl: p?.linkedinUrl ?? null,
+    socialLinks: social,
+  }
+
+  return <ProfileView data={data} />
 }
