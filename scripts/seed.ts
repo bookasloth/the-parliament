@@ -208,6 +208,109 @@ async function main() {
     });
   }
 
+  // Sample feed posts, groups, and events so those pages have real content
+  // for the beta. All are idempotent-ish: we only create them if none exist yet.
+  const sampleUsers = await prisma.user.findMany({
+    where: { email: { in: SAMPLE_USERS.map((s) => s.email) } },
+    select: { id: true, email: true },
+  });
+  const sampleByEmail = new Map(sampleUsers.map((u) => [u.email, u.id]));
+  const sampleIds = sampleUsers.map((u) => u.id);
+
+  if (sampleIds.length > 0) {
+    // Posts
+    const existingPosts = await prisma.post.count();
+    if (existingPosts === 0) {
+      const categories = await prisma.postCategory.findMany({
+        where: { schoolId: school.id },
+      });
+      const catByKey = new Map(categories.map((c) => [c.key, c.id]));
+      const SAMPLE_POSTS = [
+        { email: "neha.gupta@example.com", categoryKey: "achievement", body: "Honoured to have led our district's digital governance rollout this year. Grateful to JNV for the foundation. 🙏", up: 42, comments: 8 },
+        { email: "priya.sharma@example.com", categoryKey: "career_update", body: "Excited to share I've joined Google as a Senior Software Engineer! Happy to refer fellow Navodayans — DM me.", up: 67, comments: 14 },
+        { email: "vikram.singh@example.com", categoryKey: "startup", body: "EduStart just crossed 10,000 students. If any alumni want to volunteer as mentors, we'd love to have you.", up: 38, comments: 6 },
+        { email: "sunita.patel@example.com", categoryKey: "school_memory", body: "Found an old photo from our 2008 farewell. Those mess hall nights and night-study sessions built who we are. Miss you all!", up: 91, comments: 23 },
+        { email: "arjun.nair@example.com", categoryKey: "seeking_help", body: "Looking for recommendations on good CA firms hiring in Chennai for freshers. Any leads appreciated!", up: 12, comments: 4 },
+      ];
+      let i = 0;
+      for (const p of SAMPLE_POSTS) {
+        const authorId = sampleByEmail.get(p.email);
+        const categoryId = catByKey.get(p.categoryKey) ?? categories[0]?.id;
+        if (!authorId || !categoryId) continue;
+        await prisma.post.create({
+          data: {
+            schoolId: school.id,
+            authorId,
+            categoryId,
+            format: "text",
+            body: p.body,
+            visibilityScope: "network",
+            upvoteCount: p.up,
+            commentCount: p.comments,
+            createdAt: new Date(Date.now() - i * 6 * 60 * 60 * 1000),
+          },
+        });
+        i++;
+      }
+    }
+
+    // Groups
+    const existingGroups = await prisma.group.count();
+    if (existingGroups === 0) {
+      const GROUPS = [
+        { type: "interest", name: "Tech & Startups", description: "For Navodayans in tech, startups, and product." },
+        { type: "interest", name: "Civil Services Aspirants", description: "UPSC/State PSC prep, mentorship and resources." },
+        { type: "custom", name: "Bangalore Chapter", description: "Alumni based in and around Bengaluru." },
+        { type: "custom", name: "Mentorship Circle", description: "Connect mentors and mentees across batches." },
+      ];
+      for (const g of GROUPS) {
+        const group = await prisma.group.create({
+          data: {
+            schoolId: school.id,
+            type: g.type,
+            name: g.name,
+            description: g.description,
+            visibility: "public",
+            createdBy: sampleIds[0],
+          },
+        });
+        // Add a few members
+        for (const uid of sampleIds.slice(0, 4)) {
+          await prisma.groupMember.create({
+            data: { groupId: group.id, userId: uid, role: uid === sampleIds[0] ? "admin" : "member" },
+          });
+        }
+      }
+    }
+
+    // Events
+    const existingEvents = await prisma.event.count();
+    if (existingEvents === 0) {
+      const day = 24 * 60 * 60 * 1000;
+      const EVENTS = [
+        { title: "Annual Alumni Meet 2026", description: "Reconnect with your batch at the flagship reunion.", mode: "in-person", venue: "JNV Nagpur Campus", inDays: 30 },
+        { title: "Career Mentorship Webinar", description: "Senior alumni share career advice across industries.", mode: "online", onlineUrl: "https://meet.google.com/sample", inDays: 10 },
+        { title: "Bengaluru Alumni Mixer", description: "Casual evening meetup for Bengaluru-based alumni.", mode: "in-person", venue: "Koramangala, Bengaluru", inDays: 18 },
+      ];
+      for (const e of EVENTS) {
+        await prisma.event.create({
+          data: {
+            schoolId: school.id,
+            hostId: sampleIds[0],
+            title: e.title,
+            description: e.description,
+            mode: e.mode,
+            venue: e.venue ?? null,
+            onlineUrl: e.onlineUrl ?? null,
+            startsAt: new Date(Date.now() + e.inDays * day),
+            status: "published",
+            visibility: "school",
+          },
+        });
+      }
+    }
+  }
+
   // Bootstrap admin. Email comes from ADMIN_EMAIL (or the first ADMIN_EMAILS
   // entry); password from ADMIN_PASSWORD. The user is granted isSuperAdmin +
   // an "admin" role so they can sign in with credentials and reach /admin.
@@ -259,6 +362,7 @@ async function main() {
   console.log(`  Karma thresholds: ${KARMA_THRESHOLDS.length}`);
   console.log(`  Business categories: ${BUSINESS_CATEGORIES.length}`);
   console.log(`  Sample alumni: ${SAMPLE_USERS.length} (password: Password123!)`);
+  console.log(`  Sample posts/groups/events seeded (if empty)`);
   console.log(`  Admin: ${adminSeeded ?? "(none — set ADMIN_EMAIL to seed one)"}`);
 }
 
