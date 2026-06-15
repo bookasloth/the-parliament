@@ -91,12 +91,31 @@ The platform is the **JNV Nagpur** (Jawahar Navodaya Vidyalaya) alumni network �
 | Email | **Hostinger SMTP** (own) via Nodemailer | ⚠️ Low daily limits + shared-IP deliverability risk; plan a dedicated sender (SES/Resend) if emails hit spam. |
 | Mobile OTP | **Deferred** — **email-only verification at launch** | Avoids India DLT/SMS cost. Add SMS/WhatsApp OTP later. |
 | Payments | **Razorpay** | India-first (UPI/cards/netbanking), donation flows, payouts to school/scholarship accounts. |
-| Hosting | **Hostinger VPS** (Mumbai/Singapore) | Self-managed: Nginx/Caddy + TLS, process mgmt, **PostgreSQL backups** (go-live blocker). |
+| Hosting | **Hostinger VPS** (Mumbai/Singapore) | Self-managed: Nginx/Caddy + TLS, process mgmt, **PostgreSQL backups** (go-live blocker). **Zero-budget alternative: Oracle Cloud Always-Free — see note below.** |
 | Deployment | **Docker Compose** (app + Postgres + Nginx, Redis optional) | Reproducible; GitHub Actions → SSH deploy; easy host migration. |
 | Caching | **No Redis initially** | In-memory + Postgres. Add self-hosted Redis only if load/socket-scaling demands it. |
 | Realtime (DMs) | **Socket.IO** in the app process | Trivial for <1k DAU on one VPS; Redis pub/sub only if multi-instance. |
 | Alumni Map | **Leaflet + OpenStreetMap** | Free; geocode city→lat/long once on save and cache. |
 | AI Connections | **Rule-based** (same batch / city / industry / house) | No ML at launch; simple SQL scoring. |
+
+### Hosting note — zero-budget alternative (Oracle Cloud Always-Free)
+
+Hostinger VPS is the only **paid** piece of the stack (~₹500–900/mo for a 2–4 vCPU / 8 GB plan).
+At our scale (≤5k users, <1k DAU) a single box is plenty, and the Docker Compose setup is
+host-portable — so the whole stack can move with no code changes.
+
+- **Default (recommended for a live org):** stay on **Hostinger VPS**. Cheap, managed-enough,
+  India-region (Mumbai/Singapore) low latency, and the deploy pipeline + docs already assume it.
+  Reliability and ease matter for a community people depend on.
+- **Zero-cost option:** **Oracle Cloud "Always Free"** — a *permanent* free tier offering up to
+  **4 ARM vCPUs / 24 GB RAM (Ampere A1)**, ~200 GB storage, and a free egress allowance. That is
+  more RAM than a typical paid Hostinger plan and can host our exact Docker Compose stack at **₹0/mo**.
+  Nearest regions: **Mumbai / Hyderabad**.
+  - Trade-offs to accept before switching: less hand-holding (pure cloud console + SSH, no cPanel),
+    free ARM capacity can be hard to provision in popular regions, and Oracle has occasionally
+    reclaimed idle free instances — slightly riskier for a live org than for a side project.
+- **Either host:** the **`pg_dump` → Cloudflare R2** backup cron (go-live blocker) and offloading
+  the critical-path verification email to **Resend** (free tier) de-risk the box without adding cost.
 
 ---
 
