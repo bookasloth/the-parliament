@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -132,6 +133,47 @@ async function main() {
     });
   }
 
+  // Bootstrap admin. Email comes from ADMIN_EMAIL (or the first ADMIN_EMAILS
+  // entry); password from ADMIN_PASSWORD. The user is granted isSuperAdmin +
+  // an "admin" role so they can sign in with credentials and reach /admin.
+  const adminEmail =
+    process.env.ADMIN_EMAIL ||
+    (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim()).filter(Boolean)[0] ||
+    "";
+  let adminSeeded: string | null = null;
+  if (adminEmail) {
+    const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe123!";
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    const username = adminEmail.split("@")[0].replace(/[^a-z0-9]/gi, "-").toLowerCase();
+    const admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: { isSuperAdmin: true, status: "active" },
+      create: {
+        schoolId: school.id,
+        email: adminEmail,
+        username,
+        legalName: "Platform Admin",
+        displayName: "Admin",
+        passwordHash,
+        emailVerifiedAt: new Date(),
+        status: "active",
+        isVerified: true,
+        verificationStatus: "verified",
+        isSuperAdmin: true,
+        onboardingStep: "complete",
+        onboardingCompleted: true,
+        membershipStatus: "free",
+        memberType: "alumni",
+      },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_role: { userId: admin.id, role: "admin" } },
+      update: {},
+      create: { userId: admin.id, role: "admin" },
+    });
+    adminSeeded = adminEmail;
+  }
+
   console.log("Seed complete:");
   console.log(`  School: ${school.name}`);
   console.log(`  Houses: ${HOUSES.length}`);
@@ -141,6 +183,7 @@ async function main() {
   console.log(`  Post categories: ${POST_CATEGORIES.length}`);
   console.log(`  Karma thresholds: ${KARMA_THRESHOLDS.length}`);
   console.log(`  Business categories: ${BUSINESS_CATEGORIES.length}`);
+  console.log(`  Admin: ${adminSeeded ?? "(none — set ADMIN_EMAIL to seed one)"}`);
 }
 
 main()

@@ -12,6 +12,8 @@ declare module "next-auth" {
       onboardingCompleted?: boolean
       onboardingStep?: string
       membershipStatus?: string
+      isAdmin?: boolean
+      roles?: string[]
     }
   }
 }
@@ -22,5 +24,7 @@ declare module "next-auth/jwt" {
     onboardingCompleted?: boolean
     onboardingStep?: string
     membershipStatus?: string
+    isAdmin?: boolean
+    roles?: string[]
   }
 }
