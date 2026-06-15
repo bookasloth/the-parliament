@@ -1,0 +1,59 @@
+# Production stack: Postgres + Next.js app + Caddy (automatic HTTPS).
+# Run from the repo root:
+#   docker compose -f docker/docker-compose.prod.yml up -d --build
+# Reads interpolation vars (DOMAIN, POSTGRES_PASSWORD, ...) from ./.env
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: parliament-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-the_parliament}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-the_parliament}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: parliament-app
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      # Override DATABASE_URL so the app talks to the `db` service, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-the_parliament}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: parliament-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -226,16 +226,23 @@ export function ReactionBar({
   initialDownvotes,
   comments,
   shares,
+  onUpvote,
+  onComment,
 }: {
   initialUpvotes: number
   initialDownvotes: number
   comments: number
   shares: number
+  onUpvote?: () => void
+  onComment?: (body: string) => void
 }) {
   const [awardModalOpen, setAwardModalOpen] = useState(false)
   const [voteState, setVoteState] = useState<"up" | "down" | null>(null)
   const [upvotes, setUpvotes] = useState(initialUpvotes)
   const [downvotes, setDownvotes] = useState(initialDownvotes)
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentText, setCommentText] = useState("")
+  const [commentCount, setCommentCount] = useState(comments)
 
   const handleUpvote = () => {
     if (voteState === "up") {
@@ -246,6 +253,16 @@ export function ReactionBar({
       setUpvotes((v) => v + 1)
       setVoteState("up")
     }
+    onUpvote?.()
+  }
+
+  const handleSubmitComment = () => {
+    const body = commentText.trim()
+    if (!body) return
+    onComment?.(body)
+    setCommentCount((c) => c + 1)
+    setCommentText("")
+    setCommentOpen(false)
   }
 
   const handleDownvote = () => {
@@ -292,10 +309,17 @@ export function ReactionBar({
         </button>
 
         {/* Comment */}
-        <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50/30 transition-all">
+        <button
+          onClick={() => setCommentOpen((o) => !o)}
+          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+            commentOpen
+              ? "text-blue-500 bg-blue-50/50"
+              : "text-gray-400 hover:text-blue-500 hover:bg-blue-50/30"
+          }`}
+        >
           <MessageCircle className="h-5 w-5" />
           <span className="hidden lg:inline text-xs font-medium">Comment</span>
-          <span className="text-xs font-semibold tabular-nums">{comments}</span>
+          <span className="text-xs font-semibold tabular-nums">{commentCount}</span>
         </button>
 
         {/* Share */}
@@ -310,6 +334,31 @@ export function ReactionBar({
           <span className="hidden lg:inline text-xs font-medium">Award</span>
         </button>
       </div>
+      {commentOpen && (
+        <div className="flex items-center gap-2 px-1 pb-2">
+          <input
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmitComment()
+              }
+            }}
+            placeholder="Write a comment…"
+            className="flex-1 rounded-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-brand"
+          />
+          <button
+            onClick={handleSubmitComment}
+            disabled={!commentText.trim()}
+            className={`rounded-full px-4 py-2 text-xs font-semibold text-white transition-colors ${
+              commentText.trim() ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-200"
+            }`}
+          >
+            Post
+          </button>
+        </div>
+      )}
       <AwardModal open={awardModalOpen} onClose={() => setAwardModalOpen(false)} />
     </>
   )
@@ -456,7 +505,15 @@ function HelpCircle({ className }: { className?: string }) {
 }
 
 // --- Feed Card (the standard post card used everywhere) ---
-export function FeedCard({ post }: { post: FeedPost }) {
+export function FeedCard({
+  post,
+  onUpvote,
+  onComment,
+}: {
+  post: FeedPost
+  onUpvote?: () => void
+  onComment?: (body: string) => void
+}) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
 
   const actionItems = post.isSponsored
@@ -623,6 +680,8 @@ export function FeedCard({ post }: { post: FeedPost }) {
           initialDownvotes={post.downvotes}
           comments={post.comments}
           shares={post.shares}
+          onUpvote={onUpvote}
+          onComment={onComment}
         />
       </div>
     </div>
