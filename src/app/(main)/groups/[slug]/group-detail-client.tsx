@@ -11,8 +11,23 @@ import { FeedCard, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
+import { joinGroupAction } from "../actions"
 
-const group = {
+export interface RealGroup {
+  id: string
+  slug: string
+  name: string
+  description: string
+  members: number
+  privacy: "public" | "private"
+  category: string
+  cover: string
+  icon: string
+  isJoined: boolean
+  postsThisWeek: number
+}
+
+const MOCK_GROUP = {
   id: "1",
   slug: "jnv-nagpur-alumni",
   name: "JNV Nagpur Alumni – Official",
@@ -138,7 +153,13 @@ const groupMembers: GroupMember[] = [
 
 const recentMemberAvatars = groupMembers.slice(2).map(m => ({ id: m.card.id, name: m.card.name, avatar: m.card.image }))
 
-export default function GroupDetailPage() {
+export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup }) {
+  // Real group (slug=id) overrides the mock base; keep mock for admins/rules which
+  // have no schema-backed source yet.
+  const group = realGroup
+    ? { ...MOCK_GROUP, ...realGroup, privacy: realGroup.privacy }
+    : MOCK_GROUP
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [joined, setJoined] = useState(group.isJoined)
   const [muted, setMuted] = useState(false)
@@ -206,7 +227,7 @@ export default function GroupDetailPage() {
                     </button>
                   </>
                 ) : (
-                  <button onClick={() => setJoined(true)}
+                  <button onClick={() => { setJoined(true); void joinGroupAction(group.id).catch(() => {}) }}
                     className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm">
                     <UserPlus className="h-4 w-4" /> Join Group
                   </button>
