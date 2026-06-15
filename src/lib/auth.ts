@@ -30,6 +30,9 @@ async function ensureUniqueUsername(base: string): Promise<string> {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  // Required when running behind a reverse proxy / managed host (Railway, a VPS
+  // with Caddy/Nginx, etc.) — Auth.js otherwise rejects the forwarded host.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/auth/signin",

@@ -1,9 +1,88 @@
-# Deploying The Parliament (Oracle Cloud — free tier)
+# Deploying The Parliament
+
+Two supported paths:
+- **Railway (recommended, no server admin)** — see below. Easiest for a first deploy.
+- **Oracle Cloud / any VPS (Docker)** — see "Self-host on a VPS" further down.
+
+---
+
+# Option A — Railway (recommended)
+
+Railway builds the repo's `Dockerfile` and runs it, with a one-click managed
+Postgres. No Linux, SSH, or firewall to manage. HTTPS is automatic.
+
+## What you need
+1. A **GitHub account** (the repo is already there: `bookasloth/the-parliament`).
+2. A **Railway account** — https://railway.com (sign in with GitHub).
+3. Your **Hostinger domain** (only needed for the optional custom-domain step).
+
+## Steps
+
+### 1. Create the project
+1. Railway → **New Project → Deploy from GitHub repo** → pick `bookasloth/the-parliament`.
+2. Railway detects the `Dockerfile` and `railway.json` and starts a build. Let it run
+   (it will fail to *start* until the database + variables exist — that's expected).
+
+### 2. Add the database
+1. In the project, click **New → Database → Add PostgreSQL**. Railway provisions it
+   and exposes a `DATABASE_URL`.
+
+### 3. Set environment variables
+On the **app service** → **Variables**, add:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference the Postgres service) |
+| `AUTH_SECRET` | a random string — generate one at https://generate-secret.vercel.app/32 or run `openssl rand -base64 32` |
+| `ADMIN_EMAILS` | your email (this becomes an admin) |
+| `ADMIN_EMAIL` | your email (the seeded login) |
+| `ADMIN_PASSWORD` | a strong password you choose |
+| `SEED_ON_START` | `true` (for the first deploy only) |
+| `AUTH_URL` | set after step 4 once you know the URL |
+
+(Optional, can add later: `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` for Google sign-in,
+`RAZORPAY_*` for payments, `SMTP_*` for real emails, `R2_*` for file uploads. The
+site runs fine without these — members use email + password and email auto-verifies.)
+
+### 4. Get your URL + finish auth config
+1. App service → **Settings → Networking → Generate Domain**. You'll get something
+   like `the-parliament-production.up.railway.app`.
+2. Set `AUTH_URL` = `https://<that-domain>` in Variables. Railway redeploys.
+
+### 5. Watch it boot
+Open the app service **Deploy Logs**. On first boot you'll see migrations apply,
+the seed run (reference data + your admin + sample alumni/posts), then
+"Starting Next.js". Visit the URL, go to `/auth/signin`, log in with your
+`ADMIN_EMAIL` / `ADMIN_PASSWORD`, and open `/admin`.
+
+### 6. Turn off re-seeding
+Set `SEED_ON_START` = `false` in Variables (the seed is mostly idempotent, but
+there's no need to run it every restart). Railway redeploys.
+
+### 7. (Optional) Use your Hostinger domain
+1. App service → **Settings → Networking → Custom Domain** → enter e.g.
+   `www.your-domain.org`. Railway shows a **CNAME target**.
+2. In **Hostinger → Domains → DNS**, add a **CNAME** record: name `www`,
+   value = the target Railway gave you. (For a root/apex domain, use the
+   target Railway provides per its instructions.)
+3. Wait for it to verify (minutes to a couple hours), then update `AUTH_URL`
+   to `https://www.your-domain.org` and redeploy.
+
+## Updating later
+Just `git push` to `master` — Railway auto-builds and redeploys.
+
+---
+
+# Option B — Self-host on a VPS (Oracle Cloud free tier / Hostinger / any)
 
 This deploys the whole stack — **Next.js app + PostgreSQL + Caddy (auto-HTTPS)** —
-on a single Oracle Cloud "Always Free" ARM VM at **₹0/month**, with your Hostinger
-domain pointing at it. The same `Dockerfile` / compose files work on any VPS
-(Hostinger, DigitalOcean, etc.) too.
+on a single VM (Oracle "Always Free" ARM at **₹0/month**, or any VPS), with your
+domain pointing at it.
+
+## What you need
+1. **Oracle Cloud account** (free) — https://www.oracle.com/cloud/free/
+2. **Your domain** (you have this on Hostinger).
+3. ~30 minutes.
 
 ## What you need
 1. **Oracle Cloud account** (free) — https://www.oracle.com/cloud/free/
