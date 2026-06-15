@@ -1,0 +1,6 @@
+# Caddy obtains and renews HTTPS certificates automatically via Let's Encrypt.
+# DOMAIN is injected from the environment (set in ./.env).
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}
