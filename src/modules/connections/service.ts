@@ -3,6 +3,10 @@ import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
   id: string
+  /** Real user UUID — used by server actions (the `id` field above is username||uuid for links). */
+  userId?: string
+  /** Connection row id — present on pending/received so accept/reject can target it. */
+  connectionId?: string
   name: string
   headline: string
   batch: string
@@ -71,7 +75,7 @@ function monthYear(date: Date): string {
 
 function mapUser(
   u: MappedUser,
-  extra?: { sentAt?: string; since?: string },
+  extra?: { sentAt?: string; since?: string; connectionId?: string },
 ): AlumniUser {
   const name = u.displayName || u.legalName
   const houseColor = u.profile?.house?.colorHex ?? "#94a3b8"
@@ -80,6 +84,7 @@ function mapUser(
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
   return {
     id: u.username || u.id,
+    userId: u.id,
     name,
     headline: u.profile?.headline ?? "",
     batch: u.profile?.batch?.label ?? "",
@@ -128,11 +133,11 @@ export async function getConnectionsData(userId: string): Promise<{
   })
 
   const pending = sentRows.map((c) =>
-    mapUser(c.addressee as MappedUser, { sentAt: relativeTime(c.createdAt) }),
+    mapUser(c.addressee as MappedUser, { sentAt: relativeTime(c.createdAt), connectionId: c.id }),
   )
 
   const received = receivedRows.map((c) =>
-    mapUser(c.requester as MappedUser, { sentAt: relativeTime(c.createdAt) }),
+    mapUser(c.requester as MappedUser, { sentAt: relativeTime(c.createdAt), connectionId: c.id }),
   )
 
   const relatedIds = new Set<string>([userId])

@@ -48,7 +48,7 @@ const event = {
   slug: "jnv-nagpur-grand-reunion-2025",
 }
 
-export default function EventRegisterPage({ params }: { params: { slug: string } }) {
+export default function EventRegisterPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [step, setStep] = useState<Step>("details")
   const [selectedTier, setSelectedTier] = useState("premium")

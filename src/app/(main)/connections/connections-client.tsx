@@ -15,6 +15,8 @@ type TabType = "connected" | "sent" | "received" | "suggestions"
 
 interface AlumniUser {
   id: string
+  userId?: string
+  connectionId?: string
   name: string
   headline: string
   batch: string
@@ -171,14 +173,14 @@ export default function ConnectionsClient({
         <>
           <button onClick={() => {
             setAcceptedRequests(a => [...a, user.id])
-            startTransition(() => { void acceptAction(user.id) })
+            if (user.connectionId) startTransition(() => { void acceptAction(user.connectionId!) })
           }}
             className="flex items-center gap-1.5 rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300">
             <Check className="h-3.5 w-3.5" /> Accept
           </button>
           <button onClick={() => {
             setDeclinedRequests(d => [...d, user.id])
-            startTransition(() => { void rejectAction(user.id) })
+            if (user.connectionId) startTransition(() => { void rejectAction(user.connectionId!) })
           }}
             className="rounded-md border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300">
             Decline
@@ -194,8 +196,8 @@ export default function ConnectionsClient({
           </a>
           <button onClick={() => {
             setSentList(s => s.includes(user.id) ? s.filter(x => x !== user.id) : [...s, user.id])
-            if (!sentList.includes(user.id)) {
-              startTransition(() => { void connectAction(user.id) })
+            if (!sentList.includes(user.id) && user.userId) {
+              startTransition(() => { void connectAction(user.userId!) })
             }
           }}
             className={`flex items-center gap-1.5 rounded-md border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${isSent ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"}`}>
