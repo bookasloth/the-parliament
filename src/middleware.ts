@@ -18,9 +18,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // On HTTPS (Vercel), Auth.js stores the JWT in the __Secure-authjs.session-token
+  // cookie. getToken must be told to look for the secure cookie or it reads null
+  // and bounces logged-in users back to sign-in.
+  const secureCookie =
+    req.nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto") === "https"
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    secureCookie,
   })
   const isLoggedIn = !!token
 
