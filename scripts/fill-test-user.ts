@@ -105,6 +105,32 @@ async function main() {
     create: { userId: user.id, karmaBalance: 320, earnedKarma30d: 45, lifetimeEarned: 512 },
   });
 
+  // Active membership ledger row so getCurrent()/resolveActivePlan sees premium,
+  // not just the denormalized User.membershipStatus. Idempotent on re-run.
+  const activePremium = await prisma.membership.findFirst({
+    where: { userId: user.id, status: "active", planCode: "premium" },
+  });
+  if (!activePremium) {
+    await prisma.membership.updateMany({
+      where: { userId: user.id, status: "active" },
+      data: { status: "superseded" },
+    });
+    const endsAt = new Date(now);
+    endsAt.setDate(endsAt.getDate() + 365);
+    await prisma.membership.create({
+      data: {
+        userId: user.id,
+        planCode: "premium",
+        benefitTier: "premium",
+        status: "active",
+        startedAt: now,
+        endsAt,
+        amountPaise: 99900, // PLANS.premium.pricePaise
+        source: "admin_grant",
+      },
+    });
+  }
+
   console.log("Test user filled as standard reference profile:");
   console.log(`  ${EMAIL} → Aditya Kulkarni`);
   console.log(`  House Nilgiri · Batch ${batch.label} · Division Nagpur`);
