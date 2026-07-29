@@ -42,7 +42,21 @@ import {
 // ─────────────────────────────────────────────
 // Props — real data assembled in page.tsx
 // ─────────────────────────────────────────────
+export interface ExperienceItem {
+  title: string
+  company: string
+  employmentType: string | null
+  startLabel: string
+  endLabel: string
+  location: string | null
+  locationType: string | null
+  description: string | null
+  skills: string[]
+}
+
 export interface ProfileViewData {
+  username: string
+  experiences: ExperienceItem[]
   name: string
   initials: string
   photoUrl: string | null
@@ -250,8 +264,15 @@ function PostCard({
 // ─────────────────────────────────────────────
 type Tab = "posts" | "about" | "connections"
 
-export function ProfileView({ data }: { data: ProfileViewData }) {
-  const [tab, setTab] = useState<Tab>("posts")
+export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
+  const [tab, setTabState] = useState<Tab>(initialTab)
+  const setTab = (t: Tab) => {
+    setTabState(t)
+    if (typeof window !== "undefined") {
+      const path = t === "posts" ? `/${data.username}` : `/${data.username}/${t}`
+      window.history.replaceState(null, "", path)
+    }
+  }
   const [badge, setBadge] = useState<(typeof BADGES)[number] | null>(null)
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [awardOpen, setAwardOpen] = useState(false)
@@ -271,7 +292,8 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
     <div className="min-h-screen bg-[#eef0f4] px-4 py-6 font-body">
       <div className="mx-auto max-w-[1200px]">
 
-        {/* ===== HEADER ===== */}
+        {/* ===== HEADER + ABOUT SIDEBAR ===== */}
+        <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
         <Card>
           <div className="relative h-[200px] bg-gray-200">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -355,6 +377,44 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
           </div>
         </Card>
 
+        {/* About sidebar (matches hero card height on lg) */}
+        <Card className="lg:sticky lg:top-4">
+          <div className="flex items-center justify-between px-7 pt-5 pb-1">
+            <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
+            <SoftLink>Know Your Schoolmate</SoftLink>
+          </div>
+          <div className="px-7 pb-6 pt-2">
+            {data.bio && <p className="text-[13.5px] leading-relaxed text-gray-700">{data.bio}</p>}
+            <ul className="mt-4 space-y-2.5 text-[13.5px] text-gray-700">
+              {data.dateOfBirth && (
+                <li className="flex items-center gap-2">
+                  <Cake className="h-4 w-4 text-brand" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
+                </li>
+              )}
+              {data.bloodGroup && (
+                <li className="flex items-center gap-2">
+                  <Droplet className="h-4 w-4 text-brand" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
+                </li>
+              )}
+              <li className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-brand" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
+              </li>
+              {data.house && (
+                <li className="flex items-center gap-2">
+                  <Home className="h-4 w-4 text-brand" /> House: <span className="font-semibold text-gray-900">{data.house.name}</span>
+                </li>
+              )}
+              {data.batchLabel && (
+                <li className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-brand" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
+                </li>
+              )}
+            </ul>
+          </div>
+        </Card>
+
+        </div>
+
         {/* ===== TWO COLUMN ===== */}
         <div className="mt-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
 
@@ -409,25 +469,42 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
 
             {tab === "about" && (
               <>
-                <Card>
-                  <SectionTitle action={<SoftLink>Know Your Schoolmate</SoftLink>}>About {data.name.split(" ")[0]}</SectionTitle>
-                  <div className="px-7 pb-6 pt-1">
-                    <p className="text-[13.5px] leading-relaxed text-gray-700">{data.bio ?? "This schoolmate hasn't added a bio yet."}</p>
-                    {data.skills.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {data.skills.map((s) => <span key={s} className="rounded-[6px] bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{s}</span>)}
-                      </div>
-                    )}
-                  </div>
-                </Card>
+                {data.skills.length > 0 && (
+                  <Card>
+                    <SectionTitle>Skills</SectionTitle>
+                    <div className="px-7 pb-6 pt-1 flex flex-wrap gap-2">
+                      {data.skills.map((s) => <span key={s} className="rounded-[6px] bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{s}</span>)}
+                    </div>
+                  </Card>
+                )}
 
                 <Card>
-                  <SectionTitle>Career journey</SectionTitle>
-                  <div className="px-7 pb-6 pt-2">
-                    <Timeline items={[
-                      { role: "Co-Founder", org: data.company ?? "Grey Hawks Media", period: "2019 — Present" },
-                      { role: data.profession ?? "Developer", org: "Freelance & consulting", period: "2015 — 2019" },
-                    ]} />
+                  <SectionTitle>Experience</SectionTitle>
+                  <div className="px-7 pb-6 pt-2 space-y-4">
+                    {data.experiences.length === 0 && <p className="text-[13.5px] text-gray-500">No experience added yet.</p>}
+                    {data.experiences.map((e, i) => (
+                      <div key={i} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
+                        <div className="text-sm font-bold text-gray-900">{e.title}</div>
+                        <div className="text-[13px] text-gray-600">
+                          {e.company}
+                          {e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {e.startLabel} — {e.endLabel}
+                        </div>
+                        {(e.location || e.locationType) && (
+                          <div className="text-xs text-gray-400">
+                            {e.location}{e.location && e.locationType ? " · " : ""}{e.locationType}
+                          </div>
+                        )}
+                        {e.description && <p className="mt-2 text-[13px] leading-relaxed text-gray-700">{e.description}</p>}
+                        {e.skills.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {e.skills.map((s) => <span key={s} className="rounded-[4px] bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">{s}</span>)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </Card>
 
@@ -554,24 +631,6 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
 
           {/* ===== RIGHT ===== */}
           <div className="flex flex-col gap-[18px]">
-            {/* About */}
-            <Card>
-              <div className="flex items-center justify-between px-7 pt-5">
-                <h5 className="font-heading text-[15px] font-bold text-brand">About {data.name.split(" ")[0]}</h5>
-                <SoftLink>Know More</SoftLink>
-              </div>
-              <div className="px-7 pb-5 pt-3">
-                <p className="text-[13.5px] leading-relaxed text-gray-700">{data.bio ?? `${data.name} is a member of the NNAWCA alumni community.`}</p>
-                <ul className="mt-4 space-y-2.5">
-                  {data.dateOfBirth && <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><Cake className="h-4 w-4 text-brand" /> DOB: <b className="font-semibold text-gray-900">{data.dateOfBirth}</b></li>}
-                  <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><Droplet className="h-4 w-4 text-red-500" /> Blood Group: <b className="font-semibold text-gray-900">{data.bloodGroup ?? "—"}</b></li>
-                  <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><FileText className="h-4 w-4 text-green-600" /> Membership: <b className="font-semibold" style={{ color: msColor }}>{data.membership.label}</b></li>
-                  {data.house && <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><Home className="h-4 w-4" style={{ color: houseColor }} /> House: <b className="font-semibold text-gray-900">{data.house.name}</b></li>}
-                  {data.batchLabel && <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><Users className="h-4 w-4 text-indigo-500" /> Batch: <b className="font-semibold text-gray-900">{data.batchLabel}</b></li>}
-                </ul>
-              </div>
-            </Card>
-
             {/* Achievements */}
             <Card>
               <SectionTitle>{data.name.split(" ")[0]}&apos;s Achievements</SectionTitle>
