@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("signup error:", e);
     return NextResponse.json(
-      { error: "Something went wrong", debug: String((e as Error)?.message ?? e), host: (process.env.DATABASE_URL ?? "").replace(/:[^:@/]*@/, ":***@") },
+      { error: "Something went wrong" },
       { status: 500 },
     );
   }
