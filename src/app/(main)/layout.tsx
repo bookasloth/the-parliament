@@ -1,15 +1,48 @@
-import { PrivateNavbar } from "@/components/shared/PrivateNavbar"
+import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNavbar"
+import { optionalUser } from "@/modules/auth/session"
+import { prisma } from "@/lib/prisma"
 
-/**
- * Layout for all authenticated (gated) pages.
- * The private navbar renders on every page in this route group;
- * it scrolls away naturally so each page's own sticky sub-header
- * (back button, page title) takes over on scroll.
- */
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+const TIERS = ["student", "associate", "premium", "life", "inactive", "committee"] as const
+type Tier = (typeof TIERS)[number]
+
+export default async function MainLayout({ children }: { children: React.ReactNode }) {
+  const session = await optionalUser()
+  let viewer: NavbarViewer | null = null
+  if (session?.id) {
+    const u = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: {
+        displayName: true,
+        legalName: true,
+        username: true,
+        membershipStatus: true,
+        profile: {
+          select: {
+            photoUrl: true,
+            batch: { select: { label: true } },
+          },
+        },
+      },
+    })
+    if (u) {
+      const name = u.displayName || u.legalName
+      const tier = (TIERS as readonly string[]).includes(u.membershipStatus)
+        ? (u.membershipStatus as Tier)
+        : "associate"
+      viewer = {
+        name,
+        batch: u.profile?.batch?.label ? `Batch ${u.profile.batch.label}` : "—",
+        avatar:
+          u.profile?.photoUrl ??
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
+        membership: tier,
+        username: u.username ?? "",
+      }
+    }
+  }
   return (
     <>
-      <PrivateNavbar />
+      <PrivateNavbar viewer={viewer} />
       {children}
     </>
   )

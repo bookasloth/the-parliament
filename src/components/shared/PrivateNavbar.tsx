@@ -61,12 +61,20 @@ const MEMBERSHIP_META: Record<MembershipTier, {
   },
 }
 
-// Demo current user (auth disabled for UI testing)
-const currentUser = {
-  name: "Shubham Datarkar",
-  batch: "Batch No. 21",
-  avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-  membership: "premium" as MembershipTier,
+export type NavbarViewer = {
+  name: string
+  batch: string
+  avatar: string
+  membership: MembershipTier
+  username: string
+}
+
+const FALLBACK_VIEWER: NavbarViewer = {
+  name: "Guest",
+  batch: "—",
+  avatar: "https://ui-avatars.com/api/?name=Guest",
+  membership: "associate",
+  username: "",
 }
 
 /* ---------------- Search scopes (Quora-style) ---------------- */
@@ -195,7 +203,9 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
 }
 
 /* ---------------- Private Navbar ---------------- */
-export function PrivateNavbar() {
+export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {}) {
+  const currentUser = viewer ?? FALLBACK_VIEWER
+  const profileHref = currentUser.username ? `/${currentUser.username}` : "/profile/edit"
   const pathname = usePathname()
   const [query, setQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
@@ -352,7 +362,7 @@ export function PrivateNavbar() {
                   <div className="flex items-center gap-3 mb-3">
                     <img src={currentUser.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
                     <div className="min-w-0">
-                      <a href="/shubham-datarkar" className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
+                      <a href={profileHref} className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
                         {currentUser.name}
                       </a>
                       <p className="text-xs text-gray-500">{currentUser.batch}</p>
@@ -360,7 +370,7 @@ export function PrivateNavbar() {
                   </div>
 
                   <a
-                    href="/shubham-datarkar"
+                    href={profileHref}
                     className="block w-full rounded-lg bg-brand/10 px-3 py-2 text-center text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors mb-2"
                   >
                     View Your Profile
