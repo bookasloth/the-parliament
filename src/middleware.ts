@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt"
 
 const ONBOARDING_STEPS = ["profile", "jnv", "interests", "membership", "complete"] as const
 const ONBOARDING_ROUTES = ONBOARDING_STEPS.map((s) => `/onboarding/${s}`)
-const PUBLIC_ROUTES = new Set(["/", "/auth/signin", "/auth/signup"])
+const PUBLIC_ROUTES = new Set(["/", "/auth/signin", "/auth/signup", "/auth/forgot", "/auth/reset"])
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl

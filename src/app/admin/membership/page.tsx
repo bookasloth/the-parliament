@@ -55,6 +55,27 @@ export default function AdminMembershipPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [refundDecisions, setRefundDecisions] = useState<Record<string, "approved" | "rejected">>({})
+  const [blasting, setBlasting] = useState(false)
+
+  async function sendActivation(force = false): Promise<void> {
+    const msg = force
+      ? "Force-send account-activation emails NOW to every member without a password?"
+      : "Send account-activation emails? (Scheduled for 14 Aug 2026 — will be refused before then.)"
+    if (!confirm(msg)) return
+    setBlasting(true)
+    const res = await fetch("/api/admin/activation-blast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ force }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBlasting(false)
+    if (!res.ok) {
+      if (confirm((data.error ?? "Failed") + "\n\nForce-send now instead?")) return sendActivation(true)
+      return
+    }
+    alert(`Activation emails: ${data.sent} sent, ${data.failed} failed (of ${data.targeted} members).`)
+  }
 
   const totalMembers = planDistribution.reduce((a, p) => a + p.count, 0)
 
@@ -78,6 +99,13 @@ export default function AdminMembershipPage() {
             </button>
             <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
               <RefreshCcw className="h-3.5 w-3.5" /> Sync Razorpay
+            </button>
+            <button
+              onClick={() => sendActivation()}
+              disabled={blasting}
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              <Mail className="h-3.5 w-3.5" /> {blasting ? "Sending…" : "Send activation emails"}
             </button>
           </>
         }

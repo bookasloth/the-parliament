@@ -66,6 +66,9 @@ function SignInFormInner() {
       >
         {loading ? "Signing in..." : "Sign In"}
       </button>
+      <a href="/auth/forgot" className="block text-center text-xs text-gray-500 hover:underline">
+        Forgot password?
+      </a>
       <p className="text-center text-xs text-gray-500">
         No account?{" "}
         <a href="/auth/signup" className="text-blue-600 hover:underline">Sign up</a>

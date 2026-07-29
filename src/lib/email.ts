@@ -7,6 +7,7 @@ type EmailTemplate<T> = {
 }
 
 export type EmailTemplates = {
+  password_reset: { legalName: string; resetUrl: string; isNew: boolean }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
   connection_request: { fromName: string; profileUrl: string }
@@ -29,6 +30,18 @@ const baseLayout = (body: string) => `
 `
 
 const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]> } = {
+  password_reset: {
+    subject: (d) => (d.isNew ? "Set your NNAWCA password" : "Reset your NNAWCA password"),
+    text: (d) =>
+      `Hi ${d.legalName},\n\n${d.isNew ? "Welcome to The Parliament. Set your password to activate your account:" : "Reset your password:"}\n${d.resetUrl}\n\nThis link expires soon. If you didn't request this, ignore this email.`,
+    html: (d) =>
+      baseLayout(
+        `<h2 style="margin:0 0 12px;color:#0f172a">${d.isNew ? "Activate your account" : "Reset your password"}</h2>
+         <p style="color:#374151">Hi ${d.legalName}, ${d.isNew ? "set your password to start using The Parliament." : "click below to set a new password."}</p>
+         <p><a href="${d.resetUrl}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${d.isNew ? "Set my password" : "Reset password"}</a></p>
+         <p style="color:#6b7280;font-size:12px">This link expires soon. If you didn't request this, ignore this email.</p>`,
+      ),
+  },
   verification_approved: {
     subject: () => "Your NNAWCA verification was approved",
     text: (d) =>
