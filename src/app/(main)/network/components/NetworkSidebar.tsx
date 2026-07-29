@@ -2,7 +2,15 @@ import Link from "next/link"
 import {
   Users, UserPlus, Layers, Calendar, MapPin, Building2, Mail, ChevronRight,
 } from "lucide-react"
-import { sidebarNav, me } from "../network-data"
+import { sidebarNav } from "../network-data"
+
+export interface NetworkMe {
+  name: string
+  username: string
+  headline: string
+  avatar: string
+  connections: number
+}
 
 const ICONS = {
   users: Users,
@@ -14,7 +22,7 @@ const ICONS = {
   mail: Mail,
 } as const
 
-export function NetworkSidebar() {
+export function NetworkSidebar({ me }: { me: NetworkMe }) {
   return (
     <nav aria-label="Manage your network" className="space-y-4">
       {/* Profile mini-card */}

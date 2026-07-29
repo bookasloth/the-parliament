@@ -3,6 +3,8 @@ import type { AlumniCard, Membership } from "@/lib/homepage-data"
 /** A person surfaced in discovery / suggestions. */
 export interface NetworkAlumni {
   id: string
+  /** Real user UUID for connection requests (id is the username, used for links). */
+  userId?: string
   name: string
   username: string
   batch: string
