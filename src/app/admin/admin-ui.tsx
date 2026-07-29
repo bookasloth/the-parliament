@@ -75,6 +75,7 @@ export function StatusBadge({ status }: { status: string }) {
     draft: "bg-slate-100 text-slate-600 border-slate-200",
     past: "bg-slate-100 text-slate-600 border-slate-200",
     free: "bg-slate-100 text-slate-600 border-slate-200",
+    student: "bg-green-50 text-green-700 border-green-200",
     archived: "bg-slate-100 text-slate-600 border-slate-200",
     private: "bg-violet-50 text-violet-700 border-violet-200",
     premium: "bg-indigo-50 text-indigo-700 border-indigo-200",

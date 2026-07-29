@@ -28,17 +28,17 @@ export const MOCK_USERS: AdminUser[] = [
   { id: "u2", name: "Dr. Amit Verma", email: "amit.verma@gmail.com", username: "amit-verma", batch: "2005", house: "Aravali", houseColor: "#5a9bd5", membership: "life", status: "active", karma: 2890, joined: "Dec 2024", lastActive: "1 hr ago" },
   { id: "u3", name: "Priya Sharma", email: "priya.s@outlook.com", username: "priya-sharma", batch: "2010", house: "Nilgiri", houseColor: "#70ad47", membership: "associate", status: "active", karma: 876, joined: "Feb 2025", lastActive: "Today" },
   { id: "u4", name: "Vikram Singh", email: "vikram.singh@gmail.com", username: "vikram-singh", batch: "2007", house: "Shiwalik", houseColor: "#e8503a", membership: "premium", status: "active", karma: 1530, joined: "Jan 2025", lastActive: "Yesterday" },
-  { id: "u5", name: "Ananya Deshmukh", email: "ananya.d@gmail.com", username: "ananya-deshmukh", batch: "2016", house: "Indira", houseColor: "#ff9933", membership: "free", status: "pending", karma: 12, joined: "Today", lastActive: "12 min ago" },
-  { id: "u6", name: "Rohan Kulkarni", email: "rohan.k@outlook.com", username: "rohan-kulkarni", batch: "2011", house: "Laxmi", houseColor: "#e75480", membership: "free", status: "pending", karma: 0, joined: "Today", lastActive: "1 hr ago" },
-  { id: "u7", name: "Rahul Mehta", email: "rahul.mehta@gmail.com", username: "rahul-mehta", batch: "2012", house: "Aravali", houseColor: "#5a9bd5", membership: "free", status: "active", karma: 445, joined: "Mar 2025", lastActive: "3 days ago" },
+  { id: "u5", name: "Ananya Deshmukh", email: "ananya.d@gmail.com", username: "ananya-deshmukh", batch: "2016", house: "Indira", houseColor: "#ff9933", membership: "student", status: "pending", karma: 12, joined: "Today", lastActive: "12 min ago" },
+  { id: "u6", name: "Rohan Kulkarni", email: "rohan.k@outlook.com", username: "rohan-kulkarni", batch: "2011", house: "Laxmi", houseColor: "#e75480", membership: "student", status: "pending", karma: 0, joined: "Today", lastActive: "1 hr ago" },
+  { id: "u7", name: "Rahul Mehta", email: "rahul.mehta@gmail.com", username: "rahul-mehta", batch: "2012", house: "Aravali", houseColor: "#5a9bd5", membership: "student", status: "active", karma: 445, joined: "Mar 2025", lastActive: "3 days ago" },
   { id: "u8", name: "Sunita Patel", email: "sunita.p@gmail.com", username: "sunita-patel", batch: "2009", house: "Nilgiri", houseColor: "#70ad47", membership: "associate", status: "active", karma: 990, joined: "Feb 2025", lastActive: "Today" },
-  { id: "u9", name: "Deepak Wankhede", email: "deepak.w@gmail.com", username: "deepak-wankhede", batch: "2014", house: "Shiwalik", houseColor: "#e8503a", membership: "free", status: "suspended", karma: -45, joined: "Jan 2025", lastActive: "2 weeks ago" },
-  { id: "u10", name: "Kavya Reddy", email: "kavya.r@gmail.com", username: "kavya-reddy", batch: "2013", house: "Udaigiri", houseColor: "#ffe135", membership: "free", status: "active", karma: 230, joined: "Apr 2025", lastActive: "5 hrs ago" },
+  { id: "u9", name: "Deepak Wankhede", email: "deepak.w@gmail.com", username: "deepak-wankhede", batch: "2014", house: "Shiwalik", houseColor: "#e8503a", membership: "student", status: "suspended", karma: -45, joined: "Jan 2025", lastActive: "2 weeks ago" },
+  { id: "u10", name: "Kavya Reddy", email: "kavya.r@gmail.com", username: "kavya-reddy", batch: "2013", house: "Udaigiri", houseColor: "#ffe135", membership: "student", status: "active", karma: 230, joined: "Apr 2025", lastActive: "5 hrs ago" },
 ]
 
 const HOUSES = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Indira", "Laxmi"]
 const STATUSES = ["All Statuses", "active", "pending", "suspended"]
-const MEMBERSHIPS = ["All Plans", "free", "associate", "premium", "life"]
+const MEMBERSHIPS = ["All Plans", "student", "associate", "premium", "life"]
 
 export default function AdminUsersClient({
   users = MOCK_USERS,

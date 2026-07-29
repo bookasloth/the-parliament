@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   CheckCircle, Star, Crown, Award, BadgeCheck, Sparkles,
   ChevronDown, ChevronUp, CreditCard, Shield, Lock, X, Check,
@@ -87,7 +87,7 @@ const faqs = [
   },
   {
     q: "What happens when my subscription expires?",
-    a: "You enter a 30-day grace period during which benefits remain active. If you don't renew, your account reverts to Free Member — your posts, connections, and profile stay intact, only premium features are restricted.",
+    a: "You enter a 30-day grace period during which benefits remain active. If you don't renew, your account reverts to Student — your posts, connections, and profile stay intact, only premium features are restricted.",
   },
   {
     q: "How is Life Membership different from annual Premium?",
@@ -115,10 +115,16 @@ const faqs = [
   },
 ]
 
-const currentPlan: PaidPlan | "free" = "free"
-
 export default function MembershipPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  // Real tier from the session; defaults to student until loaded.
+  const [currentPlan, setCurrentPlan] = useState<string>("student")
+  useEffect(() => {
+    fetch("/api/membership/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.planCode) setCurrentPlan(d.planCode) })
+      .catch(() => {})
+  }, [])
   const [selectedPlan, setSelectedPlan] = useState<PaidPlan | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [acknowledgedNonRefundable, setAcknowledgedNonRefundable] = useState(false)
@@ -175,7 +181,7 @@ export default function MembershipPage() {
 
                   <button
                     disabled={!acknowledgedNonRefundable}
-                    onClick={() => { window.location.href = "/membership/checkout" }}
+                    onClick={() => { window.location.href = `/membership/checkout?plan=${selectedPlan}` }}
                     className={`w-full rounded-xl py-3 text-sm font-bold text-white transition-opacity mb-2 bg-gradient-to-r ${tierBg} ${acknowledgedNonRefundable ? "hover:opacity-95" : "opacity-40 cursor-not-allowed"}`}
                   >
                     <CreditCard className="inline h-4 w-4 mr-2" />Continue to Payment
@@ -214,9 +220,9 @@ export default function MembershipPage() {
             Membership is a contribution to the Nagpur Navodaya Alumni Welfare and Charitable Association — funding scholarships, events, mentorship, and the platform itself.
           </p>
 
-          {currentPlan === "free" ? (
+          {currentPlan === "student" ? (
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-semibold text-white/80">
-              <Heart className="h-3.5 w-3.5 text-[#f3d56e]" /> You're a Free Member · upgrade to contribute
+              <Heart className="h-3.5 w-3.5 text-[#f3d56e]" /> You're a Student member · upgrade to contribute
             </div>
           ) : (
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-4 py-1.5 text-xs font-semibold text-emerald-300">

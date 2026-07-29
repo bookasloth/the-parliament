@@ -20,7 +20,7 @@ export interface ActivePlanResolution {
   benefitTier: BenefitTier
   endsAt: Date | null
   inGrace: boolean
-  source: "user_field" | "membership_row" | "default_free"
+  source: "user_field" | "membership_row" | "default_student"
 }
 
 export function academicYearFor(date: Date = new Date()): { startYear: number; endYear: number; label: string } {
@@ -64,7 +64,7 @@ export function resolveActivePlan(
   const active = memberships.filter((m) => m.status === "active")
 
   for (const code of TIER_PRECEDENCE) {
-    if (code === "free" || code === "inactive") continue
+    if (code === "student" || code === "inactive") continue
     const row = active.find((m) => m.planCode === code)
     if (!row) continue
 
@@ -88,7 +88,7 @@ export function resolveActivePlan(
     }
   }
 
-  return { planCode: "free", benefitTier: "base", endsAt: null, inGrace: false, source: "default_free" }
+  return { planCode: "student", benefitTier: "base", endsAt: null, inGrace: false, source: "default_student" }
 }
 
 export function benefitsForTier(tier: BenefitTier) {

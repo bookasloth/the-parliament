@@ -116,7 +116,7 @@ model User {
   onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
   profileCompletion    Int       @default(0) @map("profile_completion")
   verificationStatus   String    @default("pending") @map("verification_status") @db.VarChar(20)
-  membershipStatus     String    @default("free") @map("membership_status") @db.VarChar(20)
+  membershipStatus     String    @default("student") @map("membership_status") @db.VarChar(20)
   membershipExpiresAt  DateTime? @map("membership_expires_at") @db.Timestamptz
   membershipCycleStart DateTime? @map("membership_cycle_start") @db.Timestamptz
   benefitTier          String    @default("base") @map("benefit_tier") @db.VarChar(20)

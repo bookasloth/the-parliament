@@ -38,7 +38,7 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
       where: { id: input.userId },
       select: { membershipStatus: true, benefitTier: true },
     })
-    const previousPlanCode = (user?.membershipStatus ?? "free") as PlanCode
+    const previousPlanCode = (user?.membershipStatus ?? "student") as PlanCode
 
     await tx.membership.updateMany({
       where: { userId: input.userId, status: "active" },
@@ -111,7 +111,7 @@ function eventTypeFor(source: ActivateInput["source"], prev: PlanCode, next: Pla
   if (source === "renewal") return "renewed"
   if (source === "admin_grant") return "granted"
   if (source === "comp") return "granted"
-  if (prev === "free") return "purchased"
+  if (prev === "student") return "purchased"
   if (prev === "associate" && next === "premium") return "upgraded"
   if (next === "life" && (prev === "associate" || prev === "premium")) return "upgraded"
   return "purchased"
@@ -156,7 +156,7 @@ export async function expireMembership(membershipId: string, actorUserId?: strin
 
     await tx.user.update({
       where: { id: m.userId },
-      data: { membershipStatus: "free", benefitTier: "base" },
+      data: { membershipStatus: "student", benefitTier: "base" },
     })
 
     await tx.membershipEvent.create({
@@ -164,7 +164,7 @@ export async function expireMembership(membershipId: string, actorUserId?: strin
         userId: m.userId,
         type: "expired",
         prevPlan: m.planCode,
-        newPlan: "free",
+        newPlan: "student",
         actorUserId,
       },
     })

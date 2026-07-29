@@ -1,4 +1,4 @@
-export type PlanCode = "free" | "associate" | "premium" | "life" | "committee" | "inactive"
+export type PlanCode = "student" | "associate" | "premium" | "life" | "committee" | "inactive"
 export type BenefitTier = "base" | "associate" | "premium"
 
 export interface Benefits {
@@ -102,9 +102,9 @@ export interface PlanDefinition {
 const inr = (rupees: number) => rupees * 100
 
 export const PLANS: Record<PlanCode, PlanDefinition> = {
-  free: {
-    code: "free",
-    displayName: "Free Member",
+  student: {
+    code: "student",
+    displayName: "Student",
     benefitTier: "base",
     priceInr: 0,
     pricePaise: 0,
@@ -113,7 +113,8 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     isOneTime: false,
     durationDays: null,
     razorpayPlanId: null,
-    description: "Default for every alumnus on signup. Permanent, no renewal.",
+    description:
+      "Default for every alumnus on signup and for recent graduates (within 5 years of passing out). Permanent, free, no renewal.",
   },
   associate: {
     code: "associate",
@@ -182,9 +183,35 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
   },
 }
 
-export const TIER_PRECEDENCE: PlanCode[] = ["inactive", "committee", "life", "premium", "associate", "free"]
+export const TIER_PRECEDENCE: PlanCode[] = ["inactive", "committee", "life", "premium", "associate", "student"]
 
 export const PURCHASABLE_PLANS: PlanCode[] = ["associate", "premium", "life"]
+
+/** The default free tier every user falls back to (new signups, expired members). */
+export const DEFAULT_PLAN: PlanCode = "student"
+
+/** A graduate is treated as a Student for this many years after passing out. */
+export const RECENT_GRAD_YEARS = 5
+
+/** True if the user passed out within RECENT_GRAD_YEARS of `now` (auto-Student). */
+export function isRecentGraduate(passOutYear: number | null | undefined, now: Date = new Date()): boolean {
+  if (!passOutYear) return false
+  return now.getFullYear() - passOutYear <= RECENT_GRAD_YEARS
+}
+
+/** The next tier a member can upgrade to, or null if already at the top (life/committee). */
+export function nextUpgradeTier(code: PlanCode): PlanCode | null {
+  switch (code) {
+    case "student":
+      return "associate"
+    case "associate":
+      return "premium"
+    case "premium":
+      return "life"
+    default:
+      return null // life, committee, inactive — no upgrade
+  }
+}
 
 export const MEMBERSHIP_GRACE_DAYS = 30
 export const COMMITTEE_INVITE_TTL_DAYS = 7

@@ -160,7 +160,7 @@ async function upsellNudgeHandler() {
 
     const freeUsers = await prisma.user.findMany({
       where: {
-        membershipStatus: "free",
+        membershipStatus: "student",
         status: "active",
         createdAt: { gte: cohortStart, lt: cohortEnd },
         deletedAt: null,

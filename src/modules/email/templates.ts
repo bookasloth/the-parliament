@@ -122,6 +122,6 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     html: baseLayout(`<h2 style="margin:0 0 12px;color:#0f172a">Renewal in 7 days</h2>
 <p style="color:#374151">Hi {{firstName}}, your {{planName}} membership expires on <strong>{{expiresOn}}</strong>.</p>
 <p><a href="{{renewUrl}}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Renew now</a></p>
-<p style="color:#6b7280;font-size:12px">If you don't renew, you'll enter a 30-day grace period before reverting to Free Member.</p>`),
+<p style="color:#6b7280;font-size:12px">If you don't renew, you'll enter a 30-day grace period before reverting to Student.</p>`),
   },
 ]

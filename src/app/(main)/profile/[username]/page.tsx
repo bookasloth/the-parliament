@@ -25,8 +25,10 @@ function resolveMembership(status: string): ProfileViewData["membership"] {
       return { label: "Associate", tier: "associate" }
     case "committee":
       return { label: "Committee", tier: "committee" }
+    case "student":
+      return { label: "Student", tier: "student" }
     default:
-      return { label: "Free", tier: "inactive" }
+      return { label: "Student", tier: "student" }
   }
 }
 

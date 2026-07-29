@@ -78,7 +78,7 @@ export async function getCurrent(userId: string): Promise<CurrentMembership> {
 function upgradeOptionsFor(current: PlanCode): UpgradeOption[] {
   const options: UpgradeOption[] = []
 
-  if (current === "free") {
+  if (current === "student") {
     options.push(
       { toPlanCode: "associate", displayName: PLANS.associate.displayName, fullPriceInr: PLANS.associate.priceInr, payInr: PLANS.associate.priceInr, note: "Annual auto-renew" },
       { toPlanCode: "premium", displayName: PLANS.premium.displayName, fullPriceInr: PLANS.premium.priceInr, payInr: PLANS.premium.priceInr, note: "Annual auto-renew · Recommended" },
