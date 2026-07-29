@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
+import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import {
   Briefcase,
   MapPin,
@@ -314,13 +315,14 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
             <div className="flex flex-wrap items-end justify-between gap-3.5">
               <div>
                 {/* avatar with membership-colored ring */}
-                <div className="-mt-[62px] inline-block rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
+                <div className="relative -mt-[62px] inline-block rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
                   {data.photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" />
                   ) : (
                     <div className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
                   )}
+                  {data.owner && <AvatarUploader />}
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <h1 className="font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
