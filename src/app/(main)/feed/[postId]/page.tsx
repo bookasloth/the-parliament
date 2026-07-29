@@ -313,7 +313,7 @@ export default function PostDetailPage() {
               <div className="px-4 sm:px-5 pt-5 pb-3 bg-amber-50/30">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <a href={`/profile/${post.username}`} className="flex-shrink-0">
+                    <a href={`/${post.username}`} className="flex-shrink-0">
                       <img src={post.avatar} alt={post.name}
                         className="h-12 w-12 rounded-full object-cover"
                         style={{ border: `2px solid ${avatarBorderColors[post.borderType]}` }}
@@ -321,7 +321,7 @@ export default function PostDetailPage() {
                     </a>
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <a href={`/profile/${post.username}`} className="text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{post.name}</a>
+                        <a href={`/${post.username}`} className="text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{post.name}</a>
                         <ShieldCheck className="h-3.5 w-3.5 text-blue-500 fill-blue-100" />
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">{post.headline}</p>
@@ -499,7 +499,7 @@ export default function PostDetailPage() {
                     className="h-14 w-14 rounded-full object-cover border-2 border-white"
                     style={{ outline: `2px solid ${avatarBorderColors[post.borderType]}` }}
                   />
-                  <a href={`/profile/${post.username}`} className="rounded-full border border-brand px-3 py-1 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors">
+                  <a href={`/${post.username}`} className="rounded-full border border-brand px-3 py-1 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors">
                     View Profile
                   </a>
                 </div>

@@ -172,13 +172,13 @@ export default function ChapterDetailPage() {
                   >
                     <AlumniProfileCard
                       alumni={m.card}
-                      profileHref={`/profile/${m.card.id}`}
+                      profileHref={`/${m.card.id}`}
                       verified={m.verified}
                       footer={m.role ? <p className="text-xs font-medium text-brand">{m.role}</p> : undefined}
                       actions={
                         <>
                           <a
-                            href={`/profile/${m.card.id}`}
+                            href={`/${m.card.id}`}
                             className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all duration-300 hover:bg-brand hover:text-white"
                           >
                             View Profile

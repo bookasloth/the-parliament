@@ -227,7 +227,7 @@ export default function DirectoryClient({ alumni = MOCK_ALUMNI }: { alumni?: Dir
                 >
                   <AlumniProfileCard
                     alumni={toCard(a)}
-                    profileHref={`/profile/${a.id}`}
+                    profileHref={`/${a.id}`}
                     verified={a.isVerified}
                     footer={
                       <p className="text-xs text-gray-400">
@@ -238,7 +238,7 @@ export default function DirectoryClient({ alumni = MOCK_ALUMNI }: { alumni?: Dir
                     actions={
                       <>
                         <a
-                          href={`/profile/${a.id}`}
+                          href={`/${a.id}`}
                           className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
                         >
                           View Profile
@@ -261,14 +261,14 @@ export default function DirectoryClient({ alumni = MOCK_ALUMNI }: { alumni?: Dir
           <div className="space-y-2">
             {filtered.map(a => (
               <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
-                <a href={`/profile/${a.id}`} className="flex-shrink-0">
+                <a href={`/${a.id}`} className="flex-shrink-0">
                   <img src={a.avatar} alt={a.name}
                     className="h-12 w-12 rounded-full object-cover"
                     style={{ border: `2.5px solid ${a.borderColor}` }} />
                 </a>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <a href={`/profile/${a.id}`} className="text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{a.name}</a>
+                    <a href={`/${a.id}`} className="text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{a.name}</a>
                     {a.isVerified && <ShieldCheck className="h-3.5 w-3.5 text-blue-500 fill-blue-100 flex-shrink-0" />}
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: a.houseColor, color: a.house === "Udaigiri" ? "#666" : "white" }}>
                       {a.house}

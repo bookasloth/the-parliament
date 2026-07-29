@@ -19,7 +19,7 @@ interface AlumniCardProps {
 
 export function AlumniCard({ alumni, connected, dismissed, onConnect, onDismiss }: AlumniCardProps) {
   const router = useRouter()
-  const profileHref = `/profile/${alumni.username}`
+  const profileHref = `/${alumni.username}`
   const banner = HOUSE_BANNER[alumni.house] ?? "#009ae4"
   const badge = MEMBERSHIP_BADGE[alumni.membership]
 

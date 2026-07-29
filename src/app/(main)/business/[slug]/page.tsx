@@ -47,7 +47,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
           <p className="mt-5 text-xs text-gray-400">
             Owned by{" "}
-            <Link href={`/profile/${b.owner.username}`} className="text-gray-600 hover:underline">{b.owner.displayName || b.owner.legalName}</Link>
+            <Link href={`/${b.owner.username}`} className="text-gray-600 hover:underline">{b.owner.displayName || b.owner.legalName}</Link>
             {" · listed "}{fmt(new Date(b.createdAt))}
           </p>
         </div>

@@ -19,7 +19,7 @@ export function NetworkSidebar() {
     <nav aria-label="Manage your network" className="space-y-4">
       {/* Profile mini-card */}
       <Link
-        href={`/profile/${me.username}`}
+        href={`/${me.username}`}
         className="block bg-white border border-gray-200 rounded-xl p-4 hover:shadow-card transition-shadow"
       >
         <div className="flex items-center gap-3">

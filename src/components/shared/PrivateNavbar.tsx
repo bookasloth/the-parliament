@@ -352,7 +352,7 @@ export function PrivateNavbar() {
                   <div className="flex items-center gap-3 mb-3">
                     <img src={currentUser.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
                     <div className="min-w-0">
-                      <a href="/profile/shubham-datarkar" className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
+                      <a href="/shubham-datarkar" className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
                         {currentUser.name}
                       </a>
                       <p className="text-xs text-gray-500">{currentUser.batch}</p>
@@ -360,7 +360,7 @@ export function PrivateNavbar() {
                   </div>
 
                   <a
-                    href="/profile/shubham-datarkar"
+                    href="/shubham-datarkar"
                     className="block w-full rounded-lg bg-brand/10 px-3 py-2 text-center text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors mb-2"
                   >
                     View Your Profile

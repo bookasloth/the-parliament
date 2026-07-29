@@ -20,14 +20,14 @@ export function ActivityCard({ entry }: { entry: ActivityEntry }) {
   const Icon = TYPE_ICON[entry.type]
   return (
     <li className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50">
-      <Link href={`/profile/${entry.username}`} className="relative flex-shrink-0">
+      <Link href={`/${entry.username}`} className="relative flex-shrink-0">
         <img src={entry.avatar} alt={entry.name} loading="lazy" className="h-10 w-10 rounded-full object-cover" />
         <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-brand text-white ring-2 ring-white">
           <Icon className="h-3 w-3" />
         </span>
       </Link>
       <p className="min-w-0 flex-1 text-sm text-gray-700">
-        <Link href={`/profile/${entry.username}`} className="font-semibold text-gray-900 hover:text-brand transition-colors">{entry.name}</Link>{" "}
+        <Link href={`/${entry.username}`} className="font-semibold text-gray-900 hover:text-brand transition-colors">{entry.name}</Link>{" "}
         {entry.action}
         <span className="block text-xs text-gray-400">{entry.when}</span>
       </p>

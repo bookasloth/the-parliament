@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCurrent } from "@/modules/membership/service"
+import { colorAvatar } from "@/lib/avatar"
 import type { PlanCode } from "@/config/membership"
 import { ProfileView, type ProfileViewData } from "./profile-view"
 
@@ -122,7 +123,7 @@ export default async function ProfilePage({
       .join("")
       .slice(0, 2)
       .toUpperCase(),
-    photoUrl: p?.photoUrl ?? null,
+    photoUrl: p?.photoUrl || colorAvatar(user.id),
     coverUrl: p?.coverUrl ?? null,
     headline: p?.headline ?? p?.designation ?? p?.profession ?? null,
     profession: p?.profession ?? null,

@@ -190,7 +190,7 @@ export default function ConnectionsClient({
     } else {
       actions = (
         <>
-          <a href={`/profile/${user.id}`}
+          <a href={`/${user.id}`}
             className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300">
             View Profile
           </a>
@@ -211,7 +211,7 @@ export default function ConnectionsClient({
       <div className={`transition-opacity ${isRemoved ? "opacity-60" : ""}`}>
         <AlumniProfileCard
           alumni={toCard(user)}
-          profileHref={`/profile/${user.id}`}
+          profileHref={`/${user.id}`}
           footer={footer}
           actions={actions}
         />

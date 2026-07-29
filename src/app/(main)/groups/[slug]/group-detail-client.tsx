@@ -349,7 +349,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
                   >
                     <AlumniProfileCard
                       alumni={m.card}
-                      profileHref={`/profile/${m.card.id}`}
+                      profileHref={`/${m.card.id}`}
                       verified={m.verified}
                       footer={
                         m.role ? (
@@ -361,7 +361,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
                       actions={
                         <>
                           <a
-                            href={`/profile/${m.card.id}`}
+                            href={`/${m.card.id}`}
                             className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
                           >
                             View Profile

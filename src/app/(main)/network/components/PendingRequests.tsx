@@ -71,11 +71,11 @@ export function PendingRequests({ incoming, sent }: PendingRequestsProps) {
                 const state = resolved[r.id]
                 return (
                   <li key={r.id} className="flex items-center gap-3 rounded-lg border border-gray-100 p-2.5">
-                    <Link href={`/profile/${r.username}`} className="flex-shrink-0">
+                    <Link href={`/${r.username}`} className="flex-shrink-0">
                       <img src={r.avatar} alt={r.name} loading="lazy" className="h-11 w-11 rounded-full object-cover" style={{ boxShadow: `0 0 0 2px ${HOUSE_BANNER[r.house] ?? "#e5e7eb"}` }} />
                     </Link>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/profile/${r.username}`} className="block truncate text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{r.name}</Link>
+                      <Link href={`/${r.username}`} className="block truncate text-sm font-semibold text-gray-900 hover:text-brand transition-colors">{r.name}</Link>
                       <p className="truncate text-xs text-gray-500">{r.batch} · {r.mutualCount} mutual</p>
                       <p className="flex items-center gap-1 text-[11px] text-gray-400"><Clock className="h-3 w-3" /> {r.when}</p>
                     </div>

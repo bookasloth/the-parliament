@@ -150,9 +150,9 @@ export const sentRequests: PendingRequest[] = [
 ]
 
 export const recentActivity: ActivityEntry[] = [
-  { id: "a1", name: "Raj Khanna", username: "raj-khanna", avatar: AV("1633332755192-727a05c4013d"), action: "joined the alumni association", when: "1h ago", type: "join", href: "/profile/raj-khanna" },
+  { id: "a1", name: "Raj Khanna", username: "raj-khanna", avatar: AV("1633332755192-727a05c4013d"), action: "joined the alumni association", when: "1h ago", type: "join", href: "/raj-khanna" },
   { id: "a2", name: "Priya Nair", username: "priya-nair", avatar: AV("1573496359142-b8d87734a5a2"), action: "attended Annual Meet 2026", when: "3h ago", type: "event", href: "/events/annual-meet-2026" },
-  { id: "a3", name: "Amit Verma", username: "amit-verma", avatar: AV("1607990281513-2c110a25bd8c"), action: "earned the Mentor badge", when: "6h ago", type: "badge", href: "/profile/amit-verma" },
+  { id: "a3", name: "Amit Verma", username: "amit-verma", avatar: AV("1607990281513-2c110a25bd8c"), action: "earned the Mentor badge", when: "6h ago", type: "badge", href: "/amit-verma" },
   { id: "a4", name: "Neha Gupta", username: "neha-gupta", avatar: AV("1559839734-2b71ea197ec2"), action: "published a post", when: "1d ago", type: "post", href: "/feed" },
   { id: "a5", name: "Karan Malhotra", username: "karan-malhotra", avatar: AV("1472099645785-5658abf4ff4e"), action: "joined the Mumbai Chapter", when: "2d ago", type: "join", href: "/network" },
 ]

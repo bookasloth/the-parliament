@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
+import { colorAvatar } from "@/lib/avatar";
 
 function generateUsername(name: string): string {
   const base = name
@@ -13,8 +14,17 @@ function generateUsername(name: string): string {
   return base || `user-${Date.now().toString(36)}`;
 }
 
+// Profiles live at the root (/<username>), so a username must not shadow a route.
+const RESERVED_USERNAMES = new Set([
+  "feed", "directory", "connections", "business", "businesses", "events", "groups",
+  "membership", "notifications", "settings", "compose", "messages", "network",
+  "profile", "admin", "auth", "api", "onboarding", "companies",
+]);
+
 async function ensureUniqueUsername(base: string): Promise<string> {
-  const existing = await prisma.user.findUnique({ where: { username: base } });
+  const existing = RESERVED_USERNAMES.has(base)
+    ? true
+    : await prisma.user.findUnique({ where: { username: base } });
   if (!existing) return base;
   for (let i = 2; i < 100; i++) {
     const candidate = `${base}-${i}`;
@@ -47,7 +57,7 @@ export async function POST(req: Request) {
     const baseUsername = generateUsername(name);
     const username = await ensureUniqueUsername(baseUsername);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         legalName: name,
         email,
@@ -57,6 +67,13 @@ export async function POST(req: Request) {
         status: "active",
         onboardingStep: "profile",
       },
+    });
+
+    // Give new members a default colour avatar (shown until they upload a photo).
+    await prisma.profile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id, photoUrl: colorAvatar(user.id) },
     });
 
     return NextResponse.json({ ok: true });
