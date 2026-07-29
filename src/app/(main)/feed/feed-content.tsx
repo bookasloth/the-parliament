@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
+import { reactToPost, commentOnPost } from "./actions"
 
 interface Connection {
   name: string
@@ -22,7 +23,7 @@ interface Connection {
 }
 
 // --- Data ---
-const feedPosts: FeedPost[] = [
+export const MOCK_POSTS: FeedPost[] = [
   {
     id: "1",
     name: "Shubham Datarkar",
@@ -268,7 +269,13 @@ function LeftSidebar({ userName }: { userName: string }) {
 }
 
 // --- FeedContent ---
-export function FeedContent({ userName }: { userName: string }) {
+export function FeedContent({
+  userName,
+  posts = MOCK_POSTS,
+}: {
+  userName: string
+  posts?: FeedPost[]
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -309,9 +316,29 @@ export function FeedContent({ userName }: { userName: string }) {
             {/* Standard compose trigger */}
             <ComposeTrigger />
 
-            {feedPosts.map((post) => (
-              <FeedCard key={post.id} post={post} />
-            ))}
+            {posts.map((post) => {
+              const isReal = post.id.length > 10 // real DB rows use UUIDs; mock rows use "1".."6"
+              return (
+                <FeedCard
+                  key={post.id}
+                  post={post}
+                  onUpvote={
+                    isReal
+                      ? () => {
+                          void reactToPost(post.id, "upvote")
+                        }
+                      : undefined
+                  }
+                  onComment={
+                    isReal
+                      ? (body) => {
+                          void commentOnPost(post.id, body)
+                        }
+                      : undefined
+                  }
+                />
+              )
+            })}
 
             {/* Premium CTA */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">

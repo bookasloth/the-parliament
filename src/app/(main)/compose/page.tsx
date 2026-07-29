@@ -20,6 +20,7 @@ import {
   Video,
   Trash2,
 } from "lucide-react"
+import { createPostAction } from "./actions"
 
 const R_CARD = "rounded-[6px]"
 const R_EL = "rounded-[4px]"
@@ -50,6 +51,26 @@ const BG_OPTIONS: { id: string; bg: string; plain?: boolean; fg?: string }[] = [
 ]
 
 const CATEGORIES = ["Career Update", "Job Opening", "Achievement", "Startup", "Seeking Help", "Mentorship", "School Memory", "Event"]
+// Map the display labels above to the seeded PostCategory keys.
+const CATEGORY_KEYS: Record<string, string> = {
+  "Career Update": "career_update",
+  "Job Opening": "job_opening",
+  Achievement: "achievement",
+  Startup: "startup",
+  "Seeking Help": "seeking_help",
+  Mentorship: "mentorship",
+  "School Memory": "school_memory",
+  Event: "event",
+}
+// Map composer post types to the createPost format union (text | image | link | quote).
+const FORMAT_FOR_TYPE: Record<PostType, string> = {
+  text: "text",
+  photo: "image",
+  quote: "quote",
+  link: "link",
+  poll: "text",
+  question: "text",
+}
 const AUDIENCES = [
   { key: "public", label: "Public", icon: Globe, sub: "Anyone on The Parliament" },
   { key: "connections", label: "Connections", icon: Users, sub: "Only people you're connected with" },
@@ -67,6 +88,7 @@ export default function ComposePage() {
   const [pollOptions, setPollOptions] = useState(["", ""])
   const [linkUrl, setLinkUrl] = useState("")
   const [quoteSource, setQuoteSource] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
   const active = POST_TYPES.find((t) => t.key === type)!
   const activeBg = BG_OPTIONS.find((b) => b.id === bg)!
@@ -75,6 +97,22 @@ export default function ComposePage() {
   const pct = Math.min(100, (text.length / CHAR_LIMIT) * 100)
   const near = remaining <= 80
   const canPost = text.trim().length > 0 || type === "photo" || type === "poll"
+
+  const handlePost = async () => {
+    if (!canPost || submitting) return
+    setSubmitting(true)
+    try {
+      await createPostAction({
+        body: text.trim(),
+        categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
+        format: FORMAT_FOR_TYPE[type],
+      })
+      // createPostAction redirects to /feed on success.
+    } catch (err) {
+      console.error("Failed to create post", err)
+      setSubmitting(false)
+    }
+  }
 
   const anon = audience.key === "anonymous"
   const authorName = anon ? "Anonymous JNVian" : "Shubham Datarkar"
@@ -295,10 +333,11 @@ export default function ComposePage() {
             <div className="flex items-center gap-2">
               <button className={`${R_EL} px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100`}>Save draft</button>
               <button
-                disabled={!canPost}
-                className={`flex items-center gap-2 ${R_EL} px-5 py-2.5 text-sm font-bold text-white transition-colors ${canPost ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-300"}`}
+                onClick={handlePost}
+                disabled={!canPost || submitting}
+                className={`flex items-center gap-2 ${R_EL} px-5 py-2.5 text-sm font-bold text-white transition-colors ${canPost && !submitting ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-300"}`}
               >
-                <Send className="h-4 w-4" /> Post
+                <Send className="h-4 w-4" /> {submitting ? "Posting…" : "Post"}
               </button>
             </div>
           </div>

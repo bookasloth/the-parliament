@@ -34,6 +34,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
+  // Admin console: admins only. Admins skip the onboarding gate below so they
+  // can always reach the console.
+  if (pathname.startsWith("/admin")) {
+    if (token?.isAdmin) {
+      return NextResponse.next()
+    }
+    return NextResponse.redirect(new URL("/feed", req.url))
+  }
+
   const onboardingCompleted = token?.onboardingCompleted as boolean | undefined
   const step = (token?.onboardingStep as string) || "profile"
   const isOnboardingRoute = ONBOARDING_ROUTES.includes(pathname)
