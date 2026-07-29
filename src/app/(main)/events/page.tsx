@@ -1,4 +1,4 @@
-import EventsClient, { MOCK_EVENTS } from "./events-client"
+import EventsClient from "./events-client"
 import { listEvents } from "@/modules/events/service"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
@@ -17,6 +17,6 @@ export default async function EventsPage() {
     real = []
   }
 
-  const events = [...real, ...MOCK_EVENTS]
+  const events = real
   return <EventsClient events={events} />
 }

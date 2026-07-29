@@ -1,4 +1,4 @@
-import { FeedContent, MOCK_POSTS } from "./feed-content"
+import { FeedContent } from "./feed-content"
 import type { FeedMembership, FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
 import { getDefaultSchoolId } from "@/lib/school"
@@ -76,6 +76,6 @@ export default async function FeedPage() {
   }
 
   return (
-    <FeedContent userName="Guest" posts={[...mappedReal, ...MOCK_POSTS]} />
+    <FeedContent userName="Guest" posts={mappedReal} />
   )
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import DirectoryClient, { MOCK_ALUMNI, type DirectoryAlumni } from "./directory-client"
+import DirectoryClient, { type DirectoryAlumni } from "./directory-client"
 
 export const dynamic = "force-dynamic"
 
@@ -59,5 +59,5 @@ export default async function DirectoryPage() {
     }
   })
 
-  return <DirectoryClient alumni={[...mappedReal, ...MOCK_ALUMNI]} />
+  return <DirectoryClient alumni={mappedReal} />
 }
