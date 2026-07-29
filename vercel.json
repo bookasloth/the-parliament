@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/admin/activation-blast/route.ts": { "maxDuration": 60 }
+  }
+}
