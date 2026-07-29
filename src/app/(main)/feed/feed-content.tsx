@@ -13,13 +13,26 @@ import {
 } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
-import { reactToPost, commentOnPost } from "./actions"
+import { reactToPost, commentOnPost, throwEgg } from "./actions"
 
 interface Connection {
   name: string
   role: string
   avatar: string
   hasStory?: boolean
+}
+
+export type SuggestedConnection = {
+  username: string
+  name: string
+  role: string
+  avatar: string
+}
+
+export type NewsItem = {
+  id: string
+  title: string
+  time: string
 }
 
 // --- Data ---
@@ -204,7 +217,19 @@ const newsItems = [
 ]
 
 // --- Left Sidebar ---
-function LeftSidebar({ userName }: { userName: string }) {
+export type ViewerCard = {
+  name: string
+  photoUrl: string
+  headline: string
+  batch: string
+  house: string
+}
+
+function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCard | null }) {
+  const name = viewer?.name ?? userName
+  const photo =
+    viewer?.photoUrl ??
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
   return (
     <div className="space-y-3">
       {/* Profile Card */}
@@ -215,29 +240,29 @@ function LeftSidebar({ userName }: { userName: string }) {
             <div className="avatar avatar-lg -mt-6 mb-2 mx-auto">
               <img
                 className="h-16 w-16 rounded-full border-2 border-white object-cover"
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face"
+                src={photo}
                 alt=""
               />
             </div>
             <h6 className="text-sm font-semibold text-gray-900 mb-0">
-              <a href="#!" className="hover:text-brand transition-colors">{userName}</a>
+              <a href="/profile/edit" className="hover:text-brand transition-colors">{name}</a>
             </h6>
-            <small className="text-xs text-gray-500">Co-founder at Grey Hawks Media</small>
+            <small className="text-xs text-gray-500">{viewer?.headline || "—"}</small>
             <div className="flex items-center justify-center gap-3 mt-3">
               <div className="text-center">
-                <h6 className="text-xs font-semibold text-gray-900 mb-0">21st</h6>
+                <h6 className="text-xs font-semibold text-gray-900 mb-0">{viewer?.batch ?? "—"}</h6>
                 <small className="text-[10px] text-gray-500">Batch</small>
               </div>
               <div className="w-px h-8 bg-gray-200" />
               <div className="text-center">
-                <h6 className="text-xs font-semibold text-gray-900 mb-0">Udaigiri</h6>
+                <h6 className="text-xs font-semibold text-gray-900 mb-0">{viewer?.house ?? "—"}</h6>
                 <small className="text-[10px] text-gray-500">House</small>
               </div>
             </div>
           </div>
         </div>
         <div className="border-t border-gray-100 py-2 text-center">
-          <a href="#!" className="text-xs font-medium text-brand hover:text-brand-600 transition-colors">Edit Profile</a>
+          <a href="/profile/edit" className="text-xs font-medium text-brand hover:text-brand-600 transition-colors">Edit Profile</a>
         </div>
       </div>
 
@@ -271,12 +296,34 @@ function LeftSidebar({ userName }: { userName: string }) {
 // --- FeedContent ---
 export function FeedContent({
   userName,
+  viewer = null,
   posts = MOCK_POSTS,
+  suggestions = [],
+  news = [],
+  initialEgged = [],
 }: {
   userName: string
+  viewer?: ViewerCard | null
   posts?: FeedPost[]
+  suggestions?: SuggestedConnection[]
+  news?: NewsItem[]
+  initialEgged?: string[]
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
+
+  async function handleThrowEgg(username: string) {
+    if (!username || eggedUsernames.has(username)) return
+    setEggedUsernames((s) => new Set(s).add(username))
+    const res = await throwEgg(username)
+    if (!res.ok) {
+      setEggedUsernames((s) => {
+        const next = new Set(s)
+        next.delete(username)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
@@ -297,7 +344,7 @@ export function FeedContent({
           </button>
         </div>
         <div className="overflow-y-auto h-[calc(100%-53px)] px-3 py-4">
-          <LeftSidebar userName={userName} />
+          <LeftSidebar userName={userName} viewer={viewer} />
         </div>
       </div>
 
@@ -307,7 +354,7 @@ export function FeedContent({
           {/* Left Sidebar - desktop only */}
           <div className="hidden lg:block w-full lg:w-[280px] flex-shrink-0">
             <div className="sticky top-20">
-              <LeftSidebar userName={userName} />
+              <LeftSidebar userName={userName} viewer={viewer} />
             </div>
           </div>
 
@@ -347,7 +394,7 @@ export function FeedContent({
                 Unlock more with Premium Membership
               </p>
               <a
-                href="premium-membership.html"
+                href="/membership"
                 className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-600 transition-colors"
               >
                 Learn more <ChevronRight className="h-3 w-3" />
@@ -370,56 +417,82 @@ export function FeedContent({
               </div>
 
               {/* Connections Widget */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <h5 className="text-sm font-semibold text-gray-900">Throw 1 Egg to Poke Them</h5>
+              {(suggestions.length > 0 ? suggestions : connections).length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h5 className="text-sm font-semibold text-gray-900">Throw 1 Egg to Poke Them</h5>
+                  </div>
+                  <div className="py-1">
+                    {(suggestions.length > 0
+                      ? suggestions.map((s) => ({
+                          key: s.username || s.name,
+                          name: s.name,
+                          role: s.role,
+                          avatar: s.avatar,
+                          href: s.username ? `/profile/${s.username}` : undefined,
+                        }))
+                      : connections.map((c) => ({
+                          key: c.name,
+                          name: c.name,
+                          role: c.role,
+                          avatar: c.avatar,
+                          href: undefined,
+                        }))
+                    ).map((c) => {
+                      const username = "username" in c ? (c as { username?: string }).username ?? "" : ""
+                      const src = suggestions.length > 0 ? (suggestions.find((s) => (s.username || s.name) === c.key) ?? null) : null
+                      const targetUsername = src?.username ?? username
+                      const thrown = targetUsername ? eggedUsernames.has(targetUsername) : false
+                      return (
+                        <div key={c.key} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors">
+                          <a href={c.href ?? "#"} className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full">
+                            <img src={c.avatar} alt={c.name} className="h-full w-full object-cover" />
+                          </a>
+                          <div className="min-w-0 flex-1">
+                            <a href={c.href ?? "#"} className="truncate text-sm font-medium text-gray-900 hover:text-brand block">{c.name}</a>
+                            <p className="truncate text-xs text-gray-500">{c.role}</p>
+                          </div>
+                          <button
+                            onClick={() => targetUsername && handleThrowEgg(targetUsername)}
+                            disabled={!targetUsername || thrown}
+                            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
+                              thrown ? "bg-amber-100 text-amber-600 opacity-60 cursor-default" : "bg-amber-50 text-amber-500 hover:bg-amber-100"
+                            }`}
+                            title={thrown ? "Egg thrown" : "Throw egg"}
+                          >
+                            🥚
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <a
+                    href="/directory"
+                    className="block text-center py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                  >
+                    View more
+                  </a>
                 </div>
-                <div className="py-1">
-                  {connections.map((c, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors">
-                      <div className={`h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ${c.hasStory ? "ring-2 ring-brand-200" : ""}`}>
-                        <img src={c.avatar} alt={c.name} className="h-full w-full object-cover" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-900">{c.name}</p>
-                        <p className="truncate text-xs text-gray-500">{c.role}</p>
-                      </div>
-                      <button
-                        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-500 hover:bg-amber-100 transition-colors"
-                        title="Throw egg"
-                      >
-                        🥚
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <a
-                  href="directory.html#id=new-joined"
-                  className="block text-center py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors border-t border-gray-100"
-                >
-                  View more
-                </a>
-              </div>
+              )}
 
-              {/* Alumni News */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <h5 className="text-sm font-semibold text-gray-900">Alumni News</h5>
+              {/* Alumni News — pinned posts */}
+              {news.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h5 className="text-sm font-semibold text-gray-900">Alumni News</h5>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {news.map((item) => (
+                      <div key={item.id} className="px-4 py-2.5 hover:bg-gray-50 transition-colors">
+                        <h6 className="text-xs font-medium leading-snug text-gray-700 line-clamp-2">
+                          <a href={`/feed/${item.id}`} className="hover:text-brand transition-colors">{item.title}</a>
+                        </h6>
+                        <span className="text-[10px] text-gray-400 mt-0.5 block">{item.time}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {newsItems.map((item, i) => (
-                    <div key={i} className="px-4 py-2.5 hover:bg-gray-50 transition-colors">
-                      <h6 className="text-xs font-medium leading-snug text-gray-700 line-clamp-2">
-                        <a href="blog-details.html" className="hover:text-brand transition-colors">{item.title}</a>
-                      </h6>
-                      <span className="text-[10px] text-gray-400 mt-0.5 block">{item.time}</span>
-                    </div>
-                  ))}
-                </div>
-                <button className="flex items-center justify-center gap-1.5 w-full py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors border-t border-gray-100">
-                  View all news
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
