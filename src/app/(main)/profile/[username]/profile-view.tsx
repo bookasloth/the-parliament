@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import {
   Briefcase,
   MapPin,
@@ -66,6 +67,11 @@ export interface ProfileViewData {
   skills: string[]
   linkedinUrl: string | null
   socialLinks: Record<string, string>
+  owner: {
+    planCode: import("@/config/membership").PlanCode
+    canListBusiness: boolean
+    canApplyMentor: boolean
+  } | null
 }
 
 const MS_COLOR: Record<ProfileViewData["membership"]["tier"], string> = {
@@ -462,6 +468,37 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
                   </div>
                   <button className={`ml-auto ${R_EL} border-[1.5px] border-green-600 bg-white px-3.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-600 hover:text-white transition-colors`}>Request</button>
                 </div>
+
+                {/* Owner-only, membership-gated actions */}
+                {data.owner && (
+                  <Card>
+                    <SectionTitle>Membership perks</SectionTitle>
+                    <div className="space-y-3 px-7 pb-6 pt-2">
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-800">List your business</p>
+                          <p className="text-xs text-gray-500">Feature your business in the alumni directory.</p>
+                        </div>
+                        {data.owner.canListBusiness ? (
+                          <button className={`${R_EL} border-[1.5px] border-brand bg-white px-3.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors`}>List business</button>
+                        ) : (
+                          <UpgradePrompt currentPlan={data.owner.planCode} feature="Listing your business" compact />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 border-t border-gray-50 pt-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-800">Apply as a mentor</p>
+                          <p className="text-xs text-gray-500">Offer mentorship to students and alumni.</p>
+                        </div>
+                        {data.owner.canApplyMentor ? (
+                          <button className={`${R_EL} border-[1.5px] border-brand bg-white px-3.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors`}>Apply</button>
+                        ) : (
+                          <UpgradePrompt currentPlan={data.owner.planCode} feature="Applying as a mentor" compact />
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )}
 
                 {/* Achievements as cards */}
                 <Card>

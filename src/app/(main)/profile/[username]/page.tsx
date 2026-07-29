@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation"
-// Auth disabled for UI testing — profile page is public
-// import { auth } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getCurrent } from "@/modules/membership/service"
+import type { PlanCode } from "@/config/membership"
 import { ProfileView, type ProfileViewData } from "./profile-view"
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -38,7 +39,7 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>
 }) {
   const { username } = await params
-  // const session = await auth()
+  const session = await auth()
 
   const user = await prisma.user.findUnique({
     where: { username },
@@ -101,6 +102,18 @@ export default async function ProfilePage({
 
   const social = (p?.socialLinks ?? {}) as Record<string, string>
 
+  // Owner-only membership-gated actions (list business / apply as mentor).
+  const isOwnProfile = session?.user?.id === user.id
+  let owner: ProfileViewData["owner"] = null
+  if (isOwnProfile) {
+    const current = await getCurrent(user.id)
+    owner = {
+      planCode: current.planCode as PlanCode,
+      canListBusiness: current.benefits.businessListing,
+      canApplyMentor: current.benefits.mentorApply,
+    }
+  }
+
   const data: ProfileViewData = {
     name: user.legalName,
     initials: user.legalName
@@ -137,6 +150,7 @@ export default async function ProfilePage({
     skills: Array.isArray(p?.skills) ? (p?.skills as string[]) : [],
     linkedinUrl: p?.linkedinUrl ?? null,
     socialLinks: social,
+    owner,
   }
 
   return <ProfileView data={data} />
