@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
+import { optionalUser } from "@/modules/auth/session"
 import { searchDirectory, getDirectoryFacets } from "@/modules/directory/service"
 import { CommunityClient } from "./community-client"
 
@@ -14,7 +15,8 @@ export default async function CommunityPage({
 }) {
   const sp = await searchParams
   const schoolId = (await getDefaultSchoolId()) ?? undefined
-  const page = Math.max(1, parseInt(sp.page ?? "1") || 1)
+  const me = await optionalUser()
+  // Server always renders the first page; the client lazy-loads the rest.
 
   const [{ rows, total }, facets, totalActive, verifiedCount] = await Promise.all([
     searchDirectory(
@@ -27,7 +29,7 @@ export default async function CommunityPage({
         city: sp.city || undefined,
         verifiedOnly: sp.verified === "1",
       },
-      { page, pageSize: PAGE_SIZE },
+      { page: 1, pageSize: PAGE_SIZE },
     ),
     getDirectoryFacets(schoolId),
     prisma.user.count({ where: { status: "active", deletedAt: null, ...(schoolId ? { schoolId } : {}) } }),
@@ -38,10 +40,9 @@ export default async function CommunityPage({
     <CommunityClient
       rows={rows}
       total={total}
-      page={page}
-      pages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
       facets={facets}
       current={sp}
+      meId={me?.id ?? null}
       stats={{ totalActive, verifiedCount, batches: facets.batches.length }}
     />
   )

@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import {
   Search, Grid, List, MapPin, GraduationCap, Users, ShieldCheck,
-  ChevronDown, X, SlidersHorizontal,
+  ChevronDown, X, SlidersHorizontal, Loader2,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
+import { ConnectButton } from "@/components/shared/ConnectButton"
 import { colorAvatar } from "@/lib/avatar"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
@@ -42,15 +43,20 @@ function toCard(r: DirectoryRow): AlumniCard {
   }
 }
 
+function toQuery(current: Params, extra: Params = {}): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries({ ...current, ...extra })) if (v) params.set(k, v)
+  return params.toString()
+}
+
 export function CommunityClient({
-  rows, total, page, pages, facets, current, stats,
+  rows, total, facets, current, meId, stats,
 }: {
   rows: DirectoryRow[]
   total: number
-  page: number
-  pages: number
   facets: Facets
   current: Params
+  meId: string | null
   stats: { totalActive: number; verifiedCount: number; batches: number }
 }) {
   const router = useRouter()
@@ -58,17 +64,51 @@ export function CommunityClient({
   const [showFilters, setShowFilters] = useState(false)
   const [q, setQ] = useState(current.q ?? "")
 
+  const [items, setItems] = useState<DirectoryRow[]>(rows)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const paramsKey = JSON.stringify({ ...current, page: undefined })
+
+  // Reset the list whenever the filters change (server re-renders with new rows).
+  useEffect(() => {
+    setItems(rows)
+    setPage(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey])
+
+  const hasMore = items.length < total
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return
+    setLoading(true)
+    try {
+      const next = page + 1
+      const res = await fetch(`/api/community?${toQuery(current, { page: String(next) })}`)
+      const data = await res.json()
+      setItems((prev) => [...prev, ...(data.rows as DirectoryRow[])])
+      setPage(next)
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false)
+    }
+  }, [loading, hasMore, page, current])
+
+  // Infinite scroll: observe a sentinel near the bottom.
+  const sentinel = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinel.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore()
+    }, { rootMargin: "400px" })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [loadMore])
+
   function go(patch: Params) {
-    const params = new URLSearchParams()
-    const merged: Params = { ...current, ...patch, page: undefined }
-    for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v)
-    const s = params.toString()
+    const s = toQuery({ ...current, ...patch, page: undefined })
     router.push(s ? `/community?${s}` : "/community")
-  }
-  function pageHref(p: number) {
-    const params = new URLSearchParams()
-    for (const [k, v] of Object.entries({ ...current, page: String(p) })) if (v) params.set(k, v)
-    return `/community?${params.toString()}`
   }
 
   const batchLabel = facets.batches.find((b) => b.id === current.batch)?.label
@@ -90,7 +130,6 @@ export function CommunityClient({
         <p className="text-sm text-gray-500">Search and filter the alumni network.</p>
       </div>
 
-      {/* Search */}
       <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative max-w-xl">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
@@ -101,7 +140,6 @@ export function CommunityClient({
         />
       </form>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
@@ -118,7 +156,6 @@ export function CommunityClient({
         ))}
       </div>
 
-      {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setShowFilters((v) => !v)}
@@ -142,7 +179,6 @@ export function CommunityClient({
         </div>
       </div>
 
-      {/* Expanded filters */}
       {showFilters && (
         <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -180,7 +216,7 @@ export function CommunityClient({
 
       <p className="text-xs text-gray-500">{total.toLocaleString()} alumni found{current.q && ` for "${current.q}"`}</p>
 
-      {rows.length === 0 ? (
+      {items.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">
           <Search className="mx-auto mb-3 h-10 w-10 text-gray-200" />
           <p className="text-sm font-medium text-gray-500">No alumni found</p>
@@ -188,17 +224,17 @@ export function CommunityClient({
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {rows.map((r, i) => (
-            <motion.div key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: (i % 8) * 0.04 }}>
+          {items.map((r, i) => (
+            <motion.div key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: (i % 8) * 0.03 }}>
               <AlumniProfileCard
                 alumni={toCard(r)}
                 profileHref={`/${r.username}`}
                 verified={r.isVerified}
-                footer={r.city ? <p className="flex items-center gap-1 text-xs text-gray-400"><MapPin className="h-3 w-3" />{r.city}</p> : undefined}
                 actions={
-                  <a href={`/${r.username}`} className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all hover:bg-brand hover:text-white">
-                    View Profile
-                  </a>
+                  <>
+                    <a href={`/${r.username}`} className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all hover:bg-brand hover:text-white">View Profile</a>
+                    {meId !== r.id && <ConnectButton userId={r.id} />}
+                  </>
                 }
               />
             </motion.div>
@@ -206,7 +242,7 @@ export function CommunityClient({
         </div>
       ) : (
         <div className="space-y-2">
-          {rows.map((r) => (
+          {items.map((r) => (
             <div key={r.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm">
               <a href={`/${r.username}`} className="flex-shrink-0">
                 <img src={r.photoUrl || colorAvatar(r.id)} alt={r.legalName} className="h-12 w-12 rounded-full object-cover" style={{ boxShadow: r.house ? `0 0 0 2.5px ${r.house.colorHex}` : undefined }} />
@@ -223,18 +259,20 @@ export function CommunityClient({
                   {r.batch && <span>{r.batch.label} Batch</span>}
                 </div>
               </div>
-              <a href={`/${r.username}`} className="flex-shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600">View</a>
+              {meId !== r.id && <ConnectButton userId={r.id} />}
             </div>
           ))}
         </div>
       )}
 
-      {pages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4 text-sm">
-          {page > 1 && <a href={pageHref(page - 1)} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50">← Prev</a>}
-          <span className="text-gray-500">Page {page} of {pages}</span>
-          {page < pages && <a href={pageHref(page + 1)} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50">Next →</a>}
+      {/* Infinite-scroll sentinel */}
+      {hasMore && (
+        <div ref={sentinel} className="flex justify-center py-6 text-sm text-gray-400">
+          <Loader2 className="h-5 w-5 animate-spin" />
         </div>
+      )}
+      {!hasMore && items.length > 0 && (
+        <p className="py-6 text-center text-xs text-gray-400">You&rsquo;ve reached the end · {total.toLocaleString()} alumni</p>
       )}
     </div>
   )

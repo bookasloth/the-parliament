@@ -80,11 +80,13 @@ export function AlumniProfileCard({ alumni, profileHref, verified, footer, actio
 
       {/* Profile photo - square with rounded corners and subtle border */}
       <div className="mt-10 mb-3 flex-shrink-0">
-        <img
-          src={alumni.image}
-          alt={alumni.name}
-          className="h-[135px] w-[135px] rounded object-cover border border-gray-200 cursor-pointer transition-transform duration-300 hover:scale-105"
-        />
+        <Link href={href} aria-label={`View ${alumni.name}'s profile`}>
+          <img
+            src={alumni.image}
+            alt={alumni.name}
+            className="h-[135px] w-[135px] rounded object-cover border border-gray-200 cursor-pointer transition-transform duration-300 hover:scale-105"
+          />
+        </Link>
       </div>
 
       {/* Name */}
