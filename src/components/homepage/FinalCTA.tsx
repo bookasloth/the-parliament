@@ -7,7 +7,7 @@ interface FinalCTAProps {
 export function FinalCTA({
   title = "The Next Chapter of JNV Starts Here.",
   primaryCta = "Create Account",
-  secondaryCta = "Continue with Google",
+  secondaryCta = "Sign In",
 }: FinalCTAProps) {
   return (
     <section className="relative py-24 lg:py-36 overflow-hidden">
@@ -27,7 +27,7 @@ export function FinalCTA({
             {primaryCta}
           </a>
           <a
-            href="#"
+            href="/auth/signin"
             className="rounded border border-white/20 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/20 transition-all backdrop-blur-sm"
           >
             {secondaryCta}

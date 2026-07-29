@@ -561,7 +561,7 @@ export const defaultHomepageContent: HomepageContent = {
   finalCta: {
     title: "The Next Chapter of JNV Starts Here.",
     primaryCta: "Create Account",
-    secondaryCta: "Continue with Google",
+    secondaryCta: "Sign In",
   },
   footer: {
     columns: [

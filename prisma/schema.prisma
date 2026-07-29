@@ -318,6 +318,9 @@ model Profile {
   batchId              String?  @map("batch_id") @db.Uuid
   department           String?  @db.VarChar(120)
   city                 String?  @db.VarChar(120)
+  homeTown             String?  @map("home_town") @db.VarChar(160)
+  correspondenceAddress String? @map("correspondence_address")
+  bloodGroup           String?  @map("blood_group") @db.VarChar(5)
   profession           String?  @db.VarChar(160)
   company              String?  @db.VarChar(160)
   industry             String?  @db.VarChar(120)

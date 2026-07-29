@@ -44,7 +44,6 @@ export default function AdminSettingsPage() {
     openRegistration: true,
     requireVerification: true,
     guardianConsent: true,
-    googleOAuth: true,
     onboardingGate: true,
     feed: true,
     messaging: true,
@@ -129,9 +128,6 @@ export default function AdminSettingsPage() {
             </SettingRow>
             <SettingRow label="Guardian consent for minors" desc="Required by policy for users under 18">
               <Toggle on={flags.guardianConsent} onChange={() => toggle("guardianConsent")} />
-            </SettingRow>
-            <SettingRow label="Google OAuth sign-in" desc="Allow sign-in with Google alongside credentials">
-              <Toggle on={flags.googleOAuth} onChange={() => toggle("googleOAuth")} />
             </SettingRow>
             <SettingRow label="Onboarding gate" desc="Force new users through the onboarding wizard">
               <Toggle on={flags.onboardingGate} onChange={() => toggle("onboardingGate")} />

@@ -7,6 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL!,
+    // CLI (migrate/studio) uses the session-mode pooler; app runtime uses the
+    // transaction-mode pooler via src/lib/prisma.ts (DATABASE_URL).
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL!,
   },
 });

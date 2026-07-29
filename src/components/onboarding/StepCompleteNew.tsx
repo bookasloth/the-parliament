@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { CheckCircle, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { getSession } from "next-auth/react"
 
 export function StepCompleteNew() {
   const [completing, setCompleting] = useState(true)
@@ -15,7 +16,13 @@ export function StepCompleteNew() {
         if (!res.ok) {
           const data = await res.json()
           setError(data.error || "Failed to complete onboarding")
+          return
         }
+        // Onboarding is now complete in the DB, but the JWT cookie the gate
+        // (middleware.ts) reads still says onboardingCompleted=false. Force the
+        // jwt callback to re-run and rotate the cookie so /feed doesn't bounce
+        // the user back here.
+        await getSession()
       } catch {
         setError("Something went wrong")
       } finally {
@@ -63,13 +70,13 @@ export function StepCompleteNew() {
         <p className="text-base text-gray-500">Your journey with fellow Navodayans begins now</p>
       </div>
 
-      <Link
+      <a
         href="/feed"
         className="inline-flex items-center gap-2 rounded bg-brand px-8 py-3.5 text-base font-semibold text-white hover:bg-brand-600 transition-colors shadow-md"
       >
         <Sparkles className="h-5 w-5" />
         Enter Community
-      </Link>
+      </a>
     </div>
   )
 }

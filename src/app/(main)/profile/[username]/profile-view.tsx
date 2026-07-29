@@ -44,6 +44,9 @@ export interface ProfileViewData {
   profession: string | null
   company: string | null
   city: string | null
+  homeTown: string | null
+  correspondenceAddress: string | null
+  bloodGroup: string | null
   bio: string | null
   house: { name: string; color: string } | null
   batchLabel: string | null
@@ -555,10 +558,12 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
               <SectionTitle>Details</SectionTitle>
               <ul className="px-7 pb-5 pt-1">
                 {data.dateOfBirth && <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Cake className="h-4 w-4 text-blue-500" /> Date of Birth <b className="ml-auto font-semibold text-gray-800">{data.dateOfBirth}</b></li>}
-                <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Droplet className="h-4 w-4 text-red-500" /> Blood Group <b className="ml-auto font-semibold text-gray-800">—</b></li>
+                <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Droplet className="h-4 w-4 text-red-500" /> Blood Group <b className="ml-auto font-semibold text-gray-800">{data.bloodGroup ?? "—"}</b></li>
                 <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Award className="h-4 w-4 text-green-600" /> Membership <b className="ml-auto font-semibold" style={{ color: msColor }}>{data.membership.label}</b></li>
                 {data.house && <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Home className="h-4 w-4" style={{ color: houseColor }} /> House <b className="ml-auto font-semibold text-gray-800">{data.house.name}</b></li>}
-                {data.batchLabel && <li className="flex items-center gap-2.5 py-2 text-[13.5px] text-gray-600"><Users className="h-4 w-4 text-indigo-500" /> Batch <b className="ml-auto font-semibold text-gray-800">{data.batchLabel}</b></li>}
+                {data.batchLabel && <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><Users className="h-4 w-4 text-indigo-500" /> Batch <b className="ml-auto font-semibold text-gray-800">{data.batchLabel}</b></li>}
+                {data.homeTown && <li className="flex items-center gap-2.5 border-b border-gray-50 py-2 text-[13.5px] text-gray-600"><MapPin className="h-4 w-4 text-amber-500" /> Home Town <b className="ml-auto font-semibold text-gray-800">{data.homeTown}</b></li>}
+                {data.correspondenceAddress && <li className="flex items-start gap-2.5 py-2 text-[13.5px] text-gray-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /> Address <b className="ml-auto max-w-[60%] text-right font-semibold text-gray-800">{data.correspondenceAddress}</b></li>}
               </ul>
             </Card>
 
