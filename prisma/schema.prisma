@@ -186,6 +186,7 @@ model User {
   notifications            Notification[]
   interests                UserInterest[]
   onboardingProgress       OnboardingProgress[]
+  experiences              Experience[]
 
   @@unique([email])
   @@index([status])
@@ -308,6 +309,28 @@ model VerificationToken {
 // ─────────────────────────────────────────────
 // 2. Profile
 // ─────────────────────────────────────────────
+
+model Experience {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  title          String    @db.VarChar(160)
+  company        String    @db.VarChar(160)
+  employmentType String?   @map("employment_type") @db.VarChar(30)
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  location       String?   @db.VarChar(160)
+  locationType   String?   @map("location_type") @db.VarChar(20)
+  description    String?
+  skills         Json      @default("[]")
+  sortOrder      Int       @default(0) @map("sort_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startDate])
+  @@map("experiences")
+}
 
 model Profile {
   userId               String   @id @map("user_id") @db.Uuid
