@@ -9,6 +9,7 @@ export interface DirectoryFilters {
   city?: string
   profession?: string
   memberType?: string
+  membershipStatus?: string
   verifiedOnly?: boolean
   schoolId?: string
 }
@@ -44,6 +45,7 @@ export async function searchDirectory(
   }
   if (filters.schoolId) where.schoolId = filters.schoolId
   if (filters.memberType) where.memberType = filters.memberType
+  if (filters.membershipStatus) where.membershipStatus = filters.membershipStatus
   if (filters.verifiedOnly) where.isVerified = true
 
   if (filters.q) {

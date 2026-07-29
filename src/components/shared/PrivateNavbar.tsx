@@ -71,7 +71,7 @@ const currentUser = {
 
 /* ---------------- Search scopes (Quora-style) ---------------- */
 const SEARCH_SCOPES = [
-  { key: "profiles", label: "Profiles", icon: Users, href: "/directory" },
+  { key: "profiles", label: "Profiles", icon: Users, href: "/community" },
   { key: "posts", label: "Posts", icon: FileText, href: "/feed" },
   { key: "groups", label: "Groups", icon: UsersRound, href: "/groups" },
   { key: "events", label: "Events", icon: Calendar, href: "/events" },
@@ -145,7 +145,7 @@ function SearchPanel({ query }: { query: string }) {
             {SUGGESTED_SEARCHES.map((s, i) => (
               <li key={i}>
                 <a
-                  href={`/directory?q=${encodeURIComponent(s.text)}`}
+                  href={`/community?q=${encodeURIComponent(s.text)}`}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
                 >
                   {s.trending
@@ -209,7 +209,7 @@ export function PrivateNavbar() {
 
   const iconLinks = [
     { href: "/network", icon: Network, label: "Network" },
-    { href: "/directory", icon: Users, label: "Directory" },
+    { href: "/community", icon: Users, label: "Community" },
     { href: "/events", icon: Calendar, label: "Events" },
     { href: "/messages", icon: MessageSquareText, label: "Messages" },
   ]
