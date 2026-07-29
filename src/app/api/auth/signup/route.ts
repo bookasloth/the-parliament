@@ -76,6 +76,25 @@ export async function POST(req: Request) {
       create: { userId: user.id, photoUrl: colorAvatar(user.id) },
     });
 
+    // Auto-connect every new member to Shubham (the network anchor).
+    const anchor = await prisma.user.findUnique({
+      where: { email: "sndatarkar@gmail.com" },
+      select: { id: true },
+    });
+    if (anchor && anchor.id !== user.id) {
+      await prisma.connection.upsert({
+        where: { requesterId_addresseeId: { requesterId: anchor.id, addresseeId: user.id } },
+        update: {},
+        create: {
+          requesterId: anchor.id,
+          addresseeId: user.id,
+          status: "accepted",
+          autoAccepted: true,
+          respondedAt: new Date(),
+        },
+      });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("signup error:", e);
