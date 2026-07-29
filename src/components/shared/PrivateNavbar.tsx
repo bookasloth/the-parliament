@@ -75,7 +75,7 @@ const SEARCH_SCOPES = [
   { key: "posts", label: "Posts", icon: FileText, href: "/feed" },
   { key: "groups", label: "Groups", icon: UsersRound, href: "/groups" },
   { key: "events", label: "Events", icon: Calendar, href: "/events" },
-  { key: "businesses", label: "Businesses", icon: Building2, href: "/companies" },
+  { key: "businesses", label: "Businesses", icon: Building2, href: "/business" },
 ]
 
 const SUGGESTED_SEARCHES = [

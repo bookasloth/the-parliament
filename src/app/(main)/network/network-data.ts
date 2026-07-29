@@ -114,7 +114,7 @@ export const sidebarNav = [
   { key: "groups", label: "Groups", count: 7, href: "/groups", icon: "layers" },
   { key: "events", label: "Events", count: 4, href: "/events", icon: "calendar" },
   { key: "chapters", label: "Chapters", count: 6, href: "/network", icon: "mapPin" },
-  { key: "companies", label: "Companies", count: null, href: "/companies/all", icon: "building" },
+  { key: "companies", label: "Businesses", count: null, href: "/business", icon: "building" },
   { key: "newsletters", label: "Newsletters", count: 3, href: "/network", icon: "mail" },
 ] as const
 

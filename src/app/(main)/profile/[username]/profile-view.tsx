@@ -480,7 +480,7 @@ export function ProfileView({ data }: { data: ProfileViewData }) {
                           <p className="text-xs text-gray-500">Feature your business in the alumni directory.</p>
                         </div>
                         {data.owner.canListBusiness ? (
-                          <button className={`${R_EL} border-[1.5px] border-brand bg-white px-3.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors`}>List business</button>
+                          <a href="/business/new" className={`${R_EL} border-[1.5px] border-brand bg-white px-3.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors`}>List business</a>
                         ) : (
                           <UpgradePrompt currentPlan={data.owner.planCode} feature="Listing your business" compact />
                         )}

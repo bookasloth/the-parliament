@@ -973,6 +973,7 @@ model Business {
   ownerId              String   @map("owner_id") @db.Uuid
   categoryId           String   @map("category_id") @db.Uuid
   name                 String   @db.VarChar(200)
+  slug                 String   @unique @db.VarChar(220)
   description          String?
   logoUrl              String?  @map("logo_url")
   bannerUrl            String?  @map("banner_url")
