@@ -38,6 +38,14 @@ export async function saveAccount(input: {
   const clash = await prisma.user.findFirst({ where: { username, id: { not: user.id } }, select: { id: true } })
   if (clash) throw new Error("That username is taken")
 
+  // House and batch are immutable once set — keep the existing value.
+  const existing = await prisma.profile.findUnique({
+    where: { userId: user.id },
+    select: { houseId: true, batchId: true },
+  })
+  const houseId = existing?.houseId ?? (input.houseId || null)
+  const batchId = existing?.batchId ?? (input.batchId || null)
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -52,15 +60,15 @@ export async function saveAccount(input: {
     where: { userId: user.id },
     update: {
       bio: input.bio ?? null,
-      houseId: input.houseId || null,
-      batchId: input.batchId || null,
+      houseId,
+      batchId,
       bloodGroup: input.bloodGroup || null,
     },
     create: {
       userId: user.id,
       bio: input.bio ?? null,
-      houseId: input.houseId || null,
-      batchId: input.batchId || null,
+      houseId,
+      batchId,
       bloodGroup: input.bloodGroup || null,
     },
   })

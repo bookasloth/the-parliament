@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   UserCircle, Phone, GraduationCap, Share2, Trash2, Camera,
-  Globe, Link2, AtSign, MessageCircle, Menu, X, SlidersHorizontal,
+  Globe, Link2, AtSign, MessageCircle, X, SlidersHorizontal, Lock,
 } from "lucide-react"
 import { saveAccount, saveContact, saveProfessional, saveSocial, closeAccount } from "./actions"
 
@@ -66,6 +66,9 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   const [navOpen, setNavOpen] = useState(false)
   const [f, setF] = useState(initial)
   const set = (patch: Partial<EditInitial>) => setF((prev) => ({ ...prev, ...patch }))
+  // House and batch lock once set (based on the loaded value, not the edited state).
+  const houseLocked = initial.houseId !== ""
+  const batchLocked = initial.batchId !== ""
 
   const AccountTab = (
     <div className="space-y-4">
@@ -99,19 +102,34 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
       <Card title="Details That May Help Alumni" desc="JNV-specific details that help fellow Navodayans find and connect with you.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="House">
-            <div className="flex flex-wrap gap-2">
-              {facets.houses.map((h) => (
-                <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
-              ))}
-            </div>
+            {houseLocked ? (
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ backgroundColor: facets.houses.find((h) => h.id === f.houseId)?.colorHex ?? "#6c757d" }}>{facets.houses.find((h) => h.id === f.houseId)?.name ?? "—"}</span>
+                <span className="flex items-center gap-1 text-[11px] text-gray-400"><Lock className="h-3 w-3" /> Locked</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {facets.houses.map((h) => (
+                  <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
+                ))}
+              </div>
+            )}
           </Field>
           <Field label="Batch">
-            <select className={input} value={f.batchId} onChange={(e) => set({ batchId: e.target.value })}>
-              <option value="">Select Batch</option>
-              {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-            </select>
+            {batchLocked ? (
+              <div className="flex items-center gap-2">
+                <span className={`${input} inline-flex w-auto bg-gray-50`}>{facets.batches.find((b) => b.id === f.batchId)?.label ?? "—"}</span>
+                <span className="flex items-center gap-1 whitespace-nowrap text-[11px] text-gray-400"><Lock className="h-3 w-3" /> Locked</span>
+              </div>
+            ) : (
+              <select className={input} value={f.batchId} onChange={(e) => set({ batchId: e.target.value })}>
+                <option value="">Select Batch</option>
+                {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </select>
+            )}
           </Field>
         </div>
+        {(houseLocked || batchLocked) && <p className="mt-2 text-[11px] text-gray-400">House and batch can&rsquo;t be changed once set. Contact an admin to correct a mistake.</p>}
         <div className="mt-4">
           <Field label="Blood Group" full>
             <div className="flex flex-wrap gap-2">
