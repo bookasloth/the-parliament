@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Type,
   Image as ImageIcon,
@@ -21,6 +21,8 @@ import {
   Trash2,
 } from "lucide-react"
 import { createPostAction } from "./actions"
+import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
+import type { PlanCode } from "@/config/membership"
 
 const R_CARD = "rounded-[6px]"
 const R_EL = "rounded-[4px]"
@@ -89,6 +91,17 @@ export default function ComposePage() {
   const [linkUrl, setLinkUrl] = useState("")
   const [quoteSource, setQuoteSource] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  // Current membership tier + whether the jobs benefit is unlocked.
+  const [plan, setPlan] = useState<PlanCode>("student")
+  const [jobsAllowed, setJobsAllowed] = useState(true) // optimistic; corrected on load
+  useEffect(() => {
+    fetch("/api/membership/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) { setPlan(d.planCode); setJobsAllowed(!!d.benefits?.jobs) } })
+      .catch(() => {})
+  }, [])
+
+  const jobGateBlocked = category === "Job Opening" && !jobsAllowed
 
   const active = POST_TYPES.find((t) => t.key === type)!
   const activeBg = BG_OPTIONS.find((b) => b.id === bg)!
@@ -96,7 +109,7 @@ export default function ComposePage() {
   const remaining = CHAR_LIMIT - text.length
   const pct = Math.min(100, (text.length / CHAR_LIMIT) * 100)
   const near = remaining <= 80
-  const canPost = text.trim().length > 0 || type === "photo" || type === "poll"
+  const canPost = (text.trim().length > 0 || type === "photo" || type === "poll") && !jobGateBlocked
 
   const handlePost = async () => {
     if (!canPost || submitting) return
@@ -309,6 +322,11 @@ export default function ComposePage() {
                   </button>
                 ))}
               </div>
+              {jobGateBlocked && (
+                <div className="mt-3">
+                  <UpgradePrompt currentPlan={plan} feature="Posting a job opening" />
+                </div>
+              )}
             </div>
           </div>
 
