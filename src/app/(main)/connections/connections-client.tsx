@@ -241,7 +241,7 @@ export default function ConnectionsClient({
             <Users className="h-5 w-5 text-brand flex-shrink-0" />
             <span className="text-sm font-semibold text-gray-900">My Network</span>
           </div>
-          <a href="/directory" className="text-xs font-medium text-brand hover:text-brand-600 flex items-center gap-1 transition-colors">
+          <a href="/community" className="text-xs font-medium text-brand hover:text-brand-600 flex items-center gap-1 transition-colors">
             Find Alumni <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
           </a>
         </div>

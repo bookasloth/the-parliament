@@ -241,7 +241,7 @@ function EmptyState({ message }: { message: string }) {
         <Compass className="h-7 w-7" />
       </span>
       <p className="max-w-xs text-sm font-medium text-gray-600">{message}</p>
-      <a href="/directory" className="mt-4 rounded-full bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
+      <a href="/community" className="mt-4 rounded-full bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
         Browse Directory
       </a>
     </div>
