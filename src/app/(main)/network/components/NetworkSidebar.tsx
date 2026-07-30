@@ -9,7 +9,8 @@ export interface NetworkMe {
   username: string
   headline: string
   avatar: string
-  connections: number
+  followers: number
+  following: number
 }
 
 const ICONS = {
@@ -42,9 +43,15 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
             <p className="text-xs text-gray-500 truncate">{me.headline}</p>
           </div>
         </div>
-        <div className="mt-3 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
-          <span className="text-xs text-gray-600">Connections</span>
-          <span className="text-sm font-bold text-brand tabular-nums">{me.connections}</span>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
+            <span className="text-xs text-gray-600">Followers</span>
+            <span className="text-sm font-bold text-brand tabular-nums">{me.followers}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
+            <span className="text-xs text-gray-600">Following</span>
+            <span className="text-sm font-bold text-brand tabular-nums">{me.following}</span>
+          </div>
         </div>
       </Link>
 

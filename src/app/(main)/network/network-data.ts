@@ -24,18 +24,6 @@ export interface NetworkAlumni {
   socialProof: string
 }
 
-export interface PendingRequest {
-  id: string
-  name: string
-  username: string
-  batch: string
-  house: string
-  avatar: string
-  mutualCount: number
-  /** Relative time the request was created. */
-  when: string
-}
-
 export interface ActivityEntry {
   id: string
   name: string
@@ -111,7 +99,7 @@ const AV = (id: string) =>
   `https://images.unsplash.com/photo-${id}?w=200&h=200&fit=crop&crop=face`
 
 export const sidebarNav = [
-  { key: "connections", label: "Connections", count: 142, href: "/connections", icon: "users" },
+  { key: "followers", label: "Followers", count: 142, href: "/connections", icon: "users" },
   { key: "following", label: "Following", count: 58, href: "/connections", icon: "userPlus" },
   { key: "groups", label: "Groups", count: 7, href: "/groups", icon: "layers" },
   { key: "events", label: "Events", count: 4, href: "/events", icon: "calendar" },
@@ -126,7 +114,8 @@ export const me = {
   headline: "Founder at The Bogus Company",
   batchLabel: "Batch 2014",
   avatar: AV("1535713875002-d1d0cf377fde"),
-  connections: 142,
+  followers: 142,
+  following: 58,
 }
 
 export const suggestedAlumni: NetworkAlumni[] = [
@@ -138,17 +127,6 @@ export const suggestedAlumni: NetworkAlumni[] = [
   { id: "u6", name: "Ananya Rao", username: "ananya-rao", batch: "2015", batchLabel: "Batch 2015", house: "Udaigiri", membership: "premium", verified: true, headline: "UX Designer at Swiggy", company: "Swiggy", city: "Bangalore", industry: "Design", avatar: AV("1487412720507-e7ab37603c6f"), mutualCount: 14, socialProof: "Works in Bangalore · 14 mutual" },
   { id: "u7", name: "Karan Malhotra", username: "karan-malhotra", batch: "2014", batchLabel: "Batch 2014", house: "Aravali", membership: "committee", verified: true, headline: "Founder & CEO at LaunchPad Labs", company: "LaunchPad Labs", city: "Mumbai", industry: "Startup", avatar: AV("1472099645785-5658abf4ff4e"), mutualCount: 21, socialProof: "Same batch · 21 mutual" },
   { id: "u8", name: "Meera Iyer", username: "meera-iyer", batch: "2011", batchLabel: "Batch 2011", house: "Laxmi", membership: "life", verified: false, headline: "Data Scientist at Microsoft", company: "Microsoft", city: "Pune", industry: "Technology", avatar: AV("1580489944761-15a19d654956"), mutualCount: 7, socialProof: "Lives in Pune · 7 mutual" },
-]
-
-export const incomingRequests: PendingRequest[] = [
-  { id: "r1", name: "Aditya Kapoor", username: "aditya-kapoor", batch: "Batch 2013", house: "Shiwalik", avatar: AV("1506794778202-cad84cf45f1d"), mutualCount: 9, when: "2d ago" },
-  { id: "r2", name: "Divya Sharma", username: "divya-sharma", batch: "Batch 2014", house: "Indira", avatar: AV("1438761681033-6461ffad8d80"), mutualCount: 4, when: "5d ago" },
-  { id: "r3", name: "Nikhil Verma", username: "nikhil-verma", batch: "Batch 2009", house: "Nilgiri", avatar: AV("1463453091185-61582044d556"), mutualCount: 2, when: "1w ago" },
-]
-
-export const sentRequests: PendingRequest[] = [
-  { id: "s1", name: "Rajesh Pillai", username: "rajesh-pillai", batch: "Batch 2012", house: "Aravali", avatar: AV("1519085360753-af0119f7cbe7"), mutualCount: 6, when: "3d ago" },
-  { id: "s2", name: "Tanvi Shah", username: "tanvi-shah", batch: "Batch 2015", house: "Udaigiri", avatar: AV("1544005313-94ddf0286df2"), mutualCount: 11, when: "6d ago" },
 ]
 
 export const recentActivity: ActivityEntry[] = [

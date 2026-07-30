@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma"
+import { env } from "@/config/env"
+import { sendNotification } from "@/modules/notifications/service"
 import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
   id: string
   /** Real user UUID — used by server actions (the `id` field above is username||uuid for links). */
   userId?: string
-  /** Connection row id — present on pending/received so accept/reject can target it. */
-  connectionId?: string
   name: string
   headline: string
   batch: string
@@ -15,7 +15,6 @@ export interface AlumniUser {
   location: string
   avatar: string
   mutualCount: number
-  sentAt?: string
   since?: string
   borderColor: string
   membership: Membership
@@ -54,29 +53,11 @@ type MappedUser = {
   } | null
 }
 
-function relativeTime(date: Date): string {
-  const diffMs = Date.now() - date.getTime()
-  const day = 1000 * 60 * 60 * 24
-  const days = Math.floor(diffMs / day)
-  if (days <= 0) return "today"
-  if (days === 1) return "1 day ago"
-  if (days < 7) return `${days} days ago`
-  const weeks = Math.floor(days / 7)
-  if (weeks === 1) return "1 week ago"
-  if (weeks < 5) return `${weeks} weeks ago`
-  const months = Math.floor(days / 30)
-  if (months <= 1) return "1 month ago"
-  return `${months} months ago`
-}
-
 function monthYear(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric" })
 }
 
-function mapUser(
-  u: MappedUser,
-  extra?: { sentAt?: string; since?: string; connectionId?: string },
-): AlumniUser {
+function mapUser(u: MappedUser, extra?: { since?: string }): AlumniUser {
   const name = u.displayName || u.legalName
   const houseColor = u.profile?.house?.colorHex ?? "#94a3b8"
   const avatar =
@@ -99,106 +80,90 @@ function mapUser(
   }
 }
 
-export async function getConnectionsData(userId: string): Promise<{
-  connected: AlumniUser[]
-  pending: AlumniUser[]
-  received: AlumniUser[]
+export async function getFollowData(userId: string): Promise<{
+  following: AlumniUser[]
+  followers: AlumniUser[]
   suggestions: AlumniUser[]
 }> {
-  const [acceptedRows, sentRows, receivedRows, anyRelations] = await Promise.all([
-    prisma.connection.findMany({
-      where: {
-        status: "accepted",
-        OR: [{ requesterId: userId }, { addresseeId: userId }],
-      },
-      include: { requester: { select: userSelect }, addressee: { select: userSelect } },
+  const [followingRows, followerRows] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followerId: userId },
+      include: { following: { select: userSelect } },
+      orderBy: { createdAt: "desc" },
     }),
-    prisma.connection.findMany({
-      where: { requesterId: userId, status: "pending" },
-      include: { addressee: { select: userSelect } },
-    }),
-    prisma.connection.findMany({
-      where: { addresseeId: userId, status: "pending" },
-      include: { requester: { select: userSelect } },
-    }),
-    prisma.connection.findMany({
-      where: { OR: [{ requesterId: userId }, { addresseeId: userId }] },
-      select: { requesterId: true, addresseeId: true },
+    prisma.follow.findMany({
+      where: { followingId: userId },
+      include: { follower: { select: userSelect } },
+      orderBy: { createdAt: "desc" },
     }),
   ])
 
-  const connected = acceptedRows.map((c) => {
-    const other = c.requesterId === userId ? c.addressee : c.requester
-    return mapUser(other as MappedUser, { since: monthYear(c.respondedAt ?? c.createdAt) })
-  })
-
-  const pending = sentRows.map((c) =>
-    mapUser(c.addressee as MappedUser, { sentAt: relativeTime(c.createdAt), connectionId: c.id }),
+  const following = followingRows.map((f) =>
+    mapUser(f.following as MappedUser, { since: monthYear(f.createdAt) }),
+  )
+  const followers = followerRows.map((f) =>
+    mapUser(f.follower as MappedUser, { since: monthYear(f.createdAt) }),
   )
 
-  const received = receivedRows.map((c) =>
-    mapUser(c.requester as MappedUser, { sentAt: relativeTime(c.createdAt), connectionId: c.id }),
-  )
-
-  const relatedIds = new Set<string>([userId])
-  for (const r of anyRelations) {
-    relatedIds.add(r.requesterId)
-    relatedIds.add(r.addresseeId)
-  }
-
+  // Suggestions: active users I don't already follow.
+  const followedIds = new Set<string>([userId, ...followingRows.map((f) => f.followingId)])
   const suggestionRows = await prisma.user.findMany({
-    where: {
-      status: "active",
-      deletedAt: null,
-      id: { notIn: Array.from(relatedIds) },
-    },
+    where: { status: "active", deletedAt: null, id: { notIn: Array.from(followedIds) } },
     select: userSelect,
     take: 6,
   })
-
   const suggestions = suggestionRows.map((u) => mapUser(u as MappedUser))
 
-  return { connected, pending, received, suggestions }
+  return { following, followers, suggestions }
 }
 
-export async function sendConnectionRequest(
-  requesterId: string,
-  addresseeId: string,
-): Promise<void> {
-  if (requesterId === addresseeId) return
+/** Ids the given user currently follows — for hydrating Follow buttons. */
+export async function getFollowingIds(userId: string): Promise<Set<string>> {
+  const rows = await prisma.follow.findMany({
+    where: { followerId: userId },
+    select: { followingId: true },
+  })
+  return new Set(rows.map((r) => r.followingId))
+}
 
-  const existing = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { requesterId, addresseeId },
-        { requesterId: addresseeId, addresseeId: requesterId },
-      ],
-    },
+export async function followUser(followerId: string, followingId: string): Promise<void> {
+  if (followerId === followingId) return
+
+  // Only a genuinely new follow should create the row + notify (no dupes on re-follow).
+  const existing = await prisma.follow.findUnique({
+    where: { followerId_followingId: { followerId, followingId } },
     select: { id: true },
   })
   if (existing) return
 
-  await prisma.connection.create({
-    data: { requesterId, addresseeId, status: "pending" },
-  })
+  try {
+    await prisma.follow.create({ data: { followerId, followingId } })
+  } catch {
+    return // lost a race — already following
+  }
+
+  // Notify the followed user (notification + email). Never let this fail the follow.
+  try {
+    const follower = await prisma.user.findUnique({
+      where: { id: followerId },
+      select: { username: true, displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
+    })
+    const fromName = follower?.displayName || follower?.legalName || "Someone"
+    const profileUrl = `${env.authUrl}/${follower?.username ?? followerId}`
+    await sendNotification({
+      userId: followingId,
+      kind: "new_follower",
+      title: `${fromName} started following you`,
+      entityType: "user",
+      entityId: followerId,
+      imageUrl: follower?.profile?.photoUrl ?? undefined,
+      email: { fromName, profileUrl },
+    })
+  } catch (e) {
+    console.error("new_follower notification failed:", e)
+  }
 }
 
-export async function respondToConnection(
-  userId: string,
-  connectionId: string,
-  accept: boolean,
-): Promise<void> {
-  const conn = await prisma.connection.findUnique({
-    where: { id: connectionId },
-    select: { addresseeId: true },
-  })
-  if (!conn || conn.addresseeId !== userId) return
-
-  await prisma.connection.update({
-    where: { id: connectionId },
-    data: {
-      status: accept ? "accepted" : "rejected",
-      respondedAt: new Date(),
-    },
-  })
+export async function unfollowUser(followerId: string, followingId: string): Promise<void> {
+  await prisma.follow.deleteMany({ where: { followerId, followingId } })
 }

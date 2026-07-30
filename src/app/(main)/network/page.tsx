@@ -1,12 +1,11 @@
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
-import { getConnectionsData } from "@/modules/connections/service"
 import { colorAvatar } from "@/lib/avatar"
 import { NetworkClient } from "./network-client"
 import {
   suggestedEvents, chapters, recentActivity,
-  type NetworkAlumni, type PendingRequest,
+  type NetworkAlumni,
 } from "./network-data"
 import type { Membership } from "@/lib/homepage-data"
 
@@ -17,7 +16,7 @@ export default async function NetworkPage() {
   const meId = sessionUser.id
   const schoolId = (await getDefaultSchoolId()) ?? undefined
 
-  const [meUser, conns, connectionCount, connData] = await Promise.all([
+  const [meUser, myFollows, followerCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: meId },
       select: {
@@ -25,12 +24,11 @@ export default async function NetworkPage() {
         profile: { select: { headline: true, profession: true, company: true, city: true, photoUrl: true, batch: { select: { label: true } } } },
       },
     }),
-    prisma.connection.findMany({ where: { OR: [{ requesterId: meId }, { addresseeId: meId }] }, select: { requesterId: true, addresseeId: true } }),
-    prisma.connection.count({ where: { status: "accepted", OR: [{ requesterId: meId }, { addresseeId: meId }] } }),
-    getConnectionsData(meId),
+    prisma.follow.findMany({ where: { followerId: meId }, select: { followingId: true } }),
+    prisma.follow.count({ where: { followingId: meId } }),
   ])
 
-  const excluded = new Set<string>([meId, ...conns.flatMap((c) => [c.requesterId, c.addresseeId])])
+  const excluded = new Set<string>([meId, ...myFollows.map((f) => f.followingId)])
 
   const meBatch = meUser?.profile?.batch?.label ?? ""
   const meCity = meUser?.profile?.city ?? ""
@@ -41,7 +39,8 @@ export default async function NetworkPage() {
     username: meUser?.username ?? "",
     headline: meUser?.profile?.headline || meUser?.profile?.profession || "",
     avatar: meUser?.profile?.photoUrl || colorAvatar(meId),
-    connections: connectionCount,
+    followers: followerCount,
+    following: myFollows.length,
   }
 
   const rows = await prisma.user.findMany({
@@ -78,17 +77,6 @@ export default async function NetworkPage() {
     }
   })
 
-  const toPending = (u: { connectionId?: string; id: string; name: string; batch: string; house: string; avatar: string; mutualCount: number; sentAt?: string }): PendingRequest => ({
-    id: u.connectionId ?? u.id,
-    name: u.name,
-    username: u.id,
-    batch: u.batch,
-    house: u.house,
-    avatar: u.avatar,
-    mutualCount: u.mutualCount,
-    when: u.sentAt ?? "recently",
-  })
-
   return (
     <NetworkClient
       me={me}
@@ -96,8 +84,6 @@ export default async function NetworkPage() {
       meCity={meCity}
       meCompany={meCompany}
       suggestedAlumni={suggestedAlumni}
-      incomingRequests={connData.received.map(toPending)}
-      sentRequests={connData.pending.map(toPending)}
       recentActivity={recentActivity}
       suggestedEvents={suggestedEvents}
       chapters={chapters}

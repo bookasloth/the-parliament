@@ -11,7 +11,7 @@ function fmt(d: Date | null | undefined): string {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export const VALID_TABS = ["posts", "about", "connections"] as const
+export const VALID_TABS = ["posts", "about", "followers"] as const
 export type TabKey = (typeof VALID_TABS)[number]
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -82,7 +82,8 @@ export async function loadProfile(username: string, initialTab: TabKey) {
       },
       _count: {
         select: {
-          connectionsRequested: true,
+          followers: true,
+          following: true,
           posts: true,
         },
       },
@@ -115,6 +116,13 @@ export async function loadProfile(username: string, initialTab: TabKey) {
   const social = (p?.socialLinks ?? {}) as Record<string, string>
 
   const isOwnProfile = session?.user?.id === user.id
+  const viewerFollows =
+    !isOwnProfile && session?.user?.id
+      ? (await prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: session.user.id, followingId: user.id } },
+          select: { id: true },
+        })) !== null
+      : false
   let owner: ProfileViewData["owner"] = null
   if (isOwnProfile) {
     const current = await getCurrent(user.id)
@@ -152,8 +160,11 @@ export async function loadProfile(username: string, initialTab: TabKey) {
     verificationStatus: user.verificationStatus,
     verifiedOn: formatDate(user.verifiedAt),
     profileCompletion: user.profileCompletion,
-    connectionsCount: user._count.connectionsRequested,
+    followersCount: user._count.followers,
+    followingCount: user._count.following,
     postsCount: user._count.posts,
+    userId: user.id,
+    viewerFollows,
     higherEducation: p?.higherEducation ?? null,
     skills: Array.isArray(p?.skills) ? (p?.skills as string[]) : [],
     linkedinUrl: p?.linkedinUrl ?? null,

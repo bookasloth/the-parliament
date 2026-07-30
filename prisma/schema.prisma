@@ -124,7 +124,6 @@ model User {
   isSuperAdmin         Boolean   @default(false) @map("is_super_admin")
   verificationData     Json?     @map("verification_data")
   membershipData       Json?     @map("membership_data")
-  connectionsData      Json?     @map("connections_data")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -149,8 +148,8 @@ model User {
   karmaDailyCounters       KarmaDailyCounter[]
   karmaPairActor           KarmaPairDay[]            @relation("karma_actor")
   karmaPairTarget          KarmaPairDay[]            @relation("karma_target")
-  connectionsRequested     Connection[]              @relation("connection_requester")
-  connectionsReceived      Connection[]              @relation("connection_addressee")
+  following                Follow[]                  @relation("following")
+  followers                Follow[]                  @relation("followers")
   blocksGiven              UserBlock[]               @relation("blocker")
   blocksReceived           UserBlock[]               @relation("blocked")
   posts                    Post[]
@@ -359,7 +358,6 @@ model Profile {
   showOnMap            Boolean  @default(false) @map("show_on_map")
   isComplete           Boolean  @default(false) @map("is_complete")
   contactAlwaysShare   Boolean  @default(false) @map("contact_always_share")
-  connectionAutoAccept Boolean  @default(false) @map("connection_auto_accept")
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -429,22 +427,18 @@ model UserRole {
 // 5. Social Graph
 // ─────────────────────────────────────────────
 
-model Connection {
-  id               String    @id @default(uuid()) @db.Uuid
-  requesterId      String    @map("requester_id") @db.Uuid
-  addresseeId      String    @map("addressee_id") @db.Uuid
-  status           String    @default("pending") @db.VarChar(20)
-  autoAccepted     Boolean   @default(false) @map("auto_accepted")
-  contactExchanged Boolean   @default(false) @map("contact_exchanged")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  respondedAt      DateTime? @map("responded_at") @db.Timestamptz
+model Follow {
+  id          String   @id @default(uuid()) @db.Uuid
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  requester User @relation("connection_requester", fields: [requesterId], references: [id], onDelete: Cascade)
-  addressee User @relation("connection_addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
 
-  @@unique([requesterId, addresseeId])
-  @@index([addresseeId, status])
-  @@map("connections")
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
 }
 
 model UserBlock {

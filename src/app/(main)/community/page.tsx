@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { searchDirectory, getDirectoryFacets } from "@/modules/directory/service"
+import { getFollowingIds } from "@/modules/connections/service"
 import { CommunityClient } from "./community-client"
 
 export const dynamic = "force-dynamic"
@@ -36,6 +37,8 @@ export default async function CommunityPage({
     prisma.user.count({ where: { status: "active", deletedAt: null, isVerified: true, ...(schoolId ? { schoolId } : {}) } }),
   ])
 
+  const followingIds = me ? Array.from(await getFollowingIds(me.id)) : []
+
   return (
     <CommunityClient
       rows={rows}
@@ -44,6 +47,7 @@ export default async function CommunityPage({
       current={sp}
       meId={me?.id ?? null}
       stats={{ totalActive, verifiedCount, batches: facets.batches.length }}
+      followingIds={followingIds}
     />
   )
 }
