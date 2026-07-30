@@ -39,11 +39,17 @@ function resolveMembership(status: string): ProfileViewData["membership"] {
   }
 }
 
-export async function loadProfile(username: string, initialTab: TabKey) {
-  const session = await auth()
+// Facebook model: /:username is canonical, but a bare /:id also resolves
+// (the profile.php?id= fallback). id is a uuid column, so only match it by id
+// when the param is uuid-shaped — otherwise Postgres rejects the cast.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-  const user = await prisma.user.findUnique({
-    where: { username },
+export async function loadProfile(handle: string, initialTab: TabKey) {
+  const session = await auth()
+  const username = handle
+
+  const user = await prisma.user.findFirst({
+    where: UUID_RE.test(handle) ? { OR: [{ username: handle }, { id: handle }] } : { username: handle },
     select: {
       id: true,
       legalName: true,

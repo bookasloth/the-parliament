@@ -606,7 +606,7 @@ export function FeedContent({
                           name: s.name,
                           role: s.role,
                           avatar: s.avatar,
-                          href: s.username ? `/profile/${s.username}` : undefined,
+                          href: s.username ? `/${s.username}` : undefined,
                         }))
                       : connections.map((c) => ({
                           key: c.name,

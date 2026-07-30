@@ -43,7 +43,7 @@ function MembershipStripe({ membership }: { membership: Membership }) {
 
 interface AlumniProfileCardProps {
   alumni: AlumniCard
-  /** Override the profile link target (defaults to /alumni/[id]) */
+  /** Override the profile link target (defaults to /[id]) */
   profileHref?: string
   /** Show a verified check next to the name */
   verified?: boolean
@@ -55,7 +55,7 @@ interface AlumniProfileCardProps {
 
 export function AlumniProfileCard({ alumni, profileHref, verified, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
-  const href = profileHref ?? `/alumni/${alumni.id}`
+  const href = profileHref ?? `/${alumni.id}`
 
   return (
     <div className="relative bg-white rounded-lg shadow-md flex flex-col items-center text-center w-full max-w-[350px] mx-auto pt-3">
