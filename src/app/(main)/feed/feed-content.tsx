@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import {
   X,
   Users,
@@ -22,7 +22,9 @@ import {
   awardPostAction,
   deletePostAction,
   reportPostAction,
+  loadMoreFeedAction,
 } from "./actions"
+import { PostSkeleton } from "@/components/shared/feed-skeletons"
 
 interface Connection {
   name: string
@@ -308,6 +310,8 @@ export function FeedContent({
   viewer = null,
   viewerId = null,
   posts = MOCK_POSTS,
+  initialHasMore = false,
+  pageSize = 15,
   suggestions = [],
   news = [],
   initialEgged = [],
@@ -316,12 +320,61 @@ export function FeedContent({
   viewer?: ViewerCard | null
   viewerId?: string | null
   posts?: FeedPost[]
+  initialHasMore?: boolean
+  pageSize?: number
   suggestions?: SuggestedConnection[]
   news?: NewsItem[]
   initialEgged?: string[]
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
+  const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
+  const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
+  const [page, setPage] = useState(2) // first page already loaded server-side
+  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [loadingMore, startLoadMore] = useTransition()
+  const seenIds = useRef<Set<string>>(new Set(posts.map((p) => p.id)))
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  // Reset when server sends fresh posts (e.g., after revalidation).
+  useEffect(() => {
+    setLocalPosts(posts)
+    setRemovedIds(new Set())
+    setPage(2)
+    setHasMore(initialHasMore)
+    seenIds.current = new Set(posts.map((p) => p.id))
+  }, [posts, initialHasMore])
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingMore) return
+    startLoadMore(async () => {
+      try {
+        const r = await loadMoreFeedAction(page, pageSize)
+        const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
+        for (const p of fresh) seenIds.current.add(p.id)
+        setLocalPosts((cur) => [...cur, ...fresh])
+        setHasMore(r.hasMore && fresh.length > 0)
+        setPage(r.nextPage)
+      } catch {
+        // Silent — user can retry via button.
+      }
+    })
+  }, [hasMore, loadingMore, page, pageSize])
+
+  // Auto-load when sentinel enters viewport (Twitter/LinkedIn feel).
+  useEffect(() => {
+    if (!hasMore) return
+    const el = sentinelRef.current
+    if (!el || typeof IntersectionObserver === "undefined") return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMore()
+      },
+      { rootMargin: "600px 0px" },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, loadMore])
 
   async function handleThrowEgg(username: string) {
     if (!username || eggedUsernames.has(username)) return
@@ -374,12 +427,26 @@ export function FeedContent({
             {/* Standard compose trigger */}
             <ComposeTrigger />
 
-            {posts.map((post) => {
+            {localPosts.length === 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+                <p className="text-sm text-gray-500">
+                  No posts yet. Be the first to share something.
+                </p>
+              </div>
+            )}
+
+            {localPosts.map((post) => {
+              if (removedIds.has(post.id)) return null
               const isReal = post.id.length > 10 // real DB rows use UUIDs; mock rows use "1".."6"
               const isAuthor = !!(viewerId && post.authorId && viewerId === post.authorId)
               if (!isReal) {
                 return <FeedCard key={post.id} post={post} />
               }
+
+              function optimisticRemove() {
+                setRemovedIds((s) => new Set(s).add(post.id))
+              }
+
               return (
                 <FeedCard
                   key={post.id}
@@ -392,15 +459,58 @@ export function FeedContent({
                   onShare={() => sharePostAction(post.id)}
                   onSave={() => toggleSavePostAction(post.id)}
                   onAward={(key) => awardPostAction(post.id, key as never)}
-                  onDelete={isAuthor ? () => void deletePostAction(post.id) : undefined}
+                  onDelete={
+                    isAuthor
+                      ? () => {
+                          optimisticRemove()
+                          void deletePostAction(post.id).catch(() =>
+                            setRemovedIds((s) => {
+                              const next = new Set(s)
+                              next.delete(post.id)
+                              return next
+                            }),
+                          )
+                        }
+                      : undefined
+                  }
                   onReport={
                     !isAuthor
-                      ? (reason) => void reportPostAction(post.id, reason)
+                      ? (reason) => {
+                          // Hide immediately for the reporter — small dopamine hit.
+                          optimisticRemove()
+                          void reportPostAction(post.id, reason).catch(() =>
+                            setRemovedIds((s) => {
+                              const next = new Set(s)
+                              next.delete(post.id)
+                              return next
+                            }),
+                          )
+                        }
                       : undefined
                   }
                 />
               )
             })}
+
+            {/* Load-more sentinel + button */}
+            {hasMore && (
+              <>
+                <div ref={sentinelRef} aria-hidden className="h-1" />
+                {loadingMore ? (
+                  <>
+                    <PostSkeleton />
+                    <PostSkeleton />
+                  </>
+                ) : (
+                  <button
+                    onClick={loadMore}
+                    className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                  >
+                    Load more posts
+                  </button>
+                )}
+              </>
+            )}
 
             {/* Premium CTA */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
