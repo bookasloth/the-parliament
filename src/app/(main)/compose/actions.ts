@@ -6,13 +6,17 @@ import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { createPost, type PostFormat } from "@/modules/feed/posts"
 import { getCurrent } from "@/modules/membership/service"
+import { publicUrlFor } from "@/lib/r2"
 
-const VALID_FORMATS: PostFormat[] = ["text", "image", "link", "quote"]
+const VALID_FORMATS: PostFormat[] = ["text", "image", "link", "quote", "question", "poll"]
 
 export async function createPostAction(input: {
   body: string
   categoryKey: string
   format?: string
+  linkUrl?: string
+  mediaKeys?: string[]
+  poll?: { question: string; options: string[] }
 }) {
   const user = await requireUser()
   const schoolId = await getDefaultSchoolId()
@@ -31,12 +35,21 @@ export async function createPostAction(input: {
     ? (input.format as PostFormat)
     : "text") as PostFormat
 
+  const media = (input.mediaKeys ?? []).map((key) => ({
+    key,
+    type: "image",
+    url: publicUrlFor(key),
+  }))
+
   await createPost({
     authorId: user.id,
     schoolId,
     categoryKey: input.categoryKey || "career_update",
     format,
     body: input.body,
+    linkUrl: input.linkUrl,
+    media: media.length > 0 ? media : undefined,
+    poll: input.poll,
   })
 
   revalidatePath("/feed")

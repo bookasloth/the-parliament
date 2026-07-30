@@ -10,6 +10,7 @@ import {
   sharePost,
   toggleSavePost,
   givePostAward,
+  votePoll,
   type ReactionType,
   type AwardKey,
 } from "@/modules/feed/posts"
@@ -27,6 +28,14 @@ export async function reactToPost(postId: string, type: ReactionType) {
   const result = await toggleReaction({ userId: user.id, postId, type })
   revalidatePath("/feed")
   return result
+}
+
+export async function votePollAction(postId: string, pollId: string, optionId: string) {
+  const user = await requireUser()
+  const r = await votePoll({ userId: user.id, pollId, optionId })
+  revalidatePath("/feed")
+  revalidatePath(`/feed/${postId}`)
+  return r
 }
 
 export async function commentOnPost(postId: string, body: string) {

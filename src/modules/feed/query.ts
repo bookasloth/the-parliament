@@ -187,6 +187,21 @@ function postSelect(viewerId?: string) {
     reportPenalty: true,
     createdAt: true,
     category: { select: { key: true, label: true } },
+    poll: {
+      select: {
+        id: true,
+        question: true,
+        expiresAt: true,
+        totalVotes: true,
+        options: {
+          select: { id: true, label: true, voteCount: true },
+          orderBy: { sortOrder: "asc" as const },
+        },
+        ...(viewerId
+          ? { votes: { where: { userId: viewerId }, select: { optionId: true }, take: 1 } }
+          : {}),
+      },
+    },
     author: {
       select: {
         id: true,

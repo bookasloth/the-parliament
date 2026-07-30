@@ -14,6 +14,7 @@ import {
 } from "../actions"
 import { prisma } from "@/lib/prisma"
 import PostReactionBar from "./post-reaction-bar"
+import PollBlock from "./poll-block"
 import CommentsLoader from "./comments-loader"
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 
@@ -141,11 +142,27 @@ export default async function PostDetailPage({
           )}
         </header>
 
-        {post.body && (
+        {post.body && !post.poll && (
           <div className="px-5 pb-3">
             <p className="text-[15px] text-gray-800 leading-relaxed whitespace-pre-line">
               {post.body}
             </p>
+          </div>
+        )}
+
+        {post.poll && (
+          <div className="px-5 pb-3">
+            <PollBlock
+              postId={post.id}
+              poll={{
+                id: post.poll.id,
+                question: post.poll.question,
+                options: post.poll.options.map((o) => ({ id: o.id, label: o.label, votes: o.voteCount })),
+                totalVotes: post.poll.totalVotes,
+                myOptionId: post.poll.votes?.[0]?.optionId ?? null,
+                isClosed: post.poll.expiresAt ? new Date(post.poll.expiresAt) < new Date() : false,
+              }}
+            />
           </div>
         )}
 

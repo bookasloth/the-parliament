@@ -23,6 +23,7 @@ import {
   deletePostAction,
   reportPostAction,
   loadMoreFeedAction,
+  votePollAction,
 } from "./actions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 
@@ -120,11 +121,12 @@ export const MOCK_POSTS: FeedPost[] = [
     poll: {
       question: "Which tech stack should our alumni mentorship focus on?",
       options: [
-        "AI / Machine Learning",
-        "Full Stack Web Development",
-        "Cloud & DevOps",
-        "Mobile App Development",
+        { id: "o1", label: "AI / Machine Learning", votes: 48 },
+        { id: "o2", label: "Full Stack Web Development", votes: 28 },
+        { id: "o3", label: "Cloud & DevOps", votes: 32 },
+        { id: "o4", label: "Mobile App Development", votes: 12 },
       ],
+      totalVotes: 120,
     },
     upvotes: 128,
     downvotes: 5,
@@ -436,6 +438,11 @@ export function FeedContent({
                   onShare={() => sharePostAction(post.id)}
                   onSave={() => toggleSavePostAction(post.id)}
                   onAward={(key) => awardPostAction(post.id, key as never)}
+                  onPollVote={
+                    post.poll?.id
+                      ? (optionId) => votePollAction(post.id, post.poll!.id!, optionId)
+                      : undefined
+                  }
                   onDelete={
                     isAuthor
                       ? () => {

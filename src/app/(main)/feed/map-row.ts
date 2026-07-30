@@ -1,5 +1,5 @@
 import type { getFeed } from "@/modules/feed/query"
-import type { FeedPost, FeedMembership } from "@/components/shared/FeedCard"
+import type { FeedPost, FeedMembership, BorderType } from "@/components/shared/FeedCard"
 
 type FeedRow = Awaited<ReturnType<typeof getFeed>>["rows"][number]
 
@@ -11,6 +11,24 @@ const MEMBERSHIPS: FeedMembership[] = [
   "inactive",
   "committee",
 ]
+
+// Give each membership tier its own avatar ring instead of a uniform blue.
+const BORDER_FOR_MEMBERSHIP: Record<FeedMembership, BorderType> = {
+  life: "gold",
+  committee: "rgby",
+  premium: "darkBlue",
+  student: "green",
+  inactive: "grey",
+  associate: "blue",
+}
+
+// Pull displayable image URLs out of Post.media (Json array of {key,type,url?}).
+function mediaUrls(media: unknown): string[] {
+  if (!Array.isArray(media)) return []
+  return media
+    .map((m) => (m && typeof m === "object" ? (m as { url?: string }).url : undefined))
+    .filter((u): u is string => typeof u === "string" && u.length > 0)
+}
 
 export function relativeTime(date: Date): string {
   const diffMs = Date.now() - new Date(date).getTime()
@@ -46,6 +64,36 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
   const vr = (row as { viewerReaction?: string | null }).viewerReaction ?? null
   const viewerReaction: FeedPost["viewerReaction"] =
     vr === "upvote" || vr === "downvote" || vr === "like" ? vr : null
+
+  const body = row.body ?? undefined
+  const images = mediaUrls(row.media)
+  // ponytail: quote author defaults to the poster (no separate quote-source column yet).
+  const quote = row.format === "quote" && body ? { text: body, author: name } : undefined
+  const question = row.format === "question" ? body : undefined
+
+  const pollRow = (
+    row as {
+      poll?: {
+        id: string
+        question: string
+        expiresAt: Date | null
+        totalVotes: number
+        options: { id: string; label: string; voteCount: number }[]
+        votes?: { optionId: string }[]
+      } | null
+    }
+  ).poll
+  const poll = pollRow
+    ? {
+        id: pollRow.id,
+        question: pollRow.question,
+        options: pollRow.options.map((o) => ({ id: o.id, label: o.label, votes: o.voteCount })),
+        totalVotes: pollRow.totalVotes,
+        myOptionId: pollRow.votes?.[0]?.optionId ?? null,
+        isClosed: pollRow.expiresAt ? new Date(pollRow.expiresAt) < new Date() : false,
+      }
+    : undefined
+
   return {
     id: row.id,
     authorId: author.id,
@@ -61,12 +109,19 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     isVerified: author.isVerified,
     isPinned: row.isPinned,
     isEdited: row.isEdited,
-    content: row.body ?? undefined,
+    // Quote/question/poll render as their own blocks; don't also show raw body as text.
+    content: quote || question || poll ? undefined : body,
+    quote,
+    question,
+    poll,
+    image: images.length === 1 ? images[0] : undefined,
+    images: images.length > 1 ? images : undefined,
+    mediaCount: images.length > 1 ? images.length : undefined,
     upvotes: row.upvoteCount,
     downvotes: row.downvoteCount,
     comments: row.commentCount,
     shares: row.shareCount,
     avatar,
-    borderType: "blue",
+    borderType: BORDER_FOR_MEMBERSHIP[membership] ?? "blue",
   }
 }

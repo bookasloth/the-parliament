@@ -5,7 +5,7 @@ import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
 
-export type PostFormat = "text" | "image" | "link" | "quote"
+export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll"
 
 export interface CreatePostInput {
   authorId: string
@@ -13,8 +13,9 @@ export interface CreatePostInput {
   categoryKey: string
   format: PostFormat
   body?: string
-  media?: { key: string; type: string }[]
+  media?: { key: string; type: string; url?: string }[]
   linkUrl?: string
+  poll?: { question: string; options: string[] }
   groupId?: string
 }
 
@@ -24,8 +25,8 @@ export async function createPost(input: CreatePostInput) {
   })
   if (!category) throw new ForbiddenError("Unknown post category")
 
-  if (input.format === "text" && !input.body?.trim()) {
-    throw new ForbiddenError("Text post needs a body")
+  if ((input.format === "text" || input.format === "question" || input.format === "quote") && !input.body?.trim()) {
+    throw new ForbiddenError("This post needs a body")
   }
   if (input.format === "image" && (!input.media || input.media.length === 0)) {
     throw new ForbiddenError("Image post needs at least one image")
@@ -33,18 +34,39 @@ export async function createPost(input: CreatePostInput) {
   if (input.format === "link" && !input.linkUrl) {
     throw new ForbiddenError("Link post needs a URL")
   }
+  let pollOptions: string[] = []
+  if (input.format === "poll") {
+    if (!input.poll?.question?.trim()) throw new ForbiddenError("Poll needs a question")
+    pollOptions = input.poll.options.map((o) => o.trim()).filter(Boolean)
+    if (pollOptions.length < 2) throw new ForbiddenError("Poll needs at least 2 options")
+    if (pollOptions.length > 6) throw new ForbiddenError("Poll allows at most 6 options")
+  }
 
-  const post = await prisma.post.create({
-    data: {
-      schoolId: input.schoolId,
-      authorId: input.authorId,
-      categoryId: category.id,
-      groupId: input.groupId,
-      format: input.format,
-      body: input.body,
-      media: input.media ?? [],
-      linkUrl: input.linkUrl,
-    },
+  const post = await prisma.$transaction(async (tx) => {
+    const created = await tx.post.create({
+      data: {
+        schoolId: input.schoolId,
+        authorId: input.authorId,
+        categoryId: category.id,
+        groupId: input.groupId,
+        format: input.format,
+        body: input.body,
+        media: input.media ?? [],
+        linkUrl: input.linkUrl,
+      },
+    })
+    if (input.format === "poll" && input.poll) {
+      await tx.poll.create({
+        data: {
+          postId: created.id,
+          question: input.poll.question.trim(),
+          options: {
+            create: pollOptions.map((label, i) => ({ label, sortOrder: i })),
+          },
+        },
+      })
+    }
+    return created
   })
 
   await audit({
@@ -56,6 +78,42 @@ export async function createPost(input: CreatePostInput) {
   })
 
   return post
+}
+
+/** Cast a vote (or switch it) on a poll. Single-choice: one vote per user per poll. */
+export async function votePoll(input: { userId: string; pollId: string; optionId: string }) {
+  const option = await prisma.pollOption.findUnique({
+    where: { id: input.optionId },
+    select: { id: true, pollId: true, poll: { select: { expiresAt: true } } },
+  })
+  if (!option || option.pollId !== input.pollId) throw new ForbiddenError("Option not on this poll")
+  if (option.poll.expiresAt && option.poll.expiresAt < new Date()) {
+    throw new ForbiddenError("Poll has closed")
+  }
+
+  const existing = await prisma.pollVote.findUnique({
+    where: { userId_pollId: { userId: input.userId, pollId: input.pollId } },
+  })
+  if (existing?.optionId === input.optionId) return { optionId: input.optionId }
+
+  await prisma.$transaction(async (tx) => {
+    if (existing) {
+      // Switch: move the tally from the old option to the new one.
+      await tx.pollVote.update({
+        where: { userId_pollId: { userId: input.userId, pollId: input.pollId } },
+        data: { optionId: input.optionId },
+      })
+      await tx.pollOption.update({ where: { id: existing.optionId }, data: { voteCount: { decrement: 1 } } })
+      await tx.pollOption.update({ where: { id: input.optionId }, data: { voteCount: { increment: 1 } } })
+    } else {
+      await tx.pollVote.create({
+        data: { userId: input.userId, pollId: input.pollId, optionId: input.optionId },
+      })
+      await tx.pollOption.update({ where: { id: input.optionId }, data: { voteCount: { increment: 1 } } })
+      await tx.poll.update({ where: { id: input.pollId }, data: { totalVotes: { increment: 1 } } })
+    }
+  })
+  return { optionId: input.optionId }
 }
 
 export async function editPost(input: {
