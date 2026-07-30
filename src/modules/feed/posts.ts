@@ -201,6 +201,106 @@ function incrementsFor(type: ReactionType, delta: number) {
   return { upvoteCount: { increment: delta } }
 }
 
+/** Server-side award catalog. Client cannot pick a cost. */
+export const POST_AWARDS: Record<string, { label: string; cost: number }> = {
+  GOAT: { label: "GOAT", cost: 50 },
+  SHITPOST: { label: "Shitpost", cost: 20 },
+  FIRE: { label: "Fire Post", cost: 30 },
+  BRAIN: { label: "Big Brain", cost: 40 },
+  LOL: { label: "LOL", cost: 25 },
+  MICDROP: { label: "Mic Drop", cost: 35 },
+  SUPPORT: { label: "Support", cost: 30 },
+  WTF: { label: "WTF", cost: 28 },
+  CLAP: { label: "Clap", cost: 22 },
+  CROWN: { label: "Crown", cost: 60 },
+  ANGEL: { label: "Angel", cost: 45 },
+  ROCKET: { label: "Rocket", cost: 55 },
+}
+
+export type AwardKey = keyof typeof POST_AWARDS
+
+export async function sharePost(input: {
+  userId: string
+  postId: string
+  comment?: string
+}) {
+  const post = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, deletedAt: true },
+  })
+  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+
+  const share = await prisma.postShare.create({
+    data: {
+      originalPostId: input.postId,
+      sharerId: input.userId,
+      comment: input.comment,
+    },
+  })
+  await prisma.post.update({
+    where: { id: input.postId },
+    data: { shareCount: { increment: 1 } },
+  })
+  return share
+}
+
+export async function toggleSavePost(input: { userId: string; postId: string }) {
+  const post = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, deletedAt: true },
+  })
+  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+
+  const existing = await prisma.savedPost.findUnique({
+    where: { userId_postId: { userId: input.userId, postId: input.postId } },
+  })
+  if (existing) {
+    await prisma.savedPost.delete({
+      where: { userId_postId: { userId: input.userId, postId: input.postId } },
+    })
+    return { saved: false }
+  }
+  await prisma.savedPost.create({
+    data: { userId: input.userId, postId: input.postId },
+  })
+  return { saved: true }
+}
+
+export async function givePostAward(input: {
+  userId: string
+  postId: string
+  awardKey: AwardKey
+}) {
+  const spec = POST_AWARDS[input.awardKey]
+  if (!spec) throw new ForbiddenError("Unknown award")
+
+  const post = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, authorId: true, deletedAt: true },
+  })
+  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+  if (post.authorId === input.userId) throw new ForbiddenError("Can't award own post")
+
+  const { spendKarma } = await import("@/modules/karma/ledger")
+  await spendKarma({
+    userId: input.userId,
+    amount: spec.cost,
+    reasonCode: "post_award",
+    entityType: "post",
+    entityId: post.id,
+  })
+
+  const award = await prisma.postAward.create({
+    data: {
+      postId: post.id,
+      userId: input.userId,
+      awardType: input.awardKey,
+      karmaCost: spec.cost,
+    },
+  })
+  return award
+}
+
 export async function createComment(input: {
   userId: string
   postId: string

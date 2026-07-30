@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { colorAvatar } from "@/lib/avatar";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+function clientIp(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
 
 function generateUsername(name: string): string {
   const base = name
@@ -34,8 +41,22 @@ async function ensureUniqueUsername(base: string): Promise<string> {
   return `${base}-${Date.now().toString(36)}`;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const ip = clientIp(req);
+    const limit = await checkRateLimit({
+      bucket: "auth.signup.ip",
+      identifier: ip,
+      limit: 5,
+      windowSec: 3600,
+    });
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many signup attempts. Try again later." },
+        { status: 429 },
+      );
+    }
+
     const { name, email, password } = await req.json();
 
     if (!name || !email || !password) {
@@ -45,7 +66,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return NextResponse.json(
         { error: "Email already registered" },
@@ -60,7 +82,7 @@ export async function POST(req: Request) {
     const user = await prisma.user.create({
       data: {
         legalName: name,
-        email,
+        email: normalizedEmail,
         username,
         passwordHash: hashedPassword,
         emailVerifiedAt: new Date(),

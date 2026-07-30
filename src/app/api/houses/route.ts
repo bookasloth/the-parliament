@@ -7,7 +7,10 @@ export async function GET() {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     })
-    return NextResponse.json({ houses })
+    return NextResponse.json(
+      { houses },
+      { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
+    )
   } catch (error) {
     console.error("Houses fetch error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

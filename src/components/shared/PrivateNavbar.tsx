@@ -17,49 +17,26 @@ import {
  */
 type MembershipTier = "student" | "associate" | "premium" | "life" | "inactive" | "committee"
 
+import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
+
 const MEMBERSHIP_META: Record<MembershipTier, {
   label: string
   style: React.CSSProperties
   textClass: string
   next: MembershipTier | null
-}> = {
-  student: {
-    label: "Student",
-    style: { background: "radial-gradient(circle at 50% 50%, #81C784 20%, #4CAF50 80%)" },
-    textClass: "text-white",
-    next: "associate",
-  },
-  associate: {
-    label: "Associate",
-    style: { background: "#2196F3" },
-    textClass: "text-white",
-    next: "premium",
-  },
-  premium: {
-    label: "Premium",
-    style: { background: "#0080ae" },
-    textClass: "text-white",
-    next: "life",
-  },
-  life: {
-    label: "Life",
-    style: { background: "radial-gradient(circle at 50% 50%, #FFD700 0%, #B8860B 70%, #4B3B00 100%)" },
-    textClass: "text-white",
-    next: null, // life members cannot upgrade
-  },
-  inactive: {
-    label: "Inactive",
-    style: { background: "#b0b0b0" },
-    textClass: "text-white",
-    next: "associate",
-  },
-  committee: {
-    label: "Committee",
-    style: { background: "linear-gradient(to right, #FFB3AE 20%, #AECBFF 40%, #B8E2B3 60%, #FFF5B8 80%)" },
-    textClass: "text-gray-800",
-    next: null, // committee members cannot upgrade
-  },
-}
+}> = Object.fromEntries(
+  (Object.entries(MEMBERSHIP_TIERS) as [MembershipTier, typeof MEMBERSHIP_TIERS[MembershipTier]][]).map(
+    ([tier, meta]) => [
+      tier,
+      {
+        label: meta.label,
+        style: { background: meta.background },
+        textClass: meta.textClass,
+        next: meta.next,
+      },
+    ],
+  ),
+) as Record<MembershipTier, { label: string; style: React.CSSProperties; textClass: string; next: MembershipTier | null }>
 
 export type NavbarViewer = {
   name: string

@@ -97,12 +97,12 @@ scripts/
 ### Auth
 - Auth.js config in `src/lib/auth.ts` — **Google OAuth + Credentials** providers
 - Sign-in page at `/auth/signin`, sign-up at `/auth/signup`
-- Route protection + onboarding gate in `src/middleware.ts` (matcher-configured; this is the active layer). The older root `proxy.ts` predates it and is now redundant.
+- Route protection + onboarding gate in `src/middleware.ts` (matcher-configured; sole active layer).
 - Session via JWT — user ID in `token.sub`. Session/JWT augmented with `username`, `onboardingStep`, `onboardingCompleted`, `membershipStatus` (typed in `src/types/next-auth.d.ts`, populated in the `jwt`/`session` callbacks)
 - `username` is auto-generated (slug from name + uniqueness suffix) on both credentials signup and first Google sign-in — see `generateUsername`/`ensureUniqueUsername`
 - User model fields: `legalName` (not `name`), `passwordHash` (not `hashedPassword`)
 - School is optional at signup (`schoolId String?`); new users default `status: "active"`, `onboardingStep: "profile"`
-- ⚠️ **Auth is currently commented out for UI testing** in `src/middleware.ts` and the `/api/onboarding/*` route handlers — all routes are public and onboarding saves return mocked success. Re-enable (uncomment) before shipping.
+- Auth is **enabled** — `src/middleware.ts` enforces JWT + onboarding redirect. (The old root `proxy.ts` is removed; middleware is the sole gate.)
 
 ### Onboarding
 - Multi-step wizard, route group `(onboarding)` → `/onboarding/[step]` rendered by `components/onboarding/OnboardingWizard`
@@ -124,8 +124,9 @@ Key fields (from `prisma/schema.prisma`):
 
 ## Frontend / UI
 
-> ⚠️ The member UI is currently built with **mock data** in `"use client"` pages (auth is
-> disabled for UI testing). Wire these to Prisma/server actions when re-enabling auth.
+> Some `(main)` pages still use mock data (`/messages`, `/notifications`, `/connections`,
+> `/events`, `/groups`, `/feed/[postId]/*`, `/settings`, `/dashboard`). Wire to Prisma
+> as they get built out.
 
 ### Layouts & route groups
 - **`(main)/layout.tsx`** is a server layout that renders `<PrivateNavbar/>` then the page.

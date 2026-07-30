@@ -31,6 +31,10 @@ export type FeedMembership = "associate" | "student" | "premium" | "life" | "ina
 
 export interface FeedPost {
   id: string
+  /** Real author user id when known — enables author-only menu items. */
+  authorId?: string
+  /** Whether the current viewer has saved this post. */
+  savedByViewer?: boolean
   name: string
   headline: string
   batch?: string
@@ -107,14 +111,46 @@ const awards = [
 ]
 
 // --- Award Modal ---
-function AwardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AwardModal({
+  open,
+  onClose,
+  onGive,
+}: {
+  open: boolean
+  onClose: () => void
+  onGive?: (awardKey: string) => Promise<{ ok: boolean; error?: string }> | void
+}) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const prev = useRef(open)
 
   useEffect(() => {
-    if (prev.current && !open) setSelected(null)
+    if (prev.current && !open) {
+      setSelected(null)
+      setError(null)
+    }
     prev.current = open
   }, [open])
+
+  async function submit() {
+    if (!selected) return
+    // Card list uses labels; convert to uppercased key expected server-side.
+    const key = selected.toUpperCase().replace(/\s+/g, "").replace("SHITPOST", "SHITPOST")
+    if (!onGive) {
+      onClose()
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    const r = await Promise.resolve(onGive(key))
+    setSubmitting(false)
+    if (r && r.ok === false) {
+      setError(r.error || "Failed to give award")
+      return
+    }
+    onClose()
+  }
 
   if (!open) return null
 
@@ -149,16 +185,17 @@ function AwardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           </div>
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
-          <span className="text-xs text-gray-400">
-            {selected ? `Selected` : "Select an award to continue"}
+          <span className={`text-xs ${error ? "text-red-500" : "text-gray-400"}`}>
+            {error ?? (selected ? `Selected` : "Select an award to continue")}
           </span>
           <button
-            disabled={!selected}
+            onClick={submit}
+            disabled={!selected || submitting}
             className={`rounded-full px-5 py-1.5 text-xs font-semibold text-white transition-all ${
-              selected ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-200"
+              selected && !submitting ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-200"
             }`}
           >
-            Give Award
+            {submitting ? "Giving…" : "Give Award"}
           </button>
         </div>
       </div>
@@ -183,8 +220,30 @@ function useDropdown() {
 }
 
 // --- Share Dropdown ---
-function ShareDropdown({ shares }: { shares: number }) {
+function ShareDropdown({
+  shares: initialShares,
+  onShare,
+}: {
+  shares: number
+  onShare?: () => void | Promise<unknown>
+}) {
   const { open, setOpen, ref } = useDropdown()
+  const [shares, setShares] = useState(initialShares)
+
+  function reshare() {
+    setShares((s) => s + 1)
+    setOpen(false)
+    if (onShare) {
+      Promise.resolve(onShare()).catch(() => setShares((s) => s - 1))
+    }
+  }
+
+  function copyLink() {
+    setOpen(false)
+    if (typeof window !== "undefined" && navigator?.clipboard) {
+      navigator.clipboard.writeText(window.location.href).catch(() => {})
+    }
+  }
 
   return (
     <div className="relative" ref={ref}>
@@ -198,22 +257,20 @@ function ShareDropdown({ shares }: { shares: number }) {
       </button>
       {open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-          {[
-            { icon: <Mail className="h-4 w-4" />, label: "Send via Direct Message" },
-            { icon: <BookmarkCheck className="h-4 w-4" />, label: "Bookmark" },
-            { icon: <LinkIcon className="h-4 w-4" />, label: "Copy link to post" },
-            { icon: <Share2 className="h-4 w-4" />, label: "Share post via ..." },
-            { icon: <PenSquare className="h-4 w-4" />, label: "Share to News Feed" },
-          ].map((item, i) => (
-            <button
-              key={i}
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              <span className="w-4 flex-shrink-0">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          <button
+            onClick={reshare}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="w-4 flex-shrink-0"><PenSquare className="h-4 w-4" /></span>
+            Share to your feed
+          </button>
+          <button
+            onClick={copyLink}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="w-4 flex-shrink-0"><LinkIcon className="h-4 w-4" /></span>
+            Copy link
+          </button>
         </div>
       )}
     </div>
@@ -227,14 +284,20 @@ export function ReactionBar({
   comments,
   shares,
   onUpvote,
+  onDownvote,
   onComment,
+  onShare,
+  onAward,
 }: {
   initialUpvotes: number
   initialDownvotes: number
   comments: number
   shares: number
   onUpvote?: () => void
+  onDownvote?: () => void
   onComment?: (body: string) => void
+  onShare?: () => void | Promise<unknown>
+  onAward?: (awardKey: string) => Promise<{ ok: boolean; error?: string }> | void
 }) {
   const [awardModalOpen, setAwardModalOpen] = useState(false)
   const [voteState, setVoteState] = useState<"up" | "down" | null>(null)
@@ -274,6 +337,7 @@ export function ReactionBar({
       setDownvotes((v) => v + 1)
       setVoteState("down")
     }
+    onDownvote?.()
   }
 
   return (
@@ -323,7 +387,7 @@ export function ReactionBar({
         </button>
 
         {/* Share */}
-        <ShareDropdown shares={shares} />
+        <ShareDropdown shares={shares} onShare={onShare} />
 
         {/* Award */}
         <button
@@ -359,7 +423,11 @@ export function ReactionBar({
           </button>
         </div>
       )}
-      <AwardModal open={awardModalOpen} onClose={() => setAwardModalOpen(false)} />
+      <AwardModal
+        open={awardModalOpen}
+        onClose={() => setAwardModalOpen(false)}
+        onGive={onAward}
+      />
     </>
   )
 }
@@ -507,24 +575,96 @@ function HelpCircle({ className }: { className?: string }) {
 // --- Feed Card (the standard post card used everywhere) ---
 export function FeedCard({
   post,
+  isAuthor = false,
+  initialSaved = false,
   onUpvote,
+  onDownvote,
   onComment,
+  onShare,
+  onAward,
+  onSave,
+  onDelete,
+  onReport,
 }: {
   post: FeedPost
+  isAuthor?: boolean
+  initialSaved?: boolean
   onUpvote?: () => void
+  onDownvote?: () => void
   onComment?: (body: string) => void
+  onShare?: () => void | Promise<unknown>
+  onAward?: (awardKey: string) => Promise<{ ok: boolean; error?: string }> | void
+  onSave?: () => Promise<{ saved: boolean }> | void
+  onDelete?: () => void | Promise<unknown>
+  onReport?: (reason: string) => void | Promise<unknown>
 }) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
+  const [saved, setSaved] = useState(initialSaved)
 
-  const actionItems = post.isSponsored
-    ? [{ icon: <Flag className="h-4 w-4" />, label: "Report Ad" }]
+  function handleSave() {
+    setActionOpen(false)
+    setSaved((s) => !s)
+    if (onSave) {
+      Promise.resolve(onSave())
+        .then((r) => {
+          if (r && typeof r.saved === "boolean") setSaved(r.saved)
+        })
+        .catch(() => setSaved((s) => !s))
+    }
+  }
+
+  function handleCopy() {
+    setActionOpen(false)
+    if (typeof window !== "undefined" && navigator?.clipboard) {
+      const url = `${window.location.origin}/feed/${post.id}`
+      navigator.clipboard.writeText(url).catch(() => {})
+    }
+  }
+
+  function handleDelete() {
+    setActionOpen(false)
+    if (!onDelete) return
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return
+    void onDelete()
+  }
+
+  function handleReport() {
+    setActionOpen(false)
+    if (!onReport) return
+    const reason =
+      typeof window !== "undefined"
+        ? window.prompt("Why are you reporting this post?", "inappropriate")
+        : null
+    if (!reason) return
+    void onReport(reason)
+  }
+
+  type ActionItem = { icon: React.ReactNode; label: string; onClick?: () => void; danger?: boolean }
+  const actionItems: ActionItem[] = post.isSponsored
+    ? [{ icon: <Flag className="h-4 w-4" />, label: "Report Ad", onClick: handleReport }]
     : [
-        { icon: <Bookmark className="h-4 w-4" />, label: "Save post" },
-        { icon: <Copy className="h-4 w-4" />, label: "Copy link" },
-        { icon: <Edit3 className="h-4 w-4" />, label: "Edit post" },
-        { icon: <Trash2 className="h-4 w-4" />, label: "Delete" },
-        { icon: <VolumeX className="h-4 w-4" />, label: "Mute user" },
-        { icon: <Flag className="h-4 w-4" />, label: "Report post" },
+        {
+          icon: saved ? <BookmarkCheck className="h-4 w-4 text-brand" /> : <Bookmark className="h-4 w-4" />,
+          label: saved ? "Saved" : "Save post",
+          onClick: handleSave,
+        },
+        { icon: <Copy className="h-4 w-4" />, label: "Copy link", onClick: handleCopy },
+        ...(isAuthor
+          ? [
+              {
+                icon: <Edit3 className="h-4 w-4" />,
+                label: "Edit post",
+                onClick: () => {
+                  setActionOpen(false)
+                  if (typeof window !== "undefined") window.location.href = `/feed/${post.id}/edit`
+                },
+              },
+              { icon: <Trash2 className="h-4 w-4" />, label: "Delete", onClick: handleDelete, danger: true },
+            ]
+          : [
+              { icon: <VolumeX className="h-4 w-4" />, label: "Mute user" },
+              { icon: <Flag className="h-4 w-4" />, label: "Report post", onClick: handleReport, danger: true },
+            ]),
       ]
 
   return (
@@ -599,8 +739,10 @@ export function FeedCard({
                 {actionItems.map((item, i) => (
                   <button
                     key={i}
-                    onClick={() => setActionOpen(false)}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                    onClick={item.onClick ?? (() => setActionOpen(false))}
+                    className={`flex w-full items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 ${
+                      item.danger ? "text-red-600" : "text-gray-600"
+                    }`}
                   >
                     <span className="w-4 flex-shrink-0">{item.icon}</span>
                     {item.label}
@@ -681,7 +823,10 @@ export function FeedCard({
           comments={post.comments}
           shares={post.shares}
           onUpvote={onUpvote}
+          onDownvote={onDownvote}
           onComment={onComment}
+          onShare={onShare}
+          onAward={onAward}
         />
       </div>
     </div>

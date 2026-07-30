@@ -2,17 +2,7 @@ import type { ReactNode } from "react"
 import { MapPin, ShieldCheck } from "lucide-react"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import Link from "next/link"
-
-const membershipStripes: Record<Membership, string> = {
-  student:
-    "bg-[radial-gradient(circle_at_50%_50%,#81C784_20%,#4CAF50_80%)]",
-  associate: "bg-[#2196F3]",
-  premium: "bg-[#0080ae]",
-  life: "bg-[radial-gradient(circle_at_50%_50%,#FFD700_0%,#B8860B_70%,#4B3B00_100%)]",
-  inactive: "bg-[#b0b0b0]",
-  committee:
-    "bg-[linear-gradient(to_right,#FFB3AE_20%,#AECBFF_40%,#B8E2B3_60%,#FFF5B8_80%)]",
-}
+import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
 
 const houseColors: Record<string, string> = {
   Aravali: "#5a9bd5",
@@ -40,12 +30,13 @@ function HouseBadge({ house }: { house: string }) {
 }
 
 function MembershipStripe({ membership }: { membership: Membership }) {
+  const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   return (
     <div
       className="absolute top-0 left-0 w-full h-2 rounded-t-lg pointer-events-none select-none overflow-hidden"
       style={{ textIndent: "-9999px" }}
     >
-      <div className={`w-full h-full ${membershipStripes[membership] || membershipStripes.associate}`} />
+      <div className="w-full h-full" style={{ background: tier.background }} />
     </div>
   )
 }
