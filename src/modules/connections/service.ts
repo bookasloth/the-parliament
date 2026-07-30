@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { env } from "@/config/env"
+import { sendNotification } from "@/modules/notifications/service"
 import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
@@ -126,11 +128,40 @@ export async function getFollowingIds(userId: string): Promise<Set<string>> {
 
 export async function followUser(followerId: string, followingId: string): Promise<void> {
   if (followerId === followingId) return
-  await prisma.follow.upsert({
+
+  // Only a genuinely new follow should create the row + notify (no dupes on re-follow).
+  const existing = await prisma.follow.findUnique({
     where: { followerId_followingId: { followerId, followingId } },
-    update: {},
-    create: { followerId, followingId },
+    select: { id: true },
   })
+  if (existing) return
+
+  try {
+    await prisma.follow.create({ data: { followerId, followingId } })
+  } catch {
+    return // lost a race — already following
+  }
+
+  // Notify the followed user (notification + email). Never let this fail the follow.
+  try {
+    const follower = await prisma.user.findUnique({
+      where: { id: followerId },
+      select: { username: true, displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
+    })
+    const fromName = follower?.displayName || follower?.legalName || "Someone"
+    const profileUrl = `${env.authUrl}/${follower?.username ?? followerId}`
+    await sendNotification({
+      userId: followingId,
+      kind: "new_follower",
+      title: `${fromName} started following you`,
+      entityType: "user",
+      entityId: followerId,
+      imageUrl: follower?.profile?.photoUrl ?? undefined,
+      email: { fromName, profileUrl },
+    })
+  } catch (e) {
+    console.error("new_follower notification failed:", e)
+  }
 }
 
 export async function unfollowUser(followerId: string, followingId: string): Promise<void> {
