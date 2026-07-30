@@ -14,6 +14,11 @@ import {
   type ReactionType,
   type AwardKey,
 } from "@/modules/feed/posts"
+import {
+  toggleCommentReaction,
+  searchMentionTargets,
+  type CommentReactionType,
+} from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
 import { getFeed } from "@/modules/feed/query"
 import { getDefaultSchoolId } from "@/lib/school"
@@ -64,6 +69,23 @@ export async function commentOnPost(postId: string, body: string, parentId?: str
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { id: comment.id }
+}
+
+export async function reactToComment(
+  postId: string,
+  commentId: string,
+  type: CommentReactionType,
+) {
+  const user = await requireUser()
+  const result = await toggleCommentReaction({ userId: user.id, commentId, type })
+  revalidatePath(`/feed/${postId}`)
+  return result
+}
+
+/** Ranked @mention suggestions for the comment composer. */
+export async function searchMentionsAction(query: string) {
+  const user = await requireUser()
+  return searchMentionTargets(user.id, query)
 }
 
 export async function updatePostAction(postId: string, body: string) {

@@ -244,6 +244,7 @@ export default async function PostDetailPage({
       >
         <CommentsLoader
           postId={post.id}
+          postAuthorId={author.id}
           initialCount={post.commentCount}
           viewer={viewerForComments}
         />

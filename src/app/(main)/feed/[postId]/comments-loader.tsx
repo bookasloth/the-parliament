@@ -3,6 +3,7 @@ import CommentsSection, { type CommentView } from "./comments-section"
 
 interface Props {
   postId: string
+  postAuthorId: string
   initialCount: number
   viewer: null | {
     id: string
@@ -16,17 +17,24 @@ interface Props {
 // let the post + reactions render first while comments stream in.
 type CommentRow = Awaited<ReturnType<typeof listPostComments>>[number]
 
-function toView(r: CommentRow | CommentRow["replies"][number]): Omit<CommentView, "replies"> {
+function toView(
+  r: CommentRow | CommentRow["replies"][number],
+  postAuthorId: string,
+): Omit<CommentView, "replies"> {
   const name = r.author.displayName || r.author.legalName
   return {
     id: r.id,
     body: r.body,
     createdAt: r.createdAt.toISOString(),
+    score: r.likeCount,
+    myReaction: r.myReaction,
+    isAuthor: r.author.id === postAuthorId,
     author: {
       id: r.author.id,
       username: r.author.username,
       displayName: name,
       isVerified: r.author.isVerified,
+      membershipStatus: r.author.membershipStatus,
       avatarUrl:
         r.author.profile?.photoUrl ??
         `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
@@ -35,11 +43,11 @@ function toView(r: CommentRow | CommentRow["replies"][number]): Omit<CommentView
   }
 }
 
-export default async function CommentsLoader({ postId, initialCount, viewer }: Props) {
-  const rows = await listPostComments(postId, 100)
+export default async function CommentsLoader({ postId, postAuthorId, initialCount, viewer }: Props) {
+  const rows = await listPostComments(postId, 100, viewer?.id)
   const initial: CommentView[] = rows.map((r) => ({
-    ...toView(r),
-    replies: r.replies.map((rep) => ({ ...toView(rep), replies: [] })),
+    ...toView(r, postAuthorId),
+    replies: r.replies.map((rep) => ({ ...toView(rep, postAuthorId), replies: [] })),
   }))
 
   return (
