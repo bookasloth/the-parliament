@@ -7,14 +7,13 @@ export default async function ResetPage({
 }) {
   const { token } = await searchParams
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Set a new password</h1>
-          <p className="text-muted-foreground text-sm">Choose a password for your account</p>
-        </div>
-        <ResetForm token={token ?? ""} />
+    <div className="space-y-6">
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-[#ff4800]">Almost there</p>
+        <h1 className="font-heading text-2xl font-bold text-white">Set a new password</h1>
+        <p className="mt-1 text-sm text-neutral-400">Choose a password for your account</p>
       </div>
+      <ResetForm token={token ?? ""} />
     </div>
   )
 }

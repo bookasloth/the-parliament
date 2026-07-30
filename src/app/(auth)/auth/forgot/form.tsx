@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useState } from "react"
+import { Field, SubmitButton, FormSuccess } from "../ui"
 
 export function ForgotForm() {
   const [sent, setSent] = useState(false)
@@ -22,10 +23,10 @@ export function ForgotForm() {
   if (sent) {
     return (
       <div className="space-y-4">
-        <p className="rounded bg-green-50 p-3 text-sm text-green-700">
+        <FormSuccess>
           If that email is registered, a link to set your password is on its way. Check your inbox.
-        </p>
-        <a href="/auth/signin" className="block text-center text-sm text-blue-600 hover:underline">
+        </FormSuccess>
+        <a href="/auth/signin" className="block text-center text-sm font-medium text-[#ff4800] hover:underline">
           Back to sign in
         </a>
       </div>
@@ -34,24 +35,9 @@ export function ForgotForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="email" className="text-sm font-medium">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? "Sending..." : "Send reset link"}
-      </button>
-      <a href="/auth/signin" className="block text-center text-xs text-gray-500 hover:underline">
+      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
+      <SubmitButton loading={loading} idleLabel="Send reset link" />
+      <a href="/auth/signin" className="block text-center text-xs text-neutral-400 hover:text-[#ff4800] hover:underline">
         Back to sign in
       </a>
     </form>

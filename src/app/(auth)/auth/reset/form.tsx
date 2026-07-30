@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Field, SubmitButton, FormError, FormSuccess } from "../ui"
 
 export function ResetForm({ token }: { token: string }) {
   const router = useRouter()
@@ -11,10 +12,10 @@ export function ResetForm({ token }: { token: string }) {
 
   if (!token) {
     return (
-      <p className="rounded bg-red-50 p-3 text-sm text-red-600">
+      <FormError>
         This link is missing its token. Request a new one from{" "}
         <a href="/auth/forgot" className="underline">Reset password</a>.
-      </p>
+      </FormError>
     )
   }
 
@@ -44,30 +45,29 @@ export function ResetForm({ token }: { token: string }) {
   }
 
   if (done) {
-    return (
-      <p className="rounded bg-green-50 p-3 text-sm text-green-700">
-        Password set. Redirecting to sign in…
-      </p>
-    )
+    return <FormSuccess>Password set. Redirecting to sign in…</FormSuccess>
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p>}
-      <div>
-        <label htmlFor="password" className="text-sm font-medium">New password</label>
-        <input id="password" name="password" type="password" required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm" />
-      </div>
-      <div>
-        <label htmlFor="confirm" className="text-sm font-medium">Confirm password</label>
-        <input id="confirm" name="confirm" type="password" required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm" />
-      </div>
-      <button type="submit" disabled={loading}
-        className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-        {loading ? "Saving..." : "Set password"}
-      </button>
+      {error && <FormError>{error}</FormError>}
+      <Field
+        label="New password"
+        id="password"
+        name="password"
+        type="password"
+        required
+        autoComplete="new-password"
+      />
+      <Field
+        label="Confirm password"
+        id="confirm"
+        name="confirm"
+        type="password"
+        required
+        autoComplete="new-password"
+      />
+      <SubmitButton loading={loading} idleLabel="Set password" />
     </form>
   )
 }
