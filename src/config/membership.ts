@@ -220,6 +220,59 @@ export const VOTING_MIN_ACTIVE_DAYS = 30
 
 export const ASSOCIATE_TO_PREMIUM_DELTA_INR = PLANS.premium.priceInr - PLANS.associate.priceInr
 
+/* ─────────────────────── Checkout pricing (upgrade flow) ───────────────────────
+ * Platform fee is mandatory on every purchase; the dev-support donation is opt-in.
+ * `computePricing` is the single source of truth — the client uses it for display,
+ * the checkout API re-runs it server-side so the charged amount can't be tampered. */
+
+export const PLATFORM_FEE_INR = 30
+export const DEV_SUPPORT_DONATION_INR = 49
+
+export interface Promo {
+  code: string
+  type: "flat" | "pct"
+  value: number // flat: rupees off; pct: percent off the plan price
+  label: string
+}
+
+// ponytail: hardcoded promo table — move to a Coupon model + admin UI when marketing needs self-serve codes.
+export const PROMO_CODES: Record<string, Promo> = {
+  JNV100: { code: "JNV100", type: "flat", value: 100, label: "₹100 off" },
+  FOUNDER20: { code: "FOUNDER20", type: "pct", value: 20, label: "20% off plan price" },
+}
+
+export function lookupPromo(code: string | null | undefined): Promo | null {
+  if (!code) return null
+  return PROMO_CODES[code.trim().toUpperCase()] ?? null
+}
+
+export interface PriceBreakdown {
+  basePaise: number
+  platformFeePaise: number
+  donationPaise: number
+  discountPaise: number
+  totalPaise: number
+  promo: Promo | null
+}
+
+/** Authoritative charge computation. base + optional platform fee + optional donation − promo, clamped ≥ 0. */
+export function computePricing(
+  planCode: PlanCode,
+  opts: { platformFee?: boolean; donate?: boolean; promoCode?: string | null } = {},
+): PriceBreakdown {
+  const basePaise = PLANS[planCode].pricePaise
+  const platformFeePaise = opts.platformFee ? PLATFORM_FEE_INR * 100 : 0
+  const donationPaise = opts.donate ? DEV_SUPPORT_DONATION_INR * 100 : 0
+  const promo = lookupPromo(opts.promoCode)
+  const discountPaise = promo
+    ? promo.type === "flat"
+      ? Math.min(promo.value * 100, basePaise)
+      : Math.round((basePaise * promo.value) / 100)
+    : 0
+  const totalPaise = Math.max(0, basePaise + platformFeePaise + donationPaise - discountPaise)
+  return { basePaise, platformFeePaise, donationPaise, discountPaise, totalPaise, promo }
+}
+
 export function isPaidTier(code: PlanCode): boolean {
   return code === "associate" || code === "premium" || code === "life" || code === "committee"
 }
