@@ -21,14 +21,10 @@ import {
   Home,
   Users,
   Trophy,
-  Heart,
-  Handshake,
   Lock,
   Plus,
   Minus,
   X,
-  ChevronRight,
-  PenLine,
   Mic,
   Zap,
   Shield,
@@ -128,18 +124,6 @@ const BADGES = [
     name: "Innovator",
     why: "Awarded to members who ship original projects, start meaningful initiatives, or bring fresh ideas that move the community forward.",
   },
-]
-
-const ACHIEVEMENTS = [
-  { icon: PenLine, tint: "#d4a800", bg: "#fff7df", title: "Top Writer", meta: "NNAWCA Alumni Feed · 2024" },
-  { icon: Trophy, tint: "#009ae4", bg: "#e0f4ff", title: "Smart India Hackathon — Winner", meta: "National Finals · 2015" },
-  { icon: Heart, tint: "#e75480", bg: "#fde7ef", title: "₹50,000 contributed", meta: "Hostel Upgrade campaign" },
-]
-
-const PHOTOS = [
-  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=900&q=70",
-  "https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=900&q=70",
-  "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=900&q=70",
 ]
 
 const BATCHMATES = [
@@ -274,7 +258,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
     }
   }
   const [badge, setBadge] = useState<(typeof BADGES)[number] | null>(null)
-  const [lightbox, setLightbox] = useState<string | null>(null)
   const [awardOpen, setAwardOpen] = useState(false)
   const [shells, setShells] = useState(1)
   const [paying, setPaying] = useState(false)
@@ -518,16 +501,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   </div>
                 </Card>
 
-                {/* Mentorship */}
-                <div className={`flex items-center gap-3.5 ${R_CARD} border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 px-7 py-5`}>
-                  <div className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center ${R_EL} bg-green-600 text-white`}><Handshake className="h-5 w-5" /></div>
-                  <div>
-                    <h4 className="font-heading text-[15px] font-bold text-green-800">Available to mentor</h4>
-                    <p className="text-xs text-green-700">Product · Careers · MBA prep — open to alumni &amp; students</p>
-                  </div>
-                  <button className={`ml-auto ${R_EL} border-[1.5px] border-green-600 bg-white px-3.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-600 hover:text-white transition-colors`}>Request</button>
-                </div>
-
                 {/* Owner-only, membership-gated actions */}
                 {data.owner && (
                   <Card>
@@ -559,41 +532,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   </Card>
                 )}
 
-                {/* Achievements as cards */}
-                <Card>
-                  <SectionTitle>Achievements &amp; awards</SectionTitle>
-                  <div className="grid gap-2.5 px-7 pb-6 pt-2">
-                    {ACHIEVEMENTS.map((a) => {
-                      const Icon = a.icon
-                      return (
-                        <div key={a.title} className={`group flex items-center gap-3.5 ${R_EL} border border-gray-100 bg-white p-3.5 transition-all hover:border-gray-200 hover:shadow-sm`}>
-                          <div className={`flex h-11 w-11 shrink-0 items-center justify-center ${R_EL}`} style={{ background: a.bg, color: a.tint }}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-heading text-[13.5px] font-bold text-gray-900">{a.title}</div>
-                            <div className="text-xs text-gray-500">{a.meta}</div>
-                          </div>
-                          <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5" />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </Card>
-
-                {/* Gallery (clickable) */}
-                <Card>
-                  <SectionTitle action={<span className="text-xs text-gray-400">{PHOTOS.length} photos</span>}>Photos &amp; memories</SectionTitle>
-                  <div className="grid grid-cols-3 gap-2 px-7 pb-6 pt-1">
-                    {PHOTOS.map((src) => (
-                      <button key={src} onClick={() => setLightbox(src)} className={`group relative overflow-hidden ${R_EL}`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt="" className="h-[96px] w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                        <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
-                      </button>
-                    ))}
-                  </div>
-                </Card>
               </>
             )}
 
@@ -684,41 +622,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               </div>
             </Card>
 
-            {/* Registration Info */}
-            <Card>
-              <div className="flex items-center justify-between px-7 pt-5">
-                <h5 className="font-heading text-[15px] font-bold text-brand">Registration Info</h5>
-                <SoftLink>View Details</SoftLink>
-              </div>
-              <ul className="space-y-2.5 px-7 pb-5 pt-3">
-                <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><CheckCircle2 className="h-4 w-4 text-green-600" /> Approved on <b className="ml-auto font-semibold text-gray-900">07 August 2023</b></li>
-                <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><UserCircle2 className="h-4 w-4 text-brand" /> Approved by <b className="ml-auto font-semibold text-gray-900">NNAWCA Admin</b></li>
-                <li className="flex items-center gap-2.5 text-[13.5px] text-gray-600"><CalendarPlus className="h-4 w-4 text-blue-500" /> Profile updated on <b className="ml-auto font-semibold text-gray-900">15 October 2022</b></li>
-              </ul>
-            </Card>
-
-            {/* Batchmates */}
-            <Card>
-              <div className="flex items-center justify-between px-7 pt-5">
-                <h5 className="flex items-center gap-2 font-heading text-[15px] font-bold text-brand">
-                  Batchmates
-                  <span className="rounded-[6px] bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-500">{data.connectionsCount}</span>
-                </h5>
-                <button className="text-xs font-semibold text-brand hover:underline">See all Batchmates</button>
-              </div>
-              <div className="grid grid-cols-3 gap-2.5 px-7 pb-6 pt-3">
-                {BATCHMATES.slice(0, 4).map((b) => (
-                  <div key={b.name} className={`${R_EL} border border-gray-200 p-3 text-center`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={b.img} alt="" className="mx-auto h-[52px] w-[52px] rounded-full object-cover" />
-                    <div className="my-2 text-xs font-semibold leading-tight text-gray-800">{b.name}</div>
-                    <button className={`flex w-full items-center justify-center gap-1 ${R_EL} border border-brand bg-white px-2 py-1 text-[11px] font-semibold text-brand hover:bg-brand hover:text-white`}>
-                      <UserPlus className="h-3 w-3" /> Connect
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Card>
           </div>
         </div>
       </div>
@@ -732,16 +635,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             <h3 className="mt-3 font-heading text-lg font-bold text-gray-900">{badge.name}</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">{badge.why}</p>
             <button onClick={() => setBadge(null)} className={`mt-5 w-full ${R_EL} bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-600`}>Got it</button>
-          </div>
-        </Modal>
-      )}
-
-      {lightbox && (
-        <Modal onClose={() => setLightbox(null)} max="max-w-2xl">
-          <div className="relative">
-            <button onClick={() => setLightbox(null)} className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-600 shadow-md hover:text-gray-900"><X className="h-5 w-5" /></button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox} alt="" className={`max-h-[70vh] w-full object-contain ${R_EL}`} />
           </div>
         </Modal>
       )}
