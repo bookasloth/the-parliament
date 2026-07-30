@@ -159,17 +159,24 @@ const commentSelect = {
       displayName: true,
       legalName: true,
       isVerified: true,
+      membershipStatus: true,
       profile: { select: { photoUrl: true, headline: true } },
     },
   },
 } satisfies Prisma.CommentSelect
 
 type CommentBase = Prisma.CommentGetPayload<{ select: typeof commentSelect }>
-export type PostCommentRow = CommentBase & { replies: CommentBase[] }
+type CommentEnriched = CommentBase & { myReaction: "upvote" | "downvote" | null }
+export type PostCommentRow = CommentEnriched & { replies: CommentEnriched[] }
 
 // Top-level comments (oldest first) each with their direct replies. One level of
 // nesting — replies to replies are stored against the same top-level parent.
-export async function listPostComments(postId: string, limit = 100): Promise<PostCommentRow[]> {
+// `viewerId` attaches the viewer's own up/down vote per comment (for optimistic UI).
+export async function listPostComments(
+  postId: string,
+  limit = 100,
+  viewerId?: string,
+): Promise<PostCommentRow[]> {
   const top = await prisma.comment.findMany({
     where: { postId, deletedAt: null, parentId: null },
     orderBy: { createdAt: "asc" },
@@ -184,7 +191,26 @@ export async function listPostComments(postId: string, limit = 100): Promise<Pos
         select: commentSelect,
       })
     : []
-  return top.map((t) => ({ ...t, replies: replies.filter((r) => r.parentId === t.id) }))
+
+  // One lookup for the viewer's votes across every comment on this post.
+  const allIds = [...topIds, ...replies.map((r) => r.id)]
+  const myVotes = new Map<string, "upvote" | "downvote">()
+  if (viewerId && allIds.length) {
+    const rx = await prisma.reaction.findMany({
+      where: { userId: viewerId, entityType: "comment", entityId: { in: allIds } },
+      select: { entityId: true, type: true },
+    })
+    for (const r of rx) myVotes.set(r.entityId, r.type as "upvote" | "downvote")
+  }
+  const enrich = (c: CommentBase): CommentEnriched => ({
+    ...c,
+    myReaction: myVotes.get(c.id) ?? null,
+  })
+
+  return top.map((t) => ({
+    ...enrich(t),
+    replies: replies.filter((r) => r.parentId === t.id).map(enrich),
+  }))
 }
 
 function postSelect(viewerId?: string) {
