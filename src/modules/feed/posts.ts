@@ -182,6 +182,8 @@ export async function editPost(input: {
   authorId: string
   body?: string
   media?: { key: string; type: string }[]
+  // undefined = leave unchanged; null/"" = clear the background (plain).
+  textBg?: string | null
 }) {
   const post = await prisma.post.findUnique({ where: { id: input.postId } })
   if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
@@ -192,6 +194,7 @@ export async function editPost(input: {
     data: {
       body: input.body ?? post.body,
       media: input.media ?? (post.media as never),
+      ...(input.textBg !== undefined ? { textBg: input.textBg || null } : {}),
       isEdited: true,
       editedAt: new Date(),
     },

@@ -29,6 +29,7 @@ import { mapRowToFeedPost } from "./map-row"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { publicUrlFor } from "@/lib/r2"
 
 export async function reactToPost(postId: string, type: ReactionType) {
   const user = await requireUser()
@@ -116,9 +117,30 @@ export async function searchMentionsAction(query: string) {
   return searchMentionTargets(user.id, query)
 }
 
-export async function updatePostAction(postId: string, body: string) {
+export async function updatePostAction(
+  postId: string,
+  input: {
+    body: string
+    media?: { key: string; type: "image" | "video" }[]
+    textBg?: string
+  },
+) {
   const user = await requireUser()
-  await editPost({ postId, authorId: user.id, body })
+
+  const media = (input.media ?? []).map((m) => ({
+    key: m.key,
+    type: m.type,
+    url: publicUrlFor(m.key),
+  }))
+
+  await editPost({
+    postId,
+    authorId: user.id,
+    body: input.body,
+    media,
+    // Only meaningful for text posts; "" clears the background back to plain.
+    textBg: input.textBg ?? "",
+  })
   revalidatePath(`/feed/${postId}`)
   revalidatePath("/feed")
   redirect(`/feed/${postId}`)

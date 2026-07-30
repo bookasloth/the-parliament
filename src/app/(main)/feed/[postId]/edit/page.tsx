@@ -1,11 +1,31 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
+import PostComposer, { type ComposerMedia } from "@/components/shared/PostComposer"
 import { updatePostAction } from "../../actions"
 
 export const dynamic = "force-dynamic"
+
+// Text-post background sentinel + real media both live in post.media.
+function splitMedia(media: unknown): { bg?: string; items: ComposerMedia[] } {
+  if (!Array.isArray(media)) return { items: [] }
+  let bg: string | undefined
+  const items: ComposerMedia[] = []
+  for (const m of media) {
+    if (!m || typeof m !== "object") continue
+    const entry = m as { type?: string; bg?: string; key?: string; url?: string }
+    if (entry.type === "style") {
+      bg = entry.bg
+    } else if (entry.url) {
+      items.push({
+        key: entry.key ?? "",
+        url: entry.url,
+        type: entry.type === "video" ? "video" : "image",
+      })
+    }
+  }
+  return { bg, items }
+}
 
 export default async function EditPostPage({
   params,
@@ -20,48 +40,39 @@ export default async function EditPostPage({
   const { post } = result
   if (post.author.id !== user.id) notFound()
 
-  async function save(formData: FormData) {
+  const { bg: legacyBg, items } = splitMedia(post.media)
+  // textBg is a real column since Feed bundle #29; fall back to the old
+  // {type:"style"} media sentinel for posts created before it.
+  const bg = post.textBg ?? legacyBg
+
+  async function save(data: { body: string; media?: { key: string; type: "image" | "video" }[]; textBg?: string }) {
     "use server"
-    const body = String(formData.get("body") ?? "")
-    await updatePostAction(postId, body)
+    await updatePostAction(postId, {
+      body: data.body,
+      media: data.media,
+      textBg: data.textBg,
+    })
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6 space-y-4">
-      <Link
-        href={`/feed/${post.id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600"
-      >
-        <ArrowLeft className="h-4 w-4" /> Cancel
-      </Link>
-
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h1 className="text-lg font-semibold text-gray-900 mb-4">Edit post</h1>
-        <form action={save} className="space-y-4">
-          <textarea
-            name="body"
-            defaultValue={post.body ?? ""}
-            required
-            rows={10}
-            maxLength={2000}
-            className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-          />
-          <div className="flex justify-end gap-2">
-            <Link
-              href={`/feed/${post.id}`}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-            >
-              Save changes
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <PostComposer
+      editing
+      title="Edit post"
+      submitLabel="Save changes"
+      submittingLabel="Saving…"
+      onSubmit={save}
+      initial={{
+        format: post.format,
+        body: post.body ?? "",
+        bg,
+        categoryKey: post.category?.key,
+        linkUrl: post.linkUrl ?? undefined,
+        quoteSource: post.quoteSource ?? undefined,
+        media: items,
+        poll: post.poll
+          ? { question: post.poll.question, options: post.poll.options.map((o) => o.label) }
+          : undefined,
+      }}
+    />
   )
 }
