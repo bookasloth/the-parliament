@@ -1,16 +1,15 @@
 import { InputHTMLAttributes } from "react"
 
 // Shared form primitives for every auth flow (signin/signup/forgot/reset).
-// Dark aesthetic — inspired by shubhamdatarkar.com: near-black surfaces,
-// orange (#ff4800) accent, Poppins. Kept local to the auth group; does not
-// touch the app-wide brand tokens.
+// Dark aesthetic — shubhamdatarkar.com-inspired layout, but with the NNAWCA
+// brand blue (#009ae4) accent, Poppins. Kept local to the auth group.
 
-export const ACCENT = "#ff4800"
+export const ACCENT = "#009ae4" // matches --color-brand
 
 export const fieldClass =
   "mt-1.5 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm " +
   "text-white placeholder:text-neutral-500 outline-none transition " +
-  "focus:border-[#ff4800] focus:ring-2 focus:ring-[#ff4800]/25"
+  "focus:border-[#009ae4] focus:ring-2 focus:ring-[#009ae4]/25"
 
 export function Field({
   label,
@@ -34,7 +33,7 @@ export function SubmitButton({ loading, idleLabel }: { loading: boolean; idleLab
     <button
       type="submit"
       disabled={loading}
-      className="w-full rounded-lg bg-[#ff4800] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#ff5f1f] focus:outline-none focus:ring-2 focus:ring-[#ff4800]/40 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-lg bg-[#009ae4] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#ff5f1f] focus:outline-none focus:ring-2 focus:ring-[#009ae4]/40 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {loading ? "Please wait…" : idleLabel}
     </button>
