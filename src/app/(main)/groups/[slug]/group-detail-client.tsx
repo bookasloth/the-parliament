@@ -370,7 +370,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
                             onClick={() => setConnectState(c => c.includes(m.card.id) ? c.filter(x => x !== m.card.id) : [...c, m.card.id])}
                             className={`rounded-md border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${isConnected ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"}`}
                           >
-                            {isConnected ? "Sent" : "Connect"}
+                            {isConnected ? "Following" : "Follow"}
                           </button>
                         </>
                       }

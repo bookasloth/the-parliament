@@ -75,7 +75,7 @@ const FORMAT_FOR_TYPE: Record<PostType, string> = {
 }
 const AUDIENCES = [
   { key: "public", label: "Public", icon: Globe, sub: "Anyone on The Parliament" },
-  { key: "connections", label: "Connections", icon: Users, sub: "Only people you're connected with" },
+  { key: "followers", label: "Followers", icon: Users, sub: "Only people who follow you" },
   { key: "groups", label: "My Groups", icon: UsersRound, sub: "Members of the groups you're in" },
   { key: "anonymous", label: "Anonymous", icon: VenetianMask, sub: "Name shown cryptically · photo hidden" },
 ]

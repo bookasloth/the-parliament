@@ -49,7 +49,7 @@ interface AlumniProfileCardProps {
   verified?: boolean
   /** Extra content rendered between location and the action buttons (e.g. mutual connections) */
   footer?: ReactNode
-  /** Replace the default View Profile / Connect buttons */
+  /** Replace the default View Profile / Follow buttons */
   actions?: ReactNode
 }
 
@@ -123,7 +123,7 @@ export function AlumniProfileCard({ alumni, profileHref, verified, footer, actio
           <button
             className="rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300"
           >
-            Connect
+            Follow
           </button>
         </div>
       )}

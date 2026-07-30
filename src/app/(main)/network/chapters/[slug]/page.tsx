@@ -189,7 +189,7 @@ export default function ChapterDetailPage() {
                               isConnected ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"
                             }`}
                           >
-                            {isConnected ? <><Check className="h-3.5 w-3.5" /> Pending</> : <><UserPlus className="h-3.5 w-3.5" /> Connect</>}
+                            {isConnected ? <><Check className="h-3.5 w-3.5" /> Following</> : <><UserPlus className="h-3.5 w-3.5" /> Follow</>}
                           </button>
                         </>
                       }
