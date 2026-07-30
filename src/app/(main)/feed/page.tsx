@@ -44,8 +44,11 @@ function mapRow(row: FeedRow): FeedPost {
     author.profile?.photoUrl ??
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
 
+  const savedRows = (row as { savedBy?: { userId: string }[] }).savedBy ?? []
   return {
     id: row.id,
+    authorId: author.id,
+    savedByViewer: savedRows.length > 0,
     name,
     headline: author.profile?.headline ?? "",
     batch: author.profile?.batch?.label,
@@ -176,6 +179,7 @@ export default async function FeedPage() {
     <FeedContent
       userName={viewerCard?.name ?? "Guest"}
       viewer={viewerCard}
+      viewerId={viewer?.id ?? null}
       posts={mappedReal}
       suggestions={suggestions}
       news={news}

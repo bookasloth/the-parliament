@@ -88,6 +88,70 @@ export async function getFeed(filters: FeedFilters) {
   }
 }
 
+/** Fetch a single post + author + viewer reaction, or null. Excludes deleted. */
+export async function getPostById(id: string, viewerId?: string) {
+  const post = await prisma.post.findFirst({
+    where: { id, deletedAt: null, status: "visible" },
+    select: postSelect(viewerId),
+  })
+  if (!post) return null
+
+  const viewerReaction = viewerId
+    ? await prisma.reaction.findUnique({
+        where: {
+          userId_entityType_entityId: {
+            userId: viewerId,
+            entityType: "post",
+            entityId: id,
+          },
+        },
+        select: { type: true },
+      })
+    : null
+
+  return { post, viewerReaction: viewerReaction?.type ?? null }
+}
+
+export interface PostCommentRow {
+  id: string
+  body: string
+  likeCount: number
+  createdAt: Date
+  author: {
+    id: string
+    username: string | null
+    displayName: string
+    legalName: string
+    isVerified: boolean
+    profile: { photoUrl: string | null; headline: string | null } | null
+  }
+}
+
+export async function listPostComments(postId: string, limit = 100): Promise<PostCommentRow[]> {
+  const rows = await prisma.comment.findMany({
+    where: { postId, deletedAt: null, parentId: null },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    select: {
+      id: true,
+      body: true,
+      likeCount: true,
+      createdAt: true,
+      author: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          legalName: true,
+          isVerified: true,
+          profile: { select: { photoUrl: true, headline: true } },
+        },
+      },
+    },
+  })
+  return rows
+}
+
 function postSelect(viewerId?: string) {
   return {
     id: true,

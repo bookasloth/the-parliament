@@ -13,7 +13,16 @@ import {
 } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
-import { reactToPost, commentOnPost, throwEgg } from "./actions"
+import {
+  reactToPost,
+  commentOnPost,
+  throwEgg,
+  sharePostAction,
+  toggleSavePostAction,
+  awardPostAction,
+  deletePostAction,
+  reportPostAction,
+} from "./actions"
 
 interface Connection {
   name: string
@@ -297,6 +306,7 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
 export function FeedContent({
   userName,
   viewer = null,
+  viewerId = null,
   posts = MOCK_POSTS,
   suggestions = [],
   news = [],
@@ -304,6 +314,7 @@ export function FeedContent({
 }: {
   userName: string
   viewer?: ViewerCard | null
+  viewerId?: string | null
   posts?: FeedPost[]
   suggestions?: SuggestedConnection[]
   news?: NewsItem[]
@@ -365,22 +376,26 @@ export function FeedContent({
 
             {posts.map((post) => {
               const isReal = post.id.length > 10 // real DB rows use UUIDs; mock rows use "1".."6"
+              const isAuthor = !!(viewerId && post.authorId && viewerId === post.authorId)
+              if (!isReal) {
+                return <FeedCard key={post.id} post={post} />
+              }
               return (
                 <FeedCard
                   key={post.id}
                   post={post}
-                  onUpvote={
-                    isReal
-                      ? () => {
-                          void reactToPost(post.id, "upvote")
-                        }
-                      : undefined
-                  }
-                  onComment={
-                    isReal
-                      ? (body) => {
-                          void commentOnPost(post.id, body)
-                        }
+                  isAuthor={isAuthor}
+                  initialSaved={post.savedByViewer}
+                  onUpvote={() => void reactToPost(post.id, "upvote")}
+                  onDownvote={() => void reactToPost(post.id, "downvote")}
+                  onComment={(body) => void commentOnPost(post.id, body)}
+                  onShare={() => sharePostAction(post.id)}
+                  onSave={() => toggleSavePostAction(post.id)}
+                  onAward={(key) => awardPostAction(post.id, key as never)}
+                  onDelete={isAuthor ? () => void deletePostAction(post.id) : undefined}
+                  onReport={
+                    !isAuthor
+                      ? (reason) => void reportPostAction(post.id, reason)
                       : undefined
                   }
                 />

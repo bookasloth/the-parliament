@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation"
 import { optionalUser } from "@/modules/auth/session"
 import { getGroupById } from "@/modules/groups/service"
 import GroupDetailClient, { type RealGroup } from "./group-detail-client"
@@ -12,28 +13,26 @@ export default async function GroupDetailPage({
   const { slug } = await params
   const user = await optionalUser()
 
-  // slug === group id. If it resolves to a real group, pass it through;
-  // otherwise fall back to the client's built-in mock.
-  let realGroup: RealGroup | undefined
+  let found
   try {
-    const found = await getGroupById(slug, user?.id ?? null)
-    if (found) {
-      realGroup = {
-        id: found.id,
-        slug: found.slug,
-        name: found.name,
-        description: found.description,
-        members: found.members,
-        privacy: found.privacy,
-        category: found.category,
-        cover: found.cover,
-        icon: found.icon,
-        isJoined: found.isJoined,
-        postsThisWeek: found.postsThisWeek,
-      }
-    }
+    found = await getGroupById(slug, user?.id ?? null)
   } catch {
-    // Non-UUID slug (mock) or lookup failure → use mock.
+    notFound()
+  }
+  if (!found) notFound()
+
+  const realGroup: RealGroup = {
+    id: found.id,
+    slug: found.slug,
+    name: found.name,
+    description: found.description,
+    members: found.members,
+    privacy: found.privacy,
+    category: found.category,
+    cover: found.cover,
+    icon: found.icon,
+    isJoined: found.isJoined,
+    postsThisWeek: found.postsThisWeek,
   }
 
   return <GroupDetailClient realGroup={realGroup} />

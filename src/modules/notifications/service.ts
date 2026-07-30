@@ -80,3 +80,48 @@ export async function unreadCount(userId: string): Promise<number> {
     where: { userId, isRead: false },
   })
 }
+
+export interface NotificationRow {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  imageUrl: string | null
+  entityType: string | null
+  entityId: string | null
+  isRead: boolean
+  createdAt: Date
+}
+
+export async function listNotifications(
+  userId: string,
+  limit = 50,
+): Promise<NotificationRow[]> {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      body: true,
+      imageUrl: true,
+      entityType: true,
+      entityId: true,
+      isRead: true,
+      createdAt: true,
+    },
+  })
+}
+
+export async function markAllRead(userId: string): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true, readAt: new Date() },
+  })
+}
+
+export async function deleteNotification(userId: string, id: string): Promise<void> {
+  await prisma.notification.deleteMany({ where: { id, userId } })
+}
