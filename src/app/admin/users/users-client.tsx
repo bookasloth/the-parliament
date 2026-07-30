@@ -55,6 +55,32 @@ export default function AdminUsersClient({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteName, setInviteName] = useState("")
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+
+  async function submitInvite() {
+    setInviteBusy(true)
+    setInviteMsg(null)
+    try {
+      const res = await fetch("/api/admin/users/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail, legalName: inviteName }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to invite")
+      setInviteMsg(`Activation email sent to ${inviteEmail}`)
+      setInviteEmail("")
+      setInviteName("")
+    } catch (e) {
+      setInviteMsg(e instanceof Error ? e.message : "Failed to invite")
+    } finally {
+      setInviteBusy(false)
+    }
+  }
 
   const filtered = users.filter(u => {
     if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false
@@ -84,7 +110,7 @@ export default function AdminUsersClient({
             <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
               <Download className="h-3.5 w-3.5" /> Export CSV
             </button>
-            <button className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
+            <button onClick={() => { setInviteOpen(true); setInviteMsg(null) }} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
               <UserPlus className="h-3.5 w-3.5" /> Invite User
             </button>
           </>
@@ -273,6 +299,33 @@ export default function AdminUsersClient({
           </div>
         </div>
       </div>
+
+      {inviteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setInviteOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">Invite User</h3>
+              <button onClick={() => setInviteOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mb-4 text-xs text-slate-500">Creates an account and emails a link to set their own password. No default password is stored.</p>
+            <label className="mb-3 block">
+              <span className="mb-1 block text-xs font-semibold text-slate-700">Legal name</span>
+              <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" placeholder="Full name as on records" />
+            </label>
+            <label className="mb-4 block">
+              <span className="mb-1 block text-xs font-semibold text-slate-700">Email</span>
+              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" placeholder="name@example.com" />
+            </label>
+            {inviteMsg && <div className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-700">{inviteMsg}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setInviteOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={submitInvite} disabled={inviteBusy || !inviteEmail || !inviteName} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+                <Mail className="h-3.5 w-3.5" /> {inviteBusy ? "Sending…" : "Send activation email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
