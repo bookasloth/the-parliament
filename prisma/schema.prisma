@@ -180,6 +180,7 @@ model User {
   karmaRedemptions         KarmaRedemption[]
   sentMessages             Message[]                 @relation("message_sender")
   savedPosts               SavedPost[]
+  hiddenPosts              HiddenPost[]
   postAwards               PostAward[]
   pollVotes                PollVote[]
   notifications            Notification[]
@@ -498,6 +499,10 @@ model Post {
   reportPenalty   Decimal   @default(0) @map("report_penalty") @db.Decimal(8, 3)
   rankingScore    Decimal   @default(0) @map("ranking_score") @db.Decimal(10, 3)
   status          String    @default("visible") @db.VarChar(20)
+  quoteSource     String?   @map("quote_source")
+  isAnonymous     Boolean   @default(false) @map("is_anonymous")
+  textBg          String?   @map("text_bg") @db.VarChar(20)
+  viewCount       Int       @default(0) @map("view_count")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
@@ -510,6 +515,7 @@ model Post {
   shares   PostShare[]
   mentions PostMention[]
   savedBy  SavedPost[]
+  hiddenBy HiddenPost[]
   awards   PostAward[]
   hashtags PostHashtag[]
   poll     Poll?
@@ -636,6 +642,19 @@ model SavedPost {
 
   @@id([userId, postId])
   @@map("saved_posts")
+}
+
+model HiddenPost {
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([userId])
+  @@map("hidden_posts")
 }
 
 model PostAward {

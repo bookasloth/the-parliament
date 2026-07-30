@@ -182,6 +182,8 @@ export default function ComposePage() {
         media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
         poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
         textBg: type === "text" && bg !== "plain" ? bg : undefined,
+        quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
+        audience: audience.key,
       })
       // createPostAction redirects to /feed on success.
     } catch (err) {

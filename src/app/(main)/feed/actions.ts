@@ -6,6 +6,7 @@ import {
   toggleReaction,
   createComment,
   deleteComment,
+  hidePost,
   editPost,
   deletePost,
   sharePost,
@@ -87,6 +88,13 @@ export async function deleteCommentAction(postId: string, commentId: string) {
   const user = await requireUser()
   await deleteComment({ userId: user.id, commentId })
   revalidatePath(`/feed/${postId}`)
+  return { ok: true as const }
+}
+
+export async function hidePostAction(postId: string) {
+  const user = await requireUser()
+  await hidePost({ userId: user.id, postId })
+  revalidatePath("/feed")
   return { ok: true as const }
 }
 

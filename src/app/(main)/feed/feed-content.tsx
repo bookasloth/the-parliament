@@ -23,6 +23,7 @@ import {
   awardPostAction,
   deletePostAction,
   reportPostAction,
+  hidePostAction,
   loadMoreFeedAction,
   votePollAction,
   countNewPostsAction,
@@ -278,6 +279,8 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
         </div>
         <div className="border-t border-gray-100 py-2 text-center">
           <a href="/profile/edit" className="text-xs font-medium text-brand hover:text-brand-600 transition-colors">Edit Profile</a>
+          <span className="mx-2 text-gray-300">·</span>
+          <a href="/saved" className="text-xs font-medium text-brand hover:text-brand-600 transition-colors">Saved</a>
         </div>
       </div>
 
@@ -531,6 +534,20 @@ export function FeedContent({
                           // Hide immediately for the reporter — small dopamine hit.
                           optimisticRemove()
                           void reportPostAction(post.id, reason).catch(() =>
+                            setRemovedIds((s) => {
+                              const next = new Set(s)
+                              next.delete(post.id)
+                              return next
+                            }),
+                          )
+                        }
+                      : undefined
+                  }
+                  onHide={
+                    !isAuthor
+                      ? () => {
+                          optimisticRemove()
+                          void hidePostAction(post.id).catch(() =>
                             setRemovedIds((s) => {
                               const next = new Set(s)
                               next.delete(post.id)

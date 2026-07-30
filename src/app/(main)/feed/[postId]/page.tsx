@@ -46,6 +46,10 @@ export default async function PostDetailPage({
   if (!result) notFound()
   const { post, viewerReaction } = result
 
+  // Count the view (ponytail: increments on every open, incl. author/refresh —
+  // good enough for a view counter; dedupe with an impressions table if needed).
+  await prisma.post.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } }).catch(() => {})
+
   const author = post.author
   const authorName = author.displayName || author.legalName
   const avatar =
