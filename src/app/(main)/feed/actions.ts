@@ -30,6 +30,26 @@ export async function reactToPost(postId: string, type: ReactionType) {
   return result
 }
 
+/** Count visible posts created after `sinceIso` — drives the "N new posts" pill. */
+export async function countNewPostsAction(sinceIso: string) {
+  const schoolId = await getDefaultSchoolId()
+  if (!schoolId) return { count: 0 }
+  const since = new Date(sinceIso)
+  if (Number.isNaN(since.getTime())) return { count: 0 }
+  const viewer = await optionalUser()
+  const count = await prisma.post.count({
+    where: {
+      schoolId,
+      deletedAt: null,
+      status: "visible",
+      createdAt: { gt: since },
+      // Don't nag the viewer about their own just-posted content.
+      ...(viewer?.id ? { authorId: { not: viewer.id } } : {}),
+    },
+  })
+  return { count }
+}
+
 export async function votePollAction(postId: string, pollId: string, optionId: string) {
   const user = await requireUser()
   const r = await votePoll({ userId: user.id, pollId, optionId })
@@ -38,9 +58,9 @@ export async function votePollAction(postId: string, pollId: string, optionId: s
   return r
 }
 
-export async function commentOnPost(postId: string, body: string) {
+export async function commentOnPost(postId: string, body: string, parentId?: string) {
   const user = await requireUser()
-  const comment = await createComment({ userId: user.id, postId, body })
+  const comment = await createComment({ userId: user.id, postId, body, parentId })
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { id: comment.id }

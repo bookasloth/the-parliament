@@ -130,44 +130,45 @@ export async function getPostById(id: string, viewerId?: string) {
   return { post, viewerReaction: viewerReaction?.type ?? null }
 }
 
-export interface PostCommentRow {
-  id: string
-  body: string
-  likeCount: number
-  createdAt: Date
+const commentSelect = {
+  id: true,
+  body: true,
+  likeCount: true,
+  createdAt: true,
+  parentId: true,
   author: {
-    id: string
-    username: string | null
-    displayName: string
-    legalName: string
-    isVerified: boolean
-    profile: { photoUrl: string | null; headline: string | null } | null
-  }
-}
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      legalName: true,
+      isVerified: true,
+      profile: { select: { photoUrl: true, headline: true } },
+    },
+  },
+} satisfies Prisma.CommentSelect
 
+type CommentBase = Prisma.CommentGetPayload<{ select: typeof commentSelect }>
+export type PostCommentRow = CommentBase & { replies: CommentBase[] }
+
+// Top-level comments (oldest first) each with their direct replies. One level of
+// nesting — replies to replies are stored against the same top-level parent.
 export async function listPostComments(postId: string, limit = 100): Promise<PostCommentRow[]> {
-  const rows = await prisma.comment.findMany({
+  const top = await prisma.comment.findMany({
     where: { postId, deletedAt: null, parentId: null },
     orderBy: { createdAt: "asc" },
     take: limit,
-    select: {
-      id: true,
-      body: true,
-      likeCount: true,
-      createdAt: true,
-      author: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          legalName: true,
-          isVerified: true,
-          profile: { select: { photoUrl: true, headline: true } },
-        },
-      },
-    },
+    select: commentSelect,
   })
-  return rows
+  const topIds = top.map((t) => t.id)
+  const replies = topIds.length
+    ? await prisma.comment.findMany({
+        where: { postId, deletedAt: null, parentId: { in: topIds } },
+        orderBy: { createdAt: "asc" },
+        select: commentSelect,
+      })
+    : []
+  return top.map((t) => ({ ...t, replies: replies.filter((r) => r.parentId === t.id) }))
 }
 
 function postSelect(viewerId?: string) {

@@ -71,12 +71,14 @@ const SUGGESTED_SEARCHES = [
   { text: "Karma leaderboard", trending: false },
 ]
 
-const notifications = [
-  { id: "n1", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face", text: "Durga has posted a poll", time: "1hr" },
-  { id: "n2", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face", text: "Priya Sharma commented on your post", time: "3hr" },
-  { id: "n3", avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face", text: "Dr. Amit Verma accepted your connection request", time: "5hr" },
-  { id: "n4", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face", text: "Vikram Singh mentioned you in Career Advice", time: "1d" },
-]
+function notifTime(iso: string): string {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (m < 1) return "now"
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  return `${Math.floor(h / 24)}d`
+}
 
 /* ---------------- Hooks ---------------- */
 function useClickOutside<T extends HTMLElement>(onClose: () => void) {
@@ -190,6 +192,51 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
 
+  type NotifItem = {
+    id: string
+    title: string
+    body: string | null
+    imageUrl: string | null
+    isRead: boolean
+    createdAt: string
+    href: string
+  }
+  const [notifCount, setNotifCount] = useState(0)
+  const [notifItems, setNotifItems] = useState<NotifItem[]>([])
+
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      try {
+        const r = await fetch("/api/notifications/summary")
+        if (!r.ok) return
+        const d = await r.json()
+        if (active) {
+          setNotifCount(d.count ?? 0)
+          setNotifItems(d.items ?? [])
+        }
+      } catch {
+        /* ignore — retried next tick */
+      }
+    }
+    load()
+    const id = setInterval(load, 60_000)
+    return () => {
+      active = false
+      clearInterval(id)
+    }
+  }, [])
+
+  async function clearNotifs() {
+    setNotifCount(0)
+    setNotifItems((items) => items.map((i) => ({ ...i, isRead: true })))
+    try {
+      await fetch("/api/notifications/summary", { method: "POST" })
+    } catch {
+      /* best-effort */
+    }
+  }
+
   const searchRef = useClickOutside<HTMLDivElement>(() => setSearchOpen(false))
   const notifRef = useClickOutside<HTMLLIElement>(() => setNotifOpen(false))
   const profileRef = useClickOutside<HTMLLIElement>(() => setProfileOpen(false))
@@ -288,31 +335,43 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
               className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${notifOpen ? "bg-brand text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
             >
               <Bell className="h-4 w-4" />
-              {/* blinking notification badge */}
-              <span className="absolute top-1 right-1.5 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-              </span>
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+                  {notifCount > 9 ? "9+" : notifCount}
+                </span>
+              )}
             </button>
 
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 z-50 w-[320px] sm:w-[360px] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h6 className="text-sm font-semibold text-gray-900">Your Notifications</h6>
-                  <button className="text-xs text-brand hover:underline">Clear Log</button>
+                  {notifCount > 0 && (
+                    <button onClick={clearNotifs} className="text-xs text-brand hover:underline">Mark all read</button>
+                  )}
                 </div>
                 <ul className="max-h-[320px] overflow-y-auto p-2">
-                  {notifications.map(n => (
-                    <li key={n.id}>
-                      <a href="#" className="flex items-start gap-3 rounded-lg p-2.5 hover:bg-gray-50 transition-colors">
-                        <img src={n.avatar} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-700 leading-snug">{n.text}</p>
-                        </div>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">{n.time}</span>
-                      </a>
-                    </li>
-                  ))}
+                  {notifItems.length === 0 ? (
+                    <li className="px-3 py-8 text-center text-xs text-gray-400">You&apos;re all caught up.</li>
+                  ) : (
+                    notifItems.map(n => (
+                      <li key={n.id}>
+                        <a href={n.href} className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 ${n.isRead ? "" : "bg-brand-50/40"}`}>
+                          {n.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={n.imageUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-800 leading-snug">{n.title}</p>
+                            {n.body && <p className="text-[11px] text-gray-500 leading-snug line-clamp-2">{n.body}</p>}
+                          </div>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">{notifTime(n.createdAt)}</span>
+                        </a>
+                      </li>
+                    ))
+                  )}
                 </ul>
                 <div className="border-t border-gray-100 p-2.5 text-center">
                   <a href="/notifications" className="inline-block rounded-full bg-brand/10 px-4 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors">

@@ -132,6 +132,7 @@ export default async function FeedPage() {
       suggestions={suggestions}
       news={news}
       initialEgged={eggedUsernames}
+      loadedAt={new Date().toISOString()}
     />
   )
 }

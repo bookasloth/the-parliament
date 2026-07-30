@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   X,
   Users,
@@ -24,6 +25,7 @@ import {
   reportPostAction,
   loadMoreFeedAction,
   votePollAction,
+  countNewPostsAction,
 } from "./actions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 
@@ -294,6 +296,7 @@ export function FeedContent({
   suggestions = [],
   news = [],
   initialEgged = [],
+  loadedAt,
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -304,7 +307,10 @@ export function FeedContent({
   suggestions?: SuggestedConnection[]
   news?: NewsItem[]
   initialEgged?: string[]
+  loadedAt?: string
 }) {
+  const router = useRouter()
+  const [newCount, setNewCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
@@ -355,6 +361,32 @@ export function FeedContent({
     return () => io.disconnect()
   }, [hasMore, loadMore])
 
+  // Poll for posts created since this page was rendered → "N new posts" pill.
+  useEffect(() => {
+    if (!loadedAt) return
+    setNewCount(0)
+    let active = true
+    const check = async () => {
+      try {
+        const r = await countNewPostsAction(loadedAt)
+        if (active) setNewCount(r.count)
+      } catch {
+        /* ignore — retried next tick */
+      }
+    }
+    const id = setInterval(check, 30_000)
+    return () => {
+      active = false
+      clearInterval(id)
+    }
+  }, [loadedAt])
+
+  function showNewPosts() {
+    setNewCount(0)
+    router.refresh()
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   async function handleThrowEgg(username: string) {
     if (!username || eggedUsernames.has(username)) return
     setEggedUsernames((s) => new Set(s).add(username))
@@ -403,6 +435,16 @@ export function FeedContent({
 
           {/* Feed Column */}
           <div className="flex-1 min-w-0 space-y-3">
+            {newCount > 0 && (
+              <div className="sticky top-16 z-20 flex justify-center">
+                <button
+                  onClick={showNewPosts}
+                  className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/5 hover:bg-brand-600"
+                >
+                  {newCount} new post{newCount > 1 ? "s" : ""} · tap to refresh
+                </button>
+              </div>
+            )}
             {/* Standard compose trigger */}
             <ComposeTrigger />
 
