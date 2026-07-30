@@ -60,6 +60,20 @@ export async function getFeed(filters: FeedFilters) {
     select: postSelect(filters.viewerId),
   })
 
+  // Reactions live in a polymorphic table — fetch viewer's rows in one shot.
+  let viewerReactionByPostId = new Map<string, string>()
+  if (filters.viewerId && candidates.length > 0) {
+    const rx = await prisma.reaction.findMany({
+      where: {
+        userId: filters.viewerId,
+        entityType: "post",
+        entityId: { in: candidates.map((c) => c.id) },
+      },
+      select: { entityId: true, type: true },
+    })
+    viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
+  }
+
   const ranker = getRanker(filters.rankerName)
   const now = Date.now()
   const ranked = candidates
@@ -81,7 +95,10 @@ export async function getFeed(filters: FeedFilters) {
     .slice((page - 1) * pageSize, page * pageSize)
 
   return {
-    rows: ranked.map((r) => r.post),
+    rows: ranked.map((r) => ({
+      ...r.post,
+      viewerReaction: viewerReactionByPostId.get(r.post.id) ?? null,
+    })),
     page,
     pageSize,
     rankerUsed: ranker.name,

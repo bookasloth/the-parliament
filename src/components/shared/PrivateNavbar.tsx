@@ -202,7 +202,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   ]
 
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
 
         {/* Logo */}
