@@ -132,6 +132,14 @@ export default function ComposePage() {
       .then((d) => { if (d) { setPlan(d.planCode); setJobsAllowed(!!d.benefits?.jobs) } })
       .catch(() => {})
   }, [])
+  // Real logged-in author (name + avatar) for the composer header.
+  const [me, setMe] = useState<{ name: string; photoUrl: string } | null>(null)
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setMe(d) })
+      .catch(() => {})
+  }, [])
   // Preselect type from ComposeTrigger deep-links (/compose?type=poll). window
   // (not useSearchParams) keeps this page out of a Suspense boundary.
   useEffect(() => {
@@ -180,14 +188,15 @@ export default function ComposePage() {
   }
 
   const anon = audience.key === "anonymous"
-  const authorName = anon ? "Anonymous JNVian" : "Shubham Datarkar"
+  const authorName = anon ? "Anonymous JNVian" : me?.name ?? "You"
+  const firstName = me?.name?.split(" ")[0] ?? ""
 
   const placeholder =
     type === "question" ? "Ask your batch a question…" :
     type === "quote" ? "Share a quote that stuck with you…" :
     type === "link" ? "Say something about this link… (optional)" :
     type === "poll" ? "Ask a poll question…" :
-    `What's on your mind${anon ? "" : ", Shubham"}?`
+    `What's on your mind${anon ? "" : firstName ? `, ${firstName}` : ""}?`
 
   return (
     <div className="min-h-screen bg-[#eef0f4] px-4 py-8 font-body">
@@ -209,7 +218,11 @@ export default function ComposePage() {
               </div>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="https://i.pravatar.cc/80?img=68" alt="" className="h-11 w-11 rounded-full object-cover ring-2 ring-brand/60" />
+              <img
+                src={me?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(me?.name ?? "You")}`}
+                alt=""
+                className="h-11 w-11 rounded-full object-cover ring-2 ring-brand/60"
+              />
             )}
             <div className="relative">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
