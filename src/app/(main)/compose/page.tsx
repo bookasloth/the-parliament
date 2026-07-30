@@ -170,6 +170,7 @@ export default function ComposePage() {
         linkUrl: type === "link" ? linkUrl.trim() : undefined,
         mediaKeys: type === "photo" ? media.map((m) => m.key) : undefined,
         poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
+        textBg: type === "text" && bg !== "plain" ? bg : undefined,
       })
       // createPostAction redirects to /feed on success.
     } catch (err) {

@@ -17,6 +17,7 @@ export async function createPostAction(input: {
   linkUrl?: string
   mediaKeys?: string[]
   poll?: { question: string; options: string[] }
+  textBg?: string
 }) {
   const user = await requireUser()
   const schoolId = await getDefaultSchoolId()
@@ -40,6 +41,10 @@ export async function createPostAction(input: {
     type: "image",
     url: publicUrlFor(key),
   }))
+  // Text-post background is stashed as a non-image sentinel in media (no url),
+  // so image readers (map-row.mediaUrls, detail grid) skip it. Avoids a schema column.
+  const styleMedia =
+    input.textBg && media.length === 0 ? [{ key: "", type: "style", bg: input.textBg }] : []
 
   await createPost({
     authorId: user.id,
@@ -48,7 +53,7 @@ export async function createPostAction(input: {
     format,
     body: input.body,
     linkUrl: input.linkUrl,
-    media: media.length > 0 ? media : undefined,
+    media: media.length > 0 ? media : styleMedia.length > 0 ? styleMedia : undefined,
     poll: input.poll,
   })
 

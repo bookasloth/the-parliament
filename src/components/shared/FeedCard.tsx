@@ -48,6 +48,8 @@ export interface FeedPost {
   isPinned?: boolean
   isEdited?: boolean
   content?: string
+  /** Facebook-style coloured background id for short text posts (see TEXT_BG). */
+  textBg?: string
   image?: string
   images?: string[]
   mediaCount?: number
@@ -93,6 +95,23 @@ export const avatarColors: Record<BorderType, string> = {
   grey: "#6B7280",
   rgby: "#8B5CF6",
   green: "#059669",
+}
+
+// Coloured text-post backgrounds — mirrors BG_OPTIONS in the composer.
+// ponytail: duplicated here (like the membership/house colours already are) to
+// keep the card self-contained; keep in sync with compose/page.tsx if edited.
+export const TEXT_BG: Record<string, { bg: string; fg?: string }> = {
+  navy: { bg: "linear-gradient(135deg,#1a3a6b,#0b1c38)" },
+  brand: { bg: "linear-gradient(135deg,#009ae4,#005c8c)" },
+  sunset: { bg: "linear-gradient(135deg,#ff8a5b,#e75480)" },
+  gold: { bg: "linear-gradient(135deg,#ffd119,#d4a800)" },
+  forest: { bg: "linear-gradient(135deg,#3ea35f,#1f6b3e)" },
+  violet: { bg: "linear-gradient(135deg,#9b6cff,#5a2ec0)" },
+  christmas: { bg: "linear-gradient(135deg,#c0392b 0%,#0e7a3a 100%)" },
+  tricolour: {
+    bg: "linear-gradient(180deg,#FF9933 0%,#FF9933 33%,#ffffff 33%,#ffffff 66%,#138808 66%,#138808 100%)",
+    fg: "#1a3a6b",
+  },
 }
 
 const borderAccents: Record<BorderType, string> = {
@@ -880,7 +899,21 @@ export function FeedCard({
       {/* Card Body */}
       <div className="px-4 pt-2 pb-1">
         {post.content && !post.isSponsored && !post.quote && !post.question && !post.poll && (
-          <RichText text={post.content} />
+          post.textBg && TEXT_BG[post.textBg] ? (
+            <div
+              className="flex min-h-[180px] items-center justify-center rounded-lg p-6"
+              style={{ background: TEXT_BG[post.textBg].bg }}
+            >
+              <p
+                className="whitespace-pre-line text-center text-xl font-bold leading-snug text-white"
+                style={TEXT_BG[post.textBg].fg ? { color: TEXT_BG[post.textBg].fg } : undefined}
+              >
+                {post.content}
+              </p>
+            </div>
+          ) : (
+            <RichText text={post.content} />
+          )
         )}
 
         {post.isSponsored && (

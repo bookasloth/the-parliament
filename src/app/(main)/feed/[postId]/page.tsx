@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma"
 import PostReactionBar from "./post-reaction-bar"
 import PollBlock from "./poll-block"
 import CommentsLoader from "./comments-loader"
+import { TEXT_BG } from "@/components/shared/FeedCard"
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 
 export const dynamic = "force-dynamic"
@@ -142,13 +143,25 @@ export default async function PostDetailPage({
           )}
         </header>
 
-        {post.body && !post.poll && (
-          <div className="px-5 pb-3">
-            <p className="text-[15px] text-gray-800 leading-relaxed whitespace-pre-line">
-              {post.body}
-            </p>
-          </div>
-        )}
+        {post.body && !post.poll && (() => {
+          const bgId = Array.isArray(post.media)
+            ? (post.media as { type?: string; bg?: string }[]).find((m) => m?.type === "style")?.bg
+            : undefined
+          const bg = bgId ? TEXT_BG[bgId] : undefined
+          return (
+            <div className="px-5 pb-3">
+              {bg ? (
+                <div className="flex min-h-[180px] items-center justify-center rounded-lg p-6" style={{ background: bg.bg }}>
+                  <p className="whitespace-pre-line text-center text-xl font-bold leading-snug text-white" style={bg.fg ? { color: bg.fg } : undefined}>
+                    {post.body}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[15px] text-gray-800 leading-relaxed whitespace-pre-line">{post.body}</p>
+              )}
+            </div>
+          )
+        })()}
 
         {post.poll && (
           <div className="px-5 pb-3">

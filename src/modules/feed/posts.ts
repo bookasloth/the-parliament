@@ -13,7 +13,7 @@ export interface CreatePostInput {
   categoryKey: string
   format: PostFormat
   body?: string
-  media?: { key: string; type: string; url?: string }[]
+  media?: { key: string; type: string; url?: string; bg?: string }[]
   linkUrl?: string
   poll?: { question: string; options: string[] }
   groupId?: string

@@ -30,6 +30,15 @@ function mediaUrls(media: unknown): string[] {
     .filter((u): u is string => typeof u === "string" && u.length > 0)
 }
 
+// Text-post background sentinel: media entry {type:"style", bg}.
+function textBgFrom(media: unknown): string | undefined {
+  if (!Array.isArray(media)) return undefined
+  const s = media.find(
+    (m) => m && typeof m === "object" && (m as { type?: string }).type === "style",
+  ) as { bg?: string } | undefined
+  return s?.bg
+}
+
 export function relativeTime(date: Date): string {
   const diffMs = Date.now() - new Date(date).getTime()
   const sec = Math.floor(diffMs / 1000)
@@ -117,6 +126,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     image: images.length === 1 ? images[0] : undefined,
     images: images.length > 1 ? images : undefined,
     mediaCount: images.length > 1 ? images.length : undefined,
+    textBg: textBgFrom(row.media),
     upvotes: row.upvoteCount,
     downvotes: row.downvoteCount,
     comments: row.commentCount,
