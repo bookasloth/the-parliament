@@ -6,6 +6,7 @@ import {
   toggleReaction,
   createComment,
   deleteComment,
+  hidePost,
   editPost,
   deletePost,
   sharePost,
@@ -91,6 +92,13 @@ export async function deleteCommentAction(postId: string, commentId: string) {
   return { ok: true as const }
 }
 
+export async function hidePostAction(postId: string) {
+  const user = await requireUser()
+  await hidePost({ userId: user.id, postId })
+  revalidatePath("/feed")
+  return { ok: true as const }
+}
+
 export async function reportCommentAction(postId: string, commentId: string, reason: string) {
   const user = await requireUser()
   await fileReport({
@@ -124,17 +132,14 @@ export async function updatePostAction(
     type: m.type,
     url: publicUrlFor(m.key),
   }))
-  // Same encoding as createPostAction: a plain text-post background is stashed as
-  // a non-image {type:"style"} sentinel in media (skipped by image readers).
-  const styleMedia =
-    input.textBg && media.length === 0 ? [{ key: "", type: "style", bg: input.textBg }] : []
-  const nextMedia = media.length > 0 ? media : styleMedia
 
   await editPost({
     postId,
     authorId: user.id,
     body: input.body,
-    media: nextMedia,
+    media,
+    // Only meaningful for text posts; "" clears the background back to plain.
+    textBg: input.textBg ?? "",
   })
   revalidatePath(`/feed/${postId}`)
   revalidatePath("/feed")

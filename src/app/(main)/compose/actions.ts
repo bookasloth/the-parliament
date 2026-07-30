@@ -18,6 +18,8 @@ export async function createPostAction(input: {
   media?: { key: string; type: "image" | "video" }[]
   poll?: { question: string; options: string[] }
   textBg?: string
+  quoteSource?: string
+  audience?: string
 }) {
   const user = await requireUser()
   const schoolId = await getDefaultSchoolId()
@@ -41,10 +43,12 @@ export async function createPostAction(input: {
     type: m.type,
     url: publicUrlFor(m.key),
   }))
-  // Text-post background is stashed as a non-image sentinel in media (no url),
-  // so image readers (map-row.mediaUrls, detail grid) skip it. Avoids a schema column.
-  const styleMedia =
-    input.textBg && media.length === 0 ? [{ key: "", type: "style", bg: input.textBg }] : []
+
+  // Anonymous is an identity flag (author hidden), not an audience — the post
+  // is otherwise public. Map the other audiences to a visibility scope.
+  const anonymous = input.audience === "anonymous"
+  const visibilityScope =
+    anonymous ? "public" : input.audience === "followers" ? "followers" : input.audience === "groups" ? "groups" : "public"
 
   await createPost({
     authorId: user.id,
@@ -53,8 +57,12 @@ export async function createPostAction(input: {
     format,
     body: input.body,
     linkUrl: input.linkUrl,
-    media: media.length > 0 ? media : styleMedia.length > 0 ? styleMedia : undefined,
+    media: media.length > 0 ? media : undefined,
     poll: input.poll,
+    textBg: input.textBg,
+    quoteSource: input.quoteSource,
+    isAnonymous: anonymous,
+    visibilityScope,
   })
 
   revalidatePath("/feed")

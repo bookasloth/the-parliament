@@ -40,7 +40,10 @@ export default async function EditPostPage({
   const { post } = result
   if (post.author.id !== user.id) notFound()
 
-  const { bg, items } = splitMedia(post.media)
+  const { bg: legacyBg, items } = splitMedia(post.media)
+  // textBg is a real column since Feed bundle #29; fall back to the old
+  // {type:"style"} media sentinel for posts created before it.
+  const bg = post.textBg ?? legacyBg
 
   async function save(data: { body: string; media?: { key: string; type: "image" | "video" }[]; textBg?: string }) {
     "use server"
@@ -64,6 +67,7 @@ export default async function EditPostPage({
         bg,
         categoryKey: post.category?.key,
         linkUrl: post.linkUrl ?? undefined,
+        quoteSource: post.quoteSource ?? undefined,
         media: items,
         poll: post.poll
           ? { question: post.poll.question, options: post.poll.options.map((o) => o.label) }

@@ -105,6 +105,8 @@ export interface ComposerSubmitData {
   media?: { key: string; type: "image" | "video" }[]
   poll?: { question: string; options: string[] }
   textBg?: string
+  quoteSource?: string
+  audience?: string
 }
 
 export interface PostComposerProps {
@@ -120,6 +122,7 @@ export interface PostComposerProps {
     bg?: string
     categoryKey?: string
     linkUrl?: string
+    quoteSource?: string
     media?: ComposerMedia[]
     poll?: { question: string; options: string[] }
   }
@@ -150,7 +153,7 @@ export default function PostComposer({
       : ["", ""],
   )
   const [linkUrl, setLinkUrl] = useState(initial?.linkUrl ?? "")
-  const [quoteSource, setQuoteSource] = useState("")
+  const [quoteSource, setQuoteSource] = useState(initial?.quoteSource ?? "")
   const [media, setMedia] = useState<ComposerMedia[]>(initial?.media ?? [])
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
@@ -247,6 +250,8 @@ export default function PostComposer({
         media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
         poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
         textBg: type === "text" && bg !== "plain" ? bg : undefined,
+        quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
+        audience: audience.key,
       })
       // onSubmit redirects on success.
     } catch (err) {

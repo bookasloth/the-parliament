@@ -1,6 +1,7 @@
+import { NextRequest } from "next/server"
 import { handleError, ok } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
-import { unreadCount, listNotifications, markAllRead } from "@/modules/notifications/service"
+import { unreadCount, listNotifications, markAllRead, markRead } from "@/modules/notifications/service"
 
 function hrefFor(entityType: string | null, entityId: string | null): string {
   if (entityType === "post" && entityId) return `/feed/${entityId}`
@@ -29,11 +30,14 @@ export async function GET() {
   }
 }
 
-// POST → mark everything read (the bell's "Clear Log").
-export async function POST() {
+// POST → mark one notification read ({ id }), or all when no id is given.
+export async function POST(req: NextRequest) {
   try {
     const user = await requireUser()
-    await markAllRead(user.id)
+    const body = await req.json().catch(() => ({}))
+    const id = typeof body?.id === "string" ? body.id : null
+    if (id) await markRead(user.id, id)
+    else await markAllRead(user.id)
     return ok({ ok: true })
   } catch (e) {
     return handleError(e)

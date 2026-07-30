@@ -227,6 +227,17 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
     }
   }, [])
 
+  function markOne(id: string, wasRead: boolean) {
+    if (wasRead) return
+    setNotifItems((items) => items.map((i) => (i.id === id ? { ...i, isRead: true } : i)))
+    setNotifCount((c) => Math.max(0, c - 1))
+    void fetch("/api/notifications/summary", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => {})
+  }
+
   async function clearNotifs() {
     setNotifCount(0)
     setNotifItems((items) => items.map((i) => ({ ...i, isRead: true })))
@@ -356,7 +367,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                   ) : (
                     notifItems.map(n => (
                       <li key={n.id}>
-                        <a href={n.href} className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 ${n.isRead ? "" : "bg-brand-50/40"}`}>
+                        <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 ${n.isRead ? "" : "bg-brand-50/40"}`}>
                           {n.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={n.imageUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
