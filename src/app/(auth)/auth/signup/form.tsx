@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
+import { Field, SubmitButton, FormError } from "../ui"
 
 export function SignUpForm() {
   const router = useRouter()
@@ -37,49 +38,22 @@ export function SignUpForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p>
-      )}
+      {error && <FormError>{error}</FormError>}
 
-      <div>
-        <label htmlFor="name" className="text-sm font-medium">Full Name</label>
-        <input
-          id="name"
-          name="name"
-          required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
-        />
-      </div>
-      <div>
-        <label htmlFor="email" className="text-sm font-medium">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
-        />
-      </div>
-      <div>
-        <label htmlFor="password" className="text-sm font-medium">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? "Creating..." : "Create Account"}
-      </button>
-      <p className="text-center text-xs text-gray-500">
+      <Field label="Full name" id="name" name="name" required autoComplete="name" />
+      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
+      <Field
+        label="Password"
+        id="password"
+        name="password"
+        type="password"
+        required
+        autoComplete="new-password"
+      />
+      <SubmitButton loading={loading} idleLabel="Create account" />
+      <p className="text-center text-xs text-neutral-400">
         Already have an account?{" "}
-        <a href="/auth/signin" className="text-blue-600 hover:underline">Sign in</a>
+        <a href="/auth/signin" className="font-medium text-[#ff4800] hover:underline">Sign in</a>
       </p>
     </form>
   )
