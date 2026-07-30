@@ -14,8 +14,11 @@ export async function POST(req: NextRequest) {
     const user = await requireUser()
     const { interestIds } = schema.parse(await req.json())
 
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const uuids = interestIds.filter((s) => UUID_RE.test(s))
+    const slugs = interestIds.filter((s) => !UUID_RE.test(s))
     const interests = await prisma.interest.findMany({
-      where: { OR: [{ id: { in: interestIds } }, { slug: { in: interestIds } }] },
+      where: { OR: [{ id: { in: uuids } }, { slug: { in: slugs } }] },
       select: { id: true },
     })
     const validIds = interests.map((i) => i.id)
