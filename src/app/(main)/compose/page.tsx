@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Plus,
   Send,
-  Video,
   Trash2,
 } from "lucide-react"
 import { createPostAction } from "./actions"
@@ -64,14 +63,14 @@ const CATEGORY_KEYS: Record<string, string> = {
   "School Memory": "school_memory",
   Event: "event",
 }
-// Map composer post types to the createPost format union (text | image | link | quote).
+// Map composer post types to the createPost format.
 const FORMAT_FOR_TYPE: Record<PostType, string> = {
   text: "text",
   photo: "image",
   quote: "quote",
   link: "link",
-  poll: "text",
-  question: "text",
+  poll: "poll",
+  question: "question",
 }
 const AUDIENCES = [
   { key: "public", label: "Public", icon: Globe, sub: "Anyone on The Parliament" },
@@ -90,7 +89,40 @@ export default function ComposePage() {
   const [pollOptions, setPollOptions] = useState(["", ""])
   const [linkUrl, setLinkUrl] = useState("")
   const [quoteSource, setQuoteSource] = useState("")
+  const [media, setMedia] = useState<{ key: string; url: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  async function uploadFiles(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setUploadErr(null)
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) continue
+        const ext = file.name.split(".").pop() || "jpg"
+        const signRes = await fetch("/api/uploads/sign", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ kind: "post", contentType: file.type, ext }),
+        })
+        if (!signRes.ok) throw new Error("Could not start upload")
+        const { key, uploadUrl } = await signRes.json()
+        const put = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "content-type": file.type },
+          body: file,
+        })
+        if (!put.ok) throw new Error("Upload failed")
+        setMedia((m) => [...m, { key, url: URL.createObjectURL(file) }])
+      }
+    } catch (e) {
+      setUploadErr(e instanceof Error ? e.message : "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
   // Current membership tier + whether the jobs benefit is unlocked.
   const [plan, setPlan] = useState<PlanCode>("student")
   const [jobsAllowed, setJobsAllowed] = useState(true) // optimistic; corrected on load
@@ -99,6 +131,12 @@ export default function ComposePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) { setPlan(d.planCode); setJobsAllowed(!!d.benefits?.jobs) } })
       .catch(() => {})
+  }, [])
+  // Preselect type from ComposeTrigger deep-links (/compose?type=poll). window
+  // (not useSearchParams) keeps this page out of a Suspense boundary.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("type")
+    if (t && POST_TYPES.some((pt) => pt.key === t)) setType(t as PostType)
   }, [])
 
   const jobGateBlocked = category === "Job Opening" && !jobsAllowed
@@ -109,7 +147,17 @@ export default function ComposePage() {
   const remaining = CHAR_LIMIT - text.length
   const pct = Math.min(100, (text.length / CHAR_LIMIT) * 100)
   const near = remaining <= 80
-  const canPost = (text.trim().length > 0 || type === "photo" || type === "poll") && !jobGateBlocked
+  const pollFilled = pollOptions.map((o) => o.trim()).filter(Boolean)
+  const canPost =
+    (type === "photo"
+      ? media.length > 0
+      : type === "poll"
+      ? text.trim().length > 0 && pollFilled.length >= 2
+      : type === "link"
+      ? linkUrl.trim().length > 0
+      : text.trim().length > 0) &&
+    !uploading &&
+    !jobGateBlocked
 
   const handlePost = async () => {
     if (!canPost || submitting) return
@@ -119,6 +167,10 @@ export default function ComposePage() {
         body: text.trim(),
         categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
         format: FORMAT_FOR_TYPE[type],
+        linkUrl: type === "link" ? linkUrl.trim() : undefined,
+        mediaKeys: type === "photo" ? media.map((m) => m.key) : undefined,
+        poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
+        textBg: type === "text" && bg !== "plain" ? bg : undefined,
       })
       // createPostAction redirects to /feed on success.
     } catch (err) {
@@ -276,10 +328,41 @@ export default function ComposePage() {
 
             {/* Photo dropzone */}
             {type === "photo" && (
-              <div className={`mt-2 flex flex-col items-center justify-center gap-2 ${R_EL} border-2 border-dashed border-gray-300 bg-gray-50 py-10 text-center transition-colors hover:border-brand hover:bg-brand-50/40`}>
-                <div className="flex gap-2 text-gray-400"><ImagePlus className="h-7 w-7" /><Video className="h-7 w-7" /></div>
-                <div className="text-sm font-semibold text-gray-700">Add photos / videos</div>
-                <div className="text-xs text-gray-400">or drag and drop</div>
+              <div className="mt-2">
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); void uploadFiles(e.dataTransfer.files) }}
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 ${R_EL} border-2 border-dashed border-gray-300 bg-gray-50 py-10 text-center transition-colors hover:border-brand hover:bg-brand-50/40`}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => { void uploadFiles(e.target.files); e.target.value = "" }}
+                  />
+                  <div className="flex gap-2 text-gray-400"><ImagePlus className="h-7 w-7" /></div>
+                  <div className="text-sm font-semibold text-gray-700">{uploading ? "Uploading…" : "Add photos"}</div>
+                  <div className="text-xs text-gray-400">click or drag and drop · up to 10 MB each</div>
+                </label>
+                {uploadErr && <p className="mt-2 text-xs text-rose-600">{uploadErr}</p>}
+                {media.length > 0 && (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {media.map((m, i) => (
+                      <div key={m.key} className={`relative aspect-square overflow-hidden ${R_EL} border border-gray-200`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.url} alt="" className="h-full w-full object-cover" />
+                        <button
+                          onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                          aria-label="Remove"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

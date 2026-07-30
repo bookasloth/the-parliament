@@ -1,6 +1,5 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
-import { getRanker } from "@/modules/feed/ranker"
 
 export interface FeedFilters {
   schoolId: string
@@ -14,6 +13,8 @@ export interface FeedFilters {
   page?: number
   pageSize?: number
   viewerId?: string
+  /** "Following" feed: only posts from users the viewer follows (+ their own). */
+  followingOnly?: boolean
 }
 
 export async function getFeed(filters: FeedFilters) {
@@ -51,57 +52,73 @@ export async function getFeed(filters: FeedFilters) {
     }
   }
 
-  const candidatePoolSize = pageSize * 4
+  // Author scoping: hide blocked users; in "Following" mode restrict to the
+  // people the viewer follows (+ self). Skipped on a single-author page.
+  if (filters.viewerId && !filters.authorId) {
+    const [blocks, follows] = await Promise.all([
+      prisma.userBlock.findMany({
+        where: { OR: [{ blockerId: filters.viewerId }, { blockedId: filters.viewerId }] },
+        select: { blockerId: true, blockedId: true },
+      }),
+      filters.followingOnly
+        ? prisma.follow.findMany({
+            where: { followerId: filters.viewerId },
+            select: { followingId: true },
+          })
+        : Promise.resolve(null),
+    ])
+    const blocked = new Set(
+      blocks.map((b) => (b.blockerId === filters.viewerId ? b.blockedId : b.blockerId)),
+    )
+    if (follows) {
+      // Following feed: allow followed authors + self, minus anyone blocked.
+      const allowed = [...follows.map((f) => f.followingId), filters.viewerId].filter(
+        (id) => !blocked.has(id),
+      )
+      where.authorId = { in: allowed }
+    } else if (blocked.size > 0) {
+      where.authorId = { notIn: [...blocked] }
+    }
+  }
 
-  const candidates = await prisma.post.findMany({
+  // Order by the stored hot score (indexed) — real DB pagination over every
+  // candidate, not an in-memory re-rank of a recency window. "recency" ranker
+  // falls back to createdAt.
+  const orderBy: Prisma.PostOrderByWithRelationInput[] =
+    filters.rankerName === "recency"
+      ? [{ isPinned: "desc" }, { createdAt: "desc" }]
+      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+
+  const rows = await prisma.post.findMany({
     where,
-    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-    take: candidatePoolSize,
+    orderBy,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
     select: postSelect(filters.viewerId),
   })
 
   // Reactions live in a polymorphic table — fetch viewer's rows in one shot.
   let viewerReactionByPostId = new Map<string, string>()
-  if (filters.viewerId && candidates.length > 0) {
+  if (filters.viewerId && rows.length > 0) {
     const rx = await prisma.reaction.findMany({
       where: {
         userId: filters.viewerId,
         entityType: "post",
-        entityId: { in: candidates.map((c) => c.id) },
+        entityId: { in: rows.map((c) => c.id) },
       },
       select: { entityId: true, type: true },
     })
     viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
   }
 
-  const ranker = getRanker(filters.rankerName)
-  const now = Date.now()
-  const ranked = candidates
-    .map((p) => {
-      const ageHours = (now - new Date(p.createdAt).getTime()) / 3_600_000
-      const score = ranker.score({
-        upvoteCount: p.upvoteCount,
-        downvoteCount: p.downvoteCount,
-        commentCount: p.commentCount,
-        shareCount: p.shareCount,
-        qualityScore: Number(p.qualityScore),
-        reportPenalty: Number(p.reportPenalty),
-        ageHours,
-        isPinned: p.isPinned,
-      })
-      return { post: p, score }
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice((page - 1) * pageSize, page * pageSize)
-
   return {
-    rows: ranked.map((r) => ({
-      ...r.post,
-      viewerReaction: viewerReactionByPostId.get(r.post.id) ?? null,
+    rows: rows.map((r) => ({
+      ...r,
+      viewerReaction: viewerReactionByPostId.get(r.id) ?? null,
     })),
     page,
     pageSize,
-    rankerUsed: ranker.name,
+    rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
   }
 }
 
@@ -129,44 +146,45 @@ export async function getPostById(id: string, viewerId?: string) {
   return { post, viewerReaction: viewerReaction?.type ?? null }
 }
 
-export interface PostCommentRow {
-  id: string
-  body: string
-  likeCount: number
-  createdAt: Date
+const commentSelect = {
+  id: true,
+  body: true,
+  likeCount: true,
+  createdAt: true,
+  parentId: true,
   author: {
-    id: string
-    username: string | null
-    displayName: string
-    legalName: string
-    isVerified: boolean
-    profile: { photoUrl: string | null; headline: string | null } | null
-  }
-}
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      legalName: true,
+      isVerified: true,
+      profile: { select: { photoUrl: true, headline: true } },
+    },
+  },
+} satisfies Prisma.CommentSelect
 
+type CommentBase = Prisma.CommentGetPayload<{ select: typeof commentSelect }>
+export type PostCommentRow = CommentBase & { replies: CommentBase[] }
+
+// Top-level comments (oldest first) each with their direct replies. One level of
+// nesting — replies to replies are stored against the same top-level parent.
 export async function listPostComments(postId: string, limit = 100): Promise<PostCommentRow[]> {
-  const rows = await prisma.comment.findMany({
+  const top = await prisma.comment.findMany({
     where: { postId, deletedAt: null, parentId: null },
     orderBy: { createdAt: "asc" },
     take: limit,
-    select: {
-      id: true,
-      body: true,
-      likeCount: true,
-      createdAt: true,
-      author: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          legalName: true,
-          isVerified: true,
-          profile: { select: { photoUrl: true, headline: true } },
-        },
-      },
-    },
+    select: commentSelect,
   })
-  return rows
+  const topIds = top.map((t) => t.id)
+  const replies = topIds.length
+    ? await prisma.comment.findMany({
+        where: { postId, deletedAt: null, parentId: { in: topIds } },
+        orderBy: { createdAt: "asc" },
+        select: commentSelect,
+      })
+    : []
+  return top.map((t) => ({ ...t, replies: replies.filter((r) => r.parentId === t.id) }))
 }
 
 function postSelect(viewerId?: string) {
@@ -187,6 +205,21 @@ function postSelect(viewerId?: string) {
     reportPenalty: true,
     createdAt: true,
     category: { select: { key: true, label: true } },
+    poll: {
+      select: {
+        id: true,
+        question: true,
+        expiresAt: true,
+        totalVotes: true,
+        options: {
+          select: { id: true, label: true, voteCount: true },
+          orderBy: { sortOrder: "asc" as const },
+        },
+        ...(viewerId
+          ? { votes: { where: { userId: viewerId }, select: { optionId: true }, take: 1 } }
+          : {}),
+      },
+    },
     author: {
       select: {
         id: true,

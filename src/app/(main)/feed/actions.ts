@@ -10,6 +10,7 @@ import {
   sharePost,
   toggleSavePost,
   givePostAward,
+  votePoll,
   type ReactionType,
   type AwardKey,
 } from "@/modules/feed/posts"
@@ -29,9 +30,37 @@ export async function reactToPost(postId: string, type: ReactionType) {
   return result
 }
 
-export async function commentOnPost(postId: string, body: string) {
+/** Count visible posts created after `sinceIso` — drives the "N new posts" pill. */
+export async function countNewPostsAction(sinceIso: string) {
+  const schoolId = await getDefaultSchoolId()
+  if (!schoolId) return { count: 0 }
+  const since = new Date(sinceIso)
+  if (Number.isNaN(since.getTime())) return { count: 0 }
+  const viewer = await optionalUser()
+  const count = await prisma.post.count({
+    where: {
+      schoolId,
+      deletedAt: null,
+      status: "visible",
+      createdAt: { gt: since },
+      // Don't nag the viewer about their own just-posted content.
+      ...(viewer?.id ? { authorId: { not: viewer.id } } : {}),
+    },
+  })
+  return { count }
+}
+
+export async function votePollAction(postId: string, pollId: string, optionId: string) {
   const user = await requireUser()
-  const comment = await createComment({ userId: user.id, postId, body })
+  const r = await votePoll({ userId: user.id, pollId, optionId })
+  revalidatePath("/feed")
+  revalidatePath(`/feed/${postId}`)
+  return r
+}
+
+export async function commentOnPost(postId: string, body: string, parentId?: string) {
+  const user = await requireUser()
+  const comment = await createComment({ userId: user.id, postId, body, parentId })
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { id: comment.id }
@@ -106,6 +135,7 @@ export interface LoadMoreResult {
 export async function loadMoreFeedAction(
   page: number,
   pageSize = 15,
+  followingOnly = false,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -118,6 +148,7 @@ export async function loadMoreFeedAction(
     viewerId: viewer?.id,
     page,
     pageSize,
+    followingOnly,
   })
   return {
     posts: rows.map(mapRowToFeedPost),

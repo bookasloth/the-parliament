@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   X,
   Users,
@@ -23,6 +24,8 @@ import {
   deletePostAction,
   reportPostAction,
   loadMoreFeedAction,
+  votePollAction,
+  countNewPostsAction,
 } from "./actions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 
@@ -120,11 +123,12 @@ export const MOCK_POSTS: FeedPost[] = [
     poll: {
       question: "Which tech stack should our alumni mentorship focus on?",
       options: [
-        "AI / Machine Learning",
-        "Full Stack Web Development",
-        "Cloud & DevOps",
-        "Mobile App Development",
+        { id: "o1", label: "AI / Machine Learning", votes: 48 },
+        { id: "o2", label: "Full Stack Web Development", votes: 28 },
+        { id: "o3", label: "Cloud & DevOps", votes: 32 },
+        { id: "o4", label: "Mobile App Development", votes: 12 },
       ],
+      totalVotes: 120,
     },
     upvotes: 128,
     downvotes: 5,
@@ -292,6 +296,8 @@ export function FeedContent({
   suggestions = [],
   news = [],
   initialEgged = [],
+  loadedAt,
+  activeTab = "forYou",
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -302,7 +308,12 @@ export function FeedContent({
   suggestions?: SuggestedConnection[]
   news?: NewsItem[]
   initialEgged?: string[]
+  loadedAt?: string
+  activeTab?: "forYou" | "following"
 }) {
+  const followingOnly = activeTab === "following"
+  const router = useRouter()
+  const [newCount, setNewCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
@@ -326,7 +337,7 @@ export function FeedContent({
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
-        const r = await loadMoreFeedAction(page, pageSize)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
@@ -336,7 +347,7 @@ export function FeedContent({
         // Silent — user can retry via button.
       }
     })
-  }, [hasMore, loadingMore, page, pageSize])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly])
 
   // Auto-load when sentinel enters viewport (Twitter/LinkedIn feel).
   useEffect(() => {
@@ -352,6 +363,32 @@ export function FeedContent({
     io.observe(el)
     return () => io.disconnect()
   }, [hasMore, loadMore])
+
+  // Poll for posts created since this page was rendered → "N new posts" pill.
+  useEffect(() => {
+    if (!loadedAt) return
+    setNewCount(0)
+    let active = true
+    const check = async () => {
+      try {
+        const r = await countNewPostsAction(loadedAt)
+        if (active) setNewCount(r.count)
+      } catch {
+        /* ignore — retried next tick */
+      }
+    }
+    const id = setInterval(check, 30_000)
+    return () => {
+      active = false
+      clearInterval(id)
+    }
+  }, [loadedAt])
+
+  function showNewPosts() {
+    setNewCount(0)
+    router.refresh()
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   async function handleThrowEgg(username: string) {
     if (!username || eggedUsernames.has(username)) return
@@ -401,14 +438,47 @@ export function FeedContent({
 
           {/* Feed Column */}
           <div className="flex-1 min-w-0 space-y-3">
+            {viewerId && (
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 text-sm font-semibold">
+                <a
+                  href="/feed"
+                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${!followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                >
+                  For You
+                </a>
+                <a
+                  href="/feed?tab=following"
+                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                >
+                  Following
+                </a>
+              </div>
+            )}
+            {newCount > 0 && (
+              <div className="sticky top-16 z-20 flex justify-center">
+                <button
+                  onClick={showNewPosts}
+                  className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/5 hover:bg-brand-600"
+                >
+                  {newCount} new post{newCount > 1 ? "s" : ""} · tap to refresh
+                </button>
+              </div>
+            )}
             {/* Standard compose trigger */}
             <ComposeTrigger />
 
             {localPosts.length === 0 && (
               <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-                <p className="text-sm text-gray-500">
-                  No posts yet. Be the first to share something.
-                </p>
+                {followingOnly ? (
+                  <p className="text-sm text-gray-500">
+                    Nothing here yet. Follow more alumni to fill your Following feed —{" "}
+                    <a href="/community" className="font-semibold text-brand hover:underline">find people</a>.
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No posts yet. Be the first to share something.
+                  </p>
+                )}
               </div>
             )}
 
@@ -436,6 +506,11 @@ export function FeedContent({
                   onShare={() => sharePostAction(post.id)}
                   onSave={() => toggleSavePostAction(post.id)}
                   onAward={(key) => awardPostAction(post.id, key as never)}
+                  onPollVote={
+                    post.poll?.id
+                      ? (optionId) => votePollAction(post.id, post.poll!.id!, optionId)
+                      : undefined
+                  }
                   onDelete={
                     isAuthor
                       ? () => {

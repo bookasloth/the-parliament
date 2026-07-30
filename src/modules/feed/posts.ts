@@ -4,8 +4,45 @@ import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
+import { hotScore } from "@/modules/feed/ranking"
 
-export type PostFormat = "text" | "image" | "link" | "quote"
+/**
+ * Recompute and persist Post.rankingScore from the post's current counters.
+ * Called after any engagement mutation so the indexed rankingScore ORDER BY in
+ * getFeed stays fresh. ponytail: one extra read+write per mutation — fine at
+ * this scale; batch/debounce only if write volume ever demands it.
+ */
+export async function recomputeRankingScore(postId: string) {
+  const p = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      upvoteCount: true,
+      downvoteCount: true,
+      commentCount: true,
+      shareCount: true,
+      qualityScore: true,
+      reportPenalty: true,
+      createdAt: true,
+    },
+  })
+  if (!p) return
+  await prisma.post.update({
+    where: { id: postId },
+    data: {
+      rankingScore: hotScore({
+        upvoteCount: p.upvoteCount,
+        downvoteCount: p.downvoteCount,
+        commentCount: p.commentCount,
+        shareCount: p.shareCount,
+        qualityScore: Number(p.qualityScore),
+        reportPenalty: Number(p.reportPenalty),
+        createdAt: p.createdAt,
+      }),
+    },
+  })
+}
+
+export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll"
 
 export interface CreatePostInput {
   authorId: string
@@ -13,8 +50,9 @@ export interface CreatePostInput {
   categoryKey: string
   format: PostFormat
   body?: string
-  media?: { key: string; type: string }[]
+  media?: { key: string; type: string; url?: string; bg?: string }[]
   linkUrl?: string
+  poll?: { question: string; options: string[] }
   groupId?: string
 }
 
@@ -24,8 +62,8 @@ export async function createPost(input: CreatePostInput) {
   })
   if (!category) throw new ForbiddenError("Unknown post category")
 
-  if (input.format === "text" && !input.body?.trim()) {
-    throw new ForbiddenError("Text post needs a body")
+  if ((input.format === "text" || input.format === "question" || input.format === "quote") && !input.body?.trim()) {
+    throw new ForbiddenError("This post needs a body")
   }
   if (input.format === "image" && (!input.media || input.media.length === 0)) {
     throw new ForbiddenError("Image post needs at least one image")
@@ -33,18 +71,55 @@ export async function createPost(input: CreatePostInput) {
   if (input.format === "link" && !input.linkUrl) {
     throw new ForbiddenError("Link post needs a URL")
   }
+  let pollOptions: string[] = []
+  if (input.format === "poll") {
+    if (!input.poll?.question?.trim()) throw new ForbiddenError("Poll needs a question")
+    pollOptions = input.poll.options.map((o) => o.trim()).filter(Boolean)
+    if (pollOptions.length < 2) throw new ForbiddenError("Poll needs at least 2 options")
+    if (pollOptions.length > 6) throw new ForbiddenError("Poll allows at most 6 options")
+  }
 
-  const post = await prisma.post.create({
-    data: {
-      schoolId: input.schoolId,
-      authorId: input.authorId,
-      categoryId: category.id,
-      groupId: input.groupId,
-      format: input.format,
-      body: input.body,
-      media: input.media ?? [],
-      linkUrl: input.linkUrl,
-    },
+  const post = await prisma.$transaction(async (tx) => {
+    const created = await tx.post.create({
+      data: {
+        schoolId: input.schoolId,
+        authorId: input.authorId,
+        categoryId: category.id,
+        groupId: input.groupId,
+        format: input.format,
+        body: input.body,
+        media: input.media ?? [],
+        linkUrl: input.linkUrl,
+      },
+    })
+    // Seed rankingScore from creation time so a brand-new post has a real
+    // (recency-based) score before any engagement arrives.
+    await tx.post.update({
+      where: { id: created.id },
+      data: {
+        rankingScore: hotScore({
+          upvoteCount: 0,
+          downvoteCount: 0,
+          commentCount: 0,
+          shareCount: 0,
+          qualityScore: 0,
+          reportPenalty: 0,
+          createdAt: created.createdAt,
+        }),
+      },
+    })
+    if (input.format === "poll" && input.poll) {
+      await tx.poll.create({
+        data: {
+          postId: created.id,
+          question: input.poll.question.trim(),
+          options: {
+            create: pollOptions.map((label, i) => ({ label, sortOrder: i })),
+          },
+        },
+      })
+    }
+    return created
   })
 
   await audit({
@@ -56,6 +131,42 @@ export async function createPost(input: CreatePostInput) {
   })
 
   return post
+}
+
+/** Cast a vote (or switch it) on a poll. Single-choice: one vote per user per poll. */
+export async function votePoll(input: { userId: string; pollId: string; optionId: string }) {
+  const option = await prisma.pollOption.findUnique({
+    where: { id: input.optionId },
+    select: { id: true, pollId: true, poll: { select: { expiresAt: true } } },
+  })
+  if (!option || option.pollId !== input.pollId) throw new ForbiddenError("Option not on this poll")
+  if (option.poll.expiresAt && option.poll.expiresAt < new Date()) {
+    throw new ForbiddenError("Poll has closed")
+  }
+
+  const existing = await prisma.pollVote.findUnique({
+    where: { userId_pollId: { userId: input.userId, pollId: input.pollId } },
+  })
+  if (existing?.optionId === input.optionId) return { optionId: input.optionId }
+
+  await prisma.$transaction(async (tx) => {
+    if (existing) {
+      // Switch: move the tally from the old option to the new one.
+      await tx.pollVote.update({
+        where: { userId_pollId: { userId: input.userId, pollId: input.pollId } },
+        data: { optionId: input.optionId },
+      })
+      await tx.pollOption.update({ where: { id: existing.optionId }, data: { voteCount: { decrement: 1 } } })
+      await tx.pollOption.update({ where: { id: input.optionId }, data: { voteCount: { increment: 1 } } })
+    } else {
+      await tx.pollVote.create({
+        data: { userId: input.userId, pollId: input.pollId, optionId: input.optionId },
+      })
+      await tx.pollOption.update({ where: { id: input.optionId }, data: { voteCount: { increment: 1 } } })
+      await tx.poll.update({ where: { id: input.pollId }, data: { totalVotes: { increment: 1 } } })
+    }
+  })
+  return { optionId: input.optionId }
 }
 
 export async function editPost(input: {
@@ -128,6 +239,7 @@ export async function toggleReaction(input: {
         data: incrementsFor(input.type, -1),
       }),
     ])
+    await recomputeRankingScore(input.postId)
     return { reacted: false }
   }
 
@@ -192,6 +304,7 @@ export async function toggleReaction(input: {
     }
   }
 
+  await recomputeRankingScore(input.postId)
   return { reacted: true }
 }
 
@@ -241,6 +354,7 @@ export async function sharePost(input: {
     where: { id: input.postId },
     data: { shareCount: { increment: 1 } },
   })
+  await recomputeRankingScore(input.postId)
   return share
 }
 
@@ -327,6 +441,7 @@ export async function createComment(input: {
     where: { id: input.postId },
     data: { commentCount: { increment: 1 } },
   })
+  await recomputeRankingScore(input.postId)
 
   if (input.userId !== post.authorId) {
     await awardKarma({

@@ -48,13 +48,22 @@ export interface FeedPost {
   isPinned?: boolean
   isEdited?: boolean
   content?: string
+  /** Facebook-style coloured background id for short text posts (see TEXT_BG). */
+  textBg?: string
   image?: string
   images?: string[]
   mediaCount?: number
   videoDuration?: string
   quote?: { text: string; author: string; source?: string }
   question?: string
-  poll?: { question: string; options: string[] }
+  poll?: {
+    id?: string
+    question: string
+    options: { id: string; label: string; votes: number }[]
+    totalVotes: number
+    myOptionId?: string | null
+    isClosed?: boolean
+  }
   isSponsored?: boolean
   sponsorName?: string
   sponsorUrl?: string
@@ -88,6 +97,23 @@ export const avatarColors: Record<BorderType, string> = {
   green: "#059669",
 }
 
+// Coloured text-post backgrounds — mirrors BG_OPTIONS in the composer.
+// ponytail: duplicated here (like the membership/house colours already are) to
+// keep the card self-contained; keep in sync with compose/page.tsx if edited.
+export const TEXT_BG: Record<string, { bg: string; fg?: string }> = {
+  navy: { bg: "linear-gradient(135deg,#1a3a6b,#0b1c38)" },
+  brand: { bg: "linear-gradient(135deg,#009ae4,#005c8c)" },
+  sunset: { bg: "linear-gradient(135deg,#ff8a5b,#e75480)" },
+  gold: { bg: "linear-gradient(135deg,#ffd119,#d4a800)" },
+  forest: { bg: "linear-gradient(135deg,#3ea35f,#1f6b3e)" },
+  violet: { bg: "linear-gradient(135deg,#9b6cff,#5a2ec0)" },
+  christmas: { bg: "linear-gradient(135deg,#c0392b 0%,#0e7a3a 100%)" },
+  tricolour: {
+    bg: "linear-gradient(180deg,#FF9933 0%,#FF9933 33%,#ffffff 33%,#ffffff 66%,#138808 66%,#138808 100%)",
+    fg: "#1a3a6b",
+  },
+}
+
 const borderAccents: Record<BorderType, string> = {
   blue: "bg-[#2563EB]/5",
   darkBlue: "bg-[#1E3A5F]/5",
@@ -97,19 +123,20 @@ const borderAccents: Record<BorderType, string> = {
   green: "bg-[#059669]/5",
 }
 
+// `key` must match the server-side POST_AWARDS catalog (modules/feed/posts.ts).
 const awards = [
-  { emoji: "🐐", label: "GOAT", cost: 50 },
-  { emoji: "💩", label: "Shitpost", cost: 20 },
-  { emoji: "🔥", label: "Fire Post", cost: 30 },
-  { emoji: "🧠", label: "Big Brain", cost: 40 },
-  { emoji: "😂", label: "LOL", cost: 25 },
-  { emoji: "🎤", label: "Mic Drop", cost: 35 },
-  { emoji: "💪", label: "Support", cost: 30 },
-  { emoji: "🤯", label: "WTF", cost: 28 },
-  { emoji: "👏", label: "Clap", cost: 22 },
-  { emoji: "👑", label: "Crown", cost: 60 },
-  { emoji: "😇", label: "Angel", cost: 45 },
-  { emoji: "🚀", label: "Rocket", cost: 55 },
+  { emoji: "🐐", key: "GOAT", label: "GOAT", cost: 50 },
+  { emoji: "💩", key: "SHITPOST", label: "Shitpost", cost: 20 },
+  { emoji: "🔥", key: "FIRE", label: "Fire Post", cost: 30 },
+  { emoji: "🧠", key: "BRAIN", label: "Big Brain", cost: 40 },
+  { emoji: "😂", key: "LOL", label: "LOL", cost: 25 },
+  { emoji: "🎤", key: "MICDROP", label: "Mic Drop", cost: 35 },
+  { emoji: "💪", key: "SUPPORT", label: "Support", cost: 30 },
+  { emoji: "🤯", key: "WTF", label: "WTF", cost: 28 },
+  { emoji: "👏", key: "CLAP", label: "Clap", cost: 22 },
+  { emoji: "👑", key: "CROWN", label: "Crown", cost: 60 },
+  { emoji: "😇", key: "ANGEL", label: "Angel", cost: 45 },
+  { emoji: "🚀", key: "ROCKET", label: "Rocket", cost: 55 },
 ]
 
 // --- Award Modal ---
@@ -137,8 +164,8 @@ function AwardModal({
 
   async function submit() {
     if (!selected) return
-    // Card list uses labels; convert to uppercased key expected server-side.
-    const key = selected.toUpperCase().replace(/\s+/g, "").replace("SHITPOST", "SHITPOST")
+    // `selected` is already the server-side award key.
+    const key = selected
     if (!onGive) {
       onClose()
       return
@@ -171,10 +198,10 @@ function AwardModal({
           <div className="grid grid-cols-4 gap-2">
             {awards.map((a) => (
               <button
-                key={a.label}
-                onClick={() => setSelected(a.label)}
+                key={a.key}
+                onClick={() => setSelected(a.key)}
                 className={`flex flex-col items-center rounded-lg p-2.5 transition-all ${
-                  selected === a.label
+                  selected === a.key
                     ? "bg-brand-50 ring-1 ring-brand"
                     : "hover:bg-gray-50"
                 }`}
@@ -520,52 +547,78 @@ export function ReactionBar({
 }
 
 // --- Poll Card ---
-function PollCard({ question, options }: { question: string; options: string[] }) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const totalVotes = 120
-  const results = [
-    { label: options[0], votes: 48 },
-    { label: options[1], votes: 28 },
-    { label: options[2], votes: 32 },
-    { label: options[3], votes: 12 },
-  ]
+export function PollCard({
+  poll,
+  onVote,
+}: {
+  poll: NonNullable<FeedPost["poll"]>
+  onVote?: (optionId: string) => void | Promise<unknown>
+}) {
+  const [myOptionId, setMyOptionId] = useState<string | null>(poll.myOptionId ?? null)
+  const [options, setOptions] = useState(poll.options)
+  const total = options.reduce((s, o) => s + o.votes, 0)
+  const revealed = myOptionId != null || !!poll.isClosed
+
+  function vote(optionId: string) {
+    if (poll.isClosed || myOptionId === optionId) return
+    const prevOption = myOptionId
+    // Optimistic: shift the tally, then persist.
+    setOptions((prev) =>
+      prev.map((o) => {
+        let v = o.votes
+        if (o.id === prevOption) v -= 1
+        if (o.id === optionId) v += 1
+        return { ...o, votes: v }
+      }),
+    )
+    setMyOptionId(optionId)
+    if (onVote && poll.id) {
+      Promise.resolve(onVote(optionId)).catch(() => {
+        // Roll back on failure.
+        setOptions(poll.options)
+        setMyOptionId(prevOption)
+      })
+    }
+  }
 
   return (
     <div>
-      <p className="text-sm font-medium text-gray-900 mb-3">{question}</p>
+      <p className="text-sm font-medium text-gray-900 mb-3">{poll.question}</p>
       <div className="space-y-2">
-        {results.map((opt, i) => {
-          const pct = Math.round((opt.votes / totalVotes) * 100)
-          const isSelected = selected === opt.label
+        {options.map((opt) => {
+          const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0
+          const isMine = myOptionId === opt.id
           return (
             <button
-              key={i}
-              onClick={() => setSelected(opt.label)}
+              key={opt.id}
+              onClick={() => vote(opt.id)}
+              disabled={poll.isClosed}
               className={`relative w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-all overflow-hidden ${
-                isSelected
+                isMine
                   ? "border-brand bg-brand-50"
-                  : selected
-                  ? "border-gray-200 opacity-70"
+                  : revealed
+                  ? "border-gray-200 opacity-80"
                   : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-              }`}
+              } ${poll.isClosed ? "cursor-default" : ""}`}
             >
               <div
                 className="absolute inset-0 bg-brand-50/40 transition-all"
-                style={{ width: selected ? `${pct}%` : "0%" }}
+                style={{ width: revealed ? `${pct}%` : "0%" }}
               />
               <div className="relative flex items-center justify-between">
-                <span className={isSelected ? "font-medium text-brand-700" : "text-gray-600"}>
+                <span className={isMine ? "font-medium text-brand-700" : "text-gray-600"}>
                   {opt.label}
                 </span>
-                {selected && (
-                  <span className="text-xs font-medium text-gray-500">{pct}%</span>
-                )}
+                {revealed && <span className="text-xs font-medium text-gray-500">{pct}%</span>}
               </div>
             </button>
           )
         })}
       </div>
-      <p className="mt-2 text-xs text-gray-400">{totalVotes} votes</p>
+      <p className="mt-2 text-xs text-gray-400">
+        {total} {total === 1 ? "vote" : "votes"}
+        {poll.isClosed ? " · closed" : revealed ? "" : " · tap an option to vote"}
+      </p>
     </div>
   )
 }
@@ -672,6 +725,7 @@ export function FeedCard({
   onSave,
   onDelete,
   onReport,
+  onPollVote,
 }: {
   post: FeedPost
   isAuthor?: boolean
@@ -684,6 +738,7 @@ export function FeedCard({
   onSave?: () => Promise<{ saved: boolean }> | void
   onDelete?: () => void | Promise<unknown>
   onReport?: (reason: string) => void | Promise<unknown>
+  onPollVote?: (optionId: string) => void | Promise<unknown>
 }) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
@@ -844,7 +899,21 @@ export function FeedCard({
       {/* Card Body */}
       <div className="px-4 pt-2 pb-1">
         {post.content && !post.isSponsored && !post.quote && !post.question && !post.poll && (
-          <RichText text={post.content} />
+          post.textBg && TEXT_BG[post.textBg] ? (
+            <div
+              className="flex min-h-[180px] items-center justify-center rounded-lg p-6"
+              style={{ background: TEXT_BG[post.textBg].bg }}
+            >
+              <p
+                className="whitespace-pre-line text-center text-xl font-bold leading-snug text-white"
+                style={TEXT_BG[post.textBg].fg ? { color: TEXT_BG[post.textBg].fg } : undefined}
+              >
+                {post.content}
+              </p>
+            </div>
+          ) : (
+            <RichText text={post.content} />
+          )
         )}
 
         {post.isSponsored && (
@@ -864,7 +933,7 @@ export function FeedCard({
           </div>
         )}
 
-        {post.poll && <PollCard question={post.poll.question} options={post.poll.options} />}
+        {post.poll && <PollCard poll={post.poll} onVote={onPollVote} />}
 
         {post.quote && <QuoteBlock quote={post.quote} />}
 
@@ -917,7 +986,8 @@ export function FeedCard({
           }
           comments={post.comments}
           shares={post.shares}
-          commentHref={`/feed/${post.id}`}
+          // Inline quick-reply (onComment persists via commentOnPost). Full thread
+          // still lives at /feed/[postId]; ponytail: no in-card thread view yet.
           onUpvote={onUpvote}
           onDownvote={onDownvote}
           onComment={onComment}

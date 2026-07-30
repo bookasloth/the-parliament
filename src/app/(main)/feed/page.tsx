@@ -10,8 +10,16 @@ export const dynamic = "force-dynamic"
 
 const FIRST_PAGE_SIZE = 15
 
-export default async function FeedPage() {
-  const [schoolId, viewer] = await Promise.all([getDefaultSchoolId(), optionalUser()])
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const [{ tab }, [schoolId, viewer]] = await Promise.all([
+    searchParams,
+    Promise.all([getDefaultSchoolId(), optionalUser()]),
+  ])
+  const followingOnly = tab === "following" && !!viewer?.id
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
@@ -20,6 +28,7 @@ export default async function FeedPage() {
       schoolId,
       viewerId: viewer?.id,
       pageSize: FIRST_PAGE_SIZE,
+      followingOnly,
     })
     mappedReal = rows.map(mapRowToFeedPost)
     hasMore = rows.length === FIRST_PAGE_SIZE
@@ -132,6 +141,8 @@ export default async function FeedPage() {
       suggestions={suggestions}
       news={news}
       initialEgged={eggedUsernames}
+      loadedAt={new Date().toISOString()}
+      activeTab={followingOnly ? "following" : "forYou"}
     />
   )
 }
