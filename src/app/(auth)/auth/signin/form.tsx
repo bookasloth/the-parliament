@@ -48,12 +48,12 @@ function SignInFormInner() {
         autoComplete="current-password"
       />
       <SubmitButton loading={loading} idleLabel="Sign in" />
-      <a href="/auth/forgot" className="block text-center text-xs text-neutral-400 hover:text-[#ff4800] hover:underline">
+      <a href="/auth/forgot" className="block text-center text-xs text-neutral-400 hover:text-[#009ae4] hover:underline">
         Forgot password?
       </a>
       <p className="text-center text-xs text-neutral-400">
         No account?{" "}
-        <a href="/auth/signup" className="font-medium text-[#ff4800] hover:underline">Sign up</a>
+        <a href="/auth/signup" className="font-medium text-[#009ae4] hover:underline">Sign up</a>
       </p>
     </form>
   )

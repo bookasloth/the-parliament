@@ -26,7 +26,7 @@ export function ForgotForm() {
         <FormSuccess>
           If that email is registered, a link to set your password is on its way. Check your inbox.
         </FormSuccess>
-        <a href="/auth/signin" className="block text-center text-sm font-medium text-[#ff4800] hover:underline">
+        <a href="/auth/signin" className="block text-center text-sm font-medium text-[#009ae4] hover:underline">
           Back to sign in
         </a>
       </div>
@@ -37,7 +37,7 @@ export function ForgotForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
       <SubmitButton loading={loading} idleLabel="Send reset link" />
-      <a href="/auth/signin" className="block text-center text-xs text-neutral-400 hover:text-[#ff4800] hover:underline">
+      <a href="/auth/signin" className="block text-center text-xs text-neutral-400 hover:text-[#009ae4] hover:underline">
         Back to sign in
       </a>
     </form>

@@ -1,26 +1,26 @@
 import Link from "next/link"
 
 // Shared shell for all auth flows: dark branded panel (desktop) + dark card.
-// Aesthetic inspired by shubhamdatarkar.com — #0a0a0a surfaces, orange accent.
+// Aesthetic inspired by shubhamdatarkar.com — #0a0a0a surfaces, NNAWCA blue accent.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-white">
       {/* Brand panel — hidden on small screens */}
       <aside className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-white/10 p-12 lg:flex">
-        {/* soft orange glow */}
+        {/* soft brand glow */}
         <div
           className="pointer-events-none absolute -left-24 top-1/3 h-96 w-96 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(closest-side, #ff4800, transparent)" }}
+          style={{ background: "radial-gradient(closest-side, #009ae4, transparent)" }}
         />
         <Link href="/" className="relative font-heading text-xl font-bold tracking-tight">
           NNAWCA
         </Link>
         <div className="relative">
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#ff4800]">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#009ae4]">
             JNV Nagpur Alumni Network
           </p>
           <h2 className="font-heading text-4xl font-bold leading-tight">
-            The <span className="text-[#ff4800]">Parliament</span>
+            The <span className="text-[#009ae4]">Parliament</span>
           </h2>
           <p className="mt-4 max-w-sm text-neutral-400">
             Reconnect with your batch, grow with the network, and give back to

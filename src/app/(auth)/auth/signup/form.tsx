@@ -53,7 +53,7 @@ export function SignUpForm() {
       <SubmitButton loading={loading} idleLabel="Create account" />
       <p className="text-center text-xs text-neutral-400">
         Already have an account?{" "}
-        <a href="/auth/signin" className="font-medium text-[#ff4800] hover:underline">Sign in</a>
+        <a href="/auth/signin" className="font-medium text-[#009ae4] hover:underline">Sign in</a>
       </p>
     </form>
   )
