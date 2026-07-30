@@ -7,6 +7,7 @@ type EmailTemplate<T> = {
 }
 
 export type EmailTemplates = {
+  email_verification: { legalName: string; code: string }
   password_reset: { legalName: string; resetUrl: string; isNew: boolean }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
@@ -30,6 +31,18 @@ const baseLayout = (body: string) => `
 `
 
 const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]> } = {
+  email_verification: {
+    subject: () => "Your NNAWCA verification code",
+    text: (d) =>
+      `Hi ${d.legalName},\n\nYour email verification code is: ${d.code}\n\nEnter it to confirm your email. It expires in 15 minutes. If you didn't request this, ignore this email.`,
+    html: (d) =>
+      baseLayout(
+        `<h2 style="margin:0 0 12px;color:#0f172a">Verify your email</h2>
+         <p style="color:#374151">Hi ${d.legalName}, use this code to confirm your email address:</p>
+         <p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#009ae4;margin:16px 0">${d.code}</p>
+         <p style="color:#6b7280;font-size:12px">This code expires in 15 minutes. If you didn't request this, ignore this email.</p>`,
+      ),
+  },
   password_reset: {
     subject: (d) => (d.isNew ? "Set your NNAWCA password" : "Reset your NNAWCA password"),
     text: (d) =>

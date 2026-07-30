@@ -1,93 +1,129 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { StepIndicator } from "./StepIndicator"
-import { StepProfileNew } from "./StepProfileNew"
-import { StepJnv } from "./StepJnv"
+import { HousePanel } from "./HousePanel"
+import { StepVerify } from "./StepVerify"
+import { StepWork } from "./StepWork"
+import { StepMedia } from "./StepMedia"
 import { StepInterests } from "./StepInterests"
-import { StepMembershipNew } from "./StepMembershipNew"
-import { StepCompleteNew } from "./StepCompleteNew"
-import type { OnboardingStep } from "@/lib/onboarding"
-import { EMPTY_ONBOARDING, ONBOARDING_STEPS } from "@/lib/onboarding"
-import type { OnboardingData } from "@/lib/onboarding"
+import { StepIntro } from "./StepIntro"
+import {
+  EMPTY_ONBOARDING,
+  ONBOARDING_STEPS,
+  STEP_INDEX,
+  buildIntroPost,
+  type OnboardingData,
+  type OnboardingStep,
+} from "@/lib/onboarding"
 
 interface OnboardingWizardProps {
   currentStep: OnboardingStep
+  memberName?: string
+  email?: string
 }
 
-export function OnboardingWizard({ currentStep }: OnboardingWizardProps) {
+export function OnboardingWizard({ currentStep, memberName, email }: OnboardingWizardProps) {
   const router = useRouter()
-  const [step, setStep] = useState<OnboardingStep>(currentStep)
-  const [data] = useState<OnboardingData>(EMPTY_ONBOARDING)
-  const [loaded, setLoaded] = useState(false)
+  const [step, setStep] = useState<OnboardingStep>(
+    ONBOARDING_STEPS.includes(currentStep) ? currentStep : "verify",
+  )
+  const [data, setData] = useState<OnboardingData>(() => ({
+    ...EMPTY_ONBOARDING,
+    verify: { ...EMPTY_ONBOARDING.verify, email: email ?? "" },
+  }))
 
-  useEffect(() => {
-    async function loadProgress() {
-      try {
-        const res = await fetch("/api/onboarding/progress")
-        if (res.ok) {
-          const json = await res.json()
-          if (json.step && ONBOARDING_STEPS.includes(json.step as OnboardingStep)) {
-            setStep(json.step as OnboardingStep)
-          }
-        }
-      } catch {
-        // use defaults
-      } finally {
-        setLoaded(true)
-      }
-    }
-    loadProgress()
-  }, [])
+  const idx = STEP_INDEX[step]
 
-  const goToStep = useCallback(
-    (nextStep: OnboardingStep) => {
-      setStep(nextStep)
-      router.push(`/onboarding/${nextStep}`)
+  const patch = useCallback(
+    <K extends keyof OnboardingData>(key: K, part: Partial<OnboardingData[K]>) => {
+      setData((prev) => ({ ...prev, [key]: { ...prev[key], ...part } }))
+    },
+    [],
+  )
+
+  const goTo = useCallback(
+    (next: OnboardingStep) => {
+      setStep(next)
+      router.replace(`/onboarding/${next}`, { scroll: false })
     },
     [router],
   )
 
-  const handleNext = useCallback(
-    (skipValue?: boolean) => {
-      const idx = ONBOARDING_STEPS.indexOf(step)
-      if (idx < ONBOARDING_STEPS.length - 1) {
-        goToStep(ONBOARDING_STEPS[idx + 1] as OnboardingStep)
-      }
-    },
-    [step, goToStep],
+  const next = useCallback(() => {
+    const i = ONBOARDING_STEPS.indexOf(step)
+    if (i < ONBOARDING_STEPS.length - 1) goTo(ONBOARDING_STEPS[i + 1])
+  }, [step, goTo])
+
+  // Draft the intro when the member lands on the last step.
+  const introText = useMemo(
+    () => data.intro.text || buildIntroPost(data, { name: memberName }),
+    [data, memberName],
   )
 
-  if (!loaded) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  // Persist everything + create the intro post + mark onboarding complete.
+  const finalize = useCallback(
+    async (text: string) => {
+      const res = await fetch("/api/onboarding/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          work: data.work,
+          media: data.media,
+          interests: data.interests,
+          introText: text,
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || "Couldn't finish onboarding")
+      }
+    },
+    [data],
+  )
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef] flex flex-col">
-      <div className="flex-1 flex items-start justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-lg">
-          <StepIndicator current={step} />
+    <div className="flex min-h-screen bg-[#f3f2ef]">
+      {/* Left — process (60%) */}
+      <div className="flex w-full flex-col lg:w-3/5">
+        <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-8 sm:py-12">
+          <div className="w-full max-w-xl">
+            <StepIndicator current={step} />
 
-          <div className="rounded-lg border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-            {step === "profile" && <StepProfileNew data={data.profile} onNext={handleNext} />}
-            {step === "jnv" && <StepJnv data={data.jnv} onNext={handleNext} />}
-            {step === "interests" && <StepInterests data={data.interests} onNext={handleNext} />}
-            {step === "membership" && <StepMembershipNew data={data.membership} onNext={handleNext} />}
-            {step === "complete" && <StepCompleteNew />}
+            <div className="mt-8">
+              {step === "verify" && (
+                <StepVerify email={email ?? data.verify.email} onVerified={next} />
+              )}
+              {step === "work" && (
+                <StepWork data={data.work} set={(p) => patch("work", p)} onNext={next} />
+              )}
+              {step === "media" && (
+                <StepMedia data={data.media} set={(p) => patch("media", p)} onNext={next} />
+              )}
+              {step === "interests" && (
+                <StepInterests data={data.interests} set={(p) => patch("interests", p)} onNext={next} />
+              )}
+              {step === "intro" && (
+                <StepIntro
+                  text={introText}
+                  set={(p) => patch("intro", p)}
+                  onPublish={finalize}
+                />
+              )}
+            </div>
+
+            {step !== "intro" && (
+              <p className="mt-8 text-center text-xs text-gray-400">
+                You can leave and resume later — your progress is saved.
+              </p>
+            )}
           </div>
-
-          {step !== "complete" && (
-            <p className="mt-6 text-center text-xs text-gray-400">
-              You can leave and resume later. Your progress is saved automatically.
-            </p>
-          )}
         </div>
       </div>
+
+      {/* Right — house-colour panel (40%) */}
+      <HousePanel stepIndex={idx} />
     </div>
   )
 }

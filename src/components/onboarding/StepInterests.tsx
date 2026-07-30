@@ -1,78 +1,65 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useCallback } from "react"
 import type { InterestsData } from "@/lib/onboarding"
-import { INTEREST_OPTIONS } from "@/lib/onboarding"
+import { INTEREST_OPTIONS, MIN_INTERESTS } from "@/lib/onboarding"
 
 interface StepInterestsProps {
   data: InterestsData
+  set: (patch: Partial<InterestsData>) => void
   onNext: () => void
 }
 
-export function StepInterests({ data, onNext }: StepInterestsProps) {
-  const [selected, setSelected] = useState<string[]>(data.interestIds)
-  const [saving, setSaving] = useState(false)
+export function StepInterests({ data, set, onNext }: StepInterestsProps) {
+  const selected = data.interestIds
+  const enough = selected.length >= MIN_INTERESTS
 
-  const toggle = useCallback((slug: string) => {
-    setSelected((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
-    )
-  }, [])
-
-  const handleNext = useCallback(async () => {
-    setSaving(true)
-    try {
-      const res = await fetch("/api/onboarding/interests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interestIds: selected }),
+  const toggle = useCallback(
+    (slug: string) => {
+      set({
+        interestIds: selected.includes(slug)
+          ? selected.filter((s) => s !== slug)
+          : [...selected, slug],
       })
-      if (!res.ok) throw new Error("Failed to save")
-      onNext()
-    } catch {
-      setSaving(false)
-    }
-  }, [selected, onNext])
+    },
+    [selected, set],
+  )
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Interests</h1>
-        <p className="text-sm text-gray-500">Select topics you care about (multi-select)</p>
+      <div className="space-y-1.5">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">What are you into?</h1>
+        <p className="text-sm text-gray-500">Pick at least {MIN_INTERESTS} — we&apos;ll tailor your feed.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {INTEREST_OPTIONS.map((interest) => {
-          const isSelected = selected.includes(interest.slug)
+          const isSel = selected.includes(interest.slug)
           return (
             <button
               key={interest.slug}
               type="button"
               onClick={() => toggle(interest.slug)}
-              className={`rounded-lg border-2 p-4 text-center transition-all ${
-                isSelected
-                  ? "border-brand bg-brand-50 ring-2 ring-brand-100"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+              className={`rounded-lg border-2 p-4 text-center text-sm font-semibold transition-all ${
+                isSel
+                  ? "border-brand bg-brand-50 text-brand ring-2 ring-brand-100"
+                  : "border-gray-200 bg-white text-gray-900 hover:border-gray-300"
               }`}
             >
-              <p className={`text-sm font-semibold ${isSelected ? "text-brand" : "text-gray-900"}`}>
-                {interest.name}
-              </p>
+              {interest.name}
             </button>
           )
         })}
       </div>
 
       <button
-        onClick={handleNext}
-        disabled={saving || selected.length === 0}
+        onClick={onNext}
+        disabled={!enough}
         className={`w-full rounded py-3 text-base font-semibold text-white transition-colors ${
-          saving || selected.length === 0
-            ? "cursor-not-allowed bg-gray-300"
-            : "bg-brand hover:bg-brand-600"
+          enough ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-300"
         }`}
       >
-        {saving ? "Saving..." : `Continue (${selected.length} selected)`}
+        {enough ? "Continue" : `Pick ${MIN_INTERESTS - selected.length} more`}
       </button>
     </div>
   )

@@ -343,10 +343,12 @@ model Profile {
   homeTown             String?  @map("home_town") @db.VarChar(160)
   correspondenceAddress String? @map("correspondence_address")
   bloodGroup           String?  @map("blood_group") @db.VarChar(5)
+  bloodDonor           Boolean  @default(false) @map("blood_donor")
   profession           String?  @db.VarChar(160)
   company              String?  @db.VarChar(160)
   industry             String?  @db.VarChar(120)
   designation          String?  @db.VarChar(160)
+  workSince            DateTime? @map("work_since") @db.Date
   higherEducation      String?  @map("higher_education") @db.VarChar(200)
   skills               Json     @default("[]")
   linkedinUrl          String?  @map("linkedin_url")

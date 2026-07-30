@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
+import { ONBOARDING_STEPS } from "@/lib/onboarding"
 
-const ONBOARDING_STEPS = ["profile", "jnv", "interests", "membership", "complete"] as const
 const ONBOARDING_ROUTES = ONBOARDING_STEPS.map((s) => `/onboarding/${s}`)
 const PUBLIC_ROUTES = new Set(["/", "/auth/signin", "/auth/signup", "/auth/forgot", "/auth/reset"])
 
@@ -51,7 +51,12 @@ export async function middleware(req: NextRequest) {
   }
 
   const onboardingCompleted = token?.onboardingCompleted as boolean | undefined
-  const step = (token?.onboardingStep as string) || "profile"
+  // Normalize legacy/unknown step values (e.g. the "profile" DB default) to the
+  // first current step so the redirect target below is always a live route.
+  const rawStep = token?.onboardingStep as string | undefined
+  const step = ONBOARDING_STEPS.includes(rawStep as (typeof ONBOARDING_STEPS)[number])
+    ? (rawStep as string)
+    : ONBOARDING_STEPS[0]
   const isOnboardingRoute = ONBOARDING_ROUTES.includes(pathname)
 
   if (onboardingCompleted) {
