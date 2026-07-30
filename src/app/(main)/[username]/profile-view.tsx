@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
+import { FollowButton } from "@/components/shared/FollowButton"
 import {
   Briefcase, MapPin, CalendarPlus, UserPlus, MoreHorizontal, Asterisk,
   ShieldCheck, Award, Droplet, Cake, Home, Users, Pencil, Share2,
@@ -90,8 +91,11 @@ export interface ProfileViewData {
   verificationStatus: string
   verifiedOn: string | null
   profileCompletion: number
-  connectionsCount: number
+  followersCount: number
+  followingCount: number
   postsCount: number
+  userId: string
+  viewerFollows: boolean
   higherEducation: string | null
   skills: string[]
   linkedinUrl: string | null
@@ -155,7 +159,7 @@ function Timeline({ items }: { items: { role: string; org: string; period: strin
 // ─────────────────────────────────────────────
 // Main view
 // ─────────────────────────────────────────────
-type Tab = "posts" | "about" | "connections"
+type Tab = "posts" | "about" | "followers"
 
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
   const [tab, setTabState] = useState<Tab>(initialTab)
@@ -223,7 +227,9 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 </div>
                 {data.headline && <p className="mt-0.5 text-[13px] text-gray-700">{data.headline}</p>}
                 <p className="mt-0.5 text-[13px] text-gray-500">
-                  {data.connectionsCount} Connection{data.connectionsCount === 1 ? "" : "s"}
+                  {data.followersCount} Follower{data.followersCount === 1 ? "" : "s"}
+                  {" · "}
+                  {data.followingCount} Following
                   {" · "}
                   {data.postsCount} Post{data.postsCount === 1 ? "" : "s"}
                 </p>
@@ -248,9 +254,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   </>
                 ) : (
                   <>
-                    <button className={`${R_EL} flex items-center gap-1.5 border border-brand bg-white px-[18px] py-2.5 text-[13px] font-semibold text-brand hover:bg-brand hover:text-white transition-colors`}>
-                      <UserPlus className="h-4 w-4" /> Connect
-                    </button>
+                    <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
                     <button className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}>
                       <MessageSquare className="h-4 w-4" /> Message
                     </button>
@@ -273,7 +277,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
             {/* tabs */}
             <div className="mt-3 flex gap-1.5 border-t border-gray-100 px-1 pt-1.5">
-              {([["posts", "Posts"], ["about", "About"], ["connections", "Connections"]] as const).map(([key, label]) => (
+              {([["posts", "Posts"], ["about", "About"], ["followers", "Followers"]] as const).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
@@ -283,8 +287,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   {key === "posts" && data.postsCount > 0 && (
                     <span className="ml-1 rounded-[6px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
                   )}
-                  {key === "connections" && data.connectionsCount > 0 && (
-                    <span className="ml-1 rounded-[6px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.connectionsCount}</span>
+                  {key === "followers" && data.followersCount > 0 && (
+                    <span className="ml-1 rounded-[6px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
                   )}
                 </button>
               ))}
@@ -434,23 +438,23 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               </>
             )}
 
-            {tab === "connections" && (
+            {tab === "followers" && (
               <Card>
-                <SectionTitle>Connections</SectionTitle>
+                <SectionTitle>Followers</SectionTitle>
                 <div className="px-7 py-10 text-center">
                   <p className="text-sm text-gray-500">
-                    {data.connectionsCount === 0
+                    {data.followersCount === 0
                       ? isOwn
-                        ? "You have no connections yet."
-                        : `${data.name.split(" ")[0]} has no connections yet.`
-                      : `${data.connectionsCount} connection${data.connectionsCount === 1 ? "" : "s"}. Detail view coming soon.`}
+                        ? "You have no followers yet."
+                        : `${data.name.split(" ")[0]} has no followers yet.`
+                      : `${data.followersCount} follower${data.followersCount === 1 ? "" : "s"}. Detail view coming soon.`}
                   </p>
                   {isOwn && (
                     <Link
                       href="/connections"
                       className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} border border-brand bg-white px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white`}
                     >
-                      Manage your connections
+                      Manage your network
                     </Link>
                   )}
                 </div>

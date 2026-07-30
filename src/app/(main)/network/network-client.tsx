@@ -6,17 +6,16 @@ import { Menu, X, Users, Network, Compass } from "lucide-react"
 import { NetworkSidebar } from "./components/NetworkSidebar"
 import { AlumniCard } from "./components/AlumniCard"
 import { AlumniCarousel } from "./components/AlumniCarousel"
-import { PendingRequests } from "./components/PendingRequests"
 import { EventCard } from "./components/EventCard"
 import { ChapterCard } from "./components/ChapterCard"
 import { ActivityCard } from "./components/ActivityCard"
 import {
   DISCOVERY_TABS,
-  type DiscoveryTab, type NetworkAlumni, type PendingRequest,
+  type DiscoveryTab, type NetworkAlumni,
   type ActivityEntry, type NetworkEvent, type Chapter,
 } from "./network-data"
 import type { NetworkMe } from "./components/NetworkSidebar"
-import { connectAction } from "../connections/actions"
+import { followAction } from "../connections/actions"
 
 const PAGE_SIZE = 6
 
@@ -26,8 +25,6 @@ export interface NetworkData {
   meCity: string
   meCompany: string
   suggestedAlumni: NetworkAlumni[]
-  incomingRequests: PendingRequest[]
-  sentRequests: PendingRequest[]
   recentActivity: ActivityEntry[]
   suggestedEvents: NetworkEvent[]
   chapters: Chapter[]
@@ -72,14 +69,14 @@ function CardSkeleton() {
 
 export function NetworkClient({
   me, meBatch, meCity, meCompany,
-  suggestedAlumni, incomingRequests, sentRequests, recentActivity, suggestedEvents, chapters,
+  suggestedAlumni, recentActivity, suggestedEvents, chapters,
 }: NetworkData) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [tab, setTab] = useState<DiscoveryTab>("discover")
   const [loading, setLoading] = useState(true)
   const [visible, setVisible] = useState(PAGE_SIZE)
-  // Optimistic connect / dismiss state.
-  const [connected, setConnected] = useState<string[]>([])
+  // Optimistic follow / dismiss state.
+  const [followed, setFollowed] = useState<string[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
 
   // Simulate initial fetch — skeletons while loading.
@@ -95,14 +92,14 @@ export function NetworkClient({
   const tabResults = useMemo(() => filterByTab(tab, pool, { batch: meBatch, city: meCity, company: meCompany }), [tab, pool, meBatch, meCity, meCompany])
   const shown = tabResults.slice(0, visible)
 
-  const onConnect = (id: string) => {
-    setConnected((c) => (c.includes(id) ? c : [...c, id]))
+  const onFollow = (id: string) => {
+    setFollowed((c) => (c.includes(id) ? c : [...c, id]))
     const target = suggestedAlumni.find((a) => a.id === id)
-    if (target?.userId) connectAction(target.userId).catch(() => {})
+    if (target?.userId) followAction(target.userId).catch(() => {})
   }
   const onDismiss = (id: string) => setDismissed((d) => [...d, id])
 
-  const carouselPool = pool.filter((a) => !connected.includes(a.id)).slice(0, 8)
+  const carouselPool = pool.filter((a) => !followed.includes(a.id)).slice(0, 8)
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] pb-16">
@@ -141,9 +138,6 @@ export function NetworkClient({
 
           {/* Main content */}
           <main className="min-w-0 flex-1 space-y-5">
-            {/* Pending requests (collapsed by default) */}
-            <PendingRequests incoming={incomingRequests} sent={sentRequests} />
-
             {/* People You May Know */}
             <AlumniCarousel
               title="People You May Know"
@@ -155,9 +149,9 @@ export function NetworkClient({
                     <AlumniCard
                       key={a.id}
                       alumni={a}
-                      connected={connected.includes(a.id)}
+                      followed={followed.includes(a.id)}
                       dismissed={false}
-                      onConnect={onConnect}
+                      onFollow={onFollow}
                       onDismiss={onDismiss}
                     />
                   ))}
@@ -201,9 +195,9 @@ export function NetworkClient({
                       >
                         <AlumniCard
                           alumni={a}
-                          connected={connected.includes(a.id)}
+                          followed={followed.includes(a.id)}
                           dismissed={false}
-                          onConnect={onConnect}
+                          onFollow={onFollow}
                           onDismiss={onDismiss}
                         />
                       </motion.div>

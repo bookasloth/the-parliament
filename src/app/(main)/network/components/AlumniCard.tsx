@@ -11,13 +11,13 @@ import {
 
 interface AlumniCardProps {
   alumni: NetworkAlumni
-  connected: boolean
+  followed: boolean
   dismissed: boolean
-  onConnect: (id: string) => void
+  onFollow: (id: string) => void
   onDismiss: (id: string) => void
 }
 
-export function AlumniCard({ alumni, connected, dismissed, onConnect, onDismiss }: AlumniCardProps) {
+export function AlumniCard({ alumni, followed, dismissed, onFollow, onDismiss }: AlumniCardProps) {
   const router = useRouter()
   const profileHref = `/${alumni.username}`
   const banner = HOUSE_BANNER[alumni.house] ?? "#009ae4"
@@ -110,16 +110,16 @@ export function AlumniCard({ alumni, connected, dismissed, onConnect, onDismiss 
 
         {/* CTA */}
         <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {connected ? (
+          {followed ? (
             <span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600">
-              <Check className="h-3.5 w-3.5" /> Pending
+              <Check className="h-3.5 w-3.5" /> Following
             </span>
           ) : (
             <button
-              onClick={() => onConnect(alumni.id)}
+              onClick={() => onFollow(alumni.id)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-brand bg-brand px-3 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand"
             >
-              <UserPlus className="h-3.5 w-3.5" /> Connect
+              <UserPlus className="h-3.5 w-3.5" /> Follow
             </button>
           )}
           <Link

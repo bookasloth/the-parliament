@@ -4,7 +4,7 @@ import { sendEmail, type EmailTemplates } from "@/lib/email"
 export type NotificationKind =
   | "verification_approved"
   | "verification_rejected"
-  | "connection_request"
+  | "new_follower"
   | "comment_on_post"
   | "reaction_on_post"
   | "mention"
@@ -14,7 +14,7 @@ export type NotificationKind =
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",
   verification_rejected: "verification_rejected",
-  connection_request: "connection_request",
+  new_follower: "new_follower",
   comment_on_post: "comment_on_post",
   reaction_on_post: "reaction_on_post",
   mention: "mention",

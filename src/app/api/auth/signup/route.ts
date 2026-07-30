@@ -98,22 +98,18 @@ export async function POST(req: NextRequest) {
       create: { userId: user.id, photoUrl: colorAvatar(user.id) },
     });
 
-    // Auto-connect every new member to Shubham (the network anchor).
+    // Auto-follow every new member with Shubham (the network anchor), both ways.
     const anchor = await prisma.user.findUnique({
       where: { email: "sndatarkar@gmail.com" },
       select: { id: true },
     });
     if (anchor && anchor.id !== user.id) {
-      await prisma.connection.upsert({
-        where: { requesterId_addresseeId: { requesterId: anchor.id, addresseeId: user.id } },
-        update: {},
-        create: {
-          requesterId: anchor.id,
-          addresseeId: user.id,
-          status: "accepted",
-          autoAccepted: true,
-          respondedAt: new Date(),
-        },
+      await prisma.follow.createMany({
+        data: [
+          { followerId: anchor.id, followingId: user.id },
+          { followerId: user.id, followingId: anchor.id },
+        ],
+        skipDuplicates: true,
       });
     }
 

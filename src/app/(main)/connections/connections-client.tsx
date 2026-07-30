@@ -1,22 +1,20 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import {
-  Search, UserPlus, UserX, MessageSquare,
-  Home, Users, Calendar, Menu, Plus, X, Filter,
-  Clock, Check, ArrowLeft,
+  Search, MessageSquare, Home, Users, Calendar, Menu, Plus, X, Filter,
+  Clock, ArrowLeft,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
+import { FollowButton } from "@/components/shared/FollowButton"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
-import { connectAction, acceptAction, rejectAction } from "./actions"
 
-type TabType = "connected" | "sent" | "received" | "suggestions"
+type TabType = "following" | "followers" | "suggestions"
 
 interface AlumniUser {
   id: string
   userId?: string
-  connectionId?: string
   name: string
   headline: string
   batch: string
@@ -25,7 +23,6 @@ interface AlumniUser {
   location: string
   avatar: string
   mutualCount: number
-  sentAt?: string
   since?: string
   borderColor: string
   membership: Membership
@@ -48,63 +45,31 @@ function toCard(u: AlumniUser): AlumniCard {
   }
 }
 
-export const MOCK_CONNECTED: AlumniUser[] = [
-  { id: "1", name: "Neha Gupta", headline: "IAS Officer · Government of India", batch: "20th Batch", house: "Udaigiri", houseColor: "#ffe135", location: "Lucknow", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=300&fit=crop&crop=face", mutualCount: 14, since: "Jan 2025", borderColor: "#D4A017", membership: "life" },
-  { id: "2", name: "Dr. Amit Verma", headline: "Cardiologist · AIIMS Delhi", batch: "15th Batch", house: "Aravali", houseColor: "#5a9bd5", location: "New Delhi", avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300&h=300&fit=crop&crop=face", mutualCount: 22, since: "Mar 2024", borderColor: "#5a9bd5", membership: "committee" },
-  { id: "3", name: "Priya Sharma", headline: "Software Engineer · Google", batch: "23rd Batch", house: "Nilgiri", houseColor: "#70ad47", location: "Bangalore", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop&crop=face", mutualCount: 8, since: "Nov 2024", borderColor: "#70ad47", membership: "premium" },
-  { id: "4", name: "Vikram Singh", headline: "Founder & CEO · EduStart", batch: "18th Batch", house: "Shiwalik", houseColor: "#e8503a", location: "Pune", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face", mutualCount: 31, since: "Jun 2024", borderColor: "#e8503a", membership: "inactive" },
-  { id: "5", name: "Rahul Mehta", headline: "Product Designer · Figma", batch: "24th Batch", house: "Udaigiri", houseColor: "#ffe135", location: "Mumbai", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop&crop=face", mutualCount: 5, since: "Feb 2025", borderColor: "#D4A017", membership: "student" },
-  { id: "6", name: "Sunita Patel", headline: "Research Scientist · IISc", batch: "22nd Batch", house: "Nilgiri", houseColor: "#70ad47", location: "Bangalore", avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=300&h=300&fit=crop&crop=face", mutualCount: 11, since: "Sep 2024", borderColor: "#70ad47", membership: "associate" },
-]
-
-export const MOCK_PENDING: AlumniUser[] = [
-  { id: "7", name: "Arjun Nair", headline: "CA · Deloitte India", batch: "19th Batch", house: "Aravali", houseColor: "#5a9bd5", location: "Chennai", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&h=300&fit=crop&crop=face", mutualCount: 6, sentAt: "3 days ago", borderColor: "#5a9bd5", membership: "associate" },
-  { id: "8", name: "Kavya Reddy", headline: "Architect · Hafeez Contractor", batch: "21st Batch", house: "Indira", houseColor: "#ff9933", location: "Hyderabad", avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=300&h=300&fit=crop&crop=face", mutualCount: 4, sentAt: "1 week ago", borderColor: "#ff9933", membership: "premium" },
-]
-
-export const MOCK_RECEIVED: AlumniUser[] = [
-  { id: "9", name: "Mohit Gupta", headline: "Army Officer · Indian Army", batch: "17th Batch", house: "Shiwalik", houseColor: "#e8503a", location: "Pune", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face", mutualCount: 18, sentAt: "2 days ago", borderColor: "#e8503a", membership: "associate" },
-  { id: "10", name: "Deepa Krishnan", headline: "Journalist · NDTV", batch: "20th Batch", house: "Laxmi", houseColor: "#e75480", location: "Mumbai", avatar: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=300&h=300&fit=crop&crop=face", mutualCount: 9, sentAt: "5 days ago", borderColor: "#e75480", membership: "associate" },
-]
-
-export const MOCK_SUGGESTIONS: AlumniUser[] = [
-  { id: "11", name: "Rohan Sharma", headline: "Civil Engineer · L&T", batch: "21st Batch", house: "Aravali", houseColor: "#5a9bd5", location: "Mumbai", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=300&fit=crop&crop=face", mutualCount: 12, borderColor: "#5a9bd5", membership: "associate" },
-  { id: "12", name: "Ananya Singh", headline: "Marketing Manager · FMCG", batch: "22nd Batch", house: "Nilgiri", houseColor: "#70ad47", location: "Delhi", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&h=300&fit=crop&crop=face", mutualCount: 7, borderColor: "#70ad47", membership: "student" },
-  { id: "13", name: "Karan Joshi", headline: "Data Scientist · Amazon", batch: "24th Batch", house: "Udaigiri", houseColor: "#ffe135", location: "Bangalore", avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=300&h=300&fit=crop&crop=face", mutualCount: 15, borderColor: "#D4A017", membership: "premium" },
-  { id: "14", name: "Pooja Desai", headline: "Lawyer · Supreme Court", batch: "19th Batch", house: "Laxmi", houseColor: "#e75480", location: "Delhi", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=300&fit=crop&crop=face", mutualCount: 3, borderColor: "#e75480", membership: "life" },
-]
-
 const HOUSE_FILTER = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Indira", "Laxmi"]
 
 interface ConnectionsClientProps {
-  connected?: AlumniUser[]
-  pending?: AlumniUser[]
-  received?: AlumniUser[]
+  following?: AlumniUser[]
+  followers?: AlumniUser[]
   suggestions?: AlumniUser[]
 }
 
 export default function ConnectionsClient({
-  connected = MOCK_CONNECTED,
-  pending = MOCK_PENDING,
-  received = MOCK_RECEIVED,
-  suggestions = MOCK_SUGGESTIONS,
+  following = [],
+  followers = [],
+  suggestions = [],
 }: ConnectionsClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [tab, setTab] = useState<TabType>("connected")
+  const [tab, setTab] = useState<TabType>("following")
   const [search, setSearch] = useState("")
   const [houseFilter, setHouseFilter] = useState("All Houses")
   const [showFilters, setShowFilters] = useState(false)
-  const [connectedList] = useState(connected)
-  const [removedConnections, setRemovedConnections] = useState<string[]>([])
-  const [acceptedRequests, setAcceptedRequests] = useState<string[]>([])
-  const [declinedRequests, setDeclinedRequests] = useState<string[]>([])
-  const [sentList, setSentList] = useState<string[]>([])
-  const [, startTransition] = useTransition()
+
+  // People I follow — used to hydrate the "Follow back" state on the Followers tab.
+  const followingSet = new Set(following.map((u) => u.userId))
 
   const tabs: { key: TabType; label: string; count: number }[] = [
-    { key: "connected", label: "Connections", count: connectedList.length },
-    { key: "received", label: "Requests", count: received.filter(r => !acceptedRequests.includes(r.id) && !declinedRequests.includes(r.id)).length },
-    { key: "sent", label: "Sent", count: pending.length },
+    { key: "following", label: "Following", count: following.length },
+    { key: "followers", label: "Followers", count: followers.length },
     { key: "suggestions", label: "People You May Know", count: suggestions.length },
   ]
 
@@ -113,116 +78,54 @@ export default function ConnectionsClient({
     (houseFilter === "All Houses" || u.house === houseFilter)
   )
 
-  function ConnectionCard({ user, mode }: { user: AlumniUser; mode: TabType }) {
-    const isRemoved = removedConnections.includes(user.id)
-    const isAccepted = acceptedRequests.includes(user.id)
-    const isDeclined = declinedRequests.includes(user.id)
-    const isSent = sentList.includes(user.id)
+  function PersonCard({ user, mode }: { user: AlumniUser; mode: TabType }) {
+    const iFollow = mode === "following" || followingSet.has(user.userId)
 
     const footer = (
       <div className="space-y-0.5">
-        {user.mutualCount > 0 && (
-          <p className="text-xs text-gray-400">{user.mutualCount} mutual connections</p>
-        )}
-        {mode === "connected" && user.since && (
+        {mode === "following" && user.since && (
           <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-            <Clock className="h-3 w-3" /> Connected since {user.since}
+            <Clock className="h-3 w-3" /> Following since {user.since}
           </p>
         )}
-        {(mode === "sent" || mode === "received") && user.sentAt && (
+        {mode === "followers" && user.since && (
           <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-            <Clock className="h-3 w-3" /> {mode === "sent" ? "Sent" : "Received"} {user.sentAt}
+            <Clock className="h-3 w-3" /> Follows you since {user.since}
           </p>
         )}
       </div>
     )
 
-    let actions: React.ReactNode
-
-    if (mode === "connected") {
-      actions = isRemoved ? (
-        <div className="flex items-center justify-between w-full bg-gray-50 rounded-lg px-3 py-2">
-          <span className="text-xs text-gray-500">Connection removed</span>
-          <button onClick={() => setRemovedConnections(r => r.filter(x => x !== user.id))}
-            className="text-xs font-medium text-brand hover:text-brand-600 transition-colors">Undo</button>
-        </div>
-      ) : (
-        <>
+    const actions = (
+      <>
+        {mode === "following" ? (
           <a href={`/messages/conv-${user.id}`}
             className="flex items-center gap-1.5 rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300">
             <MessageSquare className="h-3.5 w-3.5" /> Message
           </a>
-          <button onClick={() => setRemovedConnections(r => [...r, user.id])} title="Remove connection"
-            className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-500 hover:border-red-300 hover:text-red-500 transition-all duration-300">
-            <UserX className="h-3.5 w-3.5" />
-          </button>
-        </>
-      )
-    } else if (mode === "sent") {
-      actions = (
-        <button className="rounded-md border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300">
-          Withdraw Request
-        </button>
-      )
-    } else if (mode === "received") {
-      actions = (isAccepted || isDeclined) ? (
-        <span className={`text-sm font-medium px-4 py-1.5 rounded-md ${isAccepted ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-          {isAccepted ? "Connected!" : "Declined"}
-        </span>
-      ) : (
-        <>
-          <button onClick={() => {
-            setAcceptedRequests(a => [...a, user.id])
-            if (user.connectionId) startTransition(() => { void acceptAction(user.connectionId!) })
-          }}
-            className="flex items-center gap-1.5 rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300">
-            <Check className="h-3.5 w-3.5" /> Accept
-          </button>
-          <button onClick={() => {
-            setDeclinedRequests(d => [...d, user.id])
-            if (user.connectionId) startTransition(() => { void rejectAction(user.connectionId!) })
-          }}
-            className="rounded-md border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300">
-            Decline
-          </button>
-        </>
-      )
-    } else {
-      actions = (
-        <>
+        ) : (
           <a href={`/${user.id}`}
             className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300">
             View Profile
           </a>
-          <button onClick={() => {
-            setSentList(s => s.includes(user.id) ? s.filter(x => x !== user.id) : [...s, user.id])
-            if (!sentList.includes(user.id) && user.userId) {
-              startTransition(() => { void connectAction(user.userId!) })
-            }
-          }}
-            className={`flex items-center gap-1.5 rounded-md border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${isSent ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"}`}>
-            {isSent ? <><Check className="h-3.5 w-3.5" /> Sent</> : <><UserPlus className="h-3.5 w-3.5" /> Connect</>}
-          </button>
-        </>
-      )
-    }
+        )}
+        {user.userId && <FollowButton userId={user.userId} initialFollowing={iFollow} />}
+      </>
+    )
 
     return (
-      <div className={`transition-opacity ${isRemoved ? "opacity-60" : ""}`}>
-        <AlumniProfileCard
-          alumni={toCard(user)}
-          profileHref={`/${user.id}`}
-          footer={footer}
-          actions={actions}
-        />
-      </div>
+      <AlumniProfileCard
+        alumni={toCard(user)}
+        profileHref={`/${user.id}`}
+        footer={footer}
+        actions={actions}
+      />
     )
   }
 
   const currentList =
-    tab === "connected" ? filtered(connectedList) :
-    tab === "sent" ? filtered(pending) :
-    tab === "received" ? filtered(received) :
+    tab === "following" ? filtered(following) :
+    tab === "followers" ? filtered(followers) :
     filtered(suggestions)
 
   return (
@@ -270,7 +173,7 @@ export default function ConnectionsClient({
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={`Search ${tab === "suggestions" ? "suggestions" : "connections"}…`}
+              placeholder={`Search ${tab === "suggestions" ? "suggestions" : tab}…`}
               className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
             />
           </div>
@@ -297,12 +200,12 @@ export default function ConnectionsClient({
           </div>
         )}
 
-        {/* Stats Bar (connected only) */}
-        {tab === "connected" && (
+        {/* Stats Bar (following only) */}
+        {tab === "following" && (
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Connected", value: connectedList.length, color: "text-brand" },
-              { label: "Pending", value: pending.length, color: "text-amber-500" },
+              { label: "Following", value: following.length, color: "text-brand" },
+              { label: "Followers", value: followers.length, color: "text-amber-500" },
               { label: "Suggestions", value: suggestions.length, color: "text-purple-500" },
             ].map((s, i) => (
               <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 text-center">
@@ -324,7 +227,7 @@ export default function ConnectionsClient({
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
               >
-                <ConnectionCard user={u} mode={tab} />
+                <PersonCard user={u} mode={tab} />
               </motion.div>
             ))}
           </div>
@@ -332,7 +235,9 @@ export default function ConnectionsClient({
           <div className="bg-white border border-gray-200 rounded-xl py-16 text-center">
             <Users className="h-10 w-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-500">No results found</p>
-            <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {tab === "following" ? "You're not following anyone yet." : tab === "followers" ? "No followers yet." : "Try adjusting your search or filters"}
+            </p>
           </div>
         )}
       </div>

@@ -10,7 +10,7 @@ export type EmailTemplates = {
   password_reset: { legalName: string; resetUrl: string; isNew: boolean }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
-  connection_request: { fromName: string; profileUrl: string }
+  new_follower: { fromName: string; profileUrl: string }
   comment_on_post: { fromName: string; postUrl: string }
   reaction_on_post: { fromName: string; postUrl: string }
   mention: { fromName: string; postUrl: string }
@@ -65,12 +65,12 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
          <p style="color:#374151">You can re-submit with updated documents from your profile.</p>`,
       ),
   },
-  connection_request: {
-    subject: (d) => `${d.fromName} wants to connect`,
-    text: (d) => `${d.fromName} sent you a connection request.\n\nView profile: ${d.profileUrl}`,
+  new_follower: {
+    subject: (d) => `${d.fromName} started following you`,
+    text: (d) => `${d.fromName} started following you.\n\nView profile: ${d.profileUrl}`,
     html: (d) =>
       baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">${d.fromName} wants to connect</h2>
+        `<h2 style="margin:0 0 12px;color:#0f172a">${d.fromName} started following you</h2>
          <p><a href="${d.profileUrl}" style="color:#009ae4">View their profile</a></p>`,
       ),
   },

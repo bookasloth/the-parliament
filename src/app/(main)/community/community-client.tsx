@@ -8,7 +8,7 @@ import {
   ChevronDown, X, SlidersHorizontal, Loader2,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
-import { ConnectButton } from "@/components/shared/ConnectButton"
+import { FollowButton } from "@/components/shared/FollowButton"
 import { colorAvatar } from "@/lib/avatar"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
@@ -50,7 +50,7 @@ function toQuery(current: Params, extra: Params = {}): string {
 }
 
 export function CommunityClient({
-  rows, total, facets, current, meId, stats,
+  rows, total, facets, current, meId, stats, followingIds = [],
 }: {
   rows: DirectoryRow[]
   total: number
@@ -58,7 +58,10 @@ export function CommunityClient({
   current: Params
   meId: string | null
   stats: { totalActive: number; verifiedCount: number; batches: number }
+  // ponytail: covers first page only; lazily-loaded rows default to not-following (self-corrects on click).
+  followingIds?: string[]
 }) {
+  const followingSet = new Set(followingIds)
   const router = useRouter()
   const [view, setView] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
@@ -233,7 +236,7 @@ export function CommunityClient({
                 actions={
                   <>
                     <a href={`/${r.username}`} className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all hover:bg-brand hover:text-white">View Profile</a>
-                    {meId !== r.id && <ConnectButton userId={r.id} />}
+                    {meId !== r.id && <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} />}
                   </>
                 }
               />
@@ -259,7 +262,7 @@ export function CommunityClient({
                   {r.batch && <span>{r.batch.label} Batch</span>}
                 </div>
               </div>
-              {meId !== r.id && <ConnectButton userId={r.id} />}
+              {meId !== r.id && <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} />}
             </div>
           ))}
         </div>

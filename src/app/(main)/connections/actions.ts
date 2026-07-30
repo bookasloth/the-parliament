@@ -2,25 +2,16 @@
 
 import { revalidatePath } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
-import {
-  sendConnectionRequest,
-  respondToConnection,
-} from "@/modules/connections/service"
+import { followUser, unfollowUser } from "@/modules/connections/service"
 
-export async function connectAction(addresseeId: string) {
+export async function followAction(targetUserId: string) {
   const user = await requireUser()
-  await sendConnectionRequest(user.id, addresseeId)
+  await followUser(user.id, targetUserId)
   revalidatePath("/connections")
 }
 
-export async function acceptAction(connectionId: string) {
+export async function unfollowAction(targetUserId: string) {
   const user = await requireUser()
-  await respondToConnection(user.id, connectionId, true)
-  revalidatePath("/connections")
-}
-
-export async function rejectAction(connectionId: string) {
-  const user = await requireUser()
-  await respondToConnection(user.id, connectionId, false)
+  await unfollowUser(user.id, targetUserId)
   revalidatePath("/connections")
 }
