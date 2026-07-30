@@ -17,6 +17,7 @@ import PostReactionBar from "./post-reaction-bar"
 import PollBlock from "./poll-block"
 import CommentsLoader from "./comments-loader"
 import { TEXT_BG } from "@/components/shared/FeedCard"
+import { MediaGallery } from "@/components/shared/MediaGallery"
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 
 export const dynamic = "force-dynamic"
@@ -192,21 +193,21 @@ export default async function PostDetailPage({
           </div>
         )}
 
-        {Array.isArray(post.media) && post.media.length > 0 && (
-          <div className={`grid gap-0.5 ${post.media.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-            {(post.media as { key: string; type: string; url?: string }[]).map((m, i) =>
-              m.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={m.url}
-                  alt=""
-                  className="w-full h-64 object-cover"
-                />
-              ) : null,
-            )}
-          </div>
-        )}
+        {(() => {
+          const items = Array.isArray(post.media)
+            ? (post.media as { url?: string; type?: string }[])
+                .filter((m) => typeof m.url === "string" && m.url.length > 0 && m.type !== "style")
+                .map((m) => ({
+                  url: m.url as string,
+                  type: (m.type ?? "").startsWith("video") ? ("video" as const) : ("image" as const),
+                }))
+            : []
+          return items.length > 0 ? (
+            <div className="px-5 pb-3">
+              <MediaGallery items={items} />
+            </div>
+          ) : null
+        })()}
 
         <PostReactionBar
           postId={post.id}

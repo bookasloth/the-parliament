@@ -15,7 +15,7 @@ export async function createPostAction(input: {
   categoryKey: string
   format?: string
   linkUrl?: string
-  mediaKeys?: string[]
+  media?: { key: string; type: "image" | "video" }[]
   poll?: { question: string; options: string[] }
   textBg?: string
 }) {
@@ -36,10 +36,10 @@ export async function createPostAction(input: {
     ? (input.format as PostFormat)
     : "text") as PostFormat
 
-  const media = (input.mediaKeys ?? []).map((key) => ({
-    key,
-    type: "image",
-    url: publicUrlFor(key),
+  const media = (input.media ?? []).map((m) => ({
+    key: m.key,
+    type: m.type,
+    url: publicUrlFor(m.key),
   }))
   // Text-post background is stashed as a non-image sentinel in media (no url),
   // so image readers (map-row.mediaUrls, detail grid) skip it. Avoids a schema column.

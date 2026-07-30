@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { MediaGallery, type MediaItem } from "@/components/shared/MediaGallery"
 import {
   MoreHorizontal,
   ThumbsUp,
@@ -54,6 +55,8 @@ export interface FeedPost {
   images?: string[]
   mediaCount?: number
   videoDuration?: string
+  /** Typed media (image/video) — rendered via MediaGallery with a lightbox. */
+  mediaItems?: MediaItem[]
   quote?: { text: string; author: string; source?: string }
   question?: string
   poll?: {
@@ -950,7 +953,9 @@ export function FeedCard({
           </div>
         )}
 
-        {post.images && !post.isSponsored ? (
+        {post.mediaItems && post.mediaItems.length > 0 && !post.isSponsored ? (
+          <MediaGallery items={post.mediaItems} />
+        ) : post.images && !post.isSponsored ? (
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg overflow-hidden">
             {post.images.map((img, i) => (
               <img

@@ -39,7 +39,7 @@ const PREFIX: Record<UploadKind, string> = {
 const MAX_BYTES: Record<UploadKind, number> = {
   verification: 10 * 1024 * 1024,
   avatar: 4 * 1024 * 1024,
-  post: 10 * 1024 * 1024,
+  post: 64 * 1024 * 1024,
   business: 4 * 1024 * 1024,
   event_banner: 6 * 1024 * 1024,
 }
@@ -47,7 +47,7 @@ const MAX_BYTES: Record<UploadKind, number> = {
 const ALLOWED_MIME: Record<UploadKind, string[]> = {
   verification: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
   avatar: ["image/jpeg", "image/png", "image/webp"],
-  post: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  post: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm", "video/quicktime"],
   business: ["image/jpeg", "image/png", "image/webp"],
   event_banner: ["image/jpeg", "image/png", "image/webp"],
 }
