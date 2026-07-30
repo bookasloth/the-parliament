@@ -6,6 +6,7 @@ import { getDefaultSchoolId } from "@/lib/school"
 import { createPost } from "@/modules/feed/posts"
 import { markComplete } from "@/modules/onboarding/service"
 import { handleError, ok, badRequest } from "@/lib/api"
+import { publicUrlFor } from "@/lib/r2"
 import { INTEREST_OPTIONS, MONTHS } from "@/lib/onboarding"
 
 const schema = z.object({
@@ -17,8 +18,8 @@ const schema = z.object({
     sinceDay: z.string().optional().default(""),
   }),
   media: z.object({
-    photoUrl: z.string().optional().default(""),
-    coverUrl: z.string().optional().default(""),
+    photoKey: z.string().optional().default(""),
+    coverKey: z.string().optional().default(""),
     bio: z.string().trim().max(2000).optional().default(""),
     bloodGroup: z.string().max(5).optional().default(""),
     willingToDonate: z.boolean().optional().default(false),
@@ -27,8 +28,8 @@ const schema = z.object({
   introText: z.string().trim().optional().default(""),
 })
 
-// Only persist real (already-uploaded) URLs — client previews are blob: URLs.
-const realUrl = (u: string) => (u && !u.startsWith("blob:") ? u : null)
+// Turn an uploaded R2 key into a stored public URL; empty key → no photo.
+const keyToUrl = (key: string) => (key ? publicUrlFor(key) : null)
 
 function buildWorkSince(year: string, month: string, day: string): Date | null {
   if (!year) return null
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
       bio: media.bio || null,
       bloodGroup: media.bloodGroup || null,
       bloodDonor: media.willingToDonate,
-      photoUrl: realUrl(media.photoUrl),
-      coverUrl: realUrl(media.coverUrl),
+      photoUrl: keyToUrl(media.photoKey),
+      coverUrl: keyToUrl(media.coverKey),
     }
     await prisma.profile.upsert({
       where: { userId: user.id },

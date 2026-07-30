@@ -36,8 +36,10 @@ export interface WorkData {
 }
 
 export interface MediaData {
-  photoUrl: string // object URL / preview (real upload → R2 later)
+  photoUrl: string // local object URL, for preview only
   coverUrl: string
+  photoKey: string // R2 object key (persisted → public URL on finalize)
+  coverKey: string
   bio: string
   bloodGroup: string
   willingToDonate: boolean
@@ -62,7 +64,7 @@ export interface OnboardingData {
 export const EMPTY_ONBOARDING: OnboardingData = {
   verify: { email: "", verified: false },
   work: { company: "", position: "", sinceYear: "", sinceMonth: "", sinceDay: "" },
-  media: { photoUrl: "", coverUrl: "", bio: "", bloodGroup: "", willingToDonate: false },
+  media: { photoUrl: "", coverUrl: "", photoKey: "", coverKey: "", bio: "", bloodGroup: "", willingToDonate: false },
   interests: { interestIds: [] },
   intro: { text: "" },
 }

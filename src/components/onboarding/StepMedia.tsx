@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback } from "react"
-import { Camera, ImagePlus } from "lucide-react"
+import { useCallback, useState } from "react"
+import { Camera, ImagePlus, Loader2 } from "lucide-react"
 import type { MediaData } from "@/lib/onboarding"
 import { BLOOD_GROUPS } from "@/lib/onboarding"
 
@@ -11,15 +11,55 @@ interface StepMediaProps {
   onNext: () => void
 }
 
+const MAX_BYTES = 4 * 1024 * 1024 // matches r2.ts "avatar" cap
+
 export function StepMedia({ data, set, onNext }: StepMediaProps) {
-  // ponytail: previews use local object URLs. Upload to R2 on submit later.
+  const [uploading, setUploading] = useState<{ photo: boolean; cover: boolean }>({ photo: false, cover: false })
+  const [error, setError] = useState("")
+
+  // Show a local preview immediately, then upload to R2 via a presigned PUT and
+  // keep the object key to persist on finalize. Reuses /api/uploads/sign.
   const pick = useCallback(
-    (key: "photoUrl" | "coverUrl") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    (which: "photo" | "cover") => async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
-      if (file) set({ [key]: URL.createObjectURL(file) } as Partial<MediaData>)
+      if (!file) return
+      setError("")
+      if (!file.type.startsWith("image/")) {
+        setError("Please choose an image file.")
+        return
+      }
+      if (file.size > MAX_BYTES) {
+        setError("Image must be under 4 MB.")
+        return
+      }
+
+      const urlKey = which === "photo" ? "photoUrl" : "coverUrl"
+      const keyField = which === "photo" ? "photoKey" : "coverKey"
+      set({ [urlKey]: URL.createObjectURL(file) } as Partial<MediaData>)
+      setUploading((u) => ({ ...u, [which]: true }))
+      try {
+        const ext = file.name.split(".").pop() || "jpg"
+        const signRes = await fetch("/api/uploads/sign", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ kind: "avatar", contentType: file.type, ext }),
+        })
+        if (!signRes.ok) throw new Error("Could not start upload")
+        const { key, uploadUrl } = await signRes.json()
+        const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file })
+        if (!put.ok) throw new Error("Upload failed")
+        set({ [keyField]: key } as Partial<MediaData>)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed")
+        set({ [keyField]: "", [urlKey]: "" } as Partial<MediaData>)
+      } finally {
+        setUploading((u) => ({ ...u, [which]: false }))
+      }
     },
     [set],
   )
+
+  const busy = uploading.photo || uploading.cover
 
   return (
     <div className="space-y-6">
@@ -35,23 +75,27 @@ export function StepMedia({ data, set, onNext }: StepMediaProps) {
           style={data.coverUrl ? { backgroundImage: `url(${data.coverUrl})` } : undefined}
         >
           <label className="absolute right-2 top-2 inline-flex cursor-pointer items-center gap-1.5 rounded bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-white">
-            <ImagePlus className="h-4 w-4" />
-            {data.coverUrl ? "Change cover" : "Add cover"}
-            <input type="file" accept="image/*" onChange={pick("coverUrl")} className="hidden" />
+            {uploading.cover ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            {uploading.cover ? "Uploading…" : data.coverUrl ? "Change cover" : "Add cover"}
+            <input type="file" accept="image/*" onChange={pick("cover")} className="hidden" />
           </label>
 
           <label className="absolute -bottom-8 left-4 flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-200 shadow">
-            {data.photoUrl ? (
+            {uploading.photo ? (
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            ) : data.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={data.photoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <Camera className="h-6 w-6 text-gray-400" />
             )}
-            <input type="file" accept="image/*" onChange={pick("photoUrl")} className="hidden" />
+            <input type="file" accept="image/*" onChange={pick("photo")} className="hidden" />
           </label>
         </div>
         <div className="h-8" />
       </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Bio</label>
@@ -100,9 +144,12 @@ export function StepMedia({ data, set, onNext }: StepMediaProps) {
 
       <button
         onClick={onNext}
-        className="w-full rounded bg-brand py-3 text-base font-semibold text-white transition-colors hover:bg-brand-600"
+        disabled={busy}
+        className={`w-full rounded py-3 text-base font-semibold text-white transition-colors ${
+          busy ? "cursor-not-allowed bg-gray-300" : "bg-brand hover:bg-brand-600"
+        }`}
       >
-        Continue
+        {busy ? "Uploading…" : "Continue"}
       </button>
     </div>
   )
