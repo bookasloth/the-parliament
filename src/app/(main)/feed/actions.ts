@@ -5,6 +5,7 @@ import { requireUser } from "@/modules/auth/session"
 import {
   toggleReaction,
   createComment,
+  deleteComment,
   editPost,
   deletePost,
   sharePost,
@@ -80,6 +81,25 @@ export async function reactToComment(
   const result = await toggleCommentReaction({ userId: user.id, commentId, type })
   revalidatePath(`/feed/${postId}`)
   return result
+}
+
+export async function deleteCommentAction(postId: string, commentId: string) {
+  const user = await requireUser()
+  await deleteComment({ userId: user.id, commentId })
+  revalidatePath(`/feed/${postId}`)
+  return { ok: true as const }
+}
+
+export async function reportCommentAction(postId: string, commentId: string, reason: string) {
+  const user = await requireUser()
+  await fileReport({
+    reporterId: user.id,
+    entityType: "comment" as ReportableEntity,
+    entityId: commentId,
+    reason,
+  })
+  revalidatePath(`/feed/${postId}`)
+  return { ok: true as const }
 }
 
 /** Ranked @mention suggestions for the comment composer. */

@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useOptimistic, useState, useTransition } from "react"
-import { ArrowBigDown, ArrowBigUp, ShieldCheck, Smile } from "lucide-react"
-import { commentOnPost, reactToComment } from "../actions"
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react"
+import { ArrowBigDown, ArrowBigUp, Flag, MoreHorizontal, ShieldCheck, Smile, Trash2 } from "lucide-react"
+import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction } from "../actions"
 import MentionInput from "./mention-input"
 
 export interface CommentView {
@@ -44,6 +44,7 @@ type OptimisticAction =
   | { type: "top"; comment: CommentView }
   | { type: "reply"; parentId: string; comment: CommentView }
   | { type: "vote"; id: string; next: "upvote" | "downvote" | null; delta: number }
+  | { type: "remove"; id: string }
 
 // Membership tier → avatar ring colour (mirrors map-row.ts / AlumniProfileCard).
 const RING: Record<string, string> = {
@@ -170,16 +171,73 @@ function CommentBubble({ c }: { c: CommentView }) {
   )
 }
 
+function CommentMenu({
+  c,
+  viewer,
+  onDelete,
+  onReport,
+}: {
+  c: CommentView
+  viewer: Viewer | null
+  onDelete: (c: CommentView) => void
+  onReport: (c: CommentView) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [])
+  if (!viewer || c.id.startsWith("optimistic-")) return null
+  return (
+    <div className="relative ml-1" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        aria-label="More"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-20 mt-1 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          {c.isAuthor ? (
+            <button
+              onClick={() => { setOpen(false); onDelete(c) }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-gray-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          ) : (
+            <button
+              onClick={() => { setOpen(false); onReport(c) }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              <Flag className="h-3.5 w-3.5" /> Report
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function VoteRow({
   c,
   viewer,
   onVote,
   onReplyClick,
+  onDelete,
+  onReport,
 }: {
   c: CommentView
   viewer: Viewer | null
   onVote: (c: CommentView, type: "upvote" | "downvote") => void
   onReplyClick: () => void
+  onDelete: (c: CommentView) => void
+  onReport: (c: CommentView) => void
 }) {
   const disabled = !viewer || c.id.startsWith("optimistic-")
   return (
@@ -214,6 +272,7 @@ function VoteRow({
           Reply
         </button>
       )}
+      <CommentMenu c={c} viewer={viewer} onDelete={onDelete} onReport={onReport} />
     </div>
   )
 }
@@ -223,11 +282,15 @@ function CommentItem({
   viewer,
   onReply,
   onVote,
+  onDelete,
+  onReport,
 }: {
   comment: CommentView
   viewer: Viewer | null
   onReply: (parentId: string, body: string) => void
   onVote: (c: CommentView, type: "upvote" | "downvote") => void
+  onDelete: (c: CommentView) => void
+  onReport: (c: CommentView) => void
 }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
@@ -248,7 +311,14 @@ function CommentItem({
         <CommentBubble c={comment} />
       </div>
 
-      <VoteRow c={comment} viewer={viewer} onVote={onVote} onReplyClick={() => setOpen((o) => !o)} />
+      <VoteRow
+        c={comment}
+        viewer={viewer}
+        onVote={onVote}
+        onReplyClick={() => setOpen((o) => !o)}
+        onDelete={onDelete}
+        onReport={onReport}
+      />
 
       {open && viewer && (
         <div className="ml-12 mt-2 flex items-center gap-2">
@@ -286,7 +356,14 @@ function CommentItem({
               <div className="flex gap-3">
                 <CommentBubble c={r} />
               </div>
-              <VoteRow c={r} viewer={viewer} onVote={onVote} onReplyClick={() => setOpen(true)} />
+              <VoteRow
+                c={r}
+                viewer={viewer}
+                onVote={onVote}
+                onReplyClick={() => setOpen(true)}
+                onDelete={onDelete}
+                onReport={onReport}
+              />
             </li>
           ))}
         </ul>
@@ -319,6 +396,10 @@ export default function CommentsSection({ postId, initialComments, initialCount,
         return state.map((c) =>
           c.id === action.parentId ? { ...c, replies: [...c.replies, action.comment] } : c,
         )
+      if (action.type === "remove")
+        return state
+          .filter((c) => c.id !== action.id)
+          .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== action.id) }))
       // vote — patch matching top-level or reply.
       const patch = (c: CommentView): CommentView =>
         c.id === action.id ? { ...c, score: c.score + action.delta, myReaction: action.next } : c
@@ -376,6 +457,38 @@ export default function CommentsSection({ postId, initialComments, initialCount,
         await reactToComment(postId, c.id, type)
       } catch {
         setError("Failed to record your vote. Please try again.")
+      }
+    })
+  }
+
+  function handleDelete(c: CommentView) {
+    if (!viewer) return
+    startTransition(async () => {
+      applyOptimistic({ type: "remove", id: c.id })
+      setCount((n) => Math.max(0, n - 1))
+      try {
+        await deleteCommentAction(postId, c.id)
+      } catch {
+        // useOptimistic reverts automatically when the transition ends without
+        // the server having removed it.
+        setError("Failed to delete the comment. Please try again.")
+        setCount((n) => n + 1)
+      }
+    })
+  }
+
+  function handleReport(c: CommentView) {
+    if (!viewer) return
+    const reason =
+      typeof window !== "undefined"
+        ? window.prompt("Report this comment — why?", "inappropriate")
+        : null
+    if (!reason) return
+    startTransition(async () => {
+      try {
+        await reportCommentAction(postId, c.id, reason)
+      } catch {
+        setError("Failed to report the comment. Please try again.")
       }
     })
   }
@@ -463,7 +576,15 @@ export default function CommentsSection({ postId, initialComments, initialCount,
           <li className="px-5 py-8 text-center text-sm text-gray-400">No comments yet.</li>
         ) : (
           sorted.map((c) => (
-            <CommentItem key={c.id} comment={c} viewer={viewer} onReply={handleReply} onVote={handleVote} />
+            <CommentItem
+              key={c.id}
+              comment={c}
+              viewer={viewer}
+              onReply={handleReply}
+              onVote={handleVote}
+              onDelete={handleDelete}
+              onReport={handleReport}
+            />
           ))
         )}
       </ul>

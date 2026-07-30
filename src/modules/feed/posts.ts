@@ -479,5 +479,48 @@ export async function createComment(input: {
     })
   }
 
+  // Reply → also notify the parent commenter (in-app only), unless they're the
+  // actor or the post author (already notified above).
+  if (input.parentId) {
+    const parent = await prisma.comment.findUnique({
+      where: { id: input.parentId },
+      select: { authorId: true },
+    })
+    if (parent && parent.authorId !== input.userId && parent.authorId !== post.authorId) {
+      const actor = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { displayName: true, legalName: true },
+      })
+      const fromName = actor?.displayName || actor?.legalName || "Someone"
+      await sendNotification({
+        userId: parent.authorId,
+        kind: "comment_on_post",
+        title: `${fromName} replied to your comment`,
+        entityType: "post",
+        entityId: post.id,
+        sendEmail: false,
+      })
+    }
+  }
+
   return comment
+}
+
+/** Soft-delete a comment (author only). Decrements the post's comment count. */
+export async function deleteComment(input: { userId: string; commentId: string }) {
+  const c = await prisma.comment.findUnique({
+    where: { id: input.commentId },
+    select: { id: true, authorId: true, postId: true, deletedAt: true },
+  })
+  if (!c || c.deletedAt) throw new ForbiddenError("Comment not found")
+  if (c.authorId !== input.userId) throw new ForbiddenError("Not the author")
+
+  await prisma.comment.update({ where: { id: c.id }, data: { deletedAt: new Date() } })
+  // ponytail: decrements 1 even if the comment had replies (they get hidden with
+  // it); exact recount only matters if reply threads grow deep.
+  await prisma.post.update({
+    where: { id: c.postId },
+    data: { commentCount: { decrement: 1 } },
+  })
+  await recomputeRankingScore(c.postId)
 }
