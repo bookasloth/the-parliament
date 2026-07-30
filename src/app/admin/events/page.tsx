@@ -7,6 +7,7 @@ import {
   TrendingUp, IndianRupee, Megaphone, Copy,
 } from "lucide-react"
 import { PageHeader, StatCard, StatusBadge, ProgressBar } from "../admin-ui"
+import CreateEventModal from "./create-event-modal"
 
 interface AdminEvent {
   id: string
@@ -43,6 +44,7 @@ export default function AdminEventsPage() {
     Object.fromEntries(events.map(e => [e.id, e.featured]))
   )
   const [approvals, setApprovals] = useState<Record<string, "upcoming" | "rejected">>({})
+  const [createOpen, setCreateOpen] = useState(false)
 
   const filtered = events.filter(e => {
     const status = approvals[e.id] === "upcoming" ? "upcoming" : e.status
@@ -60,11 +62,16 @@ export default function AdminEventsPage() {
         title="Events"
         description="Approve, feature, and manage all platform events"
         actions={
-          <button className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
             <Plus className="h-3.5 w-3.5" /> Create Event
           </button>
         }
       />
+
+      <CreateEventModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Upcoming Events" value="6" icon={<CalendarDays className="h-4.5 w-4.5" />} accent="sky" />
