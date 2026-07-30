@@ -1,6 +1,5 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
-import { getRanker } from "@/modules/feed/ranker"
 
 export interface FeedFilters {
   schoolId: string
@@ -51,57 +50,59 @@ export async function getFeed(filters: FeedFilters) {
     }
   }
 
-  const candidatePoolSize = pageSize * 4
+  // Hide posts by anyone the viewer has blocked, or who has blocked the viewer.
+  // Skipped when viewing a specific author's page (filters.authorId already set).
+  if (filters.viewerId && !filters.authorId) {
+    const blocks = await prisma.userBlock.findMany({
+      where: {
+        OR: [{ blockerId: filters.viewerId }, { blockedId: filters.viewerId }],
+      },
+      select: { blockerId: true, blockedId: true },
+    })
+    const blockedUserIds = blocks.map((b) =>
+      b.blockerId === filters.viewerId ? b.blockedId : b.blockerId,
+    )
+    if (blockedUserIds.length > 0) where.authorId = { notIn: blockedUserIds }
+  }
 
-  const candidates = await prisma.post.findMany({
+  // Order by the stored hot score (indexed) — real DB pagination over every
+  // candidate, not an in-memory re-rank of a recency window. "recency" ranker
+  // falls back to createdAt.
+  const orderBy: Prisma.PostOrderByWithRelationInput[] =
+    filters.rankerName === "recency"
+      ? [{ isPinned: "desc" }, { createdAt: "desc" }]
+      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+
+  const rows = await prisma.post.findMany({
     where,
-    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-    take: candidatePoolSize,
+    orderBy,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
     select: postSelect(filters.viewerId),
   })
 
   // Reactions live in a polymorphic table — fetch viewer's rows in one shot.
   let viewerReactionByPostId = new Map<string, string>()
-  if (filters.viewerId && candidates.length > 0) {
+  if (filters.viewerId && rows.length > 0) {
     const rx = await prisma.reaction.findMany({
       where: {
         userId: filters.viewerId,
         entityType: "post",
-        entityId: { in: candidates.map((c) => c.id) },
+        entityId: { in: rows.map((c) => c.id) },
       },
       select: { entityId: true, type: true },
     })
     viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
   }
 
-  const ranker = getRanker(filters.rankerName)
-  const now = Date.now()
-  const ranked = candidates
-    .map((p) => {
-      const ageHours = (now - new Date(p.createdAt).getTime()) / 3_600_000
-      const score = ranker.score({
-        upvoteCount: p.upvoteCount,
-        downvoteCount: p.downvoteCount,
-        commentCount: p.commentCount,
-        shareCount: p.shareCount,
-        qualityScore: Number(p.qualityScore),
-        reportPenalty: Number(p.reportPenalty),
-        ageHours,
-        isPinned: p.isPinned,
-      })
-      return { post: p, score }
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice((page - 1) * pageSize, page * pageSize)
-
   return {
-    rows: ranked.map((r) => ({
-      ...r.post,
-      viewerReaction: viewerReactionByPostId.get(r.post.id) ?? null,
+    rows: rows.map((r) => ({
+      ...r,
+      viewerReaction: viewerReactionByPostId.get(r.id) ?? null,
     })),
     page,
     pageSize,
-    rankerUsed: ranker.name,
+    rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
   }
 }
 

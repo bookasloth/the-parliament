@@ -4,6 +4,43 @@ import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
+import { hotScore } from "@/modules/feed/ranking"
+
+/**
+ * Recompute and persist Post.rankingScore from the post's current counters.
+ * Called after any engagement mutation so the indexed rankingScore ORDER BY in
+ * getFeed stays fresh. ponytail: one extra read+write per mutation — fine at
+ * this scale; batch/debounce only if write volume ever demands it.
+ */
+export async function recomputeRankingScore(postId: string) {
+  const p = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      upvoteCount: true,
+      downvoteCount: true,
+      commentCount: true,
+      shareCount: true,
+      qualityScore: true,
+      reportPenalty: true,
+      createdAt: true,
+    },
+  })
+  if (!p) return
+  await prisma.post.update({
+    where: { id: postId },
+    data: {
+      rankingScore: hotScore({
+        upvoteCount: p.upvoteCount,
+        downvoteCount: p.downvoteCount,
+        commentCount: p.commentCount,
+        shareCount: p.shareCount,
+        qualityScore: Number(p.qualityScore),
+        reportPenalty: Number(p.reportPenalty),
+        createdAt: p.createdAt,
+      }),
+    },
+  })
+}
 
 export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll"
 
@@ -53,6 +90,22 @@ export async function createPost(input: CreatePostInput) {
         body: input.body,
         media: input.media ?? [],
         linkUrl: input.linkUrl,
+      },
+    })
+    // Seed rankingScore from creation time so a brand-new post has a real
+    // (recency-based) score before any engagement arrives.
+    await tx.post.update({
+      where: { id: created.id },
+      data: {
+        rankingScore: hotScore({
+          upvoteCount: 0,
+          downvoteCount: 0,
+          commentCount: 0,
+          shareCount: 0,
+          qualityScore: 0,
+          reportPenalty: 0,
+          createdAt: created.createdAt,
+        }),
       },
     })
     if (input.format === "poll" && input.poll) {
@@ -186,6 +239,7 @@ export async function toggleReaction(input: {
         data: incrementsFor(input.type, -1),
       }),
     ])
+    await recomputeRankingScore(input.postId)
     return { reacted: false }
   }
 
@@ -250,6 +304,7 @@ export async function toggleReaction(input: {
     }
   }
 
+  await recomputeRankingScore(input.postId)
   return { reacted: true }
 }
 
@@ -299,6 +354,7 @@ export async function sharePost(input: {
     where: { id: input.postId },
     data: { shareCount: { increment: 1 } },
   })
+  await recomputeRankingScore(input.postId)
   return share
 }
 
@@ -385,6 +441,7 @@ export async function createComment(input: {
     where: { id: input.postId },
     data: { commentCount: { increment: 1 } },
   })
+  await recomputeRankingScore(input.postId)
 
   if (input.userId !== post.authorId) {
     await awardKarma({

@@ -40,6 +40,8 @@ export async function fileReport(input: ReportInput) {
       where: { id: input.entityId },
       data: { reportPenalty: { increment: 1 } },
     })
+    const { recomputeRankingScore } = await import("@/modules/feed/posts")
+    await recomputeRankingScore(input.entityId)
   }
 
   await audit({
