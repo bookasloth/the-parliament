@@ -54,6 +54,10 @@ export interface CreatePostInput {
   linkUrl?: string
   poll?: { question: string; options: string[] }
   groupId?: string
+  quoteSource?: string
+  isAnonymous?: boolean
+  textBg?: string
+  visibilityScope?: string
 }
 
 export async function createPost(input: CreatePostInput) {
@@ -90,6 +94,10 @@ export async function createPost(input: CreatePostInput) {
         body: input.body,
         media: input.media ?? [],
         linkUrl: input.linkUrl,
+        quoteSource: input.quoteSource,
+        isAnonymous: input.isAnonymous ?? false,
+        textBg: input.textBg,
+        visibilityScope: input.visibilityScope ?? "public",
       },
     })
     // Seed rankingScore from creation time so a brand-new post has a real
@@ -504,6 +512,15 @@ export async function createComment(input: {
   }
 
   return comment
+}
+
+/** "Not interested" — hide a post from the viewer's feed. Idempotent. */
+export async function hidePost(input: { userId: string; postId: string }) {
+  await prisma.hiddenPost.upsert({
+    where: { userId_postId: { userId: input.userId, postId: input.postId } },
+    create: { userId: input.userId, postId: input.postId },
+    update: {},
+  })
 }
 
 /** Soft-delete a comment (author only). Decrements the post's comment count. */

@@ -694,6 +694,7 @@ export function FeedCard({
   onSave,
   onDelete,
   onReport,
+  onHide,
   onPollVote,
 }: {
   post: FeedPost
@@ -707,6 +708,7 @@ export function FeedCard({
   onSave?: () => Promise<{ saved: boolean }> | void
   onDelete?: () => void | Promise<unknown>
   onReport?: (reason: string) => void | Promise<unknown>
+  onHide?: () => void | Promise<unknown>
   onPollVote?: (optionId: string) => void | Promise<unknown>
 }) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
@@ -777,7 +779,11 @@ export function FeedCard({
           label: saved ? "Saved" : "Bookmark It",
           onClick: handleSave,
         },
-        { icon: <EyeOff className="h-4 w-4" />, label: "Hide It" },
+        {
+          icon: <EyeOff className="h-4 w-4" />,
+          label: "Hide It",
+          onClick: onHide ? () => { setActionOpen(false); void onHide() } : undefined,
+        },
         { icon: <Ban className="h-4 w-4" />, label: "Block Them" },
         { icon: <Flag className="h-4 w-4" />, label: "Report It", onClick: handleReport, danger: true },
       ]

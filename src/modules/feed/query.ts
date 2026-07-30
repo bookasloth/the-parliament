@@ -52,33 +52,42 @@ export async function getFeed(filters: FeedFilters) {
     }
   }
 
-  // Author scoping: hide blocked users; in "Following" mode restrict to the
-  // people the viewer follows (+ self). Skipped on a single-author page.
+  // Per-viewer scoping (skipped on a single-author page): blocks, follow graph,
+  // hidden posts, and "followers"-visibility enforcement.
+  const followingSet = new Set<string>()
   if (filters.viewerId && !filters.authorId) {
-    const [blocks, follows] = await Promise.all([
+    const viewerId = filters.viewerId
+    const [blocks, follows, hidden] = await Promise.all([
       prisma.userBlock.findMany({
-        where: { OR: [{ blockerId: filters.viewerId }, { blockedId: filters.viewerId }] },
+        where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
         select: { blockerId: true, blockedId: true },
       }),
-      filters.followingOnly
-        ? prisma.follow.findMany({
-            where: { followerId: filters.viewerId },
-            select: { followingId: true },
-          })
-        : Promise.resolve(null),
+      prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } }),
+      prisma.hiddenPost.findMany({ where: { userId: viewerId }, select: { postId: true } }),
     ])
     const blocked = new Set(
-      blocks.map((b) => (b.blockerId === filters.viewerId ? b.blockedId : b.blockerId)),
+      blocks.map((b) => (b.blockerId === viewerId ? b.blockedId : b.blockerId)),
     )
-    if (follows) {
-      // Following feed: allow followed authors + self, minus anyone blocked.
-      const allowed = [...follows.map((f) => f.followingId), filters.viewerId].filter(
-        (id) => !blocked.has(id),
-      )
+    for (const f of follows) followingSet.add(f.followingId)
+
+    if (filters.followingOnly) {
+      const allowed = [...followingSet, viewerId].filter((id) => !blocked.has(id))
       where.authorId = { in: allowed }
     } else if (blocked.size > 0) {
       where.authorId = { notIn: [...blocked] }
     }
+
+    // "not interested" — never resurface hidden posts.
+    const hiddenIds = hidden.map((h) => h.postId)
+    if (hiddenIds.length > 0) where.id = { notIn: hiddenIds }
+
+    // Followers-scoped posts are visible only to the author's followers (or self).
+    // ponytail: "groups" scope treated as public here; group-feed enforcement lives
+    // in the groups module.
+    where.OR = [
+      { visibilityScope: { not: "followers" } },
+      { authorId: { in: [...followingSet, viewerId] } },
+    ]
   }
 
   // Order by the stored hot score (indexed) — real DB pagination over every
@@ -96,6 +105,20 @@ export async function getFeed(filters: FeedFilters) {
     take: pageSize,
     select: postSelect(filters.viewerId),
   })
+
+  // Affinity: on the "For You" feed, float posts by followed authors up within
+  // the page (stable — keeps hot-score order inside each group). ponytail: an
+  // in-page boost; a full cross-page windowed re-rank is a later refinement.
+  if (!filters.followingOnly && filters.rankerName !== "recency" && followingSet.size > 0) {
+    rows.sort((a, b) => {
+      const ap = a.isPinned ? 1 : 0
+      const bp = b.isPinned ? 1 : 0
+      if (ap !== bp) return bp - ap
+      const af = followingSet.has(a.author.id) ? 1 : 0
+      const bf = followingSet.has(b.author.id) ? 1 : 0
+      return bf - af
+    })
+  }
 
   // Reactions live in a polymorphic table — fetch viewer's rows in one shot.
   let viewerReactionByPostId = new Map<string, string>()
@@ -120,6 +143,26 @@ export async function getFeed(filters: FeedFilters) {
     pageSize,
     rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
   }
+}
+
+/** Posts the viewer has saved (newest first), shaped like getFeed rows. */
+export async function listSavedPosts(viewerId: string, limit = 30) {
+  const saved = await prisma.savedPost.findMany({
+    where: { userId: viewerId, post: { deletedAt: null, status: "visible" } },
+    orderBy: { savedAt: "desc" },
+    take: limit,
+    select: { post: { select: postSelect(viewerId) } },
+  })
+  const rows = saved.map((s) => s.post)
+  let viewerReactionByPostId = new Map<string, string>()
+  if (rows.length > 0) {
+    const rx = await prisma.reaction.findMany({
+      where: { userId: viewerId, entityType: "post", entityId: { in: rows.map((r) => r.id) } },
+      select: { entityId: true, type: true },
+    })
+    viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
+  }
+  return rows.map((r) => ({ ...r, viewerReaction: viewerReactionByPostId.get(r.id) ?? null }))
 }
 
 /** Fetch a single post + author + viewer reaction, or null. Excludes deleted. */
@@ -220,6 +263,10 @@ function postSelect(viewerId?: string) {
     body: true,
     media: true,
     linkUrl: true,
+    quoteSource: true,
+    isAnonymous: true,
+    textBg: true,
+    visibilityScope: true,
     isPinned: true,
     isEdited: true,
     editedAt: true,

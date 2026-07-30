@@ -71,16 +71,19 @@ export function relativeTime(date: Date): string {
 
 export function mapRowToFeedPost(row: FeedRow): FeedPost {
   const author = row.author
-  const name = author.displayName || author.legalName
+  const anon = (row as { isAnonymous?: boolean }).isAnonymous ?? false
+  const name = anon ? "Anonymous JNVian" : author.displayName || author.legalName
   const membership = MEMBERSHIPS.includes(author.membershipStatus as FeedMembership)
     ? (author.membershipStatus as FeedMembership)
     : "associate"
-  const house = author.profile?.house
-    ? { name: author.profile.house.name, color: author.profile.house.colorHex }
-    : undefined
-  const avatar =
-    author.profile?.photoUrl ??
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
+  const house = anon
+    ? undefined
+    : author.profile?.house
+      ? { name: author.profile.house.name, color: author.profile.house.colorHex }
+      : undefined
+  const avatar = anon
+    ? `https://ui-avatars.com/api/?name=${encodeURIComponent("Anonymous")}&background=e5e7eb&color=6b7280`
+    : author.profile?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
 
   const savedRows = (row as { savedBy?: { userId: string }[] }).savedBy ?? []
   const vr = (row as { viewerReaction?: string | null }).viewerReaction ?? null
@@ -89,8 +92,9 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
 
   const body = row.body ?? undefined
   const images = mediaUrls(row.media)
-  // ponytail: quote author defaults to the poster (no separate quote-source column yet).
-  const quote = row.format === "quote" && body ? { text: body, author: name } : undefined
+  const quoteSource = (row as { quoteSource?: string | null }).quoteSource
+  const quote =
+    row.format === "quote" && body ? { text: body, author: quoteSource || name } : undefined
   const question = row.format === "question" ? body : undefined
 
   const pollRow = (
@@ -122,13 +126,13 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     savedByViewer: savedRows.length > 0,
     viewerReaction,
     name,
-    headline: author.profile?.headline ?? "",
-    batch: author.profile?.batch?.label,
+    headline: anon ? "" : author.profile?.headline ?? "",
+    batch: anon ? undefined : author.profile?.batch?.label,
     location: undefined,
     house,
     membership,
     timestamp: relativeTime(row.createdAt),
-    isVerified: author.isVerified,
+    isVerified: anon ? false : author.isVerified,
     isPinned: row.isPinned,
     isEdited: row.isEdited,
     // Quote/question/poll render as their own blocks; don't also show raw body as text.
@@ -140,7 +144,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     image: images.length === 1 ? images[0] : undefined,
     images: images.length > 1 ? images : undefined,
     mediaCount: images.length > 1 ? images.length : undefined,
-    textBg: textBgFrom(row.media),
+    textBg: (row as { textBg?: string | null }).textBg ?? textBgFrom(row.media),
     upvotes: row.upvoteCount,
     downvotes: row.downvoteCount,
     comments: row.commentCount,
