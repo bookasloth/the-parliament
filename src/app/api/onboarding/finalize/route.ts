@@ -34,7 +34,8 @@ function buildWorkSince(year: string, month: string, day: string): Date | null {
   if (!year) return null
   const m = month ? Math.max(0, MONTHS.indexOf(month as (typeof MONTHS)[number])) : 0
   const d = day ? Number(day) : 1
-  return new Date(Number(year), m, d)
+  // UTC so the date-only column doesn't shift a day by server timezone.
+  return new Date(Date.UTC(Number(year), m, d))
 }
 
 export async function POST(req: NextRequest) {
