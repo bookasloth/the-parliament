@@ -3,7 +3,25 @@ import { getToken } from "next-auth/jwt"
 import { ONBOARDING_STEPS } from "@/lib/onboarding"
 
 const ONBOARDING_ROUTES = ONBOARDING_STEPS.map((s) => `/onboarding/${s}`)
-const PUBLIC_ROUTES = new Set(["/", "/auth/signin", "/auth/signup", "/auth/forgot", "/auth/reset"])
+const PUBLIC_ROUTES = new Set([
+  "/",
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/forgot",
+  "/auth/reset",
+  // Public corporate / marketing pages — reachable logged-out.
+  "/about",
+  "/committee",
+  "/join",
+  "/donate",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/governance",
+  "/wall-of-honour",
+  "/sponsorship",
+  "/newsroom",
+])
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
