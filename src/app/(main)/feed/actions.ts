@@ -28,6 +28,7 @@ import { mapRowToFeedPost } from "./map-row"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { publicUrlFor } from "@/lib/r2"
 
 export async function reactToPost(postId: string, type: ReactionType) {
   const user = await requireUser()
@@ -108,9 +109,33 @@ export async function searchMentionsAction(query: string) {
   return searchMentionTargets(user.id, query)
 }
 
-export async function updatePostAction(postId: string, body: string) {
+export async function updatePostAction(
+  postId: string,
+  input: {
+    body: string
+    media?: { key: string; type: "image" | "video" }[]
+    textBg?: string
+  },
+) {
   const user = await requireUser()
-  await editPost({ postId, authorId: user.id, body })
+
+  const media = (input.media ?? []).map((m) => ({
+    key: m.key,
+    type: m.type,
+    url: publicUrlFor(m.key),
+  }))
+  // Same encoding as createPostAction: a plain text-post background is stashed as
+  // a non-image {type:"style"} sentinel in media (skipped by image readers).
+  const styleMedia =
+    input.textBg && media.length === 0 ? [{ key: "", type: "style", bg: input.textBg }] : []
+  const nextMedia = media.length > 0 ? media : styleMedia
+
+  await editPost({
+    postId,
+    authorId: user.id,
+    body: input.body,
+    media: nextMedia,
+  })
   revalidatePath(`/feed/${postId}`)
   revalidatePath("/feed")
   redirect(`/feed/${postId}`)
