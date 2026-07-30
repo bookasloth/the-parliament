@@ -165,7 +165,7 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
       </a>
       {canUpgrade && nextMeta ? (
         <a
-          href="/membership"
+          href={`/upgrade/${meta.next}`}
           className="flex items-center justify-center gap-1 w-full rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:border-brand hover:text-brand transition-colors"
         >
           Upgrade to {nextMeta.label} <ArrowUpRight className="h-3 w-3" />

@@ -27,6 +27,9 @@ function CheckoutInner() {
   const router = useRouter()
   const params = useSearchParams()
   const plan = params.get("plan") ?? "life"
+  const platformFee = params.get("platformFee") === "1"
+  const donate = params.get("donate") === "1"
+  const promoCode = params.get("promo") || undefined
   const started = useRef(false)
   const [status, setStatus] = useState<Status>("starting")
   const [message, setMessage] = useState("")
@@ -40,7 +43,7 @@ function CheckoutInner() {
       const res = await fetch("/api/membership/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planCode: plan, refundPolicyAcknowledged: true }),
+        body: JSON.stringify({ planCode: plan, refundPolicyAcknowledged: true, platformFee, donate, promoCode }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -72,7 +75,7 @@ function CheckoutInner() {
         amount: data.amountPaise,
         currency: data.currency,
         name: "NNAWCA · The Parliament",
-        description: "Life Membership — one-time contribution",
+        description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} membership — contribution to NNAWCA`,
         prefill: { name: data.customer?.name, email: data.customer?.email },
         theme: { color: "#009ae4" },
         modal: {
@@ -105,7 +108,7 @@ function CheckoutInner() {
             return
           }
           setStatus("success")
-          setMessage("Payment verified — you're now a Life Member.")
+          setMessage("Payment verified — your membership is now active.")
           setTimeout(() => router.push("/membership?upgraded=1"), 1500)
         },
       })
@@ -116,7 +119,7 @@ function CheckoutInner() {
       setStatus("error")
       setMessage(e?.message || "Something went wrong.")
     })
-  }, [plan, router])
+  }, [plan, platformFee, donate, promoCode, router])
 
   const copy: Record<Status, string> = {
     starting: "Setting up your payment…",

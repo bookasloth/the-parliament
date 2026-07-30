@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
-import { PLANS, PURCHASABLE_PLANS, type PlanCode } from "@/config/membership"
+import { PURCHASABLE_PLANS, computePricing, type PlanCode } from "@/config/membership"
 import { buildReceipt, getRazorpay, publicKeyId } from "@/lib/razorpay"
 import { audit } from "@/lib/audit"
 
@@ -13,18 +13,25 @@ const schema = z.object({
   refundPolicyAcknowledged: z.literal(true, {
     message: "You must acknowledge the non-refundable policy",
   }),
+  platformFee: z.boolean().optional().default(false),
+  donate: z.boolean().optional().default(false),
+  promoCode: z.string().trim().max(40).optional(),
 })
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser()
-    const { planCode, refundPolicyAcknowledged } = schema.parse(await req.json())
+    const { planCode, refundPolicyAcknowledged, platformFee, donate, promoCode } = schema.parse(await req.json())
 
     if (!refundPolicyAcknowledged) {
       return badRequest("Non-refundable acknowledgement required")
     }
 
-    const def = PLANS[planCode]
+    // Authoritative price — recomputed server-side; the client's total is never trusted.
+    // Platform fee + optional donation + promo ride on a one-time order (Razorpay
+    // subscriptions can't carry per-purchase add-ons), granting the plan's duration on verify.
+    const pricing = computePricing(planCode, { platformFee, donate, promoCode })
+
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { id: true, email: true, legalName: true, membershipStatus: true },
@@ -39,51 +46,23 @@ export async function POST(req: NextRequest) {
       data: {
         userId: user.id,
         planCode,
-        amountPaise: def.pricePaise,
+        amountPaise: pricing.totalPaise,
         currency: "INR",
         status: "created",
         metadata: {
           refundPolicyAcknowledgedAt: new Date().toISOString(),
           prevPlan,
+          basePaise: pricing.basePaise,
+          platformFeePaise: pricing.platformFeePaise,
+          donationPaise: pricing.donationPaise,
+          discountPaise: pricing.discountPaise,
+          promoCode: pricing.promo?.code ?? null,
         } as Prisma.InputJsonValue,
       },
     })
 
-    if (def.isSubscription) {
-      if (!def.razorpayPlanId) throw new Error(`Plan ${planCode} missing razorpayPlanId`)
-      const sub = await rzp.subscriptions.create({
-        plan_id: def.razorpayPlanId,
-        total_count: 60,
-        customer_notify: 1,
-        notes: { userId: user.id, planCode, prevPlan, orderId: order.id },
-      })
-
-      await prisma.membershipOrder.update({
-        where: { id: order.id },
-        data: { razorpaySubscriptionId: sub.id, status: "attempted" },
-      })
-
-      await audit({
-        actorId: user.id,
-        action: "membership.checkout.subscription",
-        entityType: "membership_order",
-        entityId: order.id,
-        payload: { planCode, subscriptionId: sub.id },
-      })
-
-      return ok({
-        kind: "subscription",
-        orderId: order.id,
-        subscriptionId: sub.id,
-        amountPaise: def.pricePaise,
-        currency: "INR",
-        keyId: publicKeyId(),
-        customer: { name: dbUser.legalName, email: dbUser.email },
-      })
-    }
-
     const rzpOrder = await rzp.orders.create({
-      amount: def.pricePaise,
+      amount: pricing.totalPaise,
       currency: "INR",
       receipt,
       notes: { userId: user.id, planCode, prevPlan, orderId: order.id },
@@ -99,14 +78,14 @@ export async function POST(req: NextRequest) {
       action: "membership.checkout.order",
       entityType: "membership_order",
       entityId: order.id,
-      payload: { planCode, razorpayOrderId: rzpOrder.id },
+      payload: { planCode, razorpayOrderId: rzpOrder.id, amountPaise: pricing.totalPaise, promoCode: pricing.promo?.code ?? null },
     })
 
     return ok({
       kind: "order",
       orderId: order.id,
       razorpayOrderId: rzpOrder.id,
-      amountPaise: def.pricePaise,
+      amountPaise: pricing.totalPaise,
       currency: "INR",
       keyId: publicKeyId(),
       customer: { name: dbUser.legalName, email: dbUser.email },
