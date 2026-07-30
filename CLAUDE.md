@@ -1,5 +1,14 @@
 # The Parliament — JNV Nagpur Alumni Network (NNAWCA)
 
+## Working style (change requests)
+
+- **Execute autonomously.** Do not ask for approval, confirmation, or scope-check on requested changes. The user is solo owner + operator; every gate costs a turn.
+- Skip preface like "should I proceed?", "here's the plan — approve?", "confirm before I…". Just do it.
+- Skip pre-work scoping paragraphs on batch requests. Do the work, report after.
+- Still surface risks / tradeoffs / what was skipped **in the post-work summary**, not as a gate.
+- Still confirm destructive git ops beyond the request (force-push to master, hard-reset over uncommitted work, deleting shared branches). Safety rails stay.
+- Ask only when the request is genuinely ambiguous — two plausible interpretations that produce different files.
+
 ## Stack
 - **Framework:** Next.js 16.2.9 (App Router, `src/` directory, Turbopack)
 - **Language:** TypeScript (strict)
