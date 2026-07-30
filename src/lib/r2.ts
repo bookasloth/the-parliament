@@ -7,8 +7,11 @@ let cachedClient: S3Client | null = null
 function getClient(): S3Client {
   if (cachedClient) return cachedClient
   cachedClient = new S3Client({
-    region: "auto",
+    // "auto" works for Cloudflare R2; Supabase Storage (and most S3 impls) need
+    // the real region + path-style addressing — both env-driven so either works.
+    region: process.env.R2_REGION || "auto",
     endpoint: process.env.R2_ENDPOINT,
+    forcePathStyle: process.env.R2_FORCE_PATH_STYLE === "true",
     credentials: {
       accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
