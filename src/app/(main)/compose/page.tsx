@@ -89,7 +89,7 @@ export default function ComposePage() {
   const [pollOptions, setPollOptions] = useState(["", ""])
   const [linkUrl, setLinkUrl] = useState("")
   const [quoteSource, setQuoteSource] = useState("")
-  const [media, setMedia] = useState<{ key: string; url: string }[]>([])
+  const [media, setMedia] = useState<{ key: string; url: string; type: "image" | "video" }[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -100,7 +100,7 @@ export default function ComposePage() {
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue
         const ext = file.name.split(".").pop() || "jpg"
         const signRes = await fetch("/api/uploads/sign", {
           method: "POST",
@@ -115,7 +115,10 @@ export default function ComposePage() {
           body: file,
         })
         if (!put.ok) throw new Error("Upload failed")
-        setMedia((m) => [...m, { key, url: URL.createObjectURL(file) }])
+        setMedia((m) => [
+          ...m,
+          { key, url: URL.createObjectURL(file), type: file.type.startsWith("video/") ? "video" : "image" },
+        ])
       }
     } catch (e) {
       setUploadErr(e instanceof Error ? e.message : "Upload failed")
@@ -176,7 +179,7 @@ export default function ComposePage() {
         categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
         format: FORMAT_FOR_TYPE[type],
         linkUrl: type === "link" ? linkUrl.trim() : undefined,
-        mediaKeys: type === "photo" ? media.map((m) => m.key) : undefined,
+        media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
         poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
         textBg: type === "text" && bg !== "plain" ? bg : undefined,
       })
@@ -349,22 +352,26 @@ export default function ComposePage() {
                 >
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     multiple
                     className="hidden"
                     onChange={(e) => { void uploadFiles(e.target.files); e.target.value = "" }}
                   />
                   <div className="flex gap-2 text-gray-400"><ImagePlus className="h-7 w-7" /></div>
-                  <div className="text-sm font-semibold text-gray-700">{uploading ? "Uploading…" : "Add photos"}</div>
-                  <div className="text-xs text-gray-400">click or drag and drop · up to 10 MB each</div>
+                  <div className="text-sm font-semibold text-gray-700">{uploading ? "Uploading…" : "Add photos / videos"}</div>
+                  <div className="text-xs text-gray-400">click or drag and drop · up to 64 MB each</div>
                 </label>
                 {uploadErr && <p className="mt-2 text-xs text-rose-600">{uploadErr}</p>}
                 {media.length > 0 && (
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {media.map((m, i) => (
                       <div key={m.key} className={`relative aspect-square overflow-hidden ${R_EL} border border-gray-200`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.url} alt="" className="h-full w-full object-cover" />
+                        {m.type === "video" ? (
+                          <video src={m.url} className="h-full w-full object-cover" muted />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.url} alt="" className="h-full w-full object-cover" />
+                        )}
                         <button
                           onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
                           className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"

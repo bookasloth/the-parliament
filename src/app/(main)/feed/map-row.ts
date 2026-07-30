@@ -1,5 +1,6 @@
 import type { getFeed } from "@/modules/feed/query"
 import type { FeedPost, FeedMembership, BorderType } from "@/components/shared/FeedCard"
+import type { MediaItem } from "@/components/shared/MediaGallery"
 
 type FeedRow = Awaited<ReturnType<typeof getFeed>>["rows"][number]
 
@@ -28,6 +29,18 @@ function mediaUrls(media: unknown): string[] {
   return media
     .map((m) => (m && typeof m === "object" ? (m as { url?: string }).url : undefined))
     .filter((u): u is string => typeof u === "string" && u.length > 0)
+}
+
+// Typed media items (image/video) for the gallery — skips the style sentinel.
+function mediaItemsFrom(media: unknown): MediaItem[] {
+  if (!Array.isArray(media)) return []
+  return media
+    .filter((m): m is { url?: string; type?: string } => !!m && typeof m === "object")
+    .filter((m) => typeof m.url === "string" && m.url.length > 0 && m.type !== "style")
+    .map((m) => ({
+      url: m.url as string,
+      type: (m.type ?? "").startsWith("video") ? "video" : "image",
+    }))
 }
 
 // Text-post background sentinel: media entry {type:"style", bg}.
@@ -123,6 +136,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     quote,
     question,
     poll,
+    mediaItems: mediaItemsFrom(row.media),
     image: images.length === 1 ? images[0] : undefined,
     images: images.length > 1 ? images : undefined,
     mediaCount: images.length > 1 ? images.length : undefined,
