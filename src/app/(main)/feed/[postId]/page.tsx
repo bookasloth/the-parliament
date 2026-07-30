@@ -1,11 +1,11 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { Suspense } from "react"
 import { ArrowLeft, BarChart2, Edit3, ShieldCheck } from "lucide-react"
-import { optionalUser, requireUser } from "@/modules/auth/session"
-import { getPostById, listPostComments } from "@/modules/feed/query"
+import { optionalUser } from "@/modules/auth/session"
+import { getPostById } from "@/modules/feed/query"
 import {
   awardPostAction,
-  commentOnPost,
   deletePostAction,
   reactToPost,
   reportPostAction,
@@ -14,6 +14,8 @@ import {
 } from "../actions"
 import { prisma } from "@/lib/prisma"
 import PostReactionBar from "./post-reaction-bar"
+import CommentsLoader from "./comments-loader"
+import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 
 export const dynamic = "force-dynamic"
 
@@ -41,7 +43,6 @@ export default async function PostDetailPage({
   if (!result) notFound()
   const { post, viewerReaction } = result
 
-  const comments = await listPostComments(post.id, 100)
   const author = post.author
   const authorName = author.displayName || author.legalName
   const avatar =
@@ -57,13 +58,29 @@ export default async function PostDetailPage({
     : null
   const initialSaved = !!savedRow
 
-  async function submitComment(formData: FormData) {
-    "use server"
-    await requireUser()
-    const body = String(formData.get("body") ?? "").trim()
-    if (!body) return
-    await commentOnPost(post.id, body)
-  }
+  const viewerForComments = viewer
+    ? await prisma.user
+        .findUnique({
+          where: { id: viewer.id },
+          select: {
+            id: true,
+            displayName: true,
+            legalName: true,
+            profile: { select: { photoUrl: true } },
+          },
+        })
+        .then((u) => {
+          if (!u) return null
+          const name = u.displayName || u.legalName
+          return {
+            id: u.id,
+            displayName: name,
+            avatarUrl:
+              u.profile?.photoUrl ??
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
+          }
+        })
+    : null
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6 space-y-4">
@@ -185,76 +202,22 @@ export default async function PostDetailPage({
         />
       </article>
 
-      <section className="bg-white border border-gray-200 rounded-xl">
-        <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">
-            {post.commentCount} {post.commentCount === 1 ? "comment" : "comments"}
-          </h2>
-        </div>
-
-        {viewer && (
-          <form action={submitComment} className="px-5 py-3 border-b border-gray-100 flex gap-3">
-            <textarea
-              name="body"
-              required
-              rows={2}
-              placeholder="Write a comment…"
-              className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-            <button
-              type="submit"
-              className="self-end rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-            >
-              Post
-            </button>
-          </form>
-        )}
-
-        <ul className="divide-y divide-gray-100">
-          {comments.length === 0 ? (
-            <li className="px-5 py-8 text-center text-sm text-gray-400">
-              No comments yet.
-            </li>
-          ) : (
-            comments.map((c) => {
-              const cname = c.author.displayName || c.author.legalName
-              const cavatar =
-                c.author.profile?.photoUrl ??
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(cname)}`
-              return (
-                <li key={c.id} className="px-5 py-4 flex gap-3">
-                  <Link
-                    href={c.author.username ? `/${c.author.username}` : "#"}
-                    className="flex-shrink-0"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={cavatar}
-                      alt={cname}
-                      className="h-9 w-9 rounded-full object-cover"
-                    />
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-sm font-semibold text-gray-900">{cname}</span>
-                        {c.author.isVerified && (
-                          <ShieldCheck className="h-3 w-3 text-blue-500 fill-blue-100" />
-                        )}
-                      </div>
-                      {c.author.profile?.headline && (
-                        <p className="text-xs text-gray-500 mb-1">{c.author.profile.headline}</p>
-                      )}
-                      <p className="text-sm text-gray-700 whitespace-pre-line">{c.body}</p>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">{relativeTime(c.createdAt)}</p>
-                  </div>
-                </li>
-              )
-            })
-          )}
-        </ul>
-      </section>
+      <Suspense
+        fallback={
+          <div className="bg-white border border-gray-200 rounded-xl">
+            <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+              <div className="h-3 w-32 rounded bg-gray-200 animate-pulse" />
+            </div>
+            <CommentsSkeleton count={3} />
+          </div>
+        }
+      >
+        <CommentsLoader
+          postId={post.id}
+          initialCount={post.commentCount}
+          viewer={viewerForComments}
+        />
+      </Suspense>
     </div>
   )
 }

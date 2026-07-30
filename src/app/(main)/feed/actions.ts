@@ -14,6 +14,11 @@ import {
   type AwardKey,
 } from "@/modules/feed/posts"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
+import { getFeed } from "@/modules/feed/query"
+import { getDefaultSchoolId } from "@/lib/school"
+import { optionalUser } from "@/modules/auth/session"
+import { mapRowToFeedPost } from "./map-row"
+import type { FeedPost } from "@/components/shared/FeedCard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 
@@ -90,6 +95,35 @@ export async function reportPostAction(
     details,
   })
   return { ok: true as const }
+}
+
+export interface LoadMoreResult {
+  posts: FeedPost[]
+  hasMore: boolean
+  nextPage: number
+}
+
+export async function loadMoreFeedAction(
+  page: number,
+  pageSize = 15,
+): Promise<LoadMoreResult> {
+  const [schoolId, viewer] = await Promise.all([
+    getDefaultSchoolId(),
+    optionalUser(),
+  ])
+  if (!schoolId) return { posts: [], hasMore: false, nextPage: page }
+
+  const { rows } = await getFeed({
+    schoolId,
+    viewerId: viewer?.id,
+    page,
+    pageSize,
+  })
+  return {
+    posts: rows.map(mapRowToFeedPost),
+    hasMore: rows.length === pageSize,
+    nextPage: page + 1,
+  }
 }
 
 // ponytail: uses Notification model as the poke store — one egg per (sender,target)
