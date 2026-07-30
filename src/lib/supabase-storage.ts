@@ -21,12 +21,11 @@ export function isAllowedImage(contentType: string): boolean {
   return contentType in EXT
 }
 
-/** Upload avatar bytes, return the public URL. */
-export async function uploadAvatar(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+async function uploadImage(prefix: string, userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   const { url, key } = config()
   const ext = EXT[contentType]
   if (!ext) throw new Error("Unsupported image type")
-  const path = `${userId}/${crypto.randomBytes(8).toString("hex")}.${ext}`
+  const path = `${prefix}${userId}/${crypto.randomBytes(8).toString("hex")}.${ext}`
 
   const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
     method: "POST",
@@ -43,4 +42,12 @@ export async function uploadAvatar(userId: string, bytes: Uint8Array, contentTyp
     throw new Error(`Storage upload failed (${res.status}): ${await res.text().catch(() => "")}`)
   }
   return `${url}/storage/v1/object/public/${BUCKET}/${path}`
+}
+
+export async function uploadAvatar(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  return uploadImage("", userId, bytes, contentType)
+}
+
+export async function uploadCover(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  return uploadImage("covers/", userId, bytes, contentType)
 }

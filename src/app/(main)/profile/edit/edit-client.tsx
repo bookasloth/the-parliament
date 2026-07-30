@@ -11,7 +11,7 @@ import { saveAccount, saveContact, saveProfessional, saveSocial, closeAccount } 
 
 export interface EditInitial {
   firstName: string; lastName: string; nickname: string; username: string; email: string
-  dateOfBirth: string; gender: string; photoUrl: string; bio: string
+  dateOfBirth: string; gender: string; photoUrl: string; coverUrl: string; bio: string
   houseId: string; batchId: string; bloodGroup: string
   city: string; address: string; homeTown: string
   company: string; jobTitle: string; higherEducation: string; skills: string
@@ -73,9 +73,14 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   const AccountTab = (
     <div className="space-y-4">
       <Card title="Account Settings" desc="Update your basic profile information shown across the platform.">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-1"><PhotoUploader url={f.photoUrl} onDone={(u) => { set({ photoUrl: u }); router.refresh() }} /></div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
+        <MiniHero
+          photoUrl={f.photoUrl}
+          coverUrl={f.coverUrl}
+          onPhoto={(u) => { set({ photoUrl: u }); router.refresh() }}
+          onCover={(u) => { set({ coverUrl: u }); router.refresh() }}
+        />
+        <div className="mt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="First name"><input className={input} value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} /></Field>
             <Field label="Last name"><input className={input} value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} /></Field>
             <Field label="Nickname (Optional)"><input className={input} placeholder="Kaalu" value={f.nickname} onChange={(e) => set({ nickname: e.target.value })} /></Field>
@@ -289,7 +294,9 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   }
 }
 
-function PhotoUploader({ url, onDone }: { url: string; onDone: (url: string) => void }) {
+const DEFAULT_COVER = "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1400&q=70"
+
+function useImageUpload(endpoint: string, field: "photoUrl" | "coverUrl", onDone: (url: string) => void) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
@@ -298,21 +305,66 @@ function PhotoUploader({ url, onDone }: { url: string; onDone: (url: string) => 
     if (!file) return
     setErr(""); setBusy(true)
     const body = new FormData(); body.append("file", file)
-    const res = await fetch("/api/profile/photo", { method: "POST", body })
+    const res = await fetch(endpoint, { method: "POST", body })
     setBusy(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setErr(d.error ?? "Upload failed"); return }
-    const d = await res.json(); onDone(d.photoUrl)
+    const d = await res.json(); onDone(d[field])
   }
+  return { inputRef, busy, err, onFile }
+}
+
+function MiniHero({
+  photoUrl, coverUrl, onPhoto, onCover,
+}: {
+  photoUrl: string
+  coverUrl: string
+  onPhoto: (url: string) => void
+  onCover: (url: string) => void
+}) {
+  const photo = useImageUpload("/api/profile/photo", "photoUrl", onPhoto)
+  const cover = useImageUpload("/api/profile/cover", "coverUrl", onCover)
+  const coverSrc = coverUrl || DEFAULT_COVER
   return (
-    <div className="w-fit">
-      <button onClick={() => inputRef.current?.click()} disabled={busy} className="group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50">
-        <img src={url} alt="" className="h-full w-full object-cover" />
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
-          <Camera className="h-5 w-5" /><span className="text-[10px] font-semibold">{busy ? "Uploading…" : "Change Photo"}</span>
+    <div className="relative overflow-hidden rounded-xl border border-gray-200">
+      <button
+        type="button"
+        onClick={() => cover.inputRef.current?.click()}
+        disabled={cover.busy}
+        className="group relative block h-[120px] w-full sm:h-[160px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={coverSrc} alt="" className="h-full w-full object-cover" />
+        <span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+          <Camera className="h-4 w-4" />
+          <span className="text-xs font-semibold">{cover.busy ? "Uploading…" : "Change cover"}</span>
+        </span>
+        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-md bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-700 shadow-sm group-hover:bg-white">
+          <Camera className="h-3.5 w-3.5" /> Cover
         </span>
       </button>
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} />
-      {err && <p className="mt-1 text-[11px] text-red-600">{err}</p>}
+      <input ref={cover.inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={cover.onFile} />
+
+      <div className="relative flex items-end gap-3 bg-white px-4 pb-3 pt-0 sm:px-5">
+        <button
+          type="button"
+          onClick={() => photo.inputRef.current?.click()}
+          disabled={photo.busy}
+          className="group relative -mt-10 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-sm sm:h-28 sm:w-28"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <Camera className="h-5 w-5" />
+            <span className="text-[10px] font-semibold">{photo.busy ? "…" : "Change"}</span>
+          </span>
+        </button>
+        <input ref={photo.inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={photo.onFile} />
+        <div className="pb-1 text-[11px] text-gray-500">
+          <div>Click the cover or avatar to change.</div>
+          <div className="text-gray-400">PNG, JPEG or WebP — cover up to 8 MB, avatar up to 5 MB.</div>
+          {(photo.err || cover.err) && <div className="mt-1 text-red-600">{photo.err || cover.err}</div>}
+        </div>
+      </div>
     </div>
   )
 }

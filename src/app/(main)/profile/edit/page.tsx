@@ -19,7 +19,7 @@ export default async function EditProfilePage() {
         dateOfBirth: true, gender: true,
         profile: {
           select: {
-            photoUrl: true, bio: true, houseId: true, batchId: true, bloodGroup: true,
+            photoUrl: true, coverUrl: true, bio: true, houseId: true, batchId: true, bloodGroup: true,
             city: true, correspondenceAddress: true, homeTown: true,
             company: true, designation: true, higherEducation: true, skills: true,
             linkedinUrl: true, socialLinks: true, visibility: true,
@@ -43,6 +43,7 @@ export default async function EditProfilePage() {
     dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : "",
     gender: user.gender ?? "",
     photoUrl: p?.photoUrl || colorAvatar(sessionUser.id),
+    coverUrl: p?.coverUrl ?? "",
     bio: p?.bio ?? "",
     houseId: p?.houseId ?? "",
     batchId: p?.batchId ?? "",
