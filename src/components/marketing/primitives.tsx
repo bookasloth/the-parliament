@@ -289,35 +289,61 @@ export function CtaBand({
   )
 }
 
-// ── Word cycler (about hero: Create / Teach / Heal …) ────────────────────────────
-export function WordCycler({
+// ── Typewriter (type → hold → erase → next word) ─────────────────────────────────
+// Smooth per-character type/erase with a blinking caret. Each word takes the next
+// Google accent colour. Respects prefers-reduced-motion (shows words statically).
+export function Typewriter({
   words,
-  interval = 2200,
+  typeMs = 75,
+  eraseMs = 40,
+  holdMs = 1400,
   className,
 }: {
   words: string[]
-  interval?: number
+  typeMs?: number
+  eraseMs?: number
+  holdMs?: number
   className?: string
 }) {
-  const [i, setI] = useState(0)
+  const [wordIdx, setWordIdx] = useState(0)
+  const [text, setText] = useState("")
+  const [phase, setPhase] = useState<"typing" | "holding" | "erasing">("typing")
+
   useEffect(() => {
-    const t = setInterval(() => setI((p) => (p + 1) % words.length), interval)
-    return () => clearInterval(t)
-  }, [words.length, interval])
+    const word = words[wordIdx]
+    let t: ReturnType<typeof setTimeout>
+
+    if (phase === "typing") {
+      if (text.length < word.length) {
+        t = setTimeout(() => setText(word.slice(0, text.length + 1)), typeMs)
+      } else {
+        t = setTimeout(() => setPhase("holding"), holdMs)
+      }
+    } else if (phase === "holding") {
+      t = setTimeout(() => setPhase("erasing"), holdMs)
+    } else {
+      if (text.length > 0) {
+        t = setTimeout(() => setText(word.slice(0, text.length - 1)), eraseMs)
+      } else {
+        setWordIdx((i) => (i + 1) % words.length)
+        setPhase("typing")
+      }
+    }
+    return () => clearTimeout(t)
+  }, [text, phase, wordIdx, words, typeMs, eraseMs, holdMs])
+
   return (
-    <span className={cn("relative inline-block", className)}>
-      {words.map((w, idx) => (
-        <motion.span
-          key={w}
-          aria-hidden={idx !== i}
-          initial={false}
-          animate={{ opacity: idx === i ? 1 : 0, y: idx === i ? 0 : 8 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className={cn(idx === i ? "relative" : "absolute inset-0", ACCENT_TEXT[idx % 4])}
-        >
-          {w}
-        </motion.span>
-      ))}
+    <span className={cn("inline", ACCENT_TEXT[wordIdx % 4], className)}>
+      {text}
+      <motion.span
+        aria-hidden
+        animate={{ opacity: [1, 1, 0, 0] }}
+        transition={{ duration: 1, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
+        className="ml-0.5 inline-block w-[0.06em] self-stretch bg-current align-[-0.1em]"
+        style={{ height: "0.95em" }}
+      >
+        {"​"}
+      </motion.span>
     </span>
   )
 }

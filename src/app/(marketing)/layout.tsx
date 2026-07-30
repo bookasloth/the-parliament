@@ -16,6 +16,8 @@ const FOOTER_COLUMNS = [
     links: [
       { label: "About NNAWCA", href: "/about" },
       { label: "Committee", href: "/committee" },
+      { label: "Governance", href: "/governance" },
+      { label: "Newsroom", href: "/newsroom" },
       { label: "Contact", href: "/contact" },
     ],
   },
@@ -24,6 +26,8 @@ const FOOTER_COLUMNS = [
     links: [
       { label: "Membership", href: "/join" },
       { label: "Donate", href: "/donate" },
+      { label: "Wall of Honour", href: "/wall-of-honour" },
+      { label: "Sponsorship", href: "/sponsorship" },
       { label: "Sign up", href: "/auth/signup" },
     ],
   },
