@@ -35,6 +35,8 @@ export interface FeedPost {
   authorId?: string
   /** Whether the current viewer has saved this post. */
   savedByViewer?: boolean
+  /** Viewer's current reaction on this post — hydrates the vote button on refresh. */
+  viewerReaction?: "upvote" | "downvote" | "like" | null
   name: string
   headline: string
   batch?: string
@@ -221,16 +223,24 @@ function useDropdown() {
 
 // --- Share Dropdown ---
 function ShareDropdown({
+  postId,
   shares: initialShares,
   onShare,
 }: {
+  postId: string
   shares: number
   onShare?: () => void | Promise<unknown>
 }) {
   const { open, setOpen, ref } = useDropdown()
   const [shares, setShares] = useState(initialShares)
+  const [copied, setCopied] = useState(false)
+
+  const postUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/feed/${postId}` : `/feed/${postId}`
+  const shareText = `Check out this post on The Parliament`
 
   function reshare() {
+    // One-click, no quote prompt.
     setShares((s) => s + 1)
     setOpen(false)
     if (onShare) {
@@ -239,10 +249,26 @@ function ShareDropdown({
   }
 
   function copyLink() {
+    if (typeof window === "undefined" || !navigator?.clipboard) return
+    navigator.clipboard.writeText(postUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => {
+        setCopied(false)
+        setOpen(false)
+      }, 900)
+    }).catch(() => {})
+  }
+
+  function extShare(target: "whatsapp" | "linkedin" | "facebook" | "twitter") {
+    if (typeof window === "undefined") return
+    const enc = encodeURIComponent
+    const url =
+      target === "whatsapp" ? `https://wa.me/?text=${enc(`${shareText}: ${postUrl}`)}` :
+      target === "linkedin" ? `https://www.linkedin.com/sharing/share-offsite/?url=${enc(postUrl)}` :
+      target === "facebook" ? `https://www.facebook.com/sharer/sharer.php?u=${enc(postUrl)}` :
+      `https://twitter.com/intent/tweet?text=${enc(shareText)}&url=${enc(postUrl)}`
+    window.open(url, "_blank", "noopener,noreferrer")
     setOpen(false)
-    if (typeof window !== "undefined" && navigator?.clipboard) {
-      navigator.clipboard.writeText(window.location.href).catch(() => {})
-    }
   }
 
   return (
@@ -256,20 +282,63 @@ function ShareDropdown({
         <span className="text-xs font-semibold tabular-nums">{shares}</span>
       </button>
       {open && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-60 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           <button
             onClick={reshare}
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium"
           >
-            <span className="w-4 flex-shrink-0"><PenSquare className="h-4 w-4" /></span>
-            Share to your feed
+            <PenSquare className="h-4 w-4 text-brand" /> Share to your feed
           </button>
           <button
             onClick={copyLink}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
           >
-            <span className="w-4 flex-shrink-0"><LinkIcon className="h-4 w-4" /></span>
-            Copy link
+            <LinkIcon className="h-4 w-4" /> {copied ? "Copied!" : "Copy link"}
+          </button>
+          <div className="my-1 border-t border-gray-100" />
+          <button
+            onClick={() => extShare("whatsapp")}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center text-[#25d366]">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M20.52 3.48A11.87 11.87 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.9c0 2.1.55 4.14 1.6 5.94L0 24l6.34-1.66a11.87 11.87 0 0 0 5.72 1.46h.01c6.56 0 11.9-5.34 11.9-11.9 0-3.18-1.24-6.17-3.45-8.42ZM12.06 21.8h-.01a9.89 9.89 0 0 1-5.04-1.38l-.36-.22-3.76.99 1-3.67-.24-.38a9.9 9.9 0 1 1 8.4 4.66Zm5.44-7.42c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48a9.05 9.05 0 0 1-1.66-2.07c-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.42.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35Z"/>
+              </svg>
+            </span>
+            WhatsApp
+          </button>
+          <button
+            onClick={() => extShare("linkedin")}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center text-[#0a66c2]">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.44-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13Zm1.78 13.02H3.55V9h3.57v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z"/>
+              </svg>
+            </span>
+            LinkedIn
+          </button>
+          <button
+            onClick={() => extShare("facebook")}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center text-[#1877f2]">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.7 4.53-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.5h-2.8V24C19.61 23.1 24 18.1 24 12.07Z"/>
+              </svg>
+            </span>
+            Facebook
+          </button>
+          <button
+            onClick={() => extShare("twitter")}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center text-black">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M18.24 2.25h3.31l-7.23 8.26L22.83 21.75H16.17l-5.21-6.82L4.99 21.75H1.68l7.73-8.83L1.25 2.25H8.08l4.71 6.23zm-1.16 17.52h1.84L7.08 4.13H5.12z"/>
+              </svg>
+            </span>
+            X / Twitter
           </button>
         </div>
       )}
@@ -279,20 +348,27 @@ function ShareDropdown({
 
 // --- Full-width Reaction Bar ---
 export function ReactionBar({
+  postId,
   initialUpvotes,
   initialDownvotes,
+  initialVote = null,
   comments,
   shares,
+  commentHref,
   onUpvote,
   onDownvote,
   onComment,
   onShare,
   onAward,
 }: {
+  postId: string
   initialUpvotes: number
   initialDownvotes: number
+  initialVote?: "up" | "down" | null
   comments: number
   shares: number
+  /** When set, the comment button navigates to the post detail instead of opening the inline composer. */
+  commentHref?: string
   onUpvote?: () => void
   onDownvote?: () => void
   onComment?: (body: string) => void
@@ -300,7 +376,7 @@ export function ReactionBar({
   onAward?: (awardKey: string) => Promise<{ ok: boolean; error?: string }> | void
 }) {
   const [awardModalOpen, setAwardModalOpen] = useState(false)
-  const [voteState, setVoteState] = useState<"up" | "down" | null>(null)
+  const [voteState, setVoteState] = useState<"up" | "down" | null>(initialVote)
   const [upvotes, setUpvotes] = useState(initialUpvotes)
   const [downvotes, setDownvotes] = useState(initialDownvotes)
   const [commentOpen, setCommentOpen] = useState(false)
@@ -372,22 +448,33 @@ export function ReactionBar({
           <span className="text-xs font-semibold tabular-nums">{downvotes}</span>
         </button>
 
-        {/* Comment */}
-        <button
-          onClick={() => setCommentOpen((o) => !o)}
-          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
-            commentOpen
-              ? "text-blue-500 bg-blue-50/50"
-              : "text-gray-400 hover:text-blue-500 hover:bg-blue-50/30"
-          }`}
-        >
-          <MessageCircle className="h-5 w-5" />
-          <span className="hidden lg:inline text-xs font-medium">Comment</span>
-          <span className="text-xs font-semibold tabular-nums">{commentCount}</span>
-        </button>
+        {/* Comment — links to post detail when commentHref is set */}
+        {commentHref ? (
+          <a
+            href={commentHref}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="hidden lg:inline text-xs font-medium">Comment</span>
+            <span className="text-xs font-semibold tabular-nums">{commentCount}</span>
+          </a>
+        ) : (
+          <button
+            onClick={() => setCommentOpen((o) => !o)}
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+              commentOpen
+                ? "text-blue-500 bg-blue-50/50"
+                : "text-gray-400 hover:text-blue-500 hover:bg-blue-50/30"
+            }`}
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="hidden lg:inline text-xs font-medium">Comment</span>
+            <span className="text-xs font-semibold tabular-nums">{commentCount}</span>
+          </button>
+        )}
 
         {/* Share */}
-        <ShareDropdown shares={shares} onShare={onShare} />
+        <ShareDropdown postId={postId} shares={shares} onShare={onShare} />
 
         {/* Award */}
         <button
@@ -398,7 +485,7 @@ export function ReactionBar({
           <span className="hidden lg:inline text-xs font-medium">Award</span>
         </button>
       </div>
-      {commentOpen && (
+      {commentOpen && !commentHref && (
         <div className="flex items-center gap-2 px-1 pb-2">
           <input
             value={commentText}
@@ -818,10 +905,19 @@ export function FeedCard({
       {/* Reaction Bar */}
       <div className="px-4 pb-2">
         <ReactionBar
+          postId={post.id}
           initialUpvotes={post.upvotes}
           initialDownvotes={post.downvotes}
+          initialVote={
+            post.viewerReaction === "upvote" || post.viewerReaction === "like"
+              ? "up"
+              : post.viewerReaction === "downvote"
+              ? "down"
+              : null
+          }
           comments={post.comments}
           shares={post.shares}
+          commentHref={`/feed/${post.id}`}
           onUpvote={onUpvote}
           onDownvote={onDownvote}
           onComment={onComment}

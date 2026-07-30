@@ -43,10 +43,14 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
 
   const savedRows = (row as { savedBy?: { userId: string }[] }).savedBy ?? []
+  const vr = (row as { viewerReaction?: string | null }).viewerReaction ?? null
+  const viewerReaction: FeedPost["viewerReaction"] =
+    vr === "upvote" || vr === "downvote" || vr === "like" ? vr : null
   return {
     id: row.id,
     authorId: author.id,
     savedByViewer: savedRows.length > 0,
+    viewerReaction,
     name,
     headline: author.profile?.headline ?? "",
     batch: author.profile?.batch?.label,

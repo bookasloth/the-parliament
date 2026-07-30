@@ -277,29 +277,6 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
         </div>
       </div>
 
-      {/* Helper Links */}
-      <ul className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-gray-500 leading-tight px-2">
-        {["About NNAWCA", "Settings", "Help", "nnawca.com", "Privacy Policy", "Terms and Conditions"].map((link, i) => (
-          <li key={i}>
-            <a href="#!" className="hover:text-brand transition-colors whitespace-nowrap">{link}</a>
-          </li>
-        ))}
-      </ul>
-
-      {/* Powered By */}
-      <div className="text-center text-[11px] text-gray-400">
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          <span>Powered by</span>
-          <span className="font-semibold text-gray-500">NNAWCA</span>
-          <span>for JNV Nagpur Alumni</span>
-        </div>
-      </div>
-
-      {/* Copyright */}
-      <p className="text-[10px] text-center text-gray-400 mt-1 leading-relaxed">
-        2022-2026 &copy; All Rights Reserved by NNAWCA<br />
-        Made by <a href="https://shubhamdatarkar.in/nnawca" target="_blank" className="text-brand hover:underline">Mr. The Kalamwala</a>
-      </p>
     </div>
   )
 }
