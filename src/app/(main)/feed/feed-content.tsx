@@ -297,6 +297,7 @@ export function FeedContent({
   news = [],
   initialEgged = [],
   loadedAt,
+  activeTab = "forYou",
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -308,7 +309,9 @@ export function FeedContent({
   news?: NewsItem[]
   initialEgged?: string[]
   loadedAt?: string
+  activeTab?: "forYou" | "following"
 }) {
+  const followingOnly = activeTab === "following"
   const router = useRouter()
   const [newCount, setNewCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -334,7 +337,7 @@ export function FeedContent({
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
-        const r = await loadMoreFeedAction(page, pageSize)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
@@ -344,7 +347,7 @@ export function FeedContent({
         // Silent — user can retry via button.
       }
     })
-  }, [hasMore, loadingMore, page, pageSize])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly])
 
   // Auto-load when sentinel enters viewport (Twitter/LinkedIn feel).
   useEffect(() => {
@@ -435,6 +438,22 @@ export function FeedContent({
 
           {/* Feed Column */}
           <div className="flex-1 min-w-0 space-y-3">
+            {viewerId && (
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 text-sm font-semibold">
+                <a
+                  href="/feed"
+                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${!followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                >
+                  For You
+                </a>
+                <a
+                  href="/feed?tab=following"
+                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                >
+                  Following
+                </a>
+              </div>
+            )}
             {newCount > 0 && (
               <div className="sticky top-16 z-20 flex justify-center">
                 <button
@@ -450,9 +469,16 @@ export function FeedContent({
 
             {localPosts.length === 0 && (
               <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-                <p className="text-sm text-gray-500">
-                  No posts yet. Be the first to share something.
-                </p>
+                {followingOnly ? (
+                  <p className="text-sm text-gray-500">
+                    Nothing here yet. Follow more alumni to fill your Following feed —{" "}
+                    <a href="/community" className="font-semibold text-brand hover:underline">find people</a>.
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No posts yet. Be the first to share something.
+                  </p>
+                )}
               </div>
             )}
 

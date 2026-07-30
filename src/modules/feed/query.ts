@@ -13,6 +13,8 @@ export interface FeedFilters {
   page?: number
   pageSize?: number
   viewerId?: string
+  /** "Following" feed: only posts from users the viewer follows (+ their own). */
+  followingOnly?: boolean
 }
 
 export async function getFeed(filters: FeedFilters) {
@@ -50,19 +52,33 @@ export async function getFeed(filters: FeedFilters) {
     }
   }
 
-  // Hide posts by anyone the viewer has blocked, or who has blocked the viewer.
-  // Skipped when viewing a specific author's page (filters.authorId already set).
+  // Author scoping: hide blocked users; in "Following" mode restrict to the
+  // people the viewer follows (+ self). Skipped on a single-author page.
   if (filters.viewerId && !filters.authorId) {
-    const blocks = await prisma.userBlock.findMany({
-      where: {
-        OR: [{ blockerId: filters.viewerId }, { blockedId: filters.viewerId }],
-      },
-      select: { blockerId: true, blockedId: true },
-    })
-    const blockedUserIds = blocks.map((b) =>
-      b.blockerId === filters.viewerId ? b.blockedId : b.blockerId,
+    const [blocks, follows] = await Promise.all([
+      prisma.userBlock.findMany({
+        where: { OR: [{ blockerId: filters.viewerId }, { blockedId: filters.viewerId }] },
+        select: { blockerId: true, blockedId: true },
+      }),
+      filters.followingOnly
+        ? prisma.follow.findMany({
+            where: { followerId: filters.viewerId },
+            select: { followingId: true },
+          })
+        : Promise.resolve(null),
+    ])
+    const blocked = new Set(
+      blocks.map((b) => (b.blockerId === filters.viewerId ? b.blockedId : b.blockerId)),
     )
-    if (blockedUserIds.length > 0) where.authorId = { notIn: blockedUserIds }
+    if (follows) {
+      // Following feed: allow followed authors + self, minus anyone blocked.
+      const allowed = [...follows.map((f) => f.followingId), filters.viewerId].filter(
+        (id) => !blocked.has(id),
+      )
+      where.authorId = { in: allowed }
+    } else if (blocked.size > 0) {
+      where.authorId = { notIn: [...blocked] }
+    }
   }
 
   // Order by the stored hot score (indexed) — real DB pagination over every

@@ -135,6 +135,7 @@ export interface LoadMoreResult {
 export async function loadMoreFeedAction(
   page: number,
   pageSize = 15,
+  followingOnly = false,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -147,6 +148,7 @@ export async function loadMoreFeedAction(
     viewerId: viewer?.id,
     page,
     pageSize,
+    followingOnly,
   })
   return {
     posts: rows.map(mapRowToFeedPost),
