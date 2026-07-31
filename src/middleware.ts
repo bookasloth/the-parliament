@@ -6,6 +6,7 @@ const ONBOARDING_ROUTES = ONBOARDING_STEPS.map((s) => `/onboarding/${s}`)
 const PUBLIC_ROUTES = new Set([
   "/",
   "/auth/signin",
+  "/auth/admin",
   "/auth/signup",
   "/auth/forgot",
   "/auth/reset",
