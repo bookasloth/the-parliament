@@ -7,6 +7,7 @@ import {
   Briefcase, Calendar, BookOpen, Vote, MapPin, MessageCircle,
   GraduationCap, FileText, Hand, Trophy, Users, Heart, AlertTriangle,
 } from "lucide-react"
+import { PLANS, ASSOCIATE_TO_PREMIUM_DELTA_INR } from "@/config/membership"
 
 type PaidPlan = "associate" | "premium" | "life"
 
@@ -16,7 +17,7 @@ const associate = {
   shortName: "Associate",
   icon: <Star className="h-5 w-5" />,
   tagline: "Stay connected, give back, and grow with the network",
-  annualPrice: 499,
+  annualPrice: PLANS.associate.priceInr,
   cycle: "Annual auto-renew",
   features: [
     "Full alumni directory access",
@@ -41,7 +42,7 @@ const premium = {
   shortName: "Premium",
   icon: <Sparkles className="h-5 w-5" />,
   tagline: "Lead, mentor, and shape NNAWCA — for committed alumni",
-  annualPrice: 999,
+  annualPrice: PLANS.premium.priceInr,
   cycle: "Annual auto-renew",
   features: [
     "Everything in Associate",
@@ -65,7 +66,7 @@ const life = {
   shortName: "Life",
   icon: <Crown className="h-5 w-5" />,
   tagline: "A lifetime contribution — never renews, never lapses",
-  oneTimePrice: 9999,
+  oneTimePrice: PLANS.life.priceInr,
   cycle: "Lifetime · one-time payment",
   features: [
     "Everything in Premium — forever",
@@ -83,7 +84,7 @@ const life = {
 const faqs = [
   {
     q: "Can I upgrade from Associate to Premium?",
-    a: "Yes — pay the ₹500 difference and your benefits upgrade instantly. Your existing end date is preserved (you don't restart the clock).",
+    a: `Yes — pay the ₹${ASSOCIATE_TO_PREMIUM_DELTA_INR} difference and your benefits upgrade instantly. Your existing end date is preserved (you don't restart the clock).`,
   },
   {
     q: "What happens when my subscription expires?",
@@ -91,7 +92,7 @@ const faqs = [
   },
   {
     q: "How is Life Membership different from annual Premium?",
-    a: "Life Membership is a one-time ₹9,999 payment. You get every Premium benefit, permanently — no annual renewal, no expiry. Life Members are also the only members eligible to be invited onto the NNAWCA Committee.",
+    a: `Life Membership is a one-time ₹${PLANS.life.priceInr.toLocaleString()} payment. You get every Premium benefit, permanently — no annual renewal, no expiry. Life Members are also the only members eligible to be invited onto the NNAWCA Committee.`,
   },
   {
     q: "Are contributions refundable?",
@@ -250,6 +251,7 @@ export default function MembershipPage() {
               notIncluded={associate.notIncluded}
               ctaLabel="Become an Associate"
               onClick={() => handleUpgrade("associate")}
+              isCurrent={currentPlan === "associate"}
             />
           </div>
 
@@ -270,10 +272,13 @@ export default function MembershipPage() {
               subPrice={premium.cycle}
               features={premium.features}
               notIncluded={premium.notIncluded}
-              ctaLabel="Become Premium"
+              ctaLabel={currentPlan === "associate" ? `Upgrade for ₹${ASSOCIATE_TO_PREMIUM_DELTA_INR} more` : "Become Premium"}
               onClick={() => handleUpgrade("premium")}
               recommended
-              upgradeNote="Already an Associate? Upgrade for just ₹500 more — keeps your renewal date."
+              isCurrent={currentPlan === "premium"}
+              upgradeNote={currentPlan === "associate"
+                ? `You're an Associate — upgrade for just ₹${ASSOCIATE_TO_PREMIUM_DELTA_INR} more. Keeps your renewal date.`
+                : `Already an Associate? Upgrade for just ₹${ASSOCIATE_TO_PREMIUM_DELTA_INR} more — keeps your renewal date.`}
             />
           </div>
 
@@ -291,6 +296,7 @@ export default function MembershipPage() {
               notIncluded={life.notIncluded}
               ctaLabel="Become a Life Member"
               onClick={() => handleUpgrade("life")}
+              isCurrent={currentPlan === "life"}
             />
           </div>
         </div>
@@ -443,9 +449,10 @@ interface PlanCardProps {
   onClick: () => void
   recommended?: boolean
   upgradeNote?: string
+  isCurrent?: boolean
 }
 
-function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, features, notIncluded, ctaLabel, onClick, recommended, upgradeNote }: PlanCardProps) {
+function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, features, notIncluded, ctaLabel, onClick, recommended, upgradeNote, isCurrent }: PlanCardProps) {
   const styles = {
     navy: {
       ring: "border-gray-200",
@@ -493,12 +500,18 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
           <div className="mt-1 text-xs text-gray-500">{subPrice}</div>
         </div>
 
-        <button
-          onClick={onClick}
-          className={`w-full rounded-xl py-3 text-sm font-bold transition-all mb-3 ${styles.cta}`}
-        >
-          {ctaLabel}
-        </button>
+        {isCurrent ? (
+          <div className="w-full rounded-xl py-3 text-sm font-bold text-center mb-3 bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center gap-1.5">
+            <BadgeCheck className="h-4 w-4" /> Your current plan
+          </div>
+        ) : (
+          <button
+            onClick={onClick}
+            className={`w-full rounded-xl py-3 text-sm font-bold transition-all mb-3 ${styles.cta}`}
+          >
+            {ctaLabel}
+          </button>
+        )}
 
         {upgradeNote && (
           <div className="mb-4 rounded-lg bg-amber-50/60 border border-amber-200/70 px-3 py-2 text-[11px] text-amber-900 leading-relaxed">
@@ -547,7 +560,7 @@ const comparisonRows: { label: string; values: (boolean | string)[] }[] = [
   { label: "Early access to limited-seat events", values: [false, false, true, true] },
   { label: "Yearly Certificate of Contribution", values: [false, false, true, true] },
   { label: "Eligible for Committee invitation", values: [false, false, false, true] },
-  { label: "Membership cycle", values: ["Permanent", "₹499/yr", "₹999/yr", "Lifetime"] },
+  { label: "Membership cycle", values: ["Permanent", `₹${PLANS.associate.priceInr}/yr`, `₹${PLANS.premium.priceInr}/yr`, "Lifetime"] },
 ]
 
 const whereItGoes = [
