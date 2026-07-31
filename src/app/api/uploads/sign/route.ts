@@ -8,7 +8,7 @@ import { enforceRateLimit } from "@/lib/rate-limit"
 const schema = z.object({
   kind: z.enum(["verification", "avatar", "post", "business", "event_banner"]),
   contentType: z.string(),
-  ext: z.string(),
+  ext: z.string().optional(), // accepted for backward compat, ignored — ext is derived from contentType server-side
 })
 
 export async function POST(req: NextRequest) {
@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
       kind: body.kind as UploadKind,
       ownerId: user.id,
       contentType: body.contentType,
-      ext: body.ext,
     })
     return ok(signed)
   } catch (e) {

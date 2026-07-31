@@ -8,7 +8,7 @@ import { env } from "@/config/env"
  * Kept dependency-free (config only) so it can be imported from the Auth.js
  * callbacks without creating a circular import via `@/lib/auth`.
  */
-export const ADMIN_ROLES = ["admin", "super_admin"] as const
+export const ADMIN_ROLES = ["admin", "super_admin", "founder"] as const
 
 export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false

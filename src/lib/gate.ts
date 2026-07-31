@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError, requireUser } from "@/modules/auth/session"
 import { getBalance } from "@/modules/karma/ledger"
+import { computeIsAdmin } from "@/modules/auth/admin"
 
 export interface GateOptions {
   verified?: boolean
@@ -12,6 +13,7 @@ export interface GatedUser {
   id: string
   email: string
   isVerified: boolean
+  isSuperAdmin: boolean
   karmaBalance: number
   roles: string[]
 }
@@ -22,7 +24,7 @@ export async function gateUser(opts: GateOptions = {}): Promise<GatedUser> {
   const [user, roleRows, karma] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.id },
-      select: { id: true, email: true, isVerified: true, status: true },
+      select: { id: true, email: true, isVerified: true, isSuperAdmin: true, status: true },
     }),
     prisma.userRole.findMany({
       where: { userId: session.id },
@@ -51,11 +53,22 @@ export async function gateUser(opts: GateOptions = {}): Promise<GatedUser> {
     id: user.id,
     email: user.email,
     isVerified: user.isVerified,
+    isSuperAdmin: user.isSuperAdmin,
     karmaBalance: karma?.balance ?? 0,
     roles,
   }
 }
 
 export const requireVerified = () => gateUser({ verified: true })
-export const requireAdmin = () =>
-  gateUser({ roles: ["admin", "founder", "super_admin"] })
+
+// Single admin definition shared with middleware + pages + server actions:
+// computeIsAdmin (isSuperAdmin flag OR ADMIN_EMAILS allowlist OR an admin role).
+// Previously this checked roles only, so a bootstrap admin (isSuperAdmin, no
+// role row) or an allowlisted email was wrongly 403'd on /api/admin routes.
+export async function requireAdmin(): Promise<GatedUser> {
+  const gated = await gateUser()
+  if (!computeIsAdmin({ email: gated.email, roles: gated.roles, isSuperAdmin: gated.isSuperAdmin })) {
+    throw new ForbiddenError("Admin access required")
+  }
+  return gated
+}
