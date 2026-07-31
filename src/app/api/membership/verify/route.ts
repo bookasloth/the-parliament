@@ -4,9 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
 import { verifyPaymentSignature } from "@/lib/razorpay"
-import { activateMembership } from "@/modules/membership/activation"
+import { claimAndActivateOrder } from "@/modules/membership/claim"
 import { audit } from "@/lib/audit"
-import { type PlanCode } from "@/config/membership"
 
 const schema = z.object({
   orderId: z.string().uuid(),
@@ -35,40 +34,28 @@ export async function POST(req: NextRequest) {
     })
     if (!valid) return badRequest("Invalid signature")
 
-    if (order.status === "paid") {
+    // Atomic claim + single activation (races the payment.captured webhook and
+    // double-submits). See claimAndActivateOrder.
+    const result = await claimAndActivateOrder(order.id, {
+      razorpayPaymentId: body.razorpayPaymentId,
+      razorpaySignature: body.razorpaySignature,
+    })
+    if (!result.claimed) {
       return ok({ alreadyActivated: true })
     }
-
-    const activation = await activateMembership({
-      userId: user.id,
-      planCode: order.planCode as PlanCode,
-      source: "purchase",
-      amountPaise: order.amountPaise,
-      orderId: order.id,
-    })
-
-    await prisma.membershipOrder.update({
-      where: { id: order.id },
-      data: {
-        status: "paid",
-        razorpayPaymentId: body.razorpayPaymentId,
-        razorpaySignature: body.razorpaySignature,
-        capturedAt: new Date(),
-      },
-    })
 
     await audit({
       actorId: user.id,
       action: "membership.verify",
       entityType: "membership_order",
       entityId: order.id,
-      payload: { membershipId: activation.membershipId },
+      payload: { membershipId: result.membershipId },
     })
 
     return ok({
-      membershipId: activation.membershipId,
-      planCode: activation.newPlanCode,
-      endsAt: activation.endsAt,
+      membershipId: result.membershipId,
+      planCode: result.newPlanCode,
+      endsAt: result.endsAt,
     })
   } catch (e) {
     return handleError(e)

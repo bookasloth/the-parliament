@@ -1,28 +1,39 @@
 import { NextResponse } from "next/server"
 import { getDefaultSchoolId } from "@/lib/school"
 import { searchDirectory } from "@/modules/directory/service"
+import { requireUser } from "@/modules/auth/session"
+import { handleError } from "@/lib/api"
 
 const PAGE_SIZE = 24
 
 // Paged rows for the community infinite-scroll loader.
 export async function GET(req: Request) {
-  const url = new URL(req.url)
-  const sp = url.searchParams
-  const schoolId = (await getDefaultSchoolId()) ?? undefined
-  const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1)
+  try {
+    // Members only. This returns real legal names + city + batch + tier;
+    // middleware does NOT cover /api, so the route must gate itself or the
+    // whole roster is anonymously scrapeable.
+    await requireUser()
 
-  const { rows, total } = await searchDirectory(
-    {
-      schoolId,
-      q: sp.get("q") || undefined,
-      batchId: sp.get("batch") || undefined,
-      houseId: sp.get("house") || undefined,
-      membershipStatus: sp.get("membership") || undefined,
-      city: sp.get("city") || undefined,
-      verifiedOnly: sp.get("verified") === "1",
-    },
-    { page, pageSize: PAGE_SIZE },
-  )
+    const url = new URL(req.url)
+    const sp = url.searchParams
+    const schoolId = (await getDefaultSchoolId()) ?? undefined
+    const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1)
 
-  return NextResponse.json({ rows, total, page, pageSize: PAGE_SIZE })
+    const { rows, total } = await searchDirectory(
+      {
+        schoolId,
+        q: sp.get("q") || undefined,
+        batchId: sp.get("batch") || undefined,
+        houseId: sp.get("house") || undefined,
+        membershipStatus: sp.get("membership") || undefined,
+        city: sp.get("city") || undefined,
+        verifiedOnly: sp.get("verified") === "1",
+      },
+      { page, pageSize: PAGE_SIZE },
+    )
+
+    return NextResponse.json({ rows, total, page, pageSize: PAGE_SIZE })
+  } catch (e) {
+    return handleError(e)
+  }
 }

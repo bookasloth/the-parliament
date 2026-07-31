@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyWebhookSignature } from "@/lib/razorpay"
 import { activateMembership } from "@/modules/membership/activation"
+import { claimAndActivateOrder } from "@/modules/membership/claim"
 import { audit } from "@/lib/audit"
 import { type PlanCode } from "@/config/membership"
 
@@ -65,27 +66,19 @@ async function handlePaymentCaptured(payload: Record<string, unknown>) {
     where: { razorpayOrderId: p.order_id },
   })
   if (!order) return
-  if (order.status === "paid") return
 
-  const planCode = (p.notes?.planCode ?? order.planCode) as PlanCode
-  const activation = await activateMembership({
-    userId: order.userId,
-    planCode,
-    source: "purchase",
-    amountPaise: order.amountPaise,
-    orderId: order.id,
-  })
-
-  await prisma.membershipOrder.update({
-    where: { id: order.id },
-    data: { status: "paid", razorpayPaymentId: p.id, capturedAt: new Date() },
-  })
+  // Atomic claim + single activation: dedupes retried/duplicate webhook
+  // deliveries and this webhook racing the client-side /verify call. Tier is
+  // taken from order.planCode (not the echoed payment.notes) so tier and the
+  // charged amount stay coupled.
+  const result = await claimAndActivateOrder(order.id, { razorpayPaymentId: p.id })
+  if (!result.claimed) return
 
   await audit({
     action: "razorpay.webhook.payment.captured",
     entityType: "membership_order",
     entityId: order.id,
-    payload: { membershipId: activation.membershipId },
+    payload: { membershipId: result.membershipId },
   })
 }
 
