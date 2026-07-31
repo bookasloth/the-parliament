@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
           legalName: user.legalName,
           resetUrl: resetUrl(raw),
           isNew: user.passwordHash === null,
-        })
+        }, user.id)
       }
     }
     // Always succeed — never reveal whether an email is registered.

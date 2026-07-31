@@ -1,5 +1,6 @@
-import nodemailer from "nodemailer"
 import { emailShell, p, small, button, details, codeBox } from "@/lib/email-layout"
+import { deliver } from "@/modules/email/service"
+import type { EmailCategory } from "@/modules/email/templates"
 
 type EmailTemplate<T> = {
   subject: (data: T) => string
@@ -49,12 +50,17 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
     text: (d) =>
       `Hi ${d.legalName},\n\nConfirm your email to activate your account:\n${d.verifyUrl}\n\nThis link expires in 24 hours. If you didn't sign up, ignore this email.`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">Confirm your email</h2>
-         <p style="color:#374151">Hi ${d.legalName}, confirm your email address to activate your NNAWCA account.</p>
-         <p><a href="${d.verifyUrl}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Confirm my email</a></p>
-         <p style="color:#6b7280;font-size:12px">This link expires in 24 hours. If you didn't sign up, ignore this email.</p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Verify",
+        eyebrow: "Account · Security",
+        heading: "Confirm your email",
+        body:
+          p(`Hi ${d.legalName}, confirm your email address to activate your NNAWCA account.`) +
+          button("Confirm my email", d.verifyUrl, "blue") +
+          small("This link expires in 24 hours. If you didn't sign up, you can ignore this email."),
+        reason: "This is a transactional message about your account.",
+      }),
   },
   password_reset: {
     subject: (d) => (d.isNew ? "Set your NNAWCA password" : "Reset your NNAWCA password"),
@@ -199,22 +205,6 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
   },
 }
 
-let cachedTransport: nodemailer.Transporter | null = null
-
-function getTransport(): nodemailer.Transporter {
-  if (cachedTransport) return cachedTransport
-  cachedTransport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "465", 10),
-    secure: (process.env.SMTP_PORT || "465") === "465",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-  return cachedTransport
-}
-
 /** Render a template to its subject/text/html without sending. Pure — for tests + previews. */
 export function renderEmail<K extends keyof EmailTemplates>(
   template: K,
@@ -226,18 +216,43 @@ export function renderEmail<K extends keyof EmailTemplates>(
 
 export const EMAIL_TEMPLATE_KEYS = Object.keys(templates) as (keyof EmailTemplates)[]
 
+// Every code template's email category — decides opt-out behaviour + From address
+// + quiet-hours in deliver(). Account/security mail is transactional (unblockable);
+// feed/network mail is engagement (respects opt-out).
+export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
+  email_verification: "transactional",
+  email_verify_link: "transactional",
+  password_reset: "transactional",
+  verification_approved: "transactional",
+  verification_rejected: "transactional",
+  new_follower: "engagement",
+  comment_on_post: "engagement",
+  reaction_on_post: "engagement",
+  mention: "engagement",
+  contact_reveal_request: "engagement",
+  new_event_in_batch: "engagement",
+}
+
+/**
+ * Send a code-rendered template through the single guarded path (deliver): every
+ * send now enforces suppression, per-user opt-out, quiet-hours and logging — the
+ * same guarantees the DB-template queueEmail already had. Pass `userId` so opt-out
+ * and message linkage work (optional; suppression still applies without it).
+ */
 export async function sendEmail<K extends keyof EmailTemplates>(
   template: K,
   to: string,
   data: EmailTemplates[K],
+  userId?: string,
 ): Promise<void> {
-  const from = process.env.SMTP_FROM || "NNAWCA <noreply@nnawca.com>"
   const { subject, text, html } = renderEmail(template, data)
-
-  if (!process.env.SMTP_HOST) {
-    console.log(`[email:dev] ${template} → ${to}`, data)
-    return
-  }
-
-  await getTransport().sendMail({ from, to, subject, text, html })
+  await deliver({
+    toAddress: to,
+    userId,
+    category: EMAIL_CATEGORY[template],
+    templateCode: `code.${template}`,
+    subject,
+    text,
+    html,
+  })
 }

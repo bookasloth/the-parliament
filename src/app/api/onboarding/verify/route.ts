@@ -40,7 +40,7 @@ export async function POST() {
     await sendEmail("email_verification", user.email, {
       legalName: user.name || "there",
       code,
-    })
+    }, user.id)
 
     // Only leak the code in dev (no SMTP configured) so the UI can auto-fill.
     return ok({ sent: true, devCode: process.env.SMTP_HOST ? undefined : code })
