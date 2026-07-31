@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import Image from "next/image"
 import { Camera, ImagePlus, Loader2 } from "lucide-react"
 import type { MediaData } from "@/lib/onboarding"
 import { BLOOD_GROUPS } from "@/lib/onboarding"
@@ -84,8 +85,7 @@ export function StepMedia({ data, set, onNext }: StepMediaProps) {
             {uploading.photo ? (
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             ) : data.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.photoUrl} alt="" className="h-full w-full object-cover" />
+              <Image src={data.photoUrl} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="h-full w-full object-cover" />
             ) : (
               <Camera className="h-6 w-6 text-gray-400" />
             )}

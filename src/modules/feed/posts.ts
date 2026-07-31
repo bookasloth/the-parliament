@@ -325,23 +325,9 @@ function incrementsFor(type: ReactionType, delta: number) {
   return { upvoteCount: { increment: delta } }
 }
 
-/** Server-side award catalog. Client cannot pick a cost. */
-export const POST_AWARDS: Record<string, { label: string; cost: number }> = {
-  GOAT: { label: "GOAT", cost: 50 },
-  SHITPOST: { label: "Shitpost", cost: 20 },
-  FIRE: { label: "Fire Post", cost: 30 },
-  BRAIN: { label: "Big Brain", cost: 40 },
-  LOL: { label: "LOL", cost: 25 },
-  MICDROP: { label: "Mic Drop", cost: 35 },
-  SUPPORT: { label: "Support", cost: 30 },
-  WTF: { label: "WTF", cost: 28 },
-  CLAP: { label: "Clap", cost: 22 },
-  CROWN: { label: "Crown", cost: 60 },
-  ANGEL: { label: "Angel", cost: 45 },
-  ROCKET: { label: "Rocket", cost: 55 },
-}
-
-export type AwardKey = keyof typeof POST_AWARDS
+// Award catalog now lives in src/config/post-awards.ts (shared with the UI).
+import { POST_AWARDS, type AwardKey } from "@/config/post-awards"
+export { POST_AWARDS, type AwardKey }
 
 export async function sharePost(input: {
   userId: string

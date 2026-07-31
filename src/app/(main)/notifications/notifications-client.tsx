@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Image from "next/image"
 import { Bell, Check, Loader2, Trash2 } from "lucide-react"
 import {
   deleteNotificationAction,
@@ -94,11 +95,12 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                       )}
                       <div className="flex-shrink-0">
                         {n.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={n.imageUrl}
                             alt=""
                             className="h-10 w-10 rounded-full object-cover"
+                            width={40}
+                            height={40}
                           />
                         ) : (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-brand-700">

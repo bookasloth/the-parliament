@@ -1194,6 +1194,9 @@ model Payment {
   id                String    @id @default(uuid()) @db.Uuid
   userId            String    @map("user_id") @db.Uuid
   purpose           String    @db.VarChar(20)
+  // Whole rupees (NOT paise). The live payment path uses paise on Order/Membership
+  // (amountPaise); this Payment table has no app writer yet. If wired up, keep this
+  // as rupees or rename to amountPaise to match the rest of the payment path.
   amountInr         Int       @map("amount_inr")
   membershipId      String?   @map("membership_id") @db.Uuid
   razorpayOrderId   String?   @map("razorpay_order_id") @db.VarChar(64)

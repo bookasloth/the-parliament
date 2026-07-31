@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Image from "next/image"
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react"
 
 export interface MediaItem {
@@ -64,8 +65,14 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
                 </span>
               </>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.url} alt="" className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} loading="lazy" />
+              <Image
+                src={m.url}
+                alt=""
+                width={0}
+                height={0}
+                sizes={n === 1 ? "(max-width: 768px) 100vw, 600px" : "(max-width: 768px) 50vw, 300px"}
+                className={`w-full h-auto object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`}
+              />
             )}
             {i === 3 && extra > 0 && (
               <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white">
@@ -103,6 +110,8 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
             {items[idx].type === "video" ? (
               <video src={items[idx].url} controls autoPlay className="max-h-[90vh] max-w-[92vw]" />
             ) : (
+              // ponytail: full-screen full-res lightbox, unknown aspect + object-contain —
+              // a poor fit for next/image (optimizer adds nothing here). Left as a plain img.
               // eslint-disable-next-line @next/next/no-img-element
               <img src={items[idx].url} alt="" className="max-h-[90vh] max-w-[92vw] object-contain" />
             )}

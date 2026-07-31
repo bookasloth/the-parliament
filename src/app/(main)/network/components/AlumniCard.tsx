@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import {
   ShieldCheck, X, UserPlus, MessageSquare, Check, Building2, MapPin, Briefcase, Users,
 } from "lucide-react"
@@ -48,18 +49,19 @@ export function AlumniCard({ alumni, followed, dismissed, onFollow, onDismiss }:
       </button>
 
       {/* Banner — cover photo or house colour */}
-      <div className="h-[60px] w-full" style={alumni.cover ? undefined : { backgroundColor: banner }}>
+      <div className="relative h-[60px] w-full" style={alumni.cover ? undefined : { backgroundColor: banner }}>
         {alumni.cover && (
-          <img src={alumni.cover} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <Image src={alumni.cover} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="h-full w-full object-cover" />
         )}
       </div>
 
       {/* Avatar overlapping banner */}
       <div className="px-4">
-        <img
+        <Image
           src={alumni.avatar}
           alt={alumni.name}
-          loading="lazy"
+          width={64}
+          height={64}
           className="-mt-8 h-16 w-16 rounded-full border-4 border-white object-cover shadow-sm"
         />
       </div>

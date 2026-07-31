@@ -19,7 +19,7 @@
 - **Async jobs:** pg-boss
 - **Payments:** Razorpay
 - **Email:** Hostinger SMTP / Nodemailer
-- **File storage:** Cloudflare R2 (S3-compatible)
+- **File storage:** Cloudflare R2 (`src/lib/r2.ts`) for post media/invoices/onboarding uploads; Supabase Storage (`src/lib/supabase-storage.ts`) for avatars + covers
 - **Package manager:** npm
 
 ## Project Structure
@@ -225,6 +225,14 @@ AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET  # when Google OAuth is configured
 - Caps: 30 likes/day, 20 comments/day, 10 shares/day, 5 pair-likes/24h, -10 negative/day
 - 80% karma retained on unlock spend
 - Game karma hard-capped at 0
+
+## Testing (standing rule)
+- **Runner:** vitest (`npm test` → `vitest run`). Unit tests live in `tests/*.test.ts`, node env, `@/` alias configured in `vitest.config.ts`. No jsdom/frameworks unless a test needs the DOM. Keep unit tests DB-free (pure logic).
+- **Integration tests** (`npm run test:integration` → `vitest.integration.config.ts`) hit a real DB and live in `tests/integration/*.itest.ts`. They run against a throwaway **local** `*_test` database only — `tests/integration/guard.ts` hard-fails if `DATABASE_URL` isn't a localhost `*_test` DB, so the prod Supabase URL can never be touched. Requires local Postgres up: `docker compose -f docker/docker-compose.yml up -d`. `global-setup.ts` creates `the_parliament_test` + `prisma db push`. Override host with `TEST_DATABASE_URL`.
+- **When writing/changing a function, route, server action, or lib helper that has real logic, add a test in the same change** — cover the happy path AND edge cases (empty/missing input, boundary values, invalid/tampered input, error branches). Money, karma, auth/authz, and validation paths are mandatory to test.
+- **Skip tests** only for trivial one-liners (pass-through getters, static config objects, pure JSX with no logic) — YAGNI applies to tests too. Don't test the framework or Prisma itself.
+- Prefer testing pure logic directly (extract it if a route buries it). Set required env vars in the test (e.g. `RAZORPAY_KEY_SECRET`) rather than mocking crypto.
+- Coverage priority when catching up: karma ledger, membership tier state-machine, invoice/paise math, gates, rate-limit, onboarding validation, username generation.
 
 ## Design Decisions
 - Source of truth for scope/stack: `DECISIONS.md`. Client's full feature vision / backlog: `CLIENT_REQUIREMENTS.md` (distilled from the NNAWCA Developer Doc — aspirational, not committed scope).

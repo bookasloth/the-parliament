@@ -29,6 +29,7 @@ import {
   countNewPostsAction,
 } from "./actions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
+import Image from "next/image"
 
 interface Connection {
   name: string
@@ -254,10 +255,12 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
         <div className="px-4 pt-0 pb-3">
           <div className="text-center">
             <div className="avatar avatar-lg -mt-6 mb-2 mx-auto">
-              <img
+              <Image
                 className="h-16 w-16 rounded-full border-2 border-white object-cover"
                 src={photo}
                 alt=""
+                width={64}
+                height={64}
               />
             </div>
             <h6 className="text-sm font-semibold text-gray-900 mb-0">
@@ -410,7 +413,7 @@ export function FeedContent({
     <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
       {/* Offcanvas backdrop */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Offcanvas Sidebar (mobile) */}
@@ -603,8 +606,8 @@ export function FeedContent({
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <div className="p-4">
                   <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Sponsored</span>
-                  <a href="https://www.google.com" target="_blank" className="mt-2 block">
-                    <img src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop" alt="Ad" className="w-full rounded object-cover" />
+                  <a href="https://www.google.com" target="_blank" className="relative mt-2 block">
+                    <Image src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop" alt="Ad" width={600} height={400} className="w-full h-auto rounded object-cover" />
                   </a>
                   <p className="mt-1.5 text-xs text-gray-400 text-center">Advertisement</p>
                 </div>
@@ -639,8 +642,8 @@ export function FeedContent({
                       const thrown = targetUsername ? eggedUsernames.has(targetUsername) : false
                       return (
                         <div key={c.key} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors">
-                          <a href={c.href ?? "#"} className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full">
-                            <img src={c.avatar} alt={c.name} className="h-full w-full object-cover" />
+                          <a href={c.href ?? "#"} className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full">
+                            <Image src={c.avatar} alt={c.name} className="h-full w-full object-cover" fill sizes="36px" />
                           </a>
                           <div className="min-w-0 flex-1">
                             <a href={c.href ?? "#"} className="truncate text-sm font-medium text-gray-900 hover:text-brand block">{c.name}</a>

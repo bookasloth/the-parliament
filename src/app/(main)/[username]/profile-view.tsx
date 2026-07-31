@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
@@ -199,8 +200,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
         <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
         <Card>
           <div className="relative h-[200px] bg-gray-200">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="h-full w-full object-cover" />
+            <Image src={cover} alt="" className="h-full w-full object-cover" fill sizes="100vw" />
             {data.house && (
               <span className="glass-strong absolute right-5 top-4 flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-xs font-bold text-gray-800">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: houseColor }} />
@@ -213,8 +213,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div>
                 <div className="relative -mt-[62px] inline-block rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
                   {data.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" />
+                    <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" width={118} height={118} />
                   ) : (
                     <div className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
                   )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
 import type { EventCard } from "@/lib/homepage-data";
 
@@ -34,11 +35,12 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
               className="group rounded-[20px] bg-white overflow-hidden card-shadow hover:shadow-lg transition-all duration-300"
             >
               <div className="relative h-44 overflow-hidden">
-                <img
+                <Image
                   src={event.banner}
                   alt={event.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 400px"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">

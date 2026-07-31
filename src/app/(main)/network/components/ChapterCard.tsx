@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Users, Check, Activity } from "lucide-react"
 import type { Chapter } from "../network-data"
 
@@ -11,7 +12,7 @@ export function ChapterCard({ chapter }: { chapter: Chapter }) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-card">
       <Link href={`/network/chapters/${chapter.slug}`} className="relative block">
-        <img src={chapter.cover} alt={chapter.name} loading="lazy" className="h-20 w-full object-cover" />
+        <Image src={chapter.cover} alt={chapter.name} fill sizes="(max-width: 768px) 100vw, 400px" className="h-20 w-full object-cover" />
       </Link>
       <div className="flex flex-1 flex-col p-3">
         <h3 className="text-sm font-semibold text-gray-900">

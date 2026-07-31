@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Calendar, MapPin, Users } from "lucide-react"
 import type { NetworkEvent } from "../network-data"
 
@@ -9,7 +10,7 @@ export function EventCard({ event }: { event: NetworkEvent }) {
       className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-card"
     >
       <div className="relative">
-        <img src={event.cover} alt={event.title} loading="lazy" className="h-28 w-full object-cover" />
+        <Image src={event.cover} alt={event.title} fill sizes="(max-width: 768px) 100vw, 400px" className="h-28 w-full object-cover" />
         <span className={`absolute right-2 top-2 rounded-md px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
           {event.isFree ? "Free" : `₹${event.price}`}
         </span>

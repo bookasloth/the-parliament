@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { ArrowLeft, BarChart2, Edit3, ShieldCheck } from "lucide-react"
@@ -102,11 +103,12 @@ export default async function PostDetailPage({
         <header className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href={author.username ? `/${author.username}` : "#"}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={avatar}
                 alt={authorName}
                 className="h-12 w-12 rounded-full object-cover border border-gray-200"
+                width={48}
+                height={48}
               />
             </Link>
             <div>

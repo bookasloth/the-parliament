@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Building2, MapPin, Star, BadgePercent, Plus } from "lucide-react"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
@@ -38,7 +39,7 @@ export default async function BusinessDirectoryPage() {
             <Link key={b.id} href={`/business/${b.slug}`} className="rounded-xl border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md">
               <div className="flex items-center gap-3">
                 {b.logoUrl ? (
-                  <img src={b.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                  <Image src={b.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover" width={48} height={48} />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand"><Building2 className="h-6 w-6" /></div>
                 )}

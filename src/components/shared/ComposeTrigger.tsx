@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Image as ImageIcon, ListChecks, HelpCircle, Quote } from "lucide-react"
 
 interface ComposeTriggerProps {
@@ -31,7 +32,7 @@ export function ComposeTrigger({
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-3">
       <a href={href} className="flex items-center gap-3 group">
-        <img src={avatar} alt="" className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
+        <Image src={avatar} alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
         <span className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-400 group-hover:border-brand group-hover:bg-white transition-all">
           {placeholder}
         </span>

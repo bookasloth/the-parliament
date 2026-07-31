@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import {
   Users, UserPlus, Layers, Calendar, MapPin, Building2, Mail, ChevronRight,
 } from "lucide-react"
@@ -32,10 +33,11 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
         className="block bg-white border border-gray-200 rounded-xl p-4 hover:shadow-card transition-shadow"
       >
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src={me.avatar}
             alt={me.name}
-            loading="lazy"
+            width={48}
+            height={48}
             className="h-12 w-12 rounded-full object-cover border-2 border-brand"
           />
           <div className="min-w-0">

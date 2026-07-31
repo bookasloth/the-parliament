@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react"
 import { ArrowBigDown, ArrowBigUp, Flag, MoreHorizontal, ShieldCheck, Smile, Trash2 } from "lucide-react"
 import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction } from "../actions"
@@ -132,12 +133,13 @@ function Body({ text }: { text: string }) {
 function Avatar({ c }: { c: CommentView }) {
   return (
     <Link href={c.author.username ? `/${c.author.username}` : "#"} className="flex-shrink-0">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={c.author.avatarUrl}
         alt={c.author.displayName}
         className="h-9 w-9 rounded-full object-cover"
         style={{ boxShadow: `0 0 0 2px ${RING[c.author.membershipStatus] ?? "#2563EB"}` }}
+        width={36}
+        height={36}
       />
     </Link>
   )
@@ -519,8 +521,7 @@ export default function CommentsSection({ postId, initialComments, initialCount,
 
       {viewer && (
         <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
+          <Image src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
           <div className="flex-1 space-y-2">
             <div className="relative">
               <MentionInput

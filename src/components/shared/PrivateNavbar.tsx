@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
@@ -369,8 +370,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                       <li key={n.id}>
                         <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 ${n.isRead ? "" : "bg-brand-50/40"}`}>
                           {n.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={n.imageUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
+                            <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
                           ) : (
                             <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
                           )}
@@ -399,7 +399,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
               onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false) }}
               className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-brand transition-all"
             >
-              <img src={currentUser.avatar} alt={currentUser.name} className="h-full w-full object-cover" />
+              <Image src={currentUser.avatar} alt={currentUser.name} width={36} height={36} className="h-full w-full object-cover" />
             </button>
 
             {profileOpen && (
@@ -407,7 +407,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                 {/* Profile info */}
                 <div className="p-4 pb-3">
                   <div className="flex items-center gap-3 mb-3">
-                    <img src={currentUser.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                    <Image src={currentUser.avatar} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover" />
                     <div className="min-w-0">
                       <a href={profileHref} className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
                         {currentUser.name}
