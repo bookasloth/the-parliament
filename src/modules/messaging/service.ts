@@ -122,3 +122,28 @@ export async function sendMessage(
     createdAt: msg.createdAt.toISOString(), editedAt: null, deleted: false,
   }
 }
+
+async function assertAuthor(viewerId: string, messageId: string) {
+  const m = await prisma.message.findUnique({ where: { id: messageId }, select: { senderId: true } })
+  if (!m || m.senderId !== viewerId) throw new ForbiddenError("Not the author")
+}
+
+export async function editMessage(viewerId: string, messageId: string, body: string): Promise<void> {
+  await assertAuthor(viewerId, messageId)
+  const trimmed = body.trim()
+  if (!trimmed) throw new ForbiddenError("Empty message")
+  await prisma.message.update({ where: { id: messageId }, data: { body: trimmed, editedAt: new Date() } })
+}
+
+export async function deleteMessage(viewerId: string, messageId: string): Promise<void> {
+  await assertAuthor(viewerId, messageId)
+  await prisma.message.update({ where: { id: messageId }, data: { deletedAt: new Date() } })
+}
+
+export async function markRead(viewerId: string, conversationId: string): Promise<void> {
+  await assertParticipant(viewerId, conversationId)
+  await prisma.conversationParticipant.update({
+    where: { conversationId_userId: { conversationId, userId: viewerId } },
+    data: { lastReadAt: new Date() },
+  })
+}

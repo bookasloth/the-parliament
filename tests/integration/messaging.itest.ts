@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage } from "@/modules/messaging/service";
+import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead } from "@/modules/messaging/service";
 
 const rnd = () => Math.random().toString(36).slice(2);
 async function makeUser() {
@@ -61,5 +61,34 @@ describe("listConversations + getMessages", () => {
     // a non-participant cannot read
     const c = await makeUser();
     await expect(getMessages(c, id)).rejects.toThrow();
+  });
+});
+
+describe("send/edit/delete/markRead", () => {
+  it("sends, bumps lastMessageAt, edits, soft-deletes, and marks read", async () => {
+    const a = await makeUser(), b = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+
+    const m = await sendMessage(a, id, { body: "hello" });
+    const conv = await prisma.conversation.findUniqueOrThrow({ where: { id }, select: { lastMessageAt: true } });
+    expect(conv.lastMessageAt).not.toBeNull();
+
+    await sendMessage(a, id, { body: "", media: ["https://x/y.png"] }); // media-only ok
+    await expect(sendMessage(a, id, { body: "" })).rejects.toThrow();   // empty rejected
+
+    await editMessage(a, m.id, "hello (edited)");
+    const edited = await prisma.message.findUniqueOrThrow({ where: { id: m.id } });
+    expect(edited.body).toBe("hello (edited)");
+    expect(edited.editedAt).not.toBeNull();
+    await expect(editMessage(b, m.id, "nope")).rejects.toThrow(); // not author
+
+    await deleteMessage(a, m.id);
+    expect((await getMessages(a, id))[0].deleted).toBe(true);
+
+    // b reads → unread clears for b
+    await markRead(b, id);
+    const listForB = await listConversations(b);
+    expect(listForB[0].unreadCount).toBe(0);
   });
 });
