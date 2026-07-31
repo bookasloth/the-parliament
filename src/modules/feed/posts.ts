@@ -242,44 +242,25 @@ export async function toggleReaction(input: {
     },
   })
 
+  // upvote_count/downvote_count are maintained by a DB trigger
+  // (post_counter_triggers migration) — this only writes the reaction row.
   if (existing && existing.type === input.type) {
-    await prisma.$transaction([
-      prisma.reaction.delete({ where: { id: existing.id } }),
-      prisma.post.update({
-        where: { id: input.postId },
-        data: incrementsFor(input.type, -1),
-      }),
-    ])
+    await prisma.reaction.delete({ where: { id: existing.id } })
     await recomputeRankingScore(input.postId)
     return { reacted: false }
   }
 
   if (existing) {
-    await prisma.$transaction([
-      prisma.reaction.update({ where: { id: existing.id }, data: { type: input.type } }),
-      prisma.post.update({
-        where: { id: input.postId },
-        data: {
-          ...incrementsFor(existing.type as ReactionType, -1),
-          ...incrementsFor(input.type, 1),
-        },
-      }),
-    ])
+    await prisma.reaction.update({ where: { id: existing.id }, data: { type: input.type } })
   } else {
-    await prisma.$transaction([
-      prisma.reaction.create({
-        data: {
-          userId: input.userId,
-          entityType: "post",
-          entityId: input.postId,
-          type: input.type,
-        },
-      }),
-      prisma.post.update({
-        where: { id: input.postId },
-        data: incrementsFor(input.type, 1),
-      }),
-    ])
+    await prisma.reaction.create({
+      data: {
+        userId: input.userId,
+        entityType: "post",
+        entityId: input.postId,
+        type: input.type,
+      },
+    })
   }
 
   if (input.userId !== post.authorId) {
@@ -319,12 +300,6 @@ export async function toggleReaction(input: {
   return { reacted: true }
 }
 
-function incrementsFor(type: ReactionType, delta: number) {
-  if (type === "upvote") return { upvoteCount: { increment: delta } }
-  if (type === "downvote") return { downvoteCount: { increment: delta } }
-  return { upvoteCount: { increment: delta } }
-}
-
 // Award catalog now lives in src/config/post-awards.ts (shared with the UI).
 import { POST_AWARDS, type AwardKey } from "@/config/post-awards"
 export { POST_AWARDS, type AwardKey }
@@ -347,10 +322,7 @@ export async function sharePost(input: {
       comment: input.comment,
     },
   })
-  await prisma.post.update({
-    where: { id: input.postId },
-    data: { shareCount: { increment: 1 } },
-  })
+  // share_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
   return share
 }
@@ -434,10 +406,7 @@ export async function createComment(input: {
     },
   })
 
-  await prisma.post.update({
-    where: { id: input.postId },
-    data: { commentCount: { increment: 1 } },
-  })
+  // comment_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
 
   if (input.userId !== post.authorId) {
@@ -522,11 +491,7 @@ export async function deleteComment(input: { userId: string; commentId: string }
   if (c.authorId !== input.userId) throw new ForbiddenError("Not the author")
 
   await prisma.comment.update({ where: { id: c.id }, data: { deletedAt: new Date() } })
-  // ponytail: decrements 1 even if the comment had replies (they get hidden with
-  // it); exact recount only matters if reply threads grow deep.
-  await prisma.post.update({
-    where: { id: c.postId },
-    data: { commentCount: { decrement: 1 } },
-  })
+  // comment_count is maintained by a DB trigger (post_counter_triggers migration),
+  // which counts only non-deleted comments — so the soft-delete above is reflected.
   await recomputeRankingScore(c.postId)
 }
