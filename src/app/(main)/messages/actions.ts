@@ -2,7 +2,17 @@
 
 import { requireUser } from "@/modules/auth/session"
 import * as svc from "@/modules/messaging/service"
+import { signRealtimeToken } from "@/lib/supabase-realtime"
 import type { ConversationSummary, MessageView } from "@/modules/messaging/types"
+
+export async function realtimeTokenAction(): Promise<{ token: string; userId: string } | null> {
+  try {
+    const u = await requireUser()
+    return { token: signRealtimeToken(u.id), userId: u.id }
+  } catch {
+    return null
+  }
+}
 
 export async function startConversationAction(otherId: string) {
   const u = await requireUser()

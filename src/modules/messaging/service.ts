@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
+import { broadcast } from "@/lib/supabase-realtime"
 import type { ConversationSummary, MessageView } from "./types"
 
 const MAX_MESSAGE_LEN = 5000
@@ -145,34 +146,42 @@ export async function sendMessage(
     }),
     prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } }),
   ])
-  return {
+  const view: MessageView = {
     id: msg.id, senderId: msg.senderId, body: msg.body, media: msg.media as string[],
     createdAt: msg.createdAt.toISOString(), editedAt: null, deleted: false,
   }
+  await broadcast(conversationId, "new_message", view)
+  return view
 }
 
-async function assertAuthor(viewerId: string, messageId: string) {
-  const m = await prisma.message.findUnique({ where: { id: messageId }, select: { senderId: true } })
+async function assertAuthor(viewerId: string, messageId: string): Promise<{ conversationId: string }> {
+  const m = await prisma.message.findUnique({ where: { id: messageId }, select: { senderId: true, conversationId: true } })
   if (!m || m.senderId !== viewerId) throw new ForbiddenError("Not the author")
+  return { conversationId: m.conversationId }
 }
 
 export async function editMessage(viewerId: string, messageId: string, body: string): Promise<void> {
-  await assertAuthor(viewerId, messageId)
+  const { conversationId } = await assertAuthor(viewerId, messageId)
   const trimmed = body.trim()
   if (!trimmed) throw new ForbiddenError("Empty message")
   if (trimmed.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
-  await prisma.message.update({ where: { id: messageId }, data: { body: trimmed, editedAt: new Date() } })
+  const editedAt = new Date()
+  await prisma.message.update({ where: { id: messageId }, data: { body: trimmed, editedAt } })
+  await broadcast(conversationId, "edit", { id: messageId, body: trimmed, editedAt: editedAt.toISOString() })
 }
 
 export async function deleteMessage(viewerId: string, messageId: string): Promise<void> {
-  await assertAuthor(viewerId, messageId)
+  const { conversationId } = await assertAuthor(viewerId, messageId)
   await prisma.message.update({ where: { id: messageId }, data: { deletedAt: new Date() } })
+  await broadcast(conversationId, "delete", { id: messageId })
 }
 
 export async function markRead(viewerId: string, conversationId: string): Promise<void> {
   await assertParticipant(viewerId, conversationId)
+  const lastReadAt = new Date()
   await prisma.conversationParticipant.update({
     where: { conversationId_userId: { conversationId, userId: viewerId } },
-    data: { lastReadAt: new Date() },
+    data: { lastReadAt },
   })
+  await broadcast(conversationId, "read", { userId: viewerId, lastReadAt: lastReadAt.toISOString() })
 }
