@@ -2,12 +2,14 @@ import { NextResponse } from "next/server"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { uploadAvatar, isAllowedImage } from "@/lib/supabase-storage"
+import { enforceRateLimit, RateLimitedError } from "@/lib/rate-limit"
 
 const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export async function POST(req: Request) {
   try {
     const user = await requireUser()
+    await enforceRateLimit({ bucket: "upload.photo", identifier: user.id, limit: 20, windowSec: 3600 })
     const form = await req.formData()
     const file = form.get("file")
     if (!(file instanceof File)) {
@@ -31,6 +33,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ photoUrl })
   } catch (e) {
+    if (e instanceof RateLimitedError) {
+      return NextResponse.json({ error: "Too many uploads, try again later" }, { status: 429 })
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Upload failed" },
       { status: 500 },
