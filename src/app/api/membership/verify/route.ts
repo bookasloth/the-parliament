@@ -3,8 +3,9 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
-import { verifyPaymentSignature } from "@/lib/razorpay"
+import { verifyPaymentSignature, getRazorpay } from "@/lib/razorpay"
 import { claimAndActivateOrder } from "@/modules/membership/claim"
+import { checkCapturedPayment } from "@/modules/membership/payment-guard"
 import { audit } from "@/lib/audit"
 
 const schema = z.object({
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
       signature: body.razorpaySignature,
     })
     if (!valid) return badRequest("Invalid signature")
+
+    // The signature proves authenticity, not settlement. Confirm with Razorpay
+    // that the payment is actually captured, for the order's amount, before
+    // granting membership (an authorized-not-captured payment has a valid sig).
+    const payment = await getRazorpay().payments.fetch(body.razorpayPaymentId)
+    const check = checkCapturedPayment(payment as unknown as { status: string; amount: number | string; order_id?: string | null }, order)
+    if (!check.ok) return badRequest(check.reason)
 
     // Atomic claim + single activation (races the payment.captured webhook and
     // double-submits). See claimAndActivateOrder.
