@@ -184,7 +184,7 @@ export async function searchMentionTargets(
     : {}
   const baseWhere = {
     id: { not: viewerId },
-    status: "active",
+    status: "active" as const,
     username: { not: null },
     ...nameFilter,
   }
