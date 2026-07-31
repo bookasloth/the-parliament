@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { EventRsvpStatus } from "@/generated/prisma/enums"
 
 /** EventItem shape consumed by the events client UI. Mirrors the mock array. */
 export interface EventItem {
@@ -78,7 +79,7 @@ export async function listEvents(
 export async function rsvpEvent(
   userId: string,
   eventId: string,
-  status: string = "going",
+  status: EventRsvpStatus = "going",
 ) {
   return prisma.eventRsvp.upsert({
     where: { eventId_userId: { eventId, userId } },
