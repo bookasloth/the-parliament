@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2 } from "lucide-react"
+import { Storefront } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminBusinessesPage() {
@@ -8,7 +8,7 @@ export default function AdminBusinessesPage() {
     <ComingSoon
       title="Business Directory"
       description="Moderate alumni-owned business listings, review submissions, and manage the verified business badge programme."
-      icon={<Building2 className="h-7 w-7" />}
+      icon={<Storefront className="h-7 w-7" weight="duotone" />}
       planned={[
         "Approve or reject new business listing submissions",
         "Verify business ownership claims with document review",
