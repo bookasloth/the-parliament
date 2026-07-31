@@ -20,6 +20,11 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   contact_reveal_request: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
   new_event_in_batch: { eventTitle: "Reunion 2026", eventUrl: "https://x/e/1" },
   reaction_milestone: { postUrl: "https://x/p/1", count: "50" },
+  rsvp_confirmed: { firstName: "Shubham", eventTitle: "Reunion 2026", eventWhen: "22 Aug 2026, 5:00 pm", eventUrl: "https://x/e/1" },
+  membership_renewed: { firstName: "Shubham", planName: "Alumni Premium", validUntil: "31 Jul 2027", manageUrl: "https://x/feed" },
+  birthday_wish: { firstName: "Shubham", profileUrl: "https://x/u/shubham" },
+  upsell_unlock: { firstName: "Shubham", membershipUrl: "https://x/membership" },
+  upsell_upgrade: { firstName: "Shubham", planName: "Alumni Premium", upgradeUrl: "https://x/membership" },
 }
 
 describe("email-layout shell", () => {
@@ -56,8 +61,8 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 13 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(13)
+  it("covers all 18 keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(18)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
