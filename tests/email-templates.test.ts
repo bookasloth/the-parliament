@@ -1,0 +1,95 @@
+import { describe, it, expect } from "vitest"
+import { renderEmail, EMAIL_TEMPLATE_KEYS, type EmailTemplates } from "@/lib/email"
+import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
+import { SEED_TEMPLATES } from "@/modules/email/templates"
+
+// Representative data for every lib/email template.
+const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
+  email_verification: { legalName: "Shubham", code: "789201" },
+  password_reset: { legalName: "Shubham", resetUrl: "https://x/reset?t=1", isNew: false },
+  verification_approved: { legalName: "Shubham", loginUrl: "https://x/login" },
+  verification_rejected: { legalName: "Shubham", reason: "ID photo unreadable" },
+  new_follower: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
+  comment_on_post: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
+  reaction_on_post: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
+  mention: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
+  contact_reveal_request: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
+  new_event_in_batch: { eventTitle: "Reunion 2026", eventUrl: "https://x/e/1" },
+}
+
+describe("email-layout shell", () => {
+  const html = emailShell({
+    accent: "emerald",
+    pill: "Receipt",
+    eyebrow: "Payment · Confirmed",
+    heading: "Your <em>contribution</em> is confirmed",
+    body: details([["Amount", "₹2,500"]], "emerald") + button("Download", "https://x/inv", "emerald"),
+    reason: "Transactional receipt.",
+  })
+
+  it("includes brand chrome: logo, legal name, contact, signature bar", () => {
+    expect(html).toContain(LOGO_URL)
+    expect(html).toContain(LEGAL_NAME)
+    expect(html).toContain(CONTACT_EMAIL)
+    expect(html).toContain("#E5484D") // the red band in the 45/25/20/20 signature rule
+  })
+
+  it("accents the <em> word in the category colour and renders the button href", () => {
+    expect(html).toContain("#2E9E5B") // emerald accent used somewhere
+    expect(html).toContain('href="https://x/inv"')
+    // <em> must be styled, never left bare.
+    expect(html).not.toMatch(/<em>(?!\s*style)/)
+  })
+
+  it("shows Manage/Unsubscribe only when urls are provided", () => {
+    const withManage = emailShell({ accent: "navy", pill: "P", eyebrow: "E", heading: "H", body: "", manageUrl: "https://x/m", unsubscribeUrl: "https://x/u" })
+    expect(withManage).toContain("Manage preferences")
+    expect(withManage).toContain("Unsubscribe")
+    const without = emailShell({ accent: "navy", pill: "P", eyebrow: "E", heading: "H", body: "" })
+    expect(without).not.toContain("Unsubscribe")
+  })
+})
+
+describe("lib/email templates", () => {
+  it("covers all 10 keys", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(10)
+  })
+
+  for (const key of Object.keys(SAMPLE) as (keyof EmailTemplates)[]) {
+    it(`${key} renders cleanly`, () => {
+      const { subject, text, html } = renderEmail(key, SAMPLE[key])
+      expect(subject.length).toBeGreaterThan(0)
+      expect(text.length).toBeGreaterThan(0)
+      expect(html).toContain(LOGO_URL)
+      expect(html).toContain(LEGAL_NAME)
+      // No unresolved interpolation or stringified objects leaking through.
+      expect(html).not.toContain("undefined")
+      expect(html).not.toContain("[object Object]")
+      expect(html).not.toContain("{{") // JS-interpolated system: no handlebars left
+    })
+  }
+})
+
+describe("modules/email seed templates", () => {
+  it("has the expected 7 templates with unique codes", () => {
+    expect(SEED_TEMPLATES).toHaveLength(7)
+    const codes = SEED_TEMPLATES.map((t) => t.code)
+    expect(new Set(codes).size).toBe(codes.length)
+  })
+
+  for (const t of SEED_TEMPLATES) {
+    it(`${t.code} is well-formed`, () => {
+      expect(t.subject.length).toBeGreaterThan(0)
+      expect(t.text.length).toBeGreaterThan(0)
+      expect(t.html).toContain(LOGO_URL)
+      expect(t.html).toContain(LEGAL_NAME)
+      // Author-time JS interpolation must be fully resolved — only {{vars}} remain.
+      expect(t.html).not.toContain("${")
+      expect(t.html).not.toContain("undefined")
+      // Every declared variable is actually referenced somewhere in the template.
+      for (const v of Object.keys(t.variables)) {
+        expect(`${t.html} ${t.text}`).toContain(`{{${v}}}`)
+      }
+    })
+  }
+})
