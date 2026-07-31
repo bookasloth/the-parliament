@@ -33,3 +33,25 @@ export function hotScore(s: RankingInput): number {
   const score = sign * magnitude + (seconds - EPOCH_SECONDS) / DECAY
   return Number(score.toFixed(7))
 }
+
+// --- Author quality signal ---
+// Cross-post reputation folded into every one of an author's posts via
+// Post.qualityScore. Net-downvoted authors get a small negative term on ALL
+// their content (the "show this user less" engine downvotes are meant to drive);
+// net-upvoted authors get a small lift. Bounded so it nudges the per-post hot
+// score rather than dominating it.
+//
+// ponytail: linear net/divisor with a hard cap — simplest monotonic mapping.
+// `divisor` and `cap` are the calibration knobs: raise divisor for a gentler
+// slope, raise cap to let reputation matter more. Move to a log/percentile
+// curve only if raw net votes turn out wildly skewed across authors.
+export const AUTHOR_SIGNAL = { divisor: 40, cap: 5 }
+
+export function authorQualitySignal(
+  netVotes: number,
+  cfg: { divisor: number; cap: number } = AUTHOR_SIGNAL,
+): number {
+  const raw = netVotes / cfg.divisor
+  const clamped = Math.max(-cfg.cap, Math.min(cfg.cap, raw))
+  return Number(clamped.toFixed(3))
+}

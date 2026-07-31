@@ -4,42 +4,98 @@ import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
-import { hotScore } from "@/modules/feed/ranking"
+import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
+
+const RANKING_POST_SELECT = {
+  upvoteCount: true,
+  downvoteCount: true,
+  commentCount: true,
+  shareCount: true,
+  reportPenalty: true,
+  createdAt: true,
+} as const
 
 /**
- * Recompute and persist Post.rankingScore from the post's current counters.
- * Called after any engagement mutation so the indexed rankingScore ORDER BY in
- * getFeed stays fresh. ponytail: one extra read+write per mutation — fine at
- * this scale; batch/debounce only if write volume ever demands it.
+ * The author's live cross-post reputation term (Post.qualityScore), derived
+ * from the net up-vs-down votes across all their visible posts. Cheap single
+ * aggregate; the bounded signal is what feeds hotScore.
+ */
+async function authorQualityFor(authorId: string): Promise<number> {
+  const agg = await prisma.post.aggregate({
+    _sum: { upvoteCount: true, downvoteCount: true },
+    where: { authorId, deletedAt: null, status: "visible" },
+  })
+  const net = (agg._sum.upvoteCount ?? 0) - (agg._sum.downvoteCount ?? 0)
+  return authorQualitySignal(net)
+}
+
+/**
+ * Recompute and persist Post.rankingScore (and the author-quality term in
+ * Post.qualityScore) from current counters. Called after any engagement
+ * mutation so the indexed rankingScore ORDER BY in getFeed stays fresh.
+ * ponytail: one read + one aggregate + one write per mutation — fine at this
+ * scale; batch/debounce only if write volume ever demands it.
  */
 export async function recomputeRankingScore(postId: string) {
   const p = await prisma.post.findUnique({
     where: { id: postId },
-    select: {
-      upvoteCount: true,
-      downvoteCount: true,
-      commentCount: true,
-      shareCount: true,
-      qualityScore: true,
-      reportPenalty: true,
-      createdAt: true,
-    },
+    select: { ...RANKING_POST_SELECT, authorId: true },
   })
   if (!p) return
+  const quality = await authorQualityFor(p.authorId)
   await prisma.post.update({
     where: { id: postId },
     data: {
+      qualityScore: quality,
       rankingScore: hotScore({
         upvoteCount: p.upvoteCount,
         downvoteCount: p.downvoteCount,
         commentCount: p.commentCount,
         shareCount: p.shareCount,
-        qualityScore: Number(p.qualityScore),
+        qualityScore: quality,
         reportPenalty: Number(p.reportPenalty),
         createdAt: p.createdAt,
       }),
     },
   })
+}
+
+/**
+ * Re-rank an author's recent posts with a freshly-computed author-quality term.
+ * Used after a vote so a change in the author's reputation propagates to their
+ * OTHER posts immediately (not just the one that was voted on). Author quality
+ * is computed once and applied to all — one aggregate + N bounded updates.
+ * ponytail: capped at `limit` most-recent posts; a prolific author's older
+ * posts refresh on their own engagement. Move to a queued job if a single
+ * author's post count or vote velocity makes N updates per vote too heavy.
+ */
+export async function recomputeAuthorRanking(authorId: string, limit = 100) {
+  const quality = await authorQualityFor(authorId)
+  const posts = await prisma.post.findMany({
+    where: { authorId, deletedAt: null, status: "visible" },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: { id: true, ...RANKING_POST_SELECT },
+  })
+  await Promise.all(
+    posts.map((p) =>
+      prisma.post.update({
+        where: { id: p.id },
+        data: {
+          qualityScore: quality,
+          rankingScore: hotScore({
+            upvoteCount: p.upvoteCount,
+            downvoteCount: p.downvoteCount,
+            commentCount: p.commentCount,
+            shareCount: p.shareCount,
+            qualityScore: quality,
+            reportPenalty: Number(p.reportPenalty),
+            createdAt: p.createdAt,
+          }),
+        },
+      }),
+    ),
+  )
 }
 
 export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll"
@@ -246,7 +302,8 @@ export async function toggleReaction(input: {
   // (post_counter_triggers migration) — this only writes the reaction row.
   if (existing && existing.type === input.type) {
     await prisma.reaction.delete({ where: { id: existing.id } })
-    await recomputeRankingScore(input.postId)
+    // Un-voting shifts the author's reputation → re-rank their recent posts.
+    await recomputeAuthorRanking(post.authorId)
     return { reacted: false }
   }
 
@@ -313,7 +370,8 @@ export async function toggleReaction(input: {
     }
   }
 
-  await recomputeRankingScore(input.postId)
+  // A vote changes this author's net reputation → propagate to their posts.
+  await recomputeAuthorRanking(post.authorId)
   return { reacted: true }
 }
 
