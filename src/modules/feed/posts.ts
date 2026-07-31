@@ -3,8 +3,14 @@ import { ForbiddenError } from "@/modules/auth/session"
 import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
+import { notifyMentions } from "@/modules/feed/mentions"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
+
+const APP_BASE = process.env.AUTH_URL || "https://nnawca.org"
+
+// Reaction counts that trigger a "your post is trending" mail to the author.
+export const REACTION_MILESTONES = [25, 50, 100, 250, 500]
 
 const RANKING_POST_SELECT = {
   upvoteCount: true,
@@ -194,6 +200,23 @@ export async function createPost(input: CreatePostInput) {
     payload: { format: input.format, category: input.categoryKey },
   })
 
+  if (input.body) {
+    const author = await prisma.user.findUnique({
+      where: { id: input.authorId },
+      select: { displayName: true, legalName: true },
+    })
+    const authorName = input.isAnonymous
+      ? "Someone"
+      : author?.displayName || author?.legalName || "Someone"
+    await notifyMentions({
+      body: input.body,
+      authorId: input.authorId,
+      authorName,
+      postId: post.id,
+      url: `${APP_BASE}/feed/${post.id}`,
+    })
+  }
+
   return post
 }
 
@@ -357,6 +380,24 @@ export async function toggleReaction(input: {
         entityId: post.id,
         sendEmail: false,
       })
+
+      // Milestone email to the author when the post crosses a reaction threshold.
+      // Counts are trigger-maintained, so re-read after the write. Exact-equality
+      // fires once per threshold; a rapid unreact/re-react could refire — rare.
+      const fresh = await prisma.post.findUnique({
+        where: { id: post.id },
+        select: { upvoteCount: true },
+      })
+      if (fresh && REACTION_MILESTONES.includes(fresh.upvoteCount)) {
+        await sendNotification({
+          userId: post.authorId,
+          kind: "reaction_milestone",
+          title: `Your post hit ${fresh.upvoteCount} reactions`,
+          entityType: "post",
+          entityId: post.id,
+          email: { postUrl: `${APP_BASE}/feed/${post.id}`, count: String(fresh.upvoteCount) },
+        })
+      }
     } else if (input.type === "downvote") {
       await awardKarma({
         userId: post.authorId,
@@ -483,6 +524,20 @@ export async function createComment(input: {
 
   // comment_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
+
+  {
+    const commenter = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { displayName: true, legalName: true },
+    })
+    await notifyMentions({
+      body: input.body,
+      authorId: input.userId,
+      authorName: commenter?.displayName || commenter?.legalName || "Someone",
+      postId: input.postId,
+      url: `${APP_BASE}/feed/${input.postId}`,
+    })
+  }
 
   if (input.userId !== post.authorId) {
     await awardKarma({
