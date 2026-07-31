@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { verifyWebhookSignature } from "@/lib/razorpay"
 import { activateMembership } from "@/modules/membership/activation"
 import { claimAndActivateOrder } from "@/modules/membership/claim"
+import { isEventProcessed, markEventProcessed } from "@/lib/webhook-dedup"
 import { audit } from "@/lib/audit"
 import { type PlanCode } from "@/config/membership"
 
@@ -19,6 +20,14 @@ export async function POST(req: NextRequest) {
     payload = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+  }
+
+  // Idempotency: Razorpay retries a delivery on any non-2xx and can re-send the
+  // same event. Skip one we've already applied. Recorded after the handler
+  // succeeds (below) so a crash re-processes on retry rather than dropping it.
+  const eventId = req.headers.get("x-razorpay-event-id")
+  if (eventId && (await isEventProcessed(eventId))) {
+    return NextResponse.json({ received: true, deduped: true })
   }
 
   try {
@@ -46,6 +55,7 @@ export async function POST(req: NextRequest) {
       default:
         await audit({ action: `razorpay.webhook.${payload.event}`, payload: { skipped: true } })
     }
+    if (eventId) await markEventProcessed(eventId, payload.event)
     return NextResponse.json({ received: true })
   } catch (e) {
     console.error("Razorpay webhook error:", e)
