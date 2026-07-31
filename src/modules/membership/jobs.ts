@@ -6,6 +6,7 @@ import { expireMembership } from "@/modules/membership/activation"
 import { sendNotification } from "@/modules/notifications/service"
 import { queueEmail } from "@/modules/email/service"
 import { sendEmail } from "@/lib/email"
+import { processDueInviteWaves } from "@/modules/events/invites"
 import { audit } from "@/lib/audit"
 
 const DAY_MS = 86400000
@@ -27,6 +28,9 @@ export async function runMembershipMaintenance(): Promise<Record<string, string>
     ["razorpayReconcile", razorpayReconcileHandler],
     ["upsellNudge", upsellNudgeHandler],
     ["birthday", birthdayHandler],
+    // Fallback so due event-invite waves still go out if the dedicated hourly
+    // cron isn't running (e.g. Vercel Hobby, which caps crons at daily).
+    ["eventInviteWaves", async () => { await processDueInviteWaves() }],
   ]
   const results: Record<string, string> = {}
   for (const [name, fn] of tasks) {
