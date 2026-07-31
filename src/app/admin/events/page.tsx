@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import {
   CalendarCheck, Plus, MagnifyingGlass, DotsThreeVertical, Star, Eye, PencilSimple,
   Trash, Users, MapPin, VideoCamera, CheckCircle, XCircle, Clock,
@@ -8,6 +8,7 @@ import {
 } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
 import CreateEventModal from "./create-event-modal"
+import { inviteAllToEventAction } from "./actions"
 
 interface AdminEvent {
   id: string
@@ -45,6 +46,16 @@ export default function AdminEventsPage() {
   )
   const [approvals, setApprovals] = useState<Record<string, "upcoming" | "rejected">>({})
   const [createOpen, setCreateOpen] = useState(false)
+  const [inviting, startInvite] = useTransition()
+  const [inviteMsg, setInviteMsg] = useState<Record<string, string>>({})
+
+  function inviteAll(id: string) {
+    setActiveMenu(null)
+    startInvite(async () => {
+      const r = await inviteAllToEventAction(id)
+      setInviteMsg(m => ({ ...m, [id]: r.ok ? "Invites scheduled — going out in priority waves" : (r.error ?? "Failed") }))
+    })
+  }
 
   const filtered = events.filter(e => {
     const status = approvals[e.id] === "upcoming" ? "upcoming" : e.status
@@ -160,12 +171,19 @@ export default function AdminEventsPage() {
                             <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                           </button>
                           {activeMenu === e.id && (
-                            <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
+                            <div className="absolute right-4 top-10 z-20 w-52 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
+                              <button
+                                onClick={() => inviteAll(e.id)}
+                                disabled={inviting}
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-blue-400 hover:bg-zinc-800 disabled:opacity-50"
+                              >
+                                <Megaphone className="h-4 w-4" weight="duotone" /> Invite all members
+                              </button>
+                              <div className="my-1 border-t border-zinc-800" />
                               {[
                                 { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View event page" },
                                 { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },
                                 { icon: <Users className="h-4 w-4" weight="duotone" />, label: "View attendees" },
-                                { icon: <Megaphone className="h-4 w-4" weight="duotone" />, label: "Send announcement" },
                                 { icon: <Copy className="h-4 w-4" weight="duotone" />, label: "Duplicate event" },
                               ].map((item, i) => (
                                 <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
@@ -179,6 +197,9 @@ export default function AdminEventsPage() {
                             </div>
                           )}
                         </>
+                      )}
+                      {inviteMsg[e.id] && (
+                        <p className="mt-1 text-[11px] text-zinc-400 whitespace-nowrap">{inviteMsg[e.id]}</p>
                       )}
                     </Td>
                   </Tr>

@@ -55,3 +55,28 @@ export async function createAdminEventAction(input: CreateEventInput) {
   revalidatePath("/events")
   return { id: event.id, isPaid: parsed.isPaid }
 }
+
+/**
+ * Schedule the staggered "Invite All" waves for an event — Life/Committee now,
+ * Premium +2h, Associate +4h, Student +6h. The cron sends them; this returns
+ * immediately. Idempotent per event.
+ */
+export async function inviteAllToEventAction(
+  eventId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin()
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { id: true, status: true },
+  })
+  if (!event) return { ok: false, error: "Event not found" }
+  if (event.status !== "published") return { ok: false, error: "Only published events can be announced" }
+  try {
+    const { scheduleEventInvites } = await import("@/modules/events/invites")
+    await scheduleEventInvites(eventId)
+    return { ok: true }
+  } catch (e) {
+    console.error(`invite scheduling failed for event ${eventId}`, e)
+    return { ok: false, error: "Could not schedule invites" }
+  }
+}
