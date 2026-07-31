@@ -10,6 +10,7 @@ const PUBLIC_ROUTES = new Set([
   "/auth/signup",
   "/auth/forgot",
   "/auth/reset",
+  "/auth/verify",
   // Public corporate / marketing pages — reachable logged-out.
   "/about",
   "/committee",

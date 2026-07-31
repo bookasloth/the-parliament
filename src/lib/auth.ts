@@ -53,6 +53,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await audit({ action: "auth.login.failed", payload: { email: email.toLowerCase(), ip } });
           return null;
         }
+        // Block sign-in until the email is confirmed (self-signups start
+        // unverified). Imported members verify via the reset flow.
+        if (!user.emailVerifiedAt) {
+          await audit({ actorId: user.id, action: "auth.login.unverified", payload: { ip } });
+          return null;
+        }
         await audit({ actorId: user.id, action: "auth.login.success", payload: { ip } });
         return { id: user.id, email: user.email, name: user.legalName };
       },
