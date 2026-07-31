@@ -416,7 +416,7 @@ model AlumniVerification {
 
 model UserRole {
   userId    String   @map("user_id") @db.Uuid
-  role      String   @db.VarChar(30)
+  role      AdminRole
   grantedBy String?  @map("granted_by") @db.Uuid
   grantedAt DateTime @default(now()) @map("granted_at") @db.Timestamptz
 
@@ -1557,7 +1557,7 @@ model EmailMessage {
   templateCode  String    @map("template_code") @db.VarChar(80)
   category      String    @db.VarChar(30)
   subject       String    @db.VarChar(240)
-  status        String    @default("queued") @db.VarChar(20)
+  status        EmailStatus @default(queued)
   queuedAt      DateTime  @default(now()) @map("queued_at") @db.Timestamptz
   sentAt        DateTime? @map("sent_at") @db.Timestamptz
   error         String?
@@ -1772,4 +1772,22 @@ enum GroupMemberStatus {
   invited
   banned
   removed
+}
+
+// ── Enums batch 4: admin roles + email status ──
+// (events.mode deferred — hyphenated "in-person" used across ~15 app sites +
+//  inconsistent online/in-person model; needs an app cleanup first. Games/
+//  tournament deferred — unbuilt feature, empty tables.)
+enum AdminRole {
+  super_admin
+  admin
+  moderator
+}
+
+enum EmailStatus {
+  queued
+  sent
+  failed
+  bounced
+  delivered
 }

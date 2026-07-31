@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { handleError, ok } from "@/lib/api"
 import { requireAdmin } from "@/lib/gate"
+import type { EmailStatus } from "@/generated/prisma/enums"
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     const messages = await prisma.emailMessage.findMany({
       where: {
-        ...(status ? { status } : {}),
+        ...(status ? { status: status as EmailStatus } : {}),
         ...(category ? { category } : {}),
       },
       orderBy: { queuedAt: "desc" },

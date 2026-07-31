@@ -42,7 +42,7 @@ export async function gateUser(opts: GateOptions = {}): Promise<GatedUser> {
     throw new ForbiddenError(`Requires ${opts.karmaMin} karma`)
   }
 
-  const roles = roleRows.map((r) => r.role)
+  const roles = roleRows.map((r) => r.role as string)
   if (opts.roles && !opts.roles.some((r) => roles.includes(r))) {
     throw new ForbiddenError("Missing required role")
   }
