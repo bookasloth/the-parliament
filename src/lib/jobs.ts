@@ -32,6 +32,7 @@ export const QUEUE = {
   EMAIL_SEND: "email:send",
   EMAIL_DIGEST_BUILD: "email:digest:build",
   EMAIL_BOUNCE_POLL: "email:bounce-poll",
+  EVENT_INVITE: "event:invite-wave",
 } as const
 
 export function userLockKey(userId: string): string {

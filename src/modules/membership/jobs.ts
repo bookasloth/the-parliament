@@ -11,6 +11,18 @@ const DAY_MS = 86400000
 const HOUR_MS = 3600000
 
 export async function registerMembershipJobs(boss: PgBoss): Promise<void> {
+  // pg-boss v10+ requires queues to exist before work()/schedule().
+  for (const q of [
+    QUEUE.MEMBERSHIP_EXPIRE,
+    QUEUE.MEMBERSHIP_REMINDER,
+    QUEUE.COMMITTEE_EXPIRY_WARNING,
+    QUEUE.COMMITTEE_INVITE_EXPIRY,
+    QUEUE.RAZORPAY_RECONCILE,
+    QUEUE.UPSELL_NUDGE,
+  ]) {
+    await boss.createQueue(q)
+  }
+
   await boss.work(QUEUE.MEMBERSHIP_EXPIRE, expireHandler)
   await boss.work(QUEUE.MEMBERSHIP_REMINDER, reminderHandler)
   await boss.work(QUEUE.COMMITTEE_EXPIRY_WARNING, committeeExpiryWarningHandler)

@@ -5,7 +5,6 @@ import { z } from "zod"
 import { requireAdmin } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { prisma } from "@/lib/prisma"
-import { sendNotification } from "@/modules/notifications/service"
 
 const schema = z.object({
   title: z.string().min(2).max(200),
@@ -52,38 +51,36 @@ export async function createAdminEventAction(input: CreateEventInput) {
     select: { id: true },
   })
 
-  await announceNewEvent(event.id, parsed.title)
-
+  // No auto-blast on create. The admin decides when to invite via "Invite All".
   revalidatePath("/admin/events")
   revalidatePath("/events")
   return { id: event.id, isPaid: parsed.isPaid }
 }
 
 /**
- * Notify every registered alumnus (not current students of the school) of a new
- * event — in-app + email.
- *
- * ponytail: inline, capped fan-out. It runs in the create request, which is fine
- * at the current alumni scale. Move to a pg-boss job once the worker bootstrap
- * lands (registerMembershipJobs is currently unwired) or the base outgrows one
- * request. Each send is guarded so one bad recipient can't abort the rest.
+ * Admin action: invite all members to an event in staggered priority waves
+ * (Life/Committee first, then Premium +2h, Associate +4h, Student +6h). The
+ * actual fan-out runs in the pg-boss worker (see modules/events/jobs.ts), so the
+ * admin's click returns immediately. Requires the workers to be running
+ * (RUN_WORKERS=true).
  */
-async function announceNewEvent(eventId: string, title: string) {
-  const base = process.env.AUTH_URL || "https://nnawca.org"
-  const eventUrl = `${base}/events/${eventId}`
-  const recipients = await prisma.user.findMany({
-    where: { status: "active", memberType: { not: "student" }, email: { not: "" } },
-    select: { id: true },
-    take: 5000,
+export async function inviteAllToEventAction(
+  eventId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin()
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { id: true, status: true },
   })
-  for (const r of recipients) {
-    await sendNotification({
-      userId: r.id,
-      kind: "new_event_in_batch",
-      title: `New alumni event: ${title}`,
-      entityType: "event",
-      entityId: eventId,
-      email: { eventTitle: title, eventUrl },
-    }).catch((e) => console.error(`event announce failed for ${r.id}`, e))
+  if (!event) return { ok: false, error: "Event not found" }
+  if (event.status !== "published") return { ok: false, error: "Only published events can be announced" }
+
+  try {
+    const { scheduleEventInvites } = await import("@/modules/events/jobs")
+    await scheduleEventInvites(eventId)
+    return { ok: true }
+  } catch (e) {
+    console.error(`invite scheduling failed for event ${eventId}`, e)
+    return { ok: false, error: "Could not schedule invites — is the worker running?" }
   }
 }
