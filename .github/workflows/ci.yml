@@ -58,6 +58,12 @@ jobs:
         run: npx eslint src
         continue-on-error: true
 
+      # Advisory for now so it doesn't block in-flight PRs; flip continue-on-error
+      # to false to make known-vuln dependencies a hard gate once the tree is clean.
+      - name: Dependency audit (advisory)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
       - name: Unit tests (hard gate)
         run: npm test
 
