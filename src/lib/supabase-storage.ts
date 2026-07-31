@@ -21,6 +21,21 @@ export function isAllowedImage(contentType: string): boolean {
   return contentType in EXT
 }
 
+/** Base prefix every public storage URL we generate starts with. Empty when
+ *  Supabase storage isn't configured (env unset), in which case no URL passes. */
+function publicBase(): string {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!url) return ""
+  return `${url.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET}/`
+}
+
+/** True only for URLs pointing at our own Supabase public storage bucket —
+ *  used to reject arbitrary third-party media URLs supplied by a client. */
+export function isOurPublicUrl(url: string): boolean {
+  const base = publicBase()
+  return base.length > 0 && url.startsWith(base)
+}
+
 async function uploadImage(prefix: string, userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   const { url, key } = config()
   const ext = EXT[contentType]

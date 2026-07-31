@@ -1,8 +1,12 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { ChatSidebar } from "./ChatSidebar"
+import { refreshConversationsAction } from "./actions"
 import type { ConversationSummary } from "@/modules/messaging/types"
+
+const REFRESH_INTERVAL_MS = 10_000
 
 /**
  * Master-detail messaging shell (sits under the private navbar).
@@ -11,7 +15,7 @@ import type { ConversationSummary } from "@/modules/messaging/types"
  *    screen on /messages/[id] and the list is hidden (back button returns).
  */
 export function MessagesShell({
-  conversations,
+  conversations: initialConversations,
   children,
 }: {
   conversations: ConversationSummary[]
@@ -19,6 +23,16 @@ export function MessagesShell({
 }) {
   const pathname = usePathname()
   const inConversation = pathname !== "/messages"
+  const [conversations, setConversations] = useState(initialConversations)
+
+  // Poll for fresh unread counts / last-message previews so the sidebar
+  // doesn't go stale between page loads.
+  useEffect(() => {
+    const id = setInterval(() => {
+      refreshConversationsAction().then(setConversations)
+    }, REFRESH_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [])
 
   return (
     <div className="h-[calc(100dvh-3.5rem)] bg-[#f3f2ef] overflow-hidden p-0 sm:p-4 lg:px-6 lg:py-5">

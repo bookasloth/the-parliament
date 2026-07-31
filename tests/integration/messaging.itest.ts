@@ -2,6 +2,11 @@ import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead, getConversationMeta } from "@/modules/messaging/service";
 
+// Storage validation reads SUPABASE_URL at call time — pin it so the media-URL
+// tests below can build a matching in-domain URL regardless of the real env.
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://test.supabase.local";
+const ourMediaUrl = () => `${process.env.SUPABASE_URL}/storage/v1/object/public/avatars/messages/test.png`;
+
 const rnd = () => Math.random().toString(36).slice(2);
 async function makeUser() {
   return (await prisma.user.create({ data: { email: `m-${rnd()}@test.local`, legalName: "M" } })).id;
@@ -74,7 +79,7 @@ describe("send/edit/delete/markRead", () => {
     const conv = await prisma.conversation.findUniqueOrThrow({ where: { id }, select: { lastMessageAt: true } });
     expect(conv.lastMessageAt).not.toBeNull();
 
-    await sendMessage(a, id, { body: "", media: ["https://x/y.png"] }); // media-only ok
+    await sendMessage(a, id, { body: "", media: [ourMediaUrl()] }); // media-only ok
     await expect(sendMessage(a, id, { body: "" })).rejects.toThrow();   // empty rejected
 
     await editMessage(a, m.id, "hello (edited)");
@@ -90,6 +95,29 @@ describe("send/edit/delete/markRead", () => {
     await markRead(b, id);
     const listForB = await listConversations(b);
     expect(listForB[0].unreadCount).toBe(0);
+  });
+});
+
+describe("sendMessage validation", () => {
+  it("rejects off-domain media URLs and accepts our own", async () => {
+    const a = await makeUser(), b = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+
+    await expect(sendMessage(a, id, { body: "", media: ["http://attacker.example/x.png"] })).rejects.toThrow();
+    const msg = await sendMessage(a, id, { body: "", media: [ourMediaUrl()] });
+    expect(msg.media).toEqual([ourMediaUrl()]);
+  });
+
+  it("rejects a body over the length cap, in both send and edit", async () => {
+    const a = await makeUser(), b = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+    const tooLong = "x".repeat(5001);
+
+    await expect(sendMessage(a, id, { body: tooLong })).rejects.toThrow();
+    const m = await sendMessage(a, id, { body: "short" });
+    await expect(editMessage(a, m.id, tooLong)).rejects.toThrow();
   });
 });
 

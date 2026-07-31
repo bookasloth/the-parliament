@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
+import { isOurPublicUrl } from "@/lib/supabase-storage"
 import type { ConversationSummary, MessageView } from "./types"
+
+const MAX_MESSAGE_LEN = 5000
 
 export function dmKeyFor(a: string, b: string): string {
   return [a, b].sort().join(":")
@@ -131,7 +134,9 @@ export async function sendMessage(
 ): Promise<MessageView> {
   await assertParticipant(viewerId, conversationId)
   const body = input.body.trim()
+  if (body.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
   const media = input.media ?? []
+  if (media.some((m) => !isOurPublicUrl(m))) throw new ForbiddenError("Invalid media URL")
   if (!body && media.length === 0) throw new ForbiddenError("Empty message")
   const [msg] = await prisma.$transaction([
     prisma.message.create({
@@ -155,6 +160,7 @@ export async function editMessage(viewerId: string, messageId: string, body: str
   await assertAuthor(viewerId, messageId)
   const trimmed = body.trim()
   if (!trimmed) throw new ForbiddenError("Empty message")
+  if (trimmed.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
   await prisma.message.update({ where: { id: messageId }, data: { body: trimmed, editedAt: new Date() } })
 }
 
