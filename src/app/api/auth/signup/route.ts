@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       await sendEmail("email_verify_link", user.email, {
         legalName: user.legalName,
         verifyUrl: verifyUrl(rawToken),
-      });
+      }, user.id);
     } catch (mailErr) {
       console.error("signup verification email failed:", mailErr);
     }

@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest"
-import { renderEmail, EMAIL_TEMPLATE_KEYS, type EmailTemplates } from "@/lib/email"
+import { renderEmail, EMAIL_TEMPLATE_KEYS, EMAIL_CATEGORY, type EmailTemplates } from "@/lib/email"
 import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
 import { SEED_TEMPLATES } from "@/modules/email/templates"
 
 // Representative data for every lib/email template.
 const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   email_verification: { legalName: "Shubham", code: "789201" },
+  email_verify_link: { legalName: "Shubham", verifyUrl: "https://x/verify?t=1" },
   password_reset: { legalName: "Shubham", resetUrl: "https://x/reset?t=1", isNew: false },
   verification_approved: { legalName: "Shubham", loginUrl: "https://x/login" },
   verification_rejected: { legalName: "Shubham", reason: "ID photo unreadable" },
@@ -51,8 +52,9 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 10 keys", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(10)
+  it("covers all 11 keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(11)
+    for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
   for (const key of Object.keys(SAMPLE) as (keyof EmailTemplates)[]) {

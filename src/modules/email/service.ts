@@ -65,47 +65,68 @@ function getTransport(): nodemailer.Transporter {
   return cachedTransport
 }
 
-export async function queueEmail(args: SendArgs): Promise<{ messageId: string | null; reason?: string }> {
-  const template = await prisma.emailTemplate.findUnique({
-    where: { code: args.templateCode },
-  })
-  if (!template || !template.isActive) {
-    return { messageId: null, reason: "template_inactive" }
-  }
+// The single guarded send path. Every email — DB-template (queueEmail) OR
+// code-template (lib/email sendEmail) — goes through here, so suppression,
+// per-user opt-out, quiet-hours deferral and EmailMessage logging are enforced
+// once, in one place. Callers pass pre-rendered subject/text/html.
+export interface DeliverArgs {
+  toAddress: string
+  userId?: string
+  category: EmailCategory
+  subject: string
+  text: string
+  html: string
+  /** Template code for logging; defaults to "adhoc". */
+  templateCode?: string
+  /** Stored on the EmailMessage for debugging/resend. */
+  variables?: Record<string, string>
+  bypassQuietHours?: boolean
+  /** One-click unsubscribe token for the List-Unsubscribe header. */
+  unsubscribeToken?: string
+}
 
-  const category = template.category as EmailCategory
-  const suppressed = await prisma.emailSuppression.findUnique({
-    where: { emailAddress: args.toAddress.toLowerCase() },
-  })
+export async function deliver(args: DeliverArgs): Promise<{ messageId: string | null; reason?: string }> {
+  const to = args.toAddress.toLowerCase()
+  const code = args.templateCode ?? "adhoc"
+
+  // 1. Suppression — applies to EVERY category, including transactional.
+  const suppressed = await prisma.emailSuppression.findUnique({ where: { emailAddress: to } })
   if (suppressed) return { messageId: null, reason: "suppressed" }
 
+  // 2. Per-user opt-out. Transactional maps to the always-on "transactional"
+  //    flag, so account/security mail can't be blocked here.
   if (args.userId) {
     const prefs = await prisma.emailPreference.findUnique({ where: { userId: args.userId } })
     const flags: PreferenceFlags = prefs ?? defaultPreferences()
-    const pref = CATEGORY_PREF_MAP[category]
-    if (!flags[pref]) return { messageId: null, reason: "opted_out" }
+    if (!flags[CATEGORY_PREF_MAP[args.category]]) return { messageId: null, reason: "opted_out" }
   }
 
-  if (!args.bypassQuietHours && category !== "transactional") {
-    if (insideQuietHours()) {
-      return scheduleForAfterQuiet(args, template)
-    }
+  // 3. Quiet hours — defer non-transactional mail sent overnight (IST).
+  if (!args.bypassQuietHours && args.category !== "transactional" && insideQuietHours()) {
+    const deferred = await prisma.emailMessage.create({
+      data: {
+        userId: args.userId,
+        toAddress: to,
+        templateCode: code,
+        category: args.category,
+        subject: args.subject,
+        status: "queued",
+        metadata: { quietHoursDeferred: true, variables: args.variables ?? {} } as Prisma.InputJsonValue,
+      },
+    })
+    return { messageId: deferred.id, reason: "quiet_hours_deferred" }
   }
 
-  const filledSubject = fillVars(template.subject, args.variables)
-  const filledText = fillVars(template.textBody, args.variables)
-  const filledHtml = fillVars(template.htmlBody, withUnsubscribe(args.variables, args.userId, category))
-  const from = FROM_BY_CATEGORY[category]
-
+  // 4. Log, then send.
   const message = await prisma.emailMessage.create({
     data: {
       userId: args.userId,
-      toAddress: args.toAddress.toLowerCase(),
-      templateCode: template.code,
-      category,
-      subject: filledSubject,
+      toAddress: to,
+      templateCode: code,
+      category: args.category,
+      subject: args.subject,
       status: "queued",
-      metadata: { variables: args.variables } as Prisma.InputJsonValue,
+      metadata: { variables: args.variables ?? {} } as Prisma.InputJsonValue,
     },
   })
 
@@ -114,25 +135,25 @@ export async function queueEmail(args: SendArgs): Promise<{ messageId: string | 
       where: { id: message.id },
       data: { status: "sent", sentAt: new Date(), providerMsgId: "dev-noop" },
     })
-    console.log(`[email:dev] ${template.code} -> ${args.toAddress}`)
+    console.log(`[email:dev] ${code} -> ${to}`)
     return { messageId: message.id }
   }
 
   try {
     const info = await getTransport().sendMail({
-      from,
+      from: FROM_BY_CATEGORY[args.category],
       to: args.toAddress,
-      subject: filledSubject,
-      text: filledText,
-      html: filledHtml,
-      headers: category !== "transactional"
-        ? {
-            "List-Unsubscribe": `<mailto:unsubscribe@nnawca.com?subject=unsubscribe-${category}>, <${process.env.AUTH_URL || ""}/api/email/unsubscribe?token=${args.variables.unsubscribeToken ?? ""}>`,
-            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-          }
-        : undefined,
+      subject: args.subject,
+      text: args.text,
+      html: args.html,
+      headers:
+        args.category !== "transactional"
+          ? {
+              "List-Unsubscribe": `<mailto:unsubscribe@nnawca.com?subject=unsubscribe-${args.category}>, <${process.env.AUTH_URL || ""}/api/email/unsubscribe?token=${args.unsubscribeToken ?? ""}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+          : undefined,
     })
-
     await prisma.emailMessage.update({
       where: { id: message.id },
       data: { status: "sent", sentAt: new Date(), providerMsgId: info.messageId ?? null },
@@ -147,6 +168,27 @@ export async function queueEmail(args: SendArgs): Promise<{ messageId: string | 
     await audit({ action: "email.send.failed", entityId: message.id, payload: { error: errMsg } })
     return { messageId: message.id, reason: "send_failed" }
   }
+}
+
+/** DB-template send: look up + fill the template, then hand off to deliver(). */
+export async function queueEmail(args: SendArgs): Promise<{ messageId: string | null; reason?: string }> {
+  const template = await prisma.emailTemplate.findUnique({ where: { code: args.templateCode } })
+  if (!template || !template.isActive) {
+    return { messageId: null, reason: "template_inactive" }
+  }
+  const category = template.category as EmailCategory
+  return deliver({
+    toAddress: args.toAddress,
+    userId: args.userId,
+    category,
+    templateCode: template.code,
+    subject: fillVars(template.subject, args.variables),
+    text: fillVars(template.textBody, args.variables),
+    html: fillVars(template.htmlBody, withUnsubscribe(args.variables, args.userId, category)),
+    variables: args.variables,
+    bypassQuietHours: args.bypassQuietHours,
+    unsubscribeToken: args.variables.unsubscribeToken,
+  })
 }
 
 export async function suppress(emailAddress: string, reason: "hard_bounce" | "complaint" | "unsubscribe_all" | "invalid"): Promise<void> {
@@ -211,20 +253,3 @@ function insideQuietHours(now: Date = new Date()): boolean {
   return istHour >= 22 || istHour < 7
 }
 
-async function scheduleForAfterQuiet(
-  args: SendArgs,
-  template: { code: string; subject: string; category: string },
-): Promise<{ messageId: string; reason: string }> {
-  const message = await prisma.emailMessage.create({
-    data: {
-      userId: args.userId,
-      toAddress: args.toAddress.toLowerCase(),
-      templateCode: template.code,
-      category: template.category,
-      subject: template.subject,
-      status: "queued",
-      metadata: { quietHoursDeferred: true, variables: args.variables } as Prisma.InputJsonValue,
-    },
-  })
-  return { messageId: message.id, reason: "quiet_hours_deferred" }
-}

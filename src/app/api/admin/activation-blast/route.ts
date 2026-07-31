@@ -41,7 +41,7 @@ export async function POST(req: Request) {
           legalName: u.legalName,
           resetUrl: resetUrl(raw),
           isNew: true,
-        })
+        }, u.id)
         sent++
         await new Promise((r) => setTimeout(r, 250)) // gentle SMTP throttle
       } catch {

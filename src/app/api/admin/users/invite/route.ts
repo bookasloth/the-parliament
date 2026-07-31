@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       legalName: user.legalName,
       resetUrl: resetUrl(raw),
       isNew: true,
-    })
+    }, user.id)
 
     return NextResponse.json({ ok: true, userId: user.id, username })
   } catch (e) {

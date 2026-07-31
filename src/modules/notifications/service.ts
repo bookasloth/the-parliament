@@ -62,7 +62,7 @@ export async function sendNotification<K extends NotificationKind>(
   if (!user?.email) return
 
   try {
-    await sendEmail(tpl, user.email, input.email as never)
+    await sendEmail(tpl, user.email, input.email as never, input.userId)
   } catch (e) {
     console.error("Notification email failed:", e)
   }
