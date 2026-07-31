@@ -22,7 +22,9 @@ export default async function EventRegisterPage({
   async function submit(formData: FormData) {
     "use server"
     const u = await requireUser()
-    const status = String(formData.get("status") ?? "going")
+    const raw = String(formData.get("status") ?? "going")
+    const allowed = ["going", "maybe", "not_going", "waitlist"] as const
+    const status = (allowed as readonly string[]).includes(raw) ? (raw as (typeof allowed)[number]) : "going"
     await rsvpEvent(u.id, event.id, status)
     revalidatePath(`/events/${event.id}`)
     revalidatePath("/events")

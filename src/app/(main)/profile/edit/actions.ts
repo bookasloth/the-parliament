@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@/generated/prisma/client"
+import type { ProfileVisibility } from "@/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/modules/auth/session"
 
@@ -131,8 +132,8 @@ export async function saveSocial(input: {
   } as Prisma.InputJsonValue
   await prisma.profile.upsert({
     where: { userId: user.id },
-    update: { linkedinUrl: input.linkedin || null, socialLinks, visibility: input.visibility || "alumni" },
-    create: { userId: user.id, linkedinUrl: input.linkedin || null, socialLinks, visibility: input.visibility || "alumni" },
+    update: { linkedinUrl: input.linkedin || null, socialLinks, visibility: (input.visibility || "alumni") as ProfileVisibility },
+    create: { userId: user.id, linkedinUrl: input.linkedin || null, socialLinks, visibility: (input.visibility || "alumni") as ProfileVisibility },
   })
 }
 
