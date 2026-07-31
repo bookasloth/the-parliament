@@ -110,12 +110,12 @@ model User {
   currentStatus        String?   @map("current_status") @db.VarChar(20)
   isVerified           Boolean   @default(false) @map("is_verified")
   verifiedAt           DateTime? @map("verified_at") @db.Timestamptz
-  status               String    @default("active") @db.VarChar(20)
+  status               UserStatus @default(active)
   lastLoginAt          DateTime? @map("last_login_at") @db.Timestamptz
   onboardingStep       String    @default("profile") @map("onboarding_step") @db.VarChar(30)
   onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
   profileCompletion    Int       @default(0) @map("profile_completion")
-  verificationStatus   String    @default("pending") @map("verification_status") @db.VarChar(20)
+  verificationStatus   VerificationStatus @default(pending) @map("verification_status")
   membershipStatus     String    @default("student") @map("membership_status") @db.VarChar(20)
   membershipExpiresAt  DateTime? @map("membership_expires_at") @db.Timestamptz
   membershipCycleStart DateTime? @map("membership_cycle_start") @db.Timestamptz
@@ -599,7 +599,7 @@ model Reaction {
   userId     String   @map("user_id") @db.Uuid
   entityType String   @map("entity_type") @db.VarChar(20)
   entityId   String   @map("entity_id") @db.Uuid
-  type       String   @db.VarChar(20)
+  type       ReactionType
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -866,7 +866,7 @@ model KarmaTransaction {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @map("user_id") @db.Uuid
   counterpartyId String?  @map("counterparty_id") @db.Uuid
-  role           String   @db.VarChar(12)
+  role           KarmaRole
   actionType     String   @map("action_type") @db.VarChar(40)
   baseValue      Decimal  @map("base_value") @db.Decimal(8, 2)
   appliedValue   Decimal  @map("applied_value") @db.Decimal(8, 2)
@@ -1607,4 +1607,34 @@ model EmailUnsubscribeToken {
   @@index([userId, category])
   @@index([expiresAt])
   @@map("email_unsubscribe_tokens")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+// Curated first batch — columns whose value set is fully code-controlled.
+// DB-level validation replaces bare VarChar strings. Add more per-column
+// after a prod `SELECT DISTINCT` preflight confirms no legacy value.
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+  banned
+}
+
+enum VerificationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ReactionType {
+  upvote
+  downvote
+  like
+}
+
+enum KarmaRole {
+  actor
+  publisher
+  self
 }
