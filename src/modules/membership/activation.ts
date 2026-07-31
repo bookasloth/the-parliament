@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { audit } from "@/lib/audit"
 import { PLANS, type PlanCode } from "@/config/membership"
 import { nextRenewalDate } from "@/lib/membership-cycle"
+import { queueEmail } from "@/modules/email/service"
 
 export interface ActivateInput {
   userId: string
@@ -103,8 +104,56 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
           toPlan: result.newPlanCode,
         },
       })
+      // Fire the tier welcome email AFTER the tx commits — never inside it, and
+      // never let a mail failure fail a paid activation.
+      await sendWelcomeEmail(input, result)
       return result
     })
+}
+
+/**
+ * Which welcome template a freshly-activated tier gets, or null for none.
+ * Renewals are skipped (they get the separate "welcome back" mail); student and
+ * committee tiers have no welcome. Pure — unit-tested.
+ */
+export function welcomeTemplateFor(
+  planCode: PlanCode,
+  source: ActivateInput["source"],
+): string | null {
+  if (source === "renewal") return null
+  if (planCode === "associate") return "membership.welcome_associate"
+  if (planCode === "premium") return "membership.welcome_premium"
+  if (planCode === "life") return "membership.welcome_life"
+  return null
+}
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+async function sendWelcomeEmail(input: ActivateInput, result: ActivateResult): Promise<void> {
+  const templateCode = welcomeTemplateFor(input.planCode, input.source)
+  if (!templateCode) return
+  try {
+    const u = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { email: true, legalName: true, username: true },
+    })
+    if (!u?.email) return
+    const firstName = u.legalName?.split(" ")[0] || "there"
+    const base = process.env.AUTH_URL || "https://nnawca.org"
+    const variables: Record<string, string> =
+      input.planCode === "life"
+        ? { firstName, profileUrl: u.username ? `${base}/profile/${u.username}` : `${base}/membership` }
+        : {
+            firstName,
+            manageUrl: `${base}/membership`,
+            renewalDate: result.endsAt ? fmtDate(result.endsAt) : "—",
+          }
+    await queueEmail({ templateCode, toAddress: u.email, userId: input.userId, variables })
+  } catch (e) {
+    console.error(`welcome email (${templateCode}) failed for ${input.userId}`, e)
+  }
 }
 
 function eventTypeFor(source: ActivateInput["source"], prev: PlanCode, next: PlanCode): string {
