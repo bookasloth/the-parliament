@@ -6,15 +6,15 @@ import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
   Palette, Check, Sparkles, Smile, ImagePlus, Pencil, X,
 } from "lucide-react"
+import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
 import { ALL_THEMES, getActiveTheme, type ChatTheme } from "@/config/chat-themes"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import type { MessageView } from "@/modules/messaging/types"
 import {
-  sendMessageAction, markReadAction, refreshMessagesAction, conversationMetaAction,
+  sendMessageAction, markReadAction, realtimeTokenAction,
   editMessageAction, deleteMessageAction,
 } from "../actions"
-
-const POLL_MS = 4000
 
 const EMOJIS = [
   "😀", "😂", "🥲", "😊", "😍", "😘", "😉", "😎", "🤔", "😅",
@@ -49,9 +49,14 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
   const [msgMenuId, setMsgMenuId] = useState<string | null>(null)
+  const [otherOnline, setOtherOnline] = useState(false)
+  const [otherTyping, setOtherTyping] = useState(false)
   // null = auto (date-based); otherwise an explicit preview override
   const [themeOverride, setThemeOverride] = useState<ChatTheme | null>(null)
 
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -85,27 +90,86 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
     markReadAction(conversationId)
   }, [conversationId, lastIncomingId])
 
-  // Poll for new messages + the other participant's read state.
-  // ponytail: re-fetches latest page (limit 50) and dedupes by id, rather than
-  // threading an "after" cursor through the service — simplest correct thing
-  // for a single-conversation view. Add a since-cursor if pagination depth grows.
+  // Realtime: subscribe to the private conversation channel. Server broadcasts
+  // new_message / edit / delete / read after every DB write; presence gives the
+  // online dot and a peer 'typing' event drives the typing indicator. Replaces
+  // the old 4s poll — delivery is now instant.
   useEffect(() => {
-    const id = setInterval(async () => {
-      const [fresh, metaRes] = await Promise.all([
-        refreshMessagesAction(conversationId),
-        conversationMetaAction(conversationId),
-      ])
-      if (fresh.length) {
-        setMessages((prev) => {
-          const known = new Set(prev.map((m) => m.id))
-          const toAdd = fresh.filter((m) => !known.has(m.id))
-          return toAdd.length ? [...prev, ...toAdd].sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : prev
+    let cancelled = false
+    let refreshTimer: ReturnType<typeof setTimeout>
+    const supabase = getSupabaseBrowser()
+
+    async function connect() {
+      const auth = await realtimeTokenAction()
+      if (!auth || cancelled) return
+      await supabase.realtime.setAuth(auth.token)
+      // Re-mint before the 1h token expiry so a long-open tab keeps its socket.
+      refreshTimer = setTimeout(connect, 55 * 60 * 1000)
+
+      // Reuse the existing channel on token refresh; only build it once.
+      if (channelRef.current) return
+
+      const channel = supabase.channel(`conversation:${conversationId}`, {
+        config: { private: true, presence: { key: viewerId }, broadcast: { self: false } },
+      })
+      channelRef.current = channel
+
+      channel
+        .on("broadcast", { event: "new_message" }, ({ payload }) => {
+          const m = payload as MessageView
+          setMessages((prev) =>
+            prev.some((x) => x.id === m.id)
+              ? prev
+              : [...prev, m].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+          )
         })
+        .on("broadcast", { event: "edit" }, ({ payload }) => {
+          const p = payload as { id: string; body: string; editedAt: string }
+          setMessages((prev) => prev.map((m) => (m.id === p.id ? { ...m, body: p.body, editedAt: p.editedAt } : m)))
+        })
+        .on("broadcast", { event: "delete" }, ({ payload }) => {
+          const p = payload as { id: string }
+          setMessages((prev) => prev.map((m) => (m.id === p.id ? { ...m, deleted: true, body: "", media: [] } : m)))
+        })
+        .on("broadcast", { event: "read" }, ({ payload }) => {
+          const p = payload as { userId: string; lastReadAt: string }
+          if (p.userId !== viewerId) setOtherLastReadAt(p.lastReadAt)
+        })
+        .on("broadcast", { event: "typing" }, ({ payload }) => {
+          const p = payload as { userId: string }
+          if (p.userId === viewerId) return
+          setOtherTyping(true)
+          clearTimeout(typingClearRef.current)
+          typingClearRef.current = setTimeout(() => setOtherTyping(false), 3000)
+        })
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState()
+          setOtherOnline(Object.keys(state).some((k) => k !== viewerId))
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") channel.track({ online_at: Date.now() })
+        })
+    }
+
+    connect()
+    return () => {
+      cancelled = true
+      clearTimeout(refreshTimer)
+      clearTimeout(typingClearRef.current)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
       }
-      if (metaRes.ok) setOtherLastReadAt(metaRes.meta.otherLastReadAt)
-    }, POLL_MS)
-    return () => clearInterval(id)
-  }, [conversationId])
+    }
+  }, [conversationId, viewerId])
+
+  // Notify the peer we're typing (throttled to once per 2s).
+  function signalTyping() {
+    const now = Date.now()
+    if (now - lastTypingSentRef.current < 2000) return
+    lastTypingSentRef.current = now
+    channelRef.current?.send({ type: "broadcast", event: "typing", payload: { userId: viewerId } })
+  }
 
   function autoResize() {
     const el = textareaRef.current
@@ -240,6 +304,15 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
           />
           <div className="min-w-0">
             <h6 className="truncate text-sm font-semibold text-gray-900">{otherUser.name}</h6>
+            <p className="truncate text-[11px] leading-tight">
+              {otherTyping ? (
+                <span className="text-brand font-medium">typing…</span>
+              ) : otherOnline ? (
+                <span className="text-green-600 font-medium">● Online</span>
+              ) : (
+                <span className="text-gray-400">Offline</span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -461,7 +534,7 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => { setInput(e.target.value); autoResize() }}
+            onChange={(e) => { setInput(e.target.value); autoResize(); signalTyping() }}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             rows={1}
             placeholder="Type a message"
