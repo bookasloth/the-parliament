@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { dmKeyFor, canMessage, findOrCreateConversation } from "@/modules/messaging/service";
+import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage } from "@/modules/messaging/service";
 
 const rnd = () => Math.random().toString(36).slice(2);
 async function makeUser() {
@@ -39,5 +39,27 @@ describe("findOrCreateConversation", () => {
     expect(parts).toBe(2);
     await expect(findOrCreateConversation(a, c)).rejects.toThrow(); // not connected
     await expect(findOrCreateConversation(a, a)).rejects.toThrow(); // self
+  });
+});
+
+describe("listConversations + getMessages", () => {
+  it("lists a conversation with unread count and returns its messages", async () => {
+    const a = await makeUser(), b = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+    await sendMessage(b, id, { body: "hi a" }); // b -> a, unread for a
+
+    const listForA = await listConversations(a);
+    expect(listForA).toHaveLength(1);
+    expect(listForA[0].otherUser.id).toBe(b);
+    expect(listForA[0].unreadCount).toBe(1);
+    expect(listForA[0].lastMessagePreview).toBe("hi a");
+
+    const msgs = await getMessages(a, id);
+    expect(msgs.map((m) => m.body)).toEqual(["hi a"]);
+
+    // a non-participant cannot read
+    const c = await makeUser();
+    await expect(getMessages(c, id)).rejects.toThrow();
   });
 });
