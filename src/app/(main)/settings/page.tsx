@@ -1,6 +1,9 @@
 import Link from "next/link"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
+import EmailPrefsForm from "./email-prefs-form"
+import PasswordForm from "./password-form"
+import { EMAIL_PREF_KEYS, type EmailPrefKey } from "./prefs"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +19,7 @@ export default async function SettingsPage() {
       status: true,
       membershipStatus: true,
       isVerified: true,
+      passwordHash: true,
       profile: {
         select: {
           photoUrl: true,
@@ -34,6 +38,12 @@ export default async function SettingsPage() {
       </div>
     )
   }
+
+  // Standalone model (no Prisma relation) — fetch separately. Absent row = all on.
+  const savedPrefs = await prisma.emailPreference.findUnique({ where: { userId: sessionUser.id } })
+  const initialPrefs = Object.fromEntries(
+    EMAIL_PREF_KEYS.map(k => [k, savedPrefs ? (savedPrefs[k] as boolean) : true]),
+  ) as Record<EmailPrefKey, boolean>
 
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
@@ -79,6 +89,10 @@ export default async function SettingsPage() {
               </dl>
             </section>
           )}
+
+          <EmailPrefsForm initial={initialPrefs} />
+
+          <PasswordForm hasPassword={Boolean(user.passwordHash)} />
         </div>
       </div>
     </div>
