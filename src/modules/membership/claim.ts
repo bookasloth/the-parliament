@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { activateMembership } from "./activation"
+import { issueReceiptAndInvoice } from "./receipt"
 import { type PlanCode } from "@/config/membership"
 
 export interface ClaimResult {
@@ -54,6 +55,10 @@ export async function claimAndActivateOrder(
     amountPaise: order.amountPaise,
     orderId: order.id,
   })
+
+  // Paperwork: numbered invoice + receipt email. Best-effort — never throws, so a
+  // failed receipt can't undo the grant above. Runs once (claim fires once).
+  await issueReceiptAndInvoice(order.id)
 
   return {
     claimed: true,

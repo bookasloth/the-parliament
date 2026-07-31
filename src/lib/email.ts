@@ -12,6 +12,7 @@ export type EmailTemplates = {
   email_verification: { legalName: string; code: string }
   email_verify_link: { legalName: string; verifyUrl: string }
   password_reset: { legalName: string; resetUrl: string; isNew: boolean }
+  payment_receipt: { legalName: string; planName: string; amountInr: string; invoiceUrl: string; invoiceNumber: string }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
   new_follower: { fromName: string; profileUrl: string }
@@ -77,6 +78,31 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
           button(d.isNew ? "Set my password" : "Reset password", d.resetUrl, "blue") +
           small("This link expires soon. If you didn't request it, you can safely ignore this email."),
         reason: "This is a transactional message about your account.",
+      }),
+  },
+  payment_receipt: {
+    subject: () => "Your NNAWCA contribution is confirmed",
+    text: (d) =>
+      `Hi ${d.legalName},\n\nThank you for your contribution to NNAWCA.\n\nPlan: ${d.planName}\nAmount: INR ${d.amountInr}\nInvoice: ${d.invoiceNumber}\nDownload: ${d.invoiceUrl}\n\nThis is a non-refundable contribution to NNAWCA. Keep this receipt for your records.`,
+    html: (d) =>
+      emailShell({
+        accent: "emerald",
+        pill: "Receipt",
+        eyebrow: "Payment · Confirmed",
+        heading: "Your contribution is confirmed",
+        body:
+          p(`Hi ${d.legalName}, thank you for your contribution to NNAWCA. Here's your receipt for your records.`) +
+          details(
+            [
+              ["Plan", d.planName],
+              ["Amount", `₹${d.amountInr}`],
+              ["Invoice", d.invoiceNumber],
+            ],
+            "emerald",
+          ) +
+          button("Download invoice", d.invoiceUrl, "emerald") +
+          small("This is a non-refundable contribution to NNAWCA. Keep this receipt for your records."),
+        reason: "This is a transactional receipt for your payment.",
       }),
   },
   verification_approved: {
@@ -223,6 +249,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   email_verification: "transactional",
   email_verify_link: "transactional",
   password_reset: "transactional",
+  payment_receipt: "transactional",
   verification_approved: "transactional",
   verification_rejected: "transactional",
   new_follower: "engagement",
