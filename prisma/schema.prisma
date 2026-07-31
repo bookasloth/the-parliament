@@ -756,23 +756,28 @@ model PostHashtag {
 // ─────────────────────────────────────────────
 
 model Conversation {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastMessageAt DateTime? @map("last_message_at") @db.Timestamptz
+  dmKey         String?   @unique @map("dm_key") @db.VarChar(80)
 
   participants ConversationParticipant[]
   messages     Message[]
 
+  @@index([lastMessageAt])
   @@map("conversations")
 }
 
 model ConversationParticipant {
-  conversationId String @map("conversation_id") @db.Uuid
-  userId         String @map("user_id") @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  lastReadAt     DateTime? @map("last_read_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([conversationId, userId])
+  @@index([userId])
   @@map("conversation_participants")
 }
 
@@ -781,13 +786,16 @@ model Message {
   conversationId String    @map("conversation_id") @db.Uuid
   senderId       String    @map("sender_id") @db.Uuid
   body           String
+  media          Json      @default("[]")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  editedAt       DateTime? @map("edited_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("message_sender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([senderId, createdAt])
+  @@index([conversationId, createdAt])
   @@map("messages")
 }
 

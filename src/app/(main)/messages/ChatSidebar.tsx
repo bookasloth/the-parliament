@@ -4,9 +4,10 @@ import { useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Search, SlidersHorizontal, PenSquare } from "lucide-react"
-import { conversations } from "./chat-data"
+import { colorAvatar } from "@/lib/avatar"
+import type { ConversationSummary } from "@/modules/messaging/types"
 
-export function ChatSidebar() {
+export function ChatSidebar({ conversations }: { conversations: ConversationSummary[] }) {
   const pathname = usePathname()
   const [search, setSearch] = useState("")
 
@@ -15,8 +16,8 @@ export function ChatSidebar() {
 
   const filtered = conversations.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.preview.toLowerCase().includes(search.toLowerCase())
+      c.otherUser.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.lastMessagePreview.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -65,30 +66,26 @@ export function ChatSidebar() {
                   {/* Square avatar */}
                   <div className="relative flex-shrink-0">
                     <Image
-                      src={c.avatar}
-                      alt={c.name}
+                      src={c.otherUser.avatar ?? colorAvatar(c.otherUser.id)}
+                      alt={c.otherUser.name}
                       width={44}
                       height={44}
                       className="h-11 w-11 rounded-lg object-cover"
-                      style={c.houseColor ? { boxShadow: `0 0 0 2px ${c.houseColor}` } : undefined}
                     />
-                    {c.online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-400 border-2 border-white" />
-                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <h6 className={`truncate text-sm ${active ? "font-bold text-brand" : "font-semibold text-gray-900"}`}>
-                        {c.name}
+                        {c.otherUser.name}
                       </h6>
-                      {c.unread ? (
+                      {c.unreadCount > 0 ? (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
-                          {c.unread}
+                          {c.unreadCount}
                         </span>
                       ) : null}
                     </div>
-                    <p className={`truncate text-xs ${c.unread ? "font-medium text-gray-700" : "text-gray-500"}`}>
-                      {c.preview}
+                    <p className={`truncate text-xs ${c.unreadCount > 0 ? "font-medium text-gray-700" : "text-gray-500"}`}>
+                      {c.lastMessagePreview}
                     </p>
                   </div>
                 </a>
@@ -97,8 +94,12 @@ export function ChatSidebar() {
           })}
           {filtered.length === 0 && (
             <li className="px-3 py-10 text-center">
-              <p className="text-sm font-medium text-gray-500">No chats found</p>
-              <p className="text-xs text-gray-400 mt-1">Try a different search</p>
+              <p className="text-sm font-medium text-gray-500">
+                {totalChats === 0 ? "No conversations yet" : "No chats found"}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {totalChats === 0 ? "Start a chat from someone's profile" : "Try a different search"}
+              </p>
             </li>
           )}
         </ul>

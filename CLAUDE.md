@@ -133,7 +133,7 @@ Key fields (from `prisma/schema.prisma`):
 
 ## Frontend / UI
 
-> Some `(main)` pages still use mock data (`/messages`, `/notifications`, `/connections`,
+> Some `(main)` pages still use mock data (`/notifications`, `/connections`,
 > `/events`, `/groups`, `/feed/[postId]/*`, `/settings`, `/dashboard`). Wire to Prisma
 > as they get built out.
 
@@ -152,7 +152,8 @@ Key fields (from `prisma/schema.prisma`):
   Admin pages must avoid emoji icons (use lucide).
 - **`messages/`** is a master-detail shell: `messages/layout.tsx` (client) renders the chat list
   (`ChatSidebar`) + the conversation/empty-state child. Desktop shows both panes; mobile shows the
-  list on `/messages` and the conversation on `/messages/[id]`. Mock data in `messages/chat-data.ts`.
+  list on `/messages` and the conversation on `/messages/[id]`. Wired to `src/modules/messaging`
+  (1:1 DMs, polling delivery); Supabase Realtime + presence are Slice 2.
 
 ### Standard page width (consistency rule)
 - Full-content / list pages use **`mx-auto max-w-[1400px] px-4 sm:px-6`** — the same width as the
