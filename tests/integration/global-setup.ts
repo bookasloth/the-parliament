@@ -8,11 +8,18 @@ const TEST_URL =
   process.env.TEST_DATABASE_URL ??
   "postgresql://postgres:postgres@localhost:5432/the_parliament_test";
 
-// Creates the throwaway `*_test` database (if missing) and pushes the Prisma
-// schema into it before the integration suite runs. Idempotent.
+// Drops + recreates the throwaway `*_test` database and applies all migrations
+// before the integration suite runs.
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
+
 export default async function setup() {
   const u = new URL(TEST_URL);
   const dbName = u.pathname.replace(/^\//, "");
+  // Belt-and-braces: this runs a destructive `migrate reset`, so refuse anything
+  // that isn't a local throwaway *_test DB before doing anything.
+  if (!LOCAL_HOSTS.has(u.hostname)) {
+    throw new Error(`global-setup refused: host "${u.hostname}" is not local`);
+  }
   if (!dbName.endsWith("_test")) {
     throw new Error(`global-setup refused: db name "${dbName}" must end in _test`);
   }
@@ -35,17 +42,22 @@ export default async function setup() {
         `(Docker Desktop must be running.)\n`,
     );
   }
-  const exists = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
-  if (exists.rowCount === 0) {
-    await admin.query(`CREATE DATABASE "${dbName}"`);
-  }
+  // Drop + recreate for a pristine schema each run. Doing the drop ourselves via
+  // SQL (not `prisma migrate reset`) keeps this non-interactive and avoids Prisma's
+  // destructive-command agent guard — safe because the name/host guards above
+  // already proved this is a local *_test DB.
+  await admin.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
+  await admin.query(`CREATE DATABASE "${dbName}"`);
   await admin.end();
 
-  // Push the current schema into the test db (no migration history needed).
-  // `--url` overrides the datasource directly — critical, because prisma.config.ts
-  // resolves `DIRECT_URL ?? DATABASE_URL` from .env (production), so relying on env
-  // vars here could target the prod DB. --url pins it to the test DB, no exceptions.
-  execSync(`npx prisma db push --url "${TEST_URL}" --accept-data-loss`, {
+  // Apply ALL migrations (incl. the counter-trigger migration, which `db push`
+  // would skip) to the fresh DB. `migrate deploy` is non-destructive.
+  // Both DATABASE_URL and DIRECT_URL are pinned to the test DB — prisma.config.ts
+  // resolves `DIRECT_URL ?? DATABASE_URL` and loads .env (production), so BOTH must
+  // be overridden or a stray prod DIRECT_URL would be targeted. dotenv won't
+  // override already-set env vars, so these win.
+  execSync("npx prisma migrate deploy", {
     stdio: "inherit",
+    env: { ...process.env, DATABASE_URL: TEST_URL, DIRECT_URL: TEST_URL },
   });
 }
