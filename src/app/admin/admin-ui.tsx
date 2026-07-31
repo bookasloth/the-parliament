@@ -246,8 +246,8 @@ export function Th({ children, className = "" }: { children: React.ReactNode; cl
   return <th className={`text-left text-[11px] uppercase tracking-wider text-zinc-500 font-medium py-2 px-3 ${className}`}>{children}</th>
 }
 
-export function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`py-2.5 px-3 text-zinc-300 border-t border-zinc-800 ${className}`}>{children}</td>
+export function Td({ children, className = "", colSpan }: { children: React.ReactNode; className?: string; colSpan?: number }) {
+  return <td colSpan={colSpan} className={`py-2.5 px-3 text-zinc-300 border-t border-zinc-800 ${className}`}>{children}</td>
 }
 
 /* ---------- Empty state ---------- */

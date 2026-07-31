@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { X } from "lucide-react"
+import { X } from "@phosphor-icons/react"
 import { createAdminEventAction } from "./actions"
 
 function parseDuration(str: string): number | null {
@@ -36,8 +36,8 @@ type PillGroupProps<T extends string> = {
 function PillGroup<T extends string>({ label, value, options, onChange }: PillGroupProps<T>) {
   return (
     <div>
-      <label className="block text-sm text-slate-600 mb-2">{label}</label>
-      <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+      <label className="block text-sm text-zinc-400 mb-2">{label}</label>
+      <div className="flex rounded-lg border border-zinc-800 overflow-hidden">
         {options.map((o) => (
           <button
             key={o.key}
@@ -45,8 +45,8 @@ function PillGroup<T extends string>({ label, value, options, onChange }: PillGr
             onClick={() => onChange(o.key)}
             className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
               value === o.key
-                ? "bg-sky-500 text-white"
-                : "bg-white text-sky-600 hover:bg-slate-50"
+                ? "bg-blue-600 text-white"
+                : "bg-[#111113] text-blue-400 hover:bg-zinc-800"
             }`}
           >
             {o.label}
@@ -102,83 +102,83 @@ export default function CreateEventModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div role="presentation" className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-900">Create Event</h2>
+      <div role="presentation" className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-lg border border-zinc-800 bg-[#111113] shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+          <h2 className="text-base font-bold text-zinc-100">Create Event</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
+            className="text-zinc-500 hover:text-zinc-300"
             aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" weight="duotone" />
           </button>
         </div>
 
         <form onSubmit={submit} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-sm text-slate-600 mb-1.5">Title</label>
+            <label className="block text-sm text-zinc-400 mb-1.5">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="Event name here"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-slate-600 mb-1.5">Description</label>
+            <label className="block text-sm text-zinc-400 mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Ex: topics, schedule, etc."
-              className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              className="w-full resize-y rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-slate-600 mb-1.5">Date</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Date</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-600 mb-1.5">Time</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Time</label>
               <input
                 type="time"
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-600 mb-1.5">Duration</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Duration</label>
               <input
                 value={durationText}
                 onChange={(e) => setDurationText(e.target.value)}
                 placeholder="1hr 30m"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-slate-600 mb-1.5">
+            <label className="block text-sm text-zinc-400 mb-1.5">
               {mode === "online" ? "Online URL" : "Location"}
             </label>
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder={mode === "online" ? "https://meet.google.com/…" : "MP Hall, JNV Nagpur"}
-              className="w-full rounded-lg border border-sky-300 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-lg border border-blue-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
@@ -212,12 +212,12 @@ export default function CreateEventModal({ open, onClose }: Props) {
             />
           </div>
 
-          {error && <p className="text-xs text-rose-500">{error}</p>}
+          {error && <p className="text-xs text-rose-400">{error}</p>}
 
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-emerald-500 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors"
+            className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-60 transition-colors"
           >
             {pending ? "Creating…" : "Create Event Now"}
           </button>

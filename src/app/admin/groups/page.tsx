@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import {
-  UsersRound, Plus, Search, MoreHorizontal, Eye, Pencil, Archive,
-  Trash2, Lock, Globe, Star, CheckCircle2, XCircle, Clock,
-  TrendingUp, MessageSquare, ShieldCheck, UserCog,
-} from "lucide-react"
-import { PageHeader, StatCard, StatusBadge, ProgressBar } from "../admin-ui"
+  UsersThree, Plus, MagnifyingGlass, DotsThreeVertical, Eye, PencilSimple, Archive,
+  Trash, Lock, Globe, Star, CheckCircle, XCircle, Clock,
+  TrendUp, ChatCircle, ShieldCheck, UserGear,
+} from "@phosphor-icons/react"
+import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
 
 interface AdminGroup {
   id: string
@@ -60,39 +60,39 @@ export default function AdminGroupsPage() {
         title="Groups"
         description="Oversee community groups, approve creation requests, and feature top communities"
         actions={
-          <button className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
-            <Plus className="h-3.5 w-3.5" /> Create Group
-          </button>
+          <Button variant="primary" size="sm">
+            <Plus className="h-3.5 w-3.5" weight="duotone" /> Create Group
+          </Button>
         }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Active Groups" value="24" icon={<UsersRound className="h-4.5 w-4.5" />} accent="indigo" />
-        <StatCard label="Total Memberships" value="1,521" delta="+9.2%" deltaUp icon={<TrendingUp className="h-4.5 w-4.5" />} accent="emerald" />
-        <StatCard label="Posts This Week" value="115" icon={<MessageSquare className="h-4.5 w-4.5" />} accent="sky" />
-        <StatCard label="Creation Requests" value={String(openRequests.length)} icon={<Clock className="h-4.5 w-4.5" />} accent="amber" />
+        <StatCard label="Active Groups" value="24" icon={<UsersThree className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
+        <StatCard label="Total Memberships" value="1,521" delta="+9.2%" deltaUp icon={<TrendUp className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
+        <StatCard label="Posts This Week" value="115" icon={<ChatCircle className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
+        <StatCard label="Creation Requests" value={String(openRequests.length)} icon={<Clock className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
       </div>
 
       {/* Tabs */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 w-fit">
+        <div className="flex gap-1 rounded-lg border border-zinc-800 bg-[#111113] p-1 w-fit">
           {([
             { key: "active", label: "Active Groups" },
             { key: "requests", label: "Creation Requests" },
             { key: "archived", label: "Archived" },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-colors ${tab === t.key ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"}`}>
+              className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-colors ${tab === t.key ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
               {t.label}
-              {t.key === "requests" && openRequests.length > 0 && <span className="ml-1.5 rounded-full bg-amber-400 text-amber-900 px-1.5 text-[10px] font-bold">{openRequests.length}</span>}
+              {t.key === "requests" && openRequests.length > 0 && <span className="ml-1.5 rounded-full bg-amber-400 text-amber-950 px-1.5 text-[10px] font-bold">{openRequests.length}</span>}
             </button>
           ))}
         </div>
         {tab !== "requests" && (
           <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search groups..."
-              className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all" />
+              className="w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
           </div>
         )}
       </div>
@@ -101,37 +101,37 @@ export default function AdminGroupsPage() {
       {tab === "requests" && (
         <div className="space-y-3">
           {openRequests.length === 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-              <CheckCircle2 className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-500">All requests handled</p>
+            <div className="rounded-lg border border-zinc-800 bg-[#111113] py-16 text-center">
+              <CheckCircle className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
+              <p className="text-sm font-medium text-zinc-400">All requests handled</p>
             </div>
           )}
           {openRequests.map(req => (
-            <div key={req.id} className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div key={req.id} className="rounded-lg border border-zinc-800 bg-[#111113] p-4 sm:p-5">
               <div className="flex items-start gap-3 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 text-violet-500 flex-shrink-0">
-                  {req.privacy === "private" ? <Lock className="h-4.5 w-4.5" /> : <Globe className="h-4.5 w-4.5" />}
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-950/40 text-violet-400 flex-shrink-0">
+                  {req.privacy === "private" ? <Lock className="h-4.5 w-4.5" weight="duotone" /> : <Globe className="h-4.5 w-4.5" weight="duotone" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-bold text-slate-800">{req.name}</p>
+                    <p className="text-sm font-bold text-zinc-200">{req.name}</p>
                     <StatusBadge status={req.privacy} />
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{req.category}</span>
+                    <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">{req.category}</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">Requested by <span className="font-semibold text-slate-600">{req.requester}</span> · {req.time}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Requested by <span className="font-semibold text-zinc-300">{req.requester}</span> · {req.time}</p>
                 </div>
               </div>
-              <div className="rounded-lg bg-slate-50 border border-slate-100 p-3 mb-3">
-                <p className="text-xs text-slate-600 italic">"{req.reason}"</p>
+              <div className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-3 mb-3">
+                <p className="text-xs text-zinc-300 italic">"{req.reason}"</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setRequestDecisions(d => ({ ...d, [req.id]: "approved" }))}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Approve Group
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500">
+                  <CheckCircle className="h-3.5 w-3.5" weight="duotone" /> Approve Group
                 </button>
                 <button onClick={() => setRequestDecisions(d => ({ ...d, [req.id]: "rejected" }))}
-                  className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">
-                  <XCircle className="h-3.5 w-3.5" /> Reject
+                  className="flex items-center gap-1.5 rounded-lg border border-rose-800 bg-[#111113] px-4 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/40">
+                  <XCircle className="h-3.5 w-3.5" weight="duotone" /> Reject
                 </button>
               </div>
             </div>
@@ -141,77 +141,77 @@ export default function AdminGroupsPage() {
 
       {/* Groups table */}
       {tab !== "requests" && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-left">
+            <Table>
+              <Thead>
+                <Tr className="hover:bg-transparent">
                   {["Group", "Privacy", "Members", "Activity", "Admins", "Last Active", ""].map((h, i) => (
-                    <th key={i} className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 whitespace-nowrap">{h}</th>
+                    <Th key={i} className="whitespace-nowrap">{h}</Th>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
+                </Tr>
+              </Thead>
+              <Tbody>
                 {filtered.map(g => (
-                  <tr key={g.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                  <Tr key={g.id}>
+                    <Td>
                       <div className="flex items-center gap-2.5 min-w-[200px]">
                         <button onClick={() => setFeaturedState(s => ({ ...s, [g.id]: !s[g.id] }))} title={featuredState[g.id] ? "Unfeature" : "Feature"} className="flex-shrink-0">
-                          <Star className={`h-4 w-4 transition-colors ${featuredState[g.id] ? "text-amber-400 fill-amber-400" : "text-slate-200 hover:text-amber-300"}`} />
+                          <Star className={`h-4 w-4 transition-colors ${featuredState[g.id] ? "text-amber-400" : "text-zinc-700 hover:text-amber-300"}`} weight={featuredState[g.id] ? "fill" : "duotone"} />
                         </button>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 truncate">{g.name}</p>
-                          <p className="text-[11px] text-slate-400">{g.category} · created {g.created}</p>
+                          <p className="text-xs font-semibold text-zinc-200 truncate">{g.name}</p>
+                          <p className="text-[11px] text-zinc-500">{g.category} · created {g.created}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={g.privacy} /></td>
-                    <td className="px-4 py-3 text-xs font-bold text-slate-700 tabular-nums whitespace-nowrap">{g.members}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <p className="text-xs text-slate-600 tabular-nums">{g.postsPerWeek} posts/wk</p>
-                      <div className="mt-1 w-20"><ProgressBar value={g.postsPerWeek} max={40} color={g.postsPerWeek === 0 ? "#cbd5e1" : "#6366f1"} /></div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{g.admins.join(", ")}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{g.lastActivity}</td>
-                    <td className="px-4 py-3 relative">
+                    </Td>
+                    <Td><StatusBadge status={g.privacy} /></Td>
+                    <Td className="text-xs font-bold text-zinc-300 tabular-nums whitespace-nowrap">{g.members}</Td>
+                    <Td className="whitespace-nowrap">
+                      <p className="text-xs text-zinc-400 tabular-nums">{g.postsPerWeek} posts/wk</p>
+                      <div className="mt-1 w-20"><ProgressBar value={g.postsPerWeek} max={40} color={g.postsPerWeek === 0 ? "#52525b" : "#3b82f6"} /></div>
+                    </Td>
+                    <Td className="text-xs text-zinc-400 whitespace-nowrap">{g.admins.join(", ")}</Td>
+                    <Td className="text-xs text-zinc-500 whitespace-nowrap">{g.lastActivity}</Td>
+                    <Td className="relative">
                       <button onClick={() => setActiveMenu(activeMenu === g.id ? null : g.id)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-                        <MoreHorizontal className="h-4 w-4" />
+                        className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
+                        <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                       </button>
                       {activeMenu === g.id && (
-                        <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                        <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
                           {[
-                            { icon: <Eye className="h-4 w-4" />, label: "View group" },
-                            { icon: <Pencil className="h-4 w-4" />, label: "Edit details" },
-                            { icon: <UserCog className="h-4 w-4" />, label: "Manage admins" },
-                            { icon: <ShieldCheck className="h-4 w-4" />, label: "Review group rules" },
+                            { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View group" },
+                            { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },
+                            { icon: <UserGear className="h-4 w-4" weight="duotone" />, label: "Manage admins" },
+                            { icon: <ShieldCheck className="h-4 w-4" weight="duotone" />, label: "Review group rules" },
                           ].map((item, i) => (
-                            <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50">
+                            <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                               {item.icon}{item.label}
                             </button>
                           ))}
-                          <div className="my-1 border-t border-slate-100" />
-                          <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-50">
-                            <Archive className="h-4 w-4" /> {g.status === "archived" ? "Restore" : "Archive"}
+                          <div className="my-1 border-t border-zinc-800" />
+                          <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40">
+                            <Archive className="h-4 w-4" weight="duotone" /> {g.status === "archived" ? "Restore" : "Archive"}
                           </button>
-                          <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-50">
-                            <Trash2 className="h-4 w-4" /> Delete group
+                          <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40">
+                            <Trash className="h-4 w-4" weight="duotone" /> Delete group
                           </button>
                         </div>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
-                      <UsersRound className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-slate-500">No groups found</p>
-                    </td>
-                  </tr>
+                  <Tr>
+                    <Td colSpan={7} className="text-center py-12">
+                      <UsersThree className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
+                      <p className="text-sm font-medium text-zinc-400">No groups found</p>
+                    </Td>
+                  </Tr>
                 )}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
           </div>
         </div>
       )}
