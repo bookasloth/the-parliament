@@ -52,6 +52,7 @@ model House {
   profiles Profile[]
   events   Event[]
   groups   Group[]
+  postMentions PostMention[]
 
   @@unique([schoolId, name])
   @@map("houses")
@@ -82,6 +83,7 @@ model Batch {
   school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   profiles Profile[]
   groups   Group[]
+  postMentions PostMention[]
 
   @@unique([schoolId, startYear])
   @@map("batches")
@@ -139,6 +141,7 @@ model User {
   userRoles                UserRole[]
   userDivisions            UserDivision[]
   reactions                Reaction[]
+  postMentions             PostMention[]
   contentReports           ContentReport[]
   conversations            ConversationParticipant[]
   eventsHosted             Event[]                   @relation("event_host")
@@ -538,7 +541,10 @@ model PostMention {
   houseId     String? @map("house_id") @db.Uuid
   batchId     String? @map("batch_id") @db.Uuid
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post  Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  house House? @relation(fields: [houseId], references: [id], onDelete: SetNull)
+  batch Batch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@index([postId])
   @@map("post_mentions")
@@ -685,6 +691,7 @@ model Poll {
   post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
   options PollOption[]
   votes   PollVote[]
+  eligibility PollEligibility[]
 
   @@index([postId])
   @@map("polls")
@@ -1184,6 +1191,7 @@ model PollEligibility {
   snapshotAt DateTime @default(now()) @map("snapshot_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
 
   @@id([pollId, userId])
   @@index([pollId])
