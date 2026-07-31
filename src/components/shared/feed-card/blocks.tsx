@@ -4,6 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { Eye, Clock, Quote, Check } from "lucide-react"
 import type { FeedPost } from "./types"
+import { truncateForPreview } from "@/lib/text-preview"
 
 // --- Verified badge (filled blue square + check) ---
 export function VerifiedBadge() {
@@ -95,8 +96,12 @@ export function PollCard({
 }
 
 // --- Rich Text Renderer ---
-export function RichText({ text }: { text: string }) {
-  const parts = text.split(/(@\w+|#\w+|https?:\/\/\S+)/g)
+export function RichText({ text, collapsible = false }: { text: string; collapsible?: boolean }) {
+  const [expanded, setExpanded] = useState(false)
+  const { shown, truncated } = collapsible && !expanded
+    ? truncateForPreview(text)
+    : { shown: text, truncated: false }
+  const parts = shown.split(/(@\w+|#\w+|https?:\/\/\S+)/g)
   return (
     <p className="text-sm md:text-[15px] text-[#374151] leading-[1.7] whitespace-pre-line">
       {parts.map((part, i) => {
@@ -123,6 +128,14 @@ export function RichText({ text }: { text: string }) {
         }
         return <span key={i}>{part}</span>
       })}
+      {truncated && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="ml-1 font-medium text-gray-500 hover:text-brand hover:underline"
+        >
+          see more
+        </button>
+      )}
     </p>
   )
 }

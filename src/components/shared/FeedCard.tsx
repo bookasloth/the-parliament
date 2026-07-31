@@ -18,6 +18,8 @@ import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
 import { ReactionBar } from "./feed-card/reaction-bar"
+import CommentsSection from "@/app/(main)/feed/[postId]/comments-section"
+import type { InlineComments } from "@/app/(main)/feed/actions"
 
 // Public surface — kept stable so existing `@/components/shared/FeedCard` imports keep working.
 export { avatarColors, TEXT_BG } from "./feed-card/types"
@@ -40,6 +42,7 @@ export function FeedCard({
   onReport,
   onHide,
   onPollVote,
+  commentsLoader,
 }: {
   post: FeedPost
   isAuthor?: boolean
@@ -54,9 +57,30 @@ export function FeedCard({
   onReport?: (reason: string) => void | Promise<unknown>
   onHide?: () => void | Promise<unknown>
   onPollVote?: (optionId: string) => void | Promise<unknown>
+  /** When set, the comment button expands the thread inline (lazy-loaded). */
+  commentsLoader?: (postId: string) => Promise<InlineComments>
 }) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsData, setCommentsData] = useState<InlineComments | null>(null)
+  const [loadingComments, setLoadingComments] = useState(false)
+
+  async function toggleComments() {
+    const next = !commentsOpen
+    setCommentsOpen(next)
+    if (next && !commentsData && commentsLoader) {
+      setLoadingComments(true)
+      try {
+        setCommentsData(await commentsLoader(post.id))
+      } catch {
+        // Leave closed-ish; user can tap again to retry.
+        setCommentsData({ comments: [], count: post.comments, viewer: null })
+      } finally {
+        setLoadingComments(false)
+      }
+    }
+  }
 
   function handleSave() {
     setActionOpen(false)
@@ -213,7 +237,7 @@ export function FeedCard({
               </p>
             </div>
           ) : (
-            <RichText text={post.content} />
+            <RichText text={post.content} collapsible />
           )
         )}
 
@@ -291,8 +315,10 @@ export function FeedCard({
           }
           comments={post.comments}
           shares={post.shares}
-          // Inline quick-reply (onComment persists via commentOnPost). Full thread
-          // still lives at /feed/[postId]; ponytail: no in-card thread view yet.
+          // With commentsLoader: comment button expands the thread inline below.
+          // Without it (mock posts): falls back to the built-in quick-reply box.
+          onCommentClick={commentsLoader ? toggleComments : undefined}
+          commentsExpanded={commentsOpen}
           onUpvote={onUpvote}
           onDownvote={onDownvote}
           onComment={onComment}
@@ -300,6 +326,23 @@ export function FeedCard({
           onAward={onAward}
         />
       </div>
+
+      {/* Inline comment thread (lazy-loaded on first open) */}
+      {commentsOpen && commentsLoader && (
+        loadingComments && !commentsData ? (
+          <div className="border-t border-gray-100 px-5 py-6 text-center text-sm text-gray-400">
+            Loading comments…
+          </div>
+        ) : commentsData ? (
+          <CommentsSection
+            embedded
+            postId={post.id}
+            initialComments={commentsData.comments}
+            initialCount={commentsData.count}
+            viewer={commentsData.viewer}
+          />
+        ) : null
+      )}
     </div>
   )
 }

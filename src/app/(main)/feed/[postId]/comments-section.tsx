@@ -37,6 +37,8 @@ interface Props {
   initialComments: CommentView[]
   initialCount: number
   viewer: null | Viewer
+  /** Inline-in-feed rendering: drop the outer card chrome + count header. */
+  embedded?: boolean
 }
 
 type SortMode = "top" | "new"
@@ -384,7 +386,7 @@ function voteChange(
   return { next: type, delta: type === "upvote" ? 2 : -2 } // switching sides
 }
 
-export default function CommentsSection({ postId, initialComments, initialCount, viewer }: Props) {
+export default function CommentsSection({ postId, initialComments, initialCount, viewer, embedded = false }: Props) {
   const [count, setCount] = useState(initialCount)
   const [sort, setSort] = useState<SortMode>("top")
   const [text, setText] = useState("")
@@ -496,7 +498,7 @@ export default function CommentsSection({ postId, initialComments, initialCount,
   }
 
   return (
-    <section className="bg-white border border-gray-200 rounded-xl">
+    <section className={embedded ? "border-t border-gray-100" : "bg-white border border-gray-200 rounded-xl"}>
       <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">
           {count} {count === 1 ? "comment" : "comments"}

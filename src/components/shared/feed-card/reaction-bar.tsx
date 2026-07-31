@@ -219,6 +219,8 @@ export function ReactionBar({
   comments,
   shares,
   commentHref,
+  onCommentClick,
+  commentsExpanded = false,
   onUpvote,
   onDownvote,
   onComment,
@@ -233,6 +235,10 @@ export function ReactionBar({
   shares: number
   /** When set, the comment button navigates to the post detail instead of opening the inline composer. */
   commentHref?: string
+  /** When set, the comment button calls this (e.g. expand inline thread) instead of the built-in quick composer. */
+  onCommentClick?: () => void
+  /** Active-state styling for the comment button when the inline thread is open. */
+  commentsExpanded?: boolean
   onUpvote?: () => void
   onDownvote?: () => void
   onComment?: (body: string) => void
@@ -309,7 +315,7 @@ export function ReactionBar({
           <span className="text-[13px] font-medium">Downvote ({downvotes})</span>
         </button>
 
-        {/* Comment — links to post detail when commentHref is set */}
+        {/* Comment — detail link (commentHref) › inline expander (onCommentClick) › built-in composer */}
         {commentHref ? (
           <a
             href={commentHref}
@@ -320,9 +326,9 @@ export function ReactionBar({
           </a>
         ) : (
           <button
-            onClick={() => setCommentOpen((o) => !o)}
+            onClick={onCommentClick ?? (() => setCommentOpen((o) => !o))}
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
-              commentOpen
+              (onCommentClick ? commentsExpanded : commentOpen)
                 ? "text-blue-500 bg-blue-50/50"
                 : "text-gray-500 hover:text-blue-500 hover:bg-blue-50/30"
             }`}
