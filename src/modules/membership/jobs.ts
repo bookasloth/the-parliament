@@ -9,6 +9,35 @@ import { audit } from "@/lib/audit"
 const DAY_MS = 86400000
 const HOUR_MS = 3600000
 
+/**
+ * Run every scheduled membership maintenance task once, in sequence, isolating
+ * failures so one broken task can't abort the rest. This is the Vercel-Cron entry
+ * point (pg-boss can't run on Vercel serverless — nothing stays alive to poll).
+ * Every handler is idempotent (guards on already-emitted MembershipEvents), so a
+ * daily run — or a retry — is safe. Returns a per-task status for the cron log.
+ */
+export async function runMembershipMaintenance(): Promise<Record<string, string>> {
+  const tasks: [string, () => Promise<void>][] = [
+    ["expire", expireHandler],
+    ["reminder", reminderHandler],
+    ["committeeExpiryWarning", committeeExpiryWarningHandler],
+    ["inviteExpiry", inviteExpiryHandler],
+    ["razorpayReconcile", razorpayReconcileHandler],
+    ["upsellNudge", upsellNudgeHandler],
+  ]
+  const results: Record<string, string> = {}
+  for (const [name, fn] of tasks) {
+    try {
+      await fn()
+      results[name] = "ok"
+    } catch (e) {
+      results[name] = `error: ${(e as Error).message}`
+      console.error(`[cron:membership] ${name} failed`, e)
+    }
+  }
+  return results
+}
+
 export async function registerMembershipJobs(boss: PgBoss): Promise<void> {
   await boss.work(QUEUE.MEMBERSHIP_EXPIRE, expireHandler)
   await boss.work(QUEUE.MEMBERSHIP_REMINDER, reminderHandler)
