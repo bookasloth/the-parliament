@@ -4,14 +4,24 @@ import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
-  Palette, Check, Sparkles,
+  Palette, Check, Sparkles, Smile, ImagePlus, Pencil, X,
 } from "lucide-react"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
 import { ALL_THEMES, getActiveTheme, type ChatTheme } from "@/config/chat-themes"
 import type { MessageView } from "@/modules/messaging/types"
-import { sendMessageAction, markReadAction, refreshMessagesAction, conversationMetaAction } from "../actions"
+import {
+  sendMessageAction, markReadAction, refreshMessagesAction, conversationMetaAction,
+  editMessageAction, deleteMessageAction,
+} from "../actions"
 
 const POLL_MS = 4000
+
+const EMOJIS = [
+  "😀", "😂", "🥲", "😊", "😍", "😘", "😉", "😎", "🤔", "😅",
+  "😢", "😭", "😡", "😴", "🥳", "😱", "🤯", "🙄", "😇", "🤗",
+  "👍", "👎", "👏", "🙏", "💪", "🤝", "👋", "✌️", "🤞", "💯",
+  "❤️", "🔥", "🎉", "✨", "⭐", "☀️", "🎂", "🍕", "☕", "🙌",
+]
 
 interface OtherUser {
   id: string
@@ -34,6 +44,11 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   const [input, setInput] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const [msgMenuId, setMsgMenuId] = useState<string | null>(null)
   // null = auto (date-based); otherwise an explicit preview override
   const [themeOverride, setThemeOverride] = useState<ChatTheme | null>(null)
 
@@ -41,6 +56,9 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const themeRef = useRef<HTMLDivElement>(null)
+  const emojiRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const msgMenuRef = useRef<HTMLDivElement>(null)
 
   // Active theme: explicit preview wins, else resolve from today's date
   const autoTheme = getActiveTheme(new Date())
@@ -54,6 +72,8 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
       if (themeRef.current && !themeRef.current.contains(e.target as Node)) setThemeMenuOpen(false)
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setEmojiOpen(false)
+      if (msgMenuRef.current && !msgMenuRef.current.contains(e.target as Node)) setMsgMenuId(null)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -119,6 +139,76 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
     } else {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
       setInput(body)
+      alert(res.error)
+    }
+  }
+
+  function insertEmoji(emoji: string) {
+    const el = textareaRef.current
+    if (!el) {
+      setInput((prev) => prev + emoji)
+      return
+    }
+    const start = el.selectionStart ?? input.length
+    const end = el.selectionEnd ?? input.length
+    const next = input.slice(0, start) + emoji + input.slice(end)
+    setInput(next)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.selectionStart = el.selectionEnd = start + emoji.length
+    })
+    setEmojiOpen(false)
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append("file", file)
+      const uploadRes = await fetch("/api/messages/upload", { method: "POST", body: form })
+      const data = await uploadRes.json()
+      if (!uploadRes.ok) {
+        alert(data.error ?? "Upload failed")
+        return
+      }
+      const res = await sendMessageAction(conversationId, "", [data.url as string])
+      if (res.ok) {
+        setMessages((prev) => [...prev, res.msg])
+      } else {
+        alert(res.error)
+      }
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function startEdit(msg: MessageView) {
+    setEditingId(msg.id)
+    setEditValue(msg.body)
+    setMsgMenuId(null)
+  }
+
+  async function submitEdit(messageId: string) {
+    const body = editValue.trim()
+    if (!body) return
+    const res = await editMessageAction(messageId, body)
+    if (res.ok) {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, body, editedAt: new Date().toISOString() } : m)))
+      setEditingId(null)
+    } else {
+      alert(res.error)
+    }
+  }
+
+  async function handleDelete(messageId: string) {
+    setMsgMenuId(null)
+    const res = await deleteMessageAction(messageId)
+    if (res.ok) {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, deleted: true } : m)))
+    } else {
       alert(res.error)
     }
   }
@@ -249,28 +339,69 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
             const isMe = msg.senderId === viewerId
             const bubble = isMe ? theme.sent : theme.received
             return (
-              <div key={msg.id}>
+              <div key={msg.id} className="group">
                 <div className={`flex mb-1 ${isMe ? "justify-end" : "items-end gap-2"}`}>
                   {!isMe && (
                     <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-md object-cover flex-shrink-0 mb-5" />
                   )}
-                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[78%] sm:max-w-[65%]`}>
-                    <div
-                      className="rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm"
-                      style={{ background: bubble.background, color: bubble.color }}
-                    >
-                      {msg.deleted ? (
-                        <span className="italic opacity-70">This message was deleted</span>
-                      ) : (
-                        <>
-                          {msg.body}
-                          {msg.media.map((url) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img key={url} src={url} alt="" className="mt-1.5 max-h-64 rounded-lg object-cover" />
-                          ))}
-                        </>
+                  {isMe && !msg.deleted && editingId !== msg.id && (
+                    <div className="relative self-center opacity-0 group-hover:opacity-100 transition-opacity" ref={msgMenuId === msg.id ? msgMenuRef : undefined}>
+                      <button
+                        onClick={() => setMsgMenuId(msgMenuId === msg.id ? null : msg.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </button>
+                      {msgMenuId === msg.id && (
+                        <div className="absolute right-0 bottom-full mb-1 z-30 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                          <button onClick={() => startEdit(msg)} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </button>
+                          <button onClick={() => handleDelete(msg.id)} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50">
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </div>
                       )}
                     </div>
+                  )}
+                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[78%] sm:max-w-[65%]`}>
+                    {editingId === msg.id ? (
+                      <div className="flex items-center gap-1.5 rounded-2xl border border-brand bg-white px-2 py-1">
+                        <input
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); submitEdit(msg.id) }
+                            if (e.key === "Escape") setEditingId(null)
+                          }}
+                          className="w-48 sm:w-64 bg-transparent px-1 py-1 text-sm text-gray-700 outline-none"
+                        />
+                        <button onClick={() => submitEdit(msg.id)} className="flex h-6 w-6 items-center justify-center rounded-full text-brand hover:bg-brand/10">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm"
+                        style={{ background: bubble.background, color: bubble.color }}
+                      >
+                        {msg.deleted ? (
+                          <span className="italic opacity-70">This message was deleted</span>
+                        ) : (
+                          <>
+                            {msg.body}
+                            {msg.media.map((url) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={url} src={url} alt="" className="mt-1.5 max-h-64 rounded-lg object-cover" />
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
                     <span className="mt-1 text-[10px]" style={{ color: isDarkTheme ? "#9c8a6b" : "#94a3b8" }}>
                       {formatTime(msg.createdAt)}
                       {msg.editedAt && !msg.deleted && <span className="ml-1">(edited)</span>}
@@ -290,6 +421,43 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
       {/* Footer: autoresize textarea + send */}
       <div className="border-t border-gray-200 px-3 sm:px-4 py-2.5">
         <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 focus-within:border-brand focus-within:bg-white focus-within:ring-2 focus-within:ring-brand/10 transition-colors">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Attach image"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-brand disabled:opacity-50"
+          >
+            <ImagePlus className="h-4.5 w-4.5" />
+          </button>
+          <div className="relative" ref={emojiRef}>
+            <button
+              onClick={() => setEmojiOpen(!emojiOpen)}
+              title="Emoji"
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-brand"
+            >
+              <Smile className="h-4.5 w-4.5" />
+            </button>
+            {emojiOpen && (
+              <div className="absolute bottom-full left-0 mb-1 z-30 grid w-64 grid-cols-8 gap-0.5 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                {EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => insertEmoji(e)}
+                    className="flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 text-base"
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <textarea
             ref={textareaRef}
             value={input}

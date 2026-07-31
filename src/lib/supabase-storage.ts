@@ -51,3 +51,7 @@ export async function uploadAvatar(userId: string, bytes: Uint8Array, contentTyp
 export async function uploadCover(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   return uploadImage("covers/", userId, bytes, contentType)
 }
+
+export async function uploadMessageImage(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  return uploadImage("messages/", userId, bytes, contentType)
+}
