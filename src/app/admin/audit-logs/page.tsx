@@ -1,6 +1,6 @@
 "use client"
 
-import { ScrollText } from "lucide-react"
+import { Scroll } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminAuditLogsPage() {
@@ -8,7 +8,7 @@ export default function AdminAuditLogsPage() {
     <ComingSoon
       title="Audit Logs"
       description="A tamper-evident trail of every administrative action — who did what, when, and from where."
-      icon={<ScrollText className="h-7 w-7" />}
+      icon={<Scroll className="h-7 w-7" weight="duotone" />}
       planned={[
         "Chronological log of all admin and moderator actions",
         "Filter by actor, action type, target entity, and date range",

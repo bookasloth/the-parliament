@@ -1,6 +1,6 @@
 "use client"
 
-import { Gamepad2 } from "lucide-react"
+import { GameController } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminGamesPage() {
@@ -8,7 +8,7 @@ export default function AdminGamesPage() {
     <ComingSoon
       title="Games & Tournaments"
       description="Configure casual games, run inter-batch tournaments, and manage leaderboards — with the zero-karma policy enforced platform-wide."
-      icon={<Gamepad2 className="h-7 w-7" />}
+      icon={<GameController className="h-7 w-7" weight="duotone" />}
       planned={[
         "Enable or disable individual games for the community",
         "Create and schedule inter-batch and inter-house tournaments",
