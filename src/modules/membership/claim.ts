@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { activateMembership } from "./activation"
+import { issueInvoiceAndSendReceipt } from "./invoice"
 import { type PlanCode } from "@/config/membership"
 
 export interface ClaimResult {
@@ -54,6 +55,9 @@ export async function claimAndActivateOrder(
     amountPaise: order.amountPaise,
     orderId: order.id,
   })
+
+  // Order is now "paid" — issue the invoice + receipt (best-effort).
+  await issueInvoiceAndSendReceipt(order.id)
 
   return {
     claimed: true,

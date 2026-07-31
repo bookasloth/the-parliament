@@ -3,6 +3,7 @@ import { renderEmail, EMAIL_TEMPLATE_KEYS, EMAIL_CATEGORY, type EmailTemplates }
 import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
 import { SEED_TEMPLATES } from "@/modules/email/templates"
 import { welcomeTemplateFor } from "@/modules/membership/activation"
+import { receiptVars } from "@/modules/membership/invoice"
 
 // Representative data for every lib/email template.
 const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
@@ -74,8 +75,8 @@ describe("lib/email templates", () => {
 })
 
 describe("modules/email seed templates", () => {
-  it("has the expected 7 templates with unique codes", () => {
-    expect(SEED_TEMPLATES).toHaveLength(7)
+  it("has the expected 5 templates with unique codes", () => {
+    expect(SEED_TEMPLATES).toHaveLength(5)
     const codes = SEED_TEMPLATES.map((t) => t.code)
     expect(new Set(codes).size).toBe(codes.length)
   })
@@ -118,6 +119,7 @@ const WIRED_DB_VARS: Record<string, string[]> = {
   "membership.welcome_premium": ["firstName", "manageUrl", "renewalDate"],
   "membership.welcome_life": ["firstName", "profileUrl"],
   "membership.expiry_t_minus_7": ["firstName", "planName", "expiresOn", "renewUrl"],
+  "membership.payment_receipt": ["firstName", "planName", "amountInr", "invoiceUrl", "invoiceNumber"],
 }
 
 describe("wired DB templates expose exactly the variables their callers fill", () => {
@@ -128,4 +130,25 @@ describe("wired DB templates expose exactly the variables their callers fill", (
       expect(Object.keys(t.variables).sort()).toEqual([...vars].sort())
     })
   }
+})
+
+describe("payment receipt variables", () => {
+  const base = {
+    legalName: "Rahul Sharma",
+    invoiceId: "inv_1",
+    invoiceNumber: "NNAWCA/2026-27/000042",
+    baseUrl: "https://nnawca.org",
+  }
+  it("formats paise as grouped INR with 2 decimals and first name only", () => {
+    const v = receiptVars({ ...base, planCode: "premium", amountPaise: 120000 })
+    expect(v.firstName).toBe("Rahul")
+    expect(v.planName).toBe("Alumni Premium")
+    expect(v.amountInr).toBe("1,200.00")
+    expect(v.invoiceNumber).toBe(base.invoiceNumber)
+  })
+  it("points invoiceUrl at the authed download route, not a raw signed URL", () => {
+    const v = receiptVars({ ...base, planCode: "associate", amountPaise: 50000 })
+    expect(v.invoiceUrl).toBe("https://nnawca.org/api/membership/invoice/inv_1")
+    expect(v.amountInr).toBe("500.00")
+  })
 })

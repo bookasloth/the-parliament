@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { verifyWebhookSignature } from "@/lib/razorpay"
 import { activateMembership } from "@/modules/membership/activation"
 import { claimAndActivateOrder } from "@/modules/membership/claim"
+import { issueInvoiceAndSendReceipt } from "@/modules/membership/invoice"
 import { isEventProcessed, markEventProcessed } from "@/lib/webhook-dedup"
 import { audit } from "@/lib/audit"
 import { type PlanCode } from "@/config/membership"
@@ -135,6 +136,7 @@ async function handleSubscriptionActivated(payload: Record<string, unknown>) {
       where: { id: order.id },
       data: { status: "paid", capturedAt: new Date() },
     })
+    await issueInvoiceAndSendReceipt(order.id)
   }
 }
 

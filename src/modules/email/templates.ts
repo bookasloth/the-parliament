@@ -23,43 +23,10 @@ export interface SeedTemplate {
 // (modules/email/service.ts) injects {{unsubscribeUrl}} at send time.
 const MANAGE = "{{unsubscribeUrl}}"
 
+// Auth verify + password-reset mail is sent by the code templates in
+// src/lib/email.ts (email_verify_link / password_reset), already wired at signup
+// and forgot-password. No DB duplicates here — two sources would double-send.
 export const SEED_TEMPLATES: SeedTemplate[] = [
-  {
-    code: "auth.signup_verify",
-    category: "transactional",
-    subject: "Verify your NNAWCA account",
-    variables: { firstName: "string", verifyUrl: "string" },
-    text: "Hi {{firstName}},\n\nVerify your email to activate your NNAWCA account: {{verifyUrl}}\n\nThis link expires in 24 hours.",
-    html: emailShell({
-      accent: "blue",
-      pill: "Verify",
-      eyebrow: "Account · Security",
-      heading: "Confirm your email",
-      body:
-        p("Hi {{firstName}}, confirm your email address to activate your NNAWCA account.") +
-        button("Verify email", "{{verifyUrl}}", "blue") +
-        small("This link expires in 24 hours. Didn't sign up? You can ignore this email."),
-      reason: "This is a transactional message about your account.",
-    }),
-  },
-  {
-    code: "auth.password_reset",
-    category: "transactional",
-    subject: "Reset your NNAWCA password",
-    variables: { firstName: "string", resetUrl: "string" },
-    text: "Hi {{firstName}},\n\nReset your password: {{resetUrl}}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.",
-    html: emailShell({
-      accent: "blue",
-      pill: "Security",
-      eyebrow: "Account · Security",
-      heading: "Reset your password",
-      body:
-        p("Hi {{firstName}}, use the button below to set a new password.") +
-        button("Reset password", "{{resetUrl}}", "blue") +
-        small("This link expires in 1 hour. If you didn't request it, you can safely ignore this email."),
-      reason: "This is a transactional message about your account.",
-    }),
-  },
   {
     code: "membership.payment_receipt",
     category: "transactional",

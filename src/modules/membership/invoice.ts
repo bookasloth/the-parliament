@@ -3,6 +3,7 @@ import { deleteObject, getSignedReadUrl } from "@/lib/r2"
 import { audit } from "@/lib/audit"
 import { academicYearFor } from "@/lib/membership-cycle"
 import { PLANS, type PlanCode } from "@/config/membership"
+import { queueEmail } from "@/modules/email/service"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 
 interface IssueInvoiceInput {
@@ -61,6 +62,62 @@ export async function issueInvoiceForOrder(input: IssueInvoiceInput) {
   })
 
   return created
+}
+
+/**
+ * Build the payment_receipt template variables. Pure (paise→INR math is here so
+ * it's unit-tested). invoiceUrl points at the authed download route, which mints
+ * a fresh signed R2 URL on click — never the short-lived signed URL directly.
+ */
+export function receiptVars(input: {
+  legalName: string
+  planCode: PlanCode
+  amountPaise: number
+  invoiceId: string
+  invoiceNumber: string
+  baseUrl: string
+}): Record<string, string> {
+  return {
+    firstName: input.legalName.split(" ")[0] || "there",
+    planName: PLANS[input.planCode]?.displayName ?? input.planCode,
+    amountInr: (input.amountPaise / 100).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+    invoiceUrl: `${input.baseUrl}/api/membership/invoice/${input.invoiceId}`,
+    invoiceNumber: input.invoiceNumber,
+  }
+}
+
+/**
+ * Issue the invoice (idempotent) and email the receipt. Call once per order the
+ * moment it becomes "paid". Best-effort: a mail/PDF failure is logged, never
+ * thrown — it must not roll back a captured payment.
+ */
+export async function issueInvoiceAndSendReceipt(orderId: string): Promise<void> {
+  try {
+    const invoice = await issueInvoiceForOrder({ orderId })
+    const order = await prisma.membershipOrder.findUnique({
+      where: { id: orderId },
+      include: { user: { select: { email: true, legalName: true } } },
+    })
+    if (!order?.user?.email) return
+    await queueEmail({
+      templateCode: "membership.payment_receipt",
+      toAddress: order.user.email,
+      userId: order.userId,
+      variables: receiptVars({
+        legalName: order.user.legalName,
+        planCode: order.planCode as PlanCode,
+        amountPaise: order.amountPaise,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        baseUrl: process.env.AUTH_URL || "https://nnawca.org",
+      }),
+    })
+  } catch (e) {
+    console.error(`receipt/invoice failed for order ${orderId}`, e)
+  }
 }
 
 async function nextInvoiceNumber(date: Date): Promise<string> {
