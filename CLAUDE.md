@@ -34,8 +34,8 @@ src/
                 # membership, notifications, settings, compose, feed/[postId] (+/edit +/analytics),
                 # messages (master-detail: layout + ChatSidebar + [conversationId])
     (onboarding)/ # Onboarding wizard route group (/onboarding/[step])
-    admin/      # Admin console — own layout.tsx (dark slate sidebar + indigo accent, separate
-                # from the member brand-blue). admin-ui.tsx holds shared admin primitives.
+    admin/      # Admin console — own layout.tsx (dark #0a0a0a shell, Poppins, blue-600 accent,
+                # separate from the member brand-blue). admin-ui.tsx holds shared admin primitives.
                 # Built: dashboard, users, verification, moderation, events, groups, membership,
                 # karma, themes (festive chat themes), settings. Coming-soon stubs:
                 # analytics, businesses, jobs, games, rewards, messaging, notifications, audit-logs
@@ -147,9 +147,15 @@ Key fields (from `prisma/schema.prisma`):
   **membership button supports all 6 tiers** and enforces the upgrade flow
   `student → associate → premium → life` (life & committee can't upgrade). Height is `h-14`
   (`3.5rem`) — full-height pages use `h-[calc(100dvh-3.5rem)]`.
-- **`admin/layout.tsx`** is a separate console shell (own nav, search, profile). A new module may
-  use its own colours/icons — admin uses **slate + indigo**, distinct from member **brand blue**.
-  Admin pages must avoid emoji icons (use lucide).
+- **`admin/layout.tsx`** is a separate console shell (own nav, search, profile), **dark-themed**
+  (near-black `#0a0a0a` bg, `#111113` cards, `zinc-800` borders, `zinc-100/400/500` text),
+  **Poppins** everywhere, **blue-600** primary CTA — distinct from the member light brand-blue.
+  Icons are **`@phosphor-icons/react` duotone** (`weight="duotone"`), coloured per section
+  (admin only — the member app keeps `lucide-react`). No emoji icons. Shared dark primitives live
+  in `admin-ui.tsx` (`PageHeader`, `StatCard`, `StatusBadge`/`statusBadgeClass`, `Button`, `Table`
+  set, `SectionHeader`, `Modal`, `EmptyState`, `ComingSoon`, charts). Design system + per-page
+  scope: `docs/superpowers/plans/2026-07-31-admin-dark-redesign.md`. UI is Phase 1; wiring mock
+  pages to Prisma is Phase 2.
 - **`messages/`** is a master-detail shell: `messages/layout.tsx` (client) renders the chat list
   (`ChatSidebar`) + the conversation/empty-state child. Desktop shows both panes; mobile shows the
   list on `/messages` and the conversation on `/messages/[id]`. Wired to `src/modules/messaging`

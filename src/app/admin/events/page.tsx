@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import {
-  CalendarDays, Plus, Search, MoreHorizontal, Star, Eye, Pencil,
-  Trash2, Users, MapPin, Video, CheckCircle2, XCircle, Clock,
-  TrendingUp, IndianRupee, Megaphone, Copy,
-} from "lucide-react"
-import { PageHeader, StatCard, StatusBadge, ProgressBar } from "../admin-ui"
+  CalendarCheck, Plus, MagnifyingGlass, DotsThreeVertical, Star, Eye, PencilSimple,
+  Trash, Users, MapPin, VideoCamera, CheckCircle, XCircle, Clock,
+  TrendUp, CurrencyInr, Megaphone, Copy,
+} from "@phosphor-icons/react"
+import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
 import CreateEventModal from "./create-event-modal"
 
 interface AdminEvent {
@@ -62,141 +62,138 @@ export default function AdminEventsPage() {
         title="Events"
         description="Approve, feature, and manage all platform events"
         actions={
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
-          >
-            <Plus className="h-3.5 w-3.5" /> Create Event
-          </button>
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5" weight="duotone" /> Create Event
+          </Button>
         }
       />
 
       <CreateEventModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Upcoming Events" value="6" icon={<CalendarDays className="h-4.5 w-4.5" />} accent="sky" />
-        <StatCard label="Total Registrations" value="719" delta="+22%" deltaUp icon={<Users className="h-4.5 w-4.5" />} accent="indigo" />
-        <StatCard label="Event Revenue (YTD)" value="Rs 1.6L" delta="+34%" deltaUp icon={<IndianRupee className="h-4.5 w-4.5" />} accent="emerald" />
-        <StatCard label="Pending Approval" value={String(pendingCount)} icon={<Clock className="h-4.5 w-4.5" />} accent="amber" />
+        <StatCard label="Upcoming Events" value="6" icon={<CalendarCheck className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
+        <StatCard label="Total Registrations" value="719" delta="+22%" deltaUp icon={<Users className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
+        <StatCard label="Event Revenue (YTD)" value="Rs 1.6L" delta="+34%" deltaUp icon={<CurrencyInr className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
+        <StatCard label="Pending Approval" value={String(pendingCount)} icon={<Clock className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100">
-          <div className="flex gap-1 rounded-lg bg-slate-100 p-1 overflow-x-auto">
+      <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-zinc-800">
+          <div className="flex gap-1 rounded-lg bg-zinc-900 p-1 overflow-x-auto">
             {(["all", "upcoming", "pending", "draft", "past"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-[#111113] text-blue-400 shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}>
                 {t}
-                {t === "pending" && pendingCount > 0 && <span className="ml-1 rounded-full bg-amber-400 text-amber-900 px-1.5 text-[10px] font-bold">{pendingCount}</span>}
+                {t === "pending" && pendingCount > 0 && <span className="ml-1 rounded-full bg-amber-400 text-amber-950 px-1.5 text-[10px] font-bold">{pendingCount}</span>}
               </button>
             ))}
           </div>
           <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all" />
+              className="w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
           </div>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left">
+          <Table>
+            <Thead>
+              <Tr className="hover:bg-transparent">
                 {["Event", "Date", "Organizer", "Registrations", "Revenue", "Status", ""].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 whitespace-nowrap">{h}</th>
+                  <Th key={i} className="whitespace-nowrap">{h}</Th>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
+              </Tr>
+            </Thead>
+            <Tbody>
               {filtered.map(e => {
                 const status = approvals[e.id] === "upcoming" ? "upcoming" : e.status
                 return (
-                  <tr key={e.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                  <Tr key={e.id}>
+                    <Td>
                       <div className="flex items-center gap-2.5 min-w-[220px]">
                         <button
                           onClick={() => setFeaturedState(s => ({ ...s, [e.id]: !s[e.id] }))}
                           title={featuredState[e.id] ? "Unfeature" : "Feature on homepage"}
                           className="flex-shrink-0"
                         >
-                          <Star className={`h-4 w-4 transition-colors ${featuredState[e.id] ? "text-amber-400 fill-amber-400" : "text-slate-200 hover:text-amber-300"}`} />
+                          <Star className={`h-4 w-4 transition-colors ${featuredState[e.id] ? "text-amber-400" : "text-zinc-700 hover:text-amber-300"}`} weight={featuredState[e.id] ? "fill" : "duotone"} />
                         </button>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 truncate">{e.title}</p>
-                          <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                          <p className="text-xs font-semibold text-zinc-200 truncate">{e.title}</p>
+                          <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
                             <span className="capitalize">{e.category}</span>
-                            <span className="text-slate-300">·</span>
+                            <span className="text-zinc-700">·</span>
                             <span className="flex items-center gap-0.5 capitalize">
-                              {e.mode === "virtual" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+                              {e.mode === "virtual" ? <VideoCamera className="h-3 w-3" weight="duotone" /> : <MapPin className="h-3 w-3" weight="duotone" />}
                               {e.mode}
                             </span>
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{e.date}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{e.organizer}</td>
-                    <td className="px-4 py-3 min-w-[140px]">
-                      <p className="text-xs font-semibold text-slate-700 mb-1 tabular-nums">{e.registered} / {e.capacity}</p>
-                      <ProgressBar value={e.registered} max={e.capacity} color={e.registered / e.capacity > 0.8 ? "#f43f5e" : "#6366f1"} />
-                    </td>
-                    <td className="px-4 py-3 text-xs font-bold text-slate-700 tabular-nums whitespace-nowrap">{e.revenue}</td>
-                    <td className="px-4 py-3"><StatusBadge status={status} /></td>
-                    <td className="px-4 py-3 relative">
+                    </Td>
+                    <Td className="text-xs text-zinc-400 whitespace-nowrap">{e.date}</Td>
+                    <Td className="text-xs text-zinc-400 whitespace-nowrap">{e.organizer}</Td>
+                    <Td className="min-w-[140px]">
+                      <p className="text-xs font-semibold text-zinc-300 mb-1 tabular-nums">{e.registered} / {e.capacity}</p>
+                      <ProgressBar value={e.registered} max={e.capacity} color={e.registered / e.capacity > 0.8 ? "#f43f5e" : "#3b82f6"} />
+                    </Td>
+                    <Td className="text-xs font-bold text-zinc-300 tabular-nums whitespace-nowrap">{e.revenue}</Td>
+                    <Td><StatusBadge status={status} /></Td>
+                    <Td className="relative">
                       {status === "pending" ? (
                         <div className="flex gap-1.5">
                           <button onClick={() => setApprovals(a => ({ ...a, [e.id]: "upcoming" }))}
-                            className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 whitespace-nowrap">
-                            <CheckCircle2 className="h-3 w-3" /> Approve
+                            className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-500 whitespace-nowrap">
+                            <CheckCircle className="h-3 w-3" weight="duotone" /> Approve
                           </button>
                           <button onClick={() => setApprovals(a => ({ ...a, [e.id]: "rejected" }))}
-                            className="flex items-center gap-1 rounded-md border border-rose-200 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 whitespace-nowrap">
-                            <XCircle className="h-3 w-3" /> Reject
+                            className="flex items-center gap-1 rounded-md border border-rose-800 px-2.5 py-1.5 text-[11px] font-bold text-rose-400 hover:bg-rose-950/40 whitespace-nowrap">
+                            <XCircle className="h-3 w-3" weight="duotone" /> Reject
                           </button>
                         </div>
                       ) : (
                         <>
                           <button onClick={() => setActiveMenu(activeMenu === e.id ? null : e.id)}
-                            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-                            <MoreHorizontal className="h-4 w-4" />
+                            className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
+                            <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                           </button>
                           {activeMenu === e.id && (
-                            <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                            <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
                               {[
-                                { icon: <Eye className="h-4 w-4" />, label: "View event page" },
-                                { icon: <Pencil className="h-4 w-4" />, label: "Edit details" },
-                                { icon: <Users className="h-4 w-4" />, label: "View attendees" },
-                                { icon: <Megaphone className="h-4 w-4" />, label: "Send announcement" },
-                                { icon: <Copy className="h-4 w-4" />, label: "Duplicate event" },
+                                { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View event page" },
+                                { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },
+                                { icon: <Users className="h-4 w-4" weight="duotone" />, label: "View attendees" },
+                                { icon: <Megaphone className="h-4 w-4" weight="duotone" />, label: "Send announcement" },
+                                { icon: <Copy className="h-4 w-4" weight="duotone" />, label: "Duplicate event" },
                               ].map((item, i) => (
-                                <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-50">
+                                <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                                   {item.icon}{item.label}
                                 </button>
                               ))}
-                              <div className="my-1 border-t border-slate-100" />
-                              <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-50">
-                                <Trash2 className="h-4 w-4" /> Cancel event
+                              <div className="my-1 border-t border-zinc-800" />
+                              <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40">
+                                <Trash className="h-4 w-4" weight="duotone" /> Cancel event
                               </button>
                             </div>
                           )}
                         </>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 )
               })}
               {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center">
-                    <CalendarDays className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-                    <p className="text-sm font-medium text-slate-500">No events found</p>
-                  </td>
-                </tr>
+                <Tr>
+                  <Td colSpan={7} className="text-center py-12">
+                    <CalendarCheck className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
+                    <p className="text-sm font-medium text-zinc-400">No events found</p>
+                  </Td>
+                </Tr>
               )}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Megaphone } from "lucide-react"
+import { Megaphone } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminNotificationsPage() {
@@ -8,7 +8,7 @@ export default function AdminNotificationsPage() {
     <ComingSoon
       title="Announcements & Broadcasts"
       description="Send platform-wide announcements, targeted notifications, and email campaigns to segments of the alumni network."
-      icon={<Megaphone className="h-7 w-7" />}
+      icon={<Megaphone className="h-7 w-7" weight="duotone" />}
       planned={[
         "Compose platform-wide banner announcements with scheduling",
         "Send targeted push and email notifications by batch, house, or plan",

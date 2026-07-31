@@ -1,6 +1,6 @@
 "use client"
 
-import { Briefcase } from "lucide-react"
+import { Briefcase } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminJobsPage() {
@@ -8,7 +8,7 @@ export default function AdminJobsPage() {
     <ComingSoon
       title="Job Board"
       description="Manage job postings shared by alumni, employer accounts, and application analytics for the network's career hub."
-      icon={<Briefcase className="h-7 w-7" />}
+      icon={<Briefcase className="h-7 w-7" weight="duotone" />}
       planned={[
         "Review and approve job postings before they go live",
         "Manage posting quotas per membership tier",

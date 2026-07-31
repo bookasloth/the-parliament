@@ -24,5 +24,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const email = session.user.email || ""
   const admin: AdminIdentity = { name, email, initials: initialsFrom(name, email) }
 
-  return <AdminShell admin={admin}>{children}</AdminShell>
+  return (
+    <div className="admin-root">
+      <AdminShell admin={admin}>{children}</AdminShell>
+    </div>
+  )
 }

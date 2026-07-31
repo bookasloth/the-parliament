@@ -1,6 +1,6 @@
 "use client"
 
-import { MessagesSquare } from "lucide-react"
+import { ChatsCircle } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminMessagingPage() {
@@ -8,7 +8,7 @@ export default function AdminMessagingPage() {
     <ComingSoon
       title="Messaging Administration"
       description="Oversee direct-messaging health: spam controls, blocked-user management, and message-request policies."
-      icon={<MessagesSquare className="h-7 w-7" />}
+      icon={<ChatsCircle className="h-7 w-7" weight="duotone" />}
       planned={[
         "Configure messaging quotas per membership tier",
         "Review reported conversations with privacy-preserving tooling",

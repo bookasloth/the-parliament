@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3 } from "lucide-react"
+import { ChartBar } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminAnalyticsPage() {
@@ -8,7 +8,7 @@ export default function AdminAnalyticsPage() {
     <ComingSoon
       title="Platform Analytics"
       description="Deep-dive analytics across engagement, retention, growth funnels, and content performance for the entire alumni network."
-      icon={<BarChart3 className="h-7 w-7" />}
+      icon={<ChartBar className="h-7 w-7" weight="duotone" />}
       planned={[
         "Daily / weekly / monthly active user trends with cohort retention",
         "Engagement funnels: signup, onboarding completion, first post, first connection",

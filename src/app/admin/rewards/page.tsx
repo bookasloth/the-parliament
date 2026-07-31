@@ -1,6 +1,6 @@
 "use client"
 
-import { Trophy } from "lucide-react"
+import { Trophy } from "@phosphor-icons/react"
 import { ComingSoon } from "../admin-ui"
 
 export default function AdminRewardsPage() {
@@ -8,7 +8,7 @@ export default function AdminRewardsPage() {
     <ComingSoon
       title="Badges & Rewards"
       description="Design achievement badges, configure reward rules, and recognize outstanding contributors across the alumni network."
-      icon={<Trophy className="h-7 w-7" />}
+      icon={<Trophy className="h-7 w-7" weight="duotone" />}
       planned={[
         "Create and edit achievement badges with custom criteria",
         "Configure automatic badge awards tied to karma milestones",
