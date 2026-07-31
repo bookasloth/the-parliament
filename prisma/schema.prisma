@@ -1058,7 +1058,7 @@ model Membership {
   userId                 String    @map("user_id") @db.Uuid
   planCode               String    @map("plan_code") @db.VarChar(20)
   benefitTier            String    @map("benefit_tier") @db.VarChar(20)
-  status                 String    @default("active") @db.VarChar(20)
+  status                 MembershipStatus @default(active)
   startedAt              DateTime  @default(now()) @map("started_at") @db.Timestamptz
   endsAt                 DateTime? @map("ends_at") @db.Timestamptz
   amountPaise            Int       @default(0) @map("amount_paise")
@@ -1085,7 +1085,7 @@ model MembershipOrder {
   planCode               String    @map("plan_code") @db.VarChar(20)
   amountPaise            Int       @map("amount_paise")
   currency               String    @default("INR") @db.VarChar(3)
-  status                 String    @default("created") @db.VarChar(20)
+  status                 MembershipOrderStatus @default(created)
   razorpayOrderId        String?   @unique @map("razorpay_order_id") @db.VarChar(64)
   razorpaySubscriptionId String?   @map("razorpay_subscription_id") @db.VarChar(64)
   razorpayPaymentId      String?   @map("razorpay_payment_id") @db.VarChar(64)
@@ -1129,7 +1129,7 @@ model MembershipRefund {
   razorpayRefundId  String    @unique @map("razorpay_refund_id") @db.VarChar(64)
   amountPaise       Int       @map("amount_paise")
   reason            String
-  status            String    @default("pending") @db.VarChar(20)
+  status            MembershipRefundStatus @default(pending)
   processedAt       DateTime? @map("processed_at") @db.Timestamptz
   initiatedByUserId String    @map("initiated_by_user_id") @db.Uuid
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -1164,7 +1164,7 @@ model CommitteeInvite {
   id              String    @id @default(uuid()) @db.Uuid
   userId          String    @map("user_id") @db.Uuid
   invitedByUserId String    @map("invited_by_user_id") @db.Uuid
-  status          String    @default("pending") @db.VarChar(20)
+  status          CommitteeInviteStatus @default(pending)
   message         String?
   expiresAt       DateTime  @map("expires_at") @db.Timestamptz
   respondedAt     DateTime? @map("responded_at") @db.Timestamptz
@@ -1201,7 +1201,7 @@ model Payment {
   membershipId      String?   @map("membership_id") @db.Uuid
   razorpayOrderId   String?   @map("razorpay_order_id") @db.VarChar(64)
   razorpayPaymentId String?   @map("razorpay_payment_id") @db.VarChar(64)
-  status            String    @default("created") @db.VarChar(20)
+  status            PaymentStatus @default(created)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
   paidAt            DateTime? @map("paid_at") @db.Timestamptz
 
@@ -1264,7 +1264,7 @@ model KarmaRedemption {
   rewardItemId       String    @map("reward_item_id") @db.Uuid
   karmaSpent         Decimal   @map("karma_spent") @db.Decimal(8, 2)
   karmaTransactionId String    @map("karma_transaction_id") @db.Uuid
-  status             String    @default("fulfilled") @db.VarChar(20)
+  status             KarmaRedemptionStatus @default(fulfilled)
   deliveryChannel    String?   @map("delivery_channel") @db.VarChar(20)
   deliveredUrl       String?   @map("delivered_url")
   deliveredCode      String?   @map("delivered_code") @db.VarChar(80)
@@ -1637,4 +1637,52 @@ enum KarmaRole {
   actor
   publisher
   self
+}
+
+// ── Enums batch 2: money / membership lifecycle ──
+enum MembershipStatus {
+  active
+  expired
+  superseded
+  refunded
+  cancelled
+}
+
+enum MembershipOrderStatus {
+  created
+  attempted
+  paid
+  failed
+  refunded
+  superseded
+}
+
+enum MembershipRefundStatus {
+  pending
+  processed
+  accepted
+  declined
+  failed
+}
+
+enum CommitteeInviteStatus {
+  pending
+  accepted
+  declined
+  expired
+  revoked
+}
+
+enum PaymentStatus {
+  created
+  paid
+  failed
+  refunded
+}
+
+enum KarmaRedemptionStatus {
+  fulfilled
+  pending
+  refunded
+  cancelled
 }
