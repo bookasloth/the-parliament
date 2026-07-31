@@ -14,6 +14,19 @@ export function getRazorpay(): Razorpay {
   return cachedClient
 }
 
+/** Issue a refund against a captured payment. Returns the Razorpay refund id.
+ *  Throws if the payment can't be refunded (already refunded, insufficient
+ *  balance, etc.) — callers must record nothing on throw. */
+export async function createRefund(
+  paymentId: string,
+  amountPaise: number,
+  notes?: Record<string, string>,
+): Promise<{ id: string }> {
+  const rzp = getRazorpay()
+  const refund = await rzp.payments.refund(paymentId, { amount: amountPaise, notes: notes ?? {} })
+  return { id: refund.id }
+}
+
 export function publicKeyId(): string {
   const keyId = process.env.RAZORPAY_KEY_ID
   if (!keyId) throw new Error("RAZORPAY_KEY_ID missing")

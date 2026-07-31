@@ -33,8 +33,8 @@ const revokeSchema = z.object({
 const refundSchema = z.object({
   action: z.literal("refund"),
   orderId: z.string().uuid(),
-  razorpayRefundId: z.string(),
-  amountPaise: z.number().int().positive(),
+  // Optional — omit for a full refund. The Razorpay refund is issued automatically.
+  amountPaise: z.number().int().positive().optional(),
   reason: z.string().min(3),
 })
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       return ok({ success: true })
     }
     if (body.action === "refund") {
-      const r = await adminRefund({ adminId: admin.id, orderId: body.orderId, razorpayRefundId: body.razorpayRefundId, amountPaise: body.amountPaise, reason: body.reason })
+      const r = await adminRefund({ adminId: admin.id, orderId: body.orderId, amountPaise: body.amountPaise, reason: body.reason })
       return ok({ refundId: r.id })
     }
     if (body.action === "invite_committee") {

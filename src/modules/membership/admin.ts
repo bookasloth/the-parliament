@@ -7,6 +7,7 @@ import {
   type PlanCode,
 } from "@/config/membership"
 import { activateMembership, expireMembership } from "@/modules/membership/activation"
+import { createRefund } from "@/lib/razorpay"
 import { audit } from "@/lib/audit"
 import { sendNotification } from "@/modules/notifications/service"
 
@@ -77,20 +78,35 @@ export async function adminRevoke(input: { adminId: string; membershipId: string
   })
 }
 
-export async function adminRefund(input: { adminId: string; orderId: string; reason: string; razorpayRefundId: string; amountPaise: number }) {
+/** A refund must be a positive amount and can't exceed what was charged. Pure. */
+export function validateRefundAmount(amountPaise: number, orderAmountPaise: number): string | null {
+  if (!Number.isInteger(amountPaise) || amountPaise <= 0) return "Refund amount must be positive"
+  if (amountPaise > orderAmountPaise) return "Refund amount exceeds the order amount"
+  return null
+}
+
+export async function adminRefund(input: { adminId: string; orderId: string; reason: string; amountPaise?: number }) {
   const order = await prisma.membershipOrder.findUnique({ where: { id: input.orderId } })
   if (!order) throw new ForbiddenError("Order not found")
+  if (!order.razorpayPaymentId) throw new ForbiddenError("Order has no captured payment to refund")
 
-  // A refund can never exceed what was actually charged for the order.
-  if (input.amountPaise <= 0 || input.amountPaise > order.amountPaise) {
-    throw new ForbiddenError("Refund amount exceeds the order amount")
-  }
+  // Default to a full refund; validate against what was actually charged.
+  const amountPaise = input.amountPaise ?? order.amountPaise
+  const err = validateRefundAmount(amountPaise, order.amountPaise)
+  if (err) throw new ForbiddenError(err)
+
+  // Issue the refund at Razorpay FIRST. If it throws (already refunded,
+  // insufficient balance, …) we record nothing and the order stays as-is.
+  const { id: razorpayRefundId } = await createRefund(order.razorpayPaymentId, amountPaise, {
+    orderId: order.id,
+    reason: input.reason,
+  })
 
   const refund = await prisma.membershipRefund.create({
     data: {
       orderId: order.id,
-      razorpayRefundId: input.razorpayRefundId,
-      amountPaise: input.amountPaise,
+      razorpayRefundId,
+      amountPaise,
       reason: input.reason,
       status: "pending",
       initiatedByUserId: input.adminId,
