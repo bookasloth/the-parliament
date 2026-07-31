@@ -65,6 +65,32 @@ function getTransport(): nodemailer.Transporter {
   return cachedTransport
 }
 
+/** Build the nodemailer payload for a message. Pure — shared by the inline send
+ *  in deliver() and the outbox drain, so header/from logic lives in one place. */
+export function buildMailPayload(m: {
+  category: EmailCategory
+  toAddress: string
+  subject: string
+  text: string
+  html: string
+  unsubscribeToken?: string
+}) {
+  return {
+    from: FROM_BY_CATEGORY[m.category],
+    to: m.toAddress,
+    subject: m.subject,
+    text: m.text,
+    html: m.html,
+    headers:
+      m.category !== "transactional"
+        ? {
+            "List-Unsubscribe": `<mailto:unsubscribe@nnawca.com?subject=unsubscribe-${m.category}>, <${process.env.AUTH_URL || ""}/api/email/unsubscribe?token=${m.unsubscribeToken ?? ""}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          }
+        : undefined,
+  }
+}
+
 // The single guarded send path. Every email — DB-template (queueEmail) OR
 // code-template (lib/email sendEmail) — goes through here, so suppression,
 // per-user opt-out, quiet-hours deferral and EmailMessage logging are enforced
@@ -111,7 +137,15 @@ export async function deliver(args: DeliverArgs): Promise<{ messageId: string | 
         category: args.category,
         subject: args.subject,
         status: "queued",
-        metadata: { quietHoursDeferred: true, variables: args.variables ?? {} } as Prisma.InputJsonValue,
+        // Store the rendered body so the outbox drain can send it later without
+        // re-rendering. Without this, a deferred row can never be delivered.
+        metadata: {
+          quietHoursDeferred: true,
+          variables: args.variables ?? {},
+          html: args.html,
+          text: args.text,
+          unsubscribeToken: args.unsubscribeToken ?? "",
+        } as Prisma.InputJsonValue,
       },
     })
     return { messageId: deferred.id, reason: "quiet_hours_deferred" }
@@ -140,20 +174,16 @@ export async function deliver(args: DeliverArgs): Promise<{ messageId: string | 
   }
 
   try {
-    const info = await getTransport().sendMail({
-      from: FROM_BY_CATEGORY[args.category],
-      to: args.toAddress,
-      subject: args.subject,
-      text: args.text,
-      html: args.html,
-      headers:
-        args.category !== "transactional"
-          ? {
-              "List-Unsubscribe": `<mailto:unsubscribe@nnawca.com?subject=unsubscribe-${args.category}>, <${process.env.AUTH_URL || ""}/api/email/unsubscribe?token=${args.unsubscribeToken ?? ""}>`,
-              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-            }
-          : undefined,
-    })
+    const info = await getTransport().sendMail(
+      buildMailPayload({
+        category: args.category,
+        toAddress: args.toAddress,
+        subject: args.subject,
+        text: args.text,
+        html: args.html,
+        unsubscribeToken: args.unsubscribeToken,
+      }),
+    )
     await prisma.emailMessage.update({
       where: { id: message.id },
       data: { status: "sent", sentAt: new Date(), providerMsgId: info.messageId ?? null },
@@ -168,6 +198,78 @@ export async function deliver(args: DeliverArgs): Promise<{ messageId: string | 
     await audit({ action: "email.send.failed", entityId: message.id, payload: { error: errMsg } })
     return { messageId: message.id, reason: "send_failed" }
   }
+}
+
+/**
+ * Send the queued outbox — mail deferred by quiet hours (and any future
+ * enqueue-for-later senders). Runs from a Vercel Cron. Only sends outside quiet
+ * hours (so it doesn't undo the deferral), re-checks suppression at send time,
+ * and skips legacy rows that predate body storage (they have no html/text to
+ * replay). Best-effort per row: one failure doesn't block the rest.
+ */
+export async function drainEmailOutbox(limit = 200): Promise<{ sent: number; failed: number; skipped: number }> {
+  if (insideQuietHours()) return { sent: 0, failed: 0, skipped: 0 }
+
+  const rows = await prisma.emailMessage.findMany({
+    where: { status: "queued" },
+    orderBy: { queuedAt: "asc" },
+    take: limit,
+  })
+
+  let sent = 0
+  let failed = 0
+  let skipped = 0
+
+  for (const row of rows) {
+    const meta = (row.metadata ?? {}) as Record<string, unknown>
+    const html = typeof meta.html === "string" ? meta.html : undefined
+    const text = typeof meta.text === "string" ? meta.text : undefined
+    if (!html && !text) {
+      skipped++
+      continue // legacy queued row with no stored body — can't be replayed
+    }
+
+    const suppressed = await prisma.emailSuppression.findUnique({ where: { emailAddress: row.toAddress } })
+    if (suppressed) {
+      await prisma.emailMessage.update({ where: { id: row.id }, data: { status: "failed", error: "suppressed" } })
+      skipped++
+      continue
+    }
+
+    if (!process.env.SMTP_HOST) {
+      await prisma.emailMessage.update({
+        where: { id: row.id },
+        data: { status: "sent", sentAt: new Date(), providerMsgId: "dev-noop" },
+      })
+      sent++
+      continue
+    }
+
+    try {
+      const info = await getTransport().sendMail(
+        buildMailPayload({
+          category: row.category as EmailCategory,
+          toAddress: row.toAddress,
+          subject: row.subject,
+          text: text ?? "",
+          html: html ?? "",
+          unsubscribeToken: typeof meta.unsubscribeToken === "string" ? meta.unsubscribeToken : undefined,
+        }),
+      )
+      await prisma.emailMessage.update({
+        where: { id: row.id },
+        data: { status: "sent", sentAt: new Date(), providerMsgId: info.messageId ?? null },
+      })
+      sent++
+    } catch (e) {
+      const errMsg = (e as Error).message
+      await prisma.emailMessage.update({ where: { id: row.id }, data: { status: "failed", error: errMsg } })
+      await audit({ action: "email.drain.failed", entityId: row.id, payload: { error: errMsg } })
+      failed++
+    }
+  }
+
+  return { sent, failed, skipped }
 }
 
 /** DB-template send: look up + fill the template, then hand off to deliver(). */
