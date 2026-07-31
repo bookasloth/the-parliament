@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Derive the storage host from env so remotePatterns stay correct across
 // deploys (uploads are served from the Supabase project host).
@@ -19,7 +20,8 @@ const host = storageHost();
 // while blocking — that's the ongoing tripwire for anything the policy misses.
 // Origins in the allowlist: Razorpay checkout (script + iframe + connect), Supabase
 // over both https AND wss (Realtime messaging uses a WebSocket to *.supabase.co),
-// and https: images (unsplash / ui-avatars / supabase / cover hosts).
+// Sentry ingest (*.sentry.io — client error/trace reporting, else CSP silently
+// blocks it), and https: images (unsplash / ui-avatars / supabase / cover hosts).
 // ponytail: 'unsafe-inline' stays in script-src/style-src because Next injects inline
 // scripts/styles today. Enforcing WITH unsafe-inline still blocks external/injected
 // script origins, object/base/frame — a real gain. Upgrade path: switch Next to
@@ -36,7 +38,7 @@ export function buildCsp(isDev: boolean): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.razorpay.com https://*.supabase.co wss://*.supabase.co",
+    "connect-src 'self' https://*.razorpay.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
     "frame-src https://*.razorpay.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
@@ -71,4 +73,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with Sentry. Source-map upload runs only when SENTRY_ORG/PROJECT/AUTH_TOKEN
+// are set (build-time, in CI) — absent them it's a no-op, so local/dev builds are
+// unaffected. Runtime error/trace capture is driven by the DSN env vars.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+});
