@@ -1,4 +1,4 @@
-import { emailShell, p, small, button, details, codeBox } from "@/lib/email-layout"
+import { emailShell, p, small, button, details, codeBox, bullets } from "@/lib/email-layout"
 import { deliver } from "@/modules/email/service"
 import type { EmailCategory } from "@/modules/email/templates"
 
@@ -22,6 +22,11 @@ export type EmailTemplates = {
   contact_reveal_request: { fromName: string; profileUrl: string }
   new_event_in_batch: { eventTitle: string; eventUrl: string }
   reaction_milestone: { postUrl: string; count: string }
+  rsvp_confirmed: { firstName: string; eventTitle: string; eventWhen: string; eventUrl: string }
+  membership_renewed: { firstName: string; planName: string; validUntil: string; manageUrl: string }
+  birthday_wish: { firstName: string; profileUrl: string }
+  upsell_unlock: { firstName: string; membershipUrl: string }
+  upsell_upgrade: { firstName: string; planName: string; upgradeUrl: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -245,6 +250,109 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         unsubscribeUrl: MANAGE_URL,
       }),
   },
+  rsvp_confirmed: {
+    subject: (d) => `You're going to ${d.eventTitle}`,
+    text: (d) => `Hi ${d.firstName},\n\nYour RSVP is confirmed for ${d.eventTitle}.\nWhen: ${d.eventWhen}\n\nDetails: ${d.eventUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "emerald",
+        pill: "RSVP",
+        eyebrow: "Event · Confirmed",
+        heading: `You're going to <em>${d.eventTitle}</em>`,
+        body:
+          p(`Hi ${d.firstName}, your spot is booked — we've saved you a seat.`) +
+          details([["When", d.eventWhen]], "emerald") +
+          button("View event & details", d.eventUrl, "emerald") +
+          small("Plans changed? You can cancel your RSVP from the event page anytime."),
+        reason: "You're getting this because you registered for this event.",
+      }),
+  },
+  membership_renewed: {
+    subject: () => "Your NNAWCA membership is renewed",
+    text: (d) => `Hi ${d.firstName},\n\nYour ${d.planName} membership is renewed — valid until ${d.validUntil}.\n\nManage: ${d.manageUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Renewed",
+        eyebrow: "Membership · Renewed",
+        heading: `Welcome back, <em>${d.firstName}</em>`,
+        body:
+          p(`Your ${d.planName} membership is renewed — nothing lapsed, everything's exactly where you left it.`) +
+          details([["Plan", d.planName], ["Valid until", d.validUntil]], "navy") +
+          button("Go to your feed", d.manageUrl, "navy") +
+          small("A receipt for this renewal is on its way in a separate email."),
+        reason: "You're getting this because you renewed your NNAWCA membership.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  birthday_wish: {
+    subject: (d) => `Happy birthday, ${d.firstName}! 🎂`,
+    text: (d) => `Happy birthday, ${d.firstName}!\n\nThe whole NNAWCA alumni family wishes you a wonderful year ahead.\n\n${d.profileUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "gold",
+        pill: "Birthday",
+        eyebrow: "From the NNAWCA family",
+        heading: `Happy birthday, <em>${d.firstName}</em> 🎂`,
+        body:
+          p("The whole NNAWCA alumni family wishes you a wonderful year ahead. Thank you for being part of it.") +
+          button("Open your profile", d.profileUrl, "gold"),
+        reason: "You're getting this because it's your birthday and you're an NNAWCA member.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  upsell_unlock: {
+    subject: () => "Unlock the full NNAWCA alumni network",
+    text: (d) => `Hi ${d.firstName},\n\nYou're on the free tier. A membership opens the full directory, groups, job referrals, and event discounts.\n\nChoose a plan: ${d.membershipUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Upgrade",
+        eyebrow: "Membership · Get full access",
+        heading: "You're in — now <em>unlock the rest</em>",
+        body:
+          p(`Hi ${d.firstName}, your account is on the free tier. A paid membership opens the parts of NNAWCA most alumni join for:`) +
+          bullets([
+            "Search the full alumni directory",
+            "Post & answer job openings and referrals",
+            "Join private batch & city groups",
+            "10% off every paid event",
+            "List your business to alumni",
+          ]) +
+          button("Choose your plan", d.membershipUrl, "blue") +
+          small("Plans start at ₹500/year. Cancel anytime before renewal."),
+        reason: "You're getting this because you have a free NNAWCA account.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  upsell_upgrade: {
+    subject: (d) => `Ready for ${d.planName}?`,
+    text: (d) => `Hi ${d.firstName},\n\nUpgrade to ${d.planName} for mentorship access, more business listings, a highlighted profile, and recognition.\n\nUpgrade: ${d.upgradeUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Upgrade",
+        eyebrow: "Membership · Upgrade",
+        heading: `Ready for <em>${d.planName}</em>, ${d.firstName}?`,
+        body:
+          p(`You're getting real value from your membership — ${d.planName} adds the things alumni use to give back and get noticed:`) +
+          bullets([
+            "Apply to become a student mentor",
+            "List more businesses",
+            "Your profile highlighted to students",
+            "Recognition on the site & at events",
+            "Your name on the Scholarship Supporters Wall",
+          ]) +
+          button(`Upgrade to ${d.planName}`, d.upgradeUrl, "navy") +
+          small("You keep your current renewal date."),
+        reason: "You're getting this because you're an NNAWCA member.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
 }
 
 /** Render a template to its subject/text/html without sending. Pure — for tests + previews. */
@@ -275,6 +383,11 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   contact_reveal_request: "engagement",
   new_event_in_batch: "engagement",
   reaction_milestone: "engagement",
+  rsvp_confirmed: "transactional",
+  membership_renewed: "lifecycle",
+  birthday_wish: "wish",
+  upsell_unlock: "marketing",
+  upsell_upgrade: "marketing",
 }
 
 /**

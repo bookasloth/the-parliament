@@ -22,6 +22,7 @@ const CATEGORY_PREF_MAP: Record<EmailCategory, keyof PreferenceFlags> = {
   digest: "digests",
   admin: "transactional",
   institutional: "lifecycle",
+  marketing: "marketing",
 }
 
 interface PreferenceFlags {
@@ -44,6 +45,7 @@ const FROM_BY_CATEGORY: Record<EmailCategory, string> = {
   digest: "NNAWCA Community <community@nnawca.com>",
   admin: "NNAWCA Admin <admin@nnawca.com>",
   institutional: "NNAWCA <community@nnawca.com>",
+  marketing: "NNAWCA Community <community@nnawca.com>",
 }
 
 let cachedTransport: nodemailer.Transporter | null = null

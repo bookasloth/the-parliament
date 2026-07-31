@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit"
 import { PLANS, type PlanCode } from "@/config/membership"
 import { nextRenewalDate } from "@/lib/membership-cycle"
 import { queueEmail } from "@/modules/email/service"
+import { sendEmail } from "@/lib/email"
 
 export interface ActivateInput {
   userId: string
@@ -132,6 +133,9 @@ function fmtDate(d: Date): string {
 }
 
 async function sendWelcomeEmail(input: ActivateInput, result: ActivateResult): Promise<void> {
+  // Renewals get the "welcome back" mail, not a first-time welcome.
+  if (input.source === "renewal") return sendRenewalEmail(input, result)
+
   const templateCode = welcomeTemplateFor(input.planCode, input.source)
   if (!templateCode) return
   try {
@@ -153,6 +157,31 @@ async function sendWelcomeEmail(input: ActivateInput, result: ActivateResult): P
     await queueEmail({ templateCode, toAddress: u.email, userId: input.userId, variables })
   } catch (e) {
     console.error(`welcome email (${templateCode}) failed for ${input.userId}`, e)
+  }
+}
+
+async function sendRenewalEmail(input: ActivateInput, result: ActivateResult): Promise<void> {
+  if (!["associate", "premium", "life"].includes(input.planCode)) return
+  try {
+    const u = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { email: true, legalName: true },
+    })
+    if (!u?.email) return
+    const base = process.env.AUTH_URL || "https://nnawca.org"
+    await sendEmail(
+      "membership_renewed",
+      u.email,
+      {
+        firstName: u.legalName?.split(" ")[0] || "there",
+        planName: PLANS[input.planCode].displayName,
+        validUntil: result.endsAt ? fmtDate(result.endsAt) : "—",
+        manageUrl: `${base}/feed`,
+      },
+      input.userId,
+    )
+  } catch (e) {
+    console.error(`renewal email failed for ${input.userId}`, e)
   }
 }
 

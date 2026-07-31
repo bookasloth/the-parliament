@@ -5,6 +5,7 @@ import { MEMBERSHIP_GRACE_DAYS, COMMITTEE_INVITE_TTL_DAYS, PLANS, type PlanCode 
 import { expireMembership } from "@/modules/membership/activation"
 import { sendNotification } from "@/modules/notifications/service"
 import { queueEmail } from "@/modules/email/service"
+import { sendEmail } from "@/lib/email"
 import { audit } from "@/lib/audit"
 
 const DAY_MS = 86400000
@@ -25,6 +26,7 @@ export async function runMembershipMaintenance(): Promise<Record<string, string>
     ["inviteExpiry", inviteExpiryHandler],
     ["razorpayReconcile", razorpayReconcileHandler],
     ["upsellNudge", upsellNudgeHandler],
+    ["birthday", birthdayHandler],
   ]
   const results: Record<string, string> = {}
   for (const [name, fn] of tasks) {
@@ -209,29 +211,88 @@ async function razorpayReconcileHandler() {
 async function upsellNudgeHandler() {
   const thresholds = [30, 60, 90]
   const now = Date.now()
+  const base = process.env.AUTH_URL || "https://nnawca.org"
 
   for (const days of thresholds) {
     const cohortStart = new Date(now - (days + 1) * DAY_MS)
     const cohortEnd = new Date(now - (days - 1) * DAY_MS)
 
+    // Free (student) members → nudge to unlock a paid plan.
     const freeUsers = await prisma.user.findMany({
-      where: {
-        membershipStatus: "student",
-        status: "active",
-        createdAt: { gte: cohortStart, lt: cohortEnd },
-        deletedAt: null,
-      },
-      select: { id: true },
+      where: { membershipStatus: "student", status: "active", createdAt: { gte: cohortStart, lt: cohortEnd }, deletedAt: null },
+      select: { id: true, email: true, legalName: true },
       take: 500,
     })
-
     for (const u of freeUsers) {
-      const type = `upsell_d_${days}`
-      const already = await prisma.membershipEvent.findFirst({
-        where: { userId: u.id, type, createdAt: { gt: new Date(now - 60 * DAY_MS) } },
-      })
-      if (already) continue
-      await prisma.membershipEvent.create({ data: { userId: u.id, type } })
+      if (await alreadyNudged(u.id, `upsell_d_${days}`, now)) continue
+      await prisma.membershipEvent.create({ data: { userId: u.id, type: `upsell_d_${days}` } })
+      if (u.email) {
+        await sendEmail(
+          "upsell_unlock",
+          u.email,
+          { firstName: u.legalName?.split(" ")[0] || "there", membershipUrl: `${base}/membership` },
+          u.id,
+        ).catch((e) => console.error(`upsell_unlock email failed for ${u.id}`, e))
+      }
     }
+
+    // Associate members → nudge to upgrade to Premium.
+    const associates = await prisma.user.findMany({
+      where: { membershipStatus: "associate", status: "active", createdAt: { gte: cohortStart, lt: cohortEnd }, deletedAt: null },
+      select: { id: true, email: true, legalName: true },
+      take: 500,
+    })
+    for (const u of associates) {
+      if (await alreadyNudged(u.id, `upgrade_d_${days}`, now)) continue
+      await prisma.membershipEvent.create({ data: { userId: u.id, type: `upgrade_d_${days}` } })
+      if (u.email) {
+        await sendEmail(
+          "upsell_upgrade",
+          u.email,
+          { firstName: u.legalName?.split(" ")[0] || "there", planName: PLANS.premium.displayName, upgradeUrl: `${base}/membership` },
+          u.id,
+        ).catch((e) => console.error(`upsell_upgrade email failed for ${u.id}`, e))
+      }
+    }
+  }
+}
+
+async function alreadyNudged(userId: string, type: string, now: number): Promise<boolean> {
+  const row = await prisma.membershipEvent.findFirst({
+    where: { userId, type, createdAt: { gt: new Date(now - 60 * DAY_MS) } },
+  })
+  return Boolean(row)
+}
+
+/**
+ * Wish active members a happy birthday. Matches month+day in IST (the cron runs
+ * daily); the send is category "wish" so it respects opt-out + quiet hours (it
+ * defers to the outbox overnight and goes out that morning).
+ */
+async function birthdayHandler() {
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+  const month = ist.getUTCMonth() + 1
+  const day = ist.getUTCDate()
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+
+  const rows = await prisma.$queryRaw<
+    { id: string; email: string; legal_name: string; username: string | null }[]
+  >`SELECT id, email, legal_name, username FROM users
+    WHERE status = 'active' AND deleted_at IS NULL AND date_of_birth IS NOT NULL
+      AND EXTRACT(MONTH FROM date_of_birth) = ${month}
+      AND EXTRACT(DAY FROM date_of_birth) = ${day}
+    LIMIT 1000`
+
+  for (const u of rows) {
+    if (!u.email) continue
+    await sendEmail(
+      "birthday_wish",
+      u.email,
+      {
+        firstName: u.legal_name?.split(" ")[0] || "there",
+        profileUrl: u.username ? `${base}/profile/${u.username}` : `${base}/feed`,
+      },
+      u.id,
+    ).catch((e) => console.error(`birthday email failed for ${u.id}`, e))
   }
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import type { EventRsvpStatus } from "@/generated/prisma/enums"
+import { sendEmail } from "@/lib/email"
 
 /** EventItem shape consumed by the events client UI. Mirrors the mock array. */
 export interface EventItem {
@@ -81,11 +82,41 @@ export async function rsvpEvent(
   eventId: string,
   status: EventRsvpStatus = "going",
 ) {
-  return prisma.eventRsvp.upsert({
+  const existing = await prisma.eventRsvp.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+  })
+  const row = await prisma.eventRsvp.upsert({
     where: { eventId_userId: { eventId, userId } },
     create: { eventId, userId, status },
     update: { status },
   })
+  // Confirmation only on a fresh "going" RSVP — not on status re-toggles.
+  if (!existing && status === "going") {
+    await sendRsvpConfirmation(userId, eventId).catch((e) =>
+      console.error(`rsvp confirmation email failed for ${userId}/${eventId}`, e),
+    )
+  }
+  return row
+}
+
+async function sendRsvpConfirmation(userId: string, eventId: string): Promise<void> {
+  const [user, event] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true, legalName: true } }),
+    prisma.event.findUnique({ where: { id: eventId }, select: { title: true, startsAt: true } }),
+  ])
+  if (!user?.email || !event) return
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  await sendEmail(
+    "rsvp_confirmed",
+    user.email,
+    {
+      firstName: user.legalName?.split(" ")[0] || "there",
+      eventTitle: event.title,
+      eventWhen: event.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      eventUrl: `${base}/events/${eventId}`,
+    },
+    userId,
+  )
 }
 
 /** Remove a user's RSVP for an event. */

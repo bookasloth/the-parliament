@@ -9,6 +9,7 @@ export type EmailCategory =
   | "digest"
   | "admin"
   | "institutional"
+  | "marketing"
 
 export interface SeedTemplate {
   code: string
