@@ -4,6 +4,7 @@ import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from
 import { SEED_TEMPLATES } from "@/modules/email/templates"
 import { welcomeTemplateFor } from "@/modules/membership/activation"
 import { receiptVars } from "@/modules/membership/invoice"
+import { extractMentionHandles } from "@/modules/feed/mentions"
 
 // Representative data for every lib/email template.
 const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
@@ -18,6 +19,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   mention: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
   contact_reveal_request: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
   new_event_in_batch: { eventTitle: "Reunion 2026", eventUrl: "https://x/e/1" },
+  reaction_milestone: { postUrl: "https://x/p/1", count: "50" },
 }
 
 describe("email-layout shell", () => {
@@ -54,8 +56,8 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 11 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(11)
+  it("covers all 12 keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(12)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
@@ -130,6 +132,22 @@ describe("wired DB templates expose exactly the variables their callers fill", (
       expect(Object.keys(t.variables).sort()).toEqual([...vars].sort())
     })
   }
+})
+
+describe("mention extraction", () => {
+  it("pulls unique lowercased @handles from a body", () => {
+    expect(extractMentionHandles("hi @Neha and @amit_k, cc @Neha")).toEqual(["neha", "amit_k"])
+  })
+  it("ignores emails and bare @, handles empty/null", () => {
+    expect(extractMentionHandles("mail me at foo@bar.com")).toEqual([]) // email, not a mention
+    expect(extractMentionHandles("just @ symbol")).toEqual([])
+    expect(extractMentionHandles("")).toEqual([])
+    expect(extractMentionHandles(null)).toEqual([])
+  })
+  it("caps the number of handles", () => {
+    const body = Array.from({ length: 30 }, (_, i) => `@user${i}`).join(" ")
+    expect(extractMentionHandles(body, 5)).toHaveLength(5)
+  })
 })
 
 describe("payment receipt variables", () => {

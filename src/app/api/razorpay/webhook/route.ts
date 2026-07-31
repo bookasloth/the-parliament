@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 }
 
 interface RzpPayloadShape {
-  payment?: { entity: { id: string; order_id?: string; status: string; notes?: Record<string, string> } }
+  payment?: { entity: { id: string; order_id?: string; amount?: number; status: string; notes?: Record<string, string> } }
   subscription?: { entity: { id: string; plan_id?: string; status: string; current_end?: number; notes?: Record<string, string> } }
   refund?: { entity: { id: string; payment_id: string; amount: number; status: string } }
 }
@@ -141,25 +141,53 @@ async function handleSubscriptionActivated(payload: Record<string, unknown>) {
 }
 
 async function handleSubscriptionCharged(payload: Record<string, unknown>) {
-  const s = (payload as RzpPayloadShape).subscription?.entity
+  const shape = payload as RzpPayloadShape
+  const s = shape.subscription?.entity
   if (!s) return
   const userId = s.notes?.userId
   const planCode = s.notes?.planCode as PlanCode | undefined
   if (!userId || !planCode) return
 
-  const order = await prisma.membershipOrder.findFirst({
+  const pay = shape.payment?.entity
+  // Idempotency: a retried subscription.charged must not create a second
+  // renewal order (and thus a duplicate invoice/receipt).
+  if (pay?.id) {
+    const dup = await prisma.membershipOrder.findFirst({ where: { razorpayPaymentId: pay.id } })
+    if (dup) return
+  }
+
+  // Each renewal charge is its own paid order, so it gets its own invoice number
+  // and receipt (issueInvoiceForOrder is keyed by orderId — reusing the original
+  // order would return the first invoice forever).
+  const prior = await prisma.membershipOrder.findFirst({
     where: { razorpaySubscriptionId: s.id },
     orderBy: { createdAt: "desc" },
+    select: { amountPaise: true },
+  })
+  const amountPaise = pay?.amount ?? prior?.amountPaise ?? 0
+
+  const chargeOrder = await prisma.membershipOrder.create({
+    data: {
+      userId,
+      planCode,
+      amountPaise,
+      status: "paid",
+      razorpaySubscriptionId: s.id,
+      razorpayPaymentId: pay?.id,
+      capturedAt: new Date(),
+    },
   })
 
   await activateMembership({
     userId,
     planCode,
     source: "renewal",
-    amountPaise: order?.amountPaise ?? 0,
-    orderId: order?.id,
+    amountPaise,
+    orderId: chargeOrder.id,
     razorpaySubscriptionId: s.id,
   })
+
+  await issueInvoiceAndSendReceipt(chargeOrder.id)
 }
 
 async function handleSubscriptionEnded(payload: Record<string, unknown>, event: string) {

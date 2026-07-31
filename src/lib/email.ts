@@ -20,6 +20,7 @@ export type EmailTemplates = {
   mention: { fromName: string; postUrl: string }
   contact_reveal_request: { fromName: string; profileUrl: string }
   new_event_in_batch: { eventTitle: string; eventUrl: string }
+  reaction_milestone: { postUrl: string; count: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -189,16 +190,31 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
       }),
   },
   new_event_in_batch: {
-    subject: (d) => `New event for your batch: ${d.eventTitle}`,
+    subject: (d) => `New alumni event: ${d.eventTitle}`,
     text: (d) => `${d.eventTitle}\n\nView: ${d.eventUrl}`,
     html: (d) =>
       emailShell({
         accent: "navy",
         pill: "Event",
-        eyebrow: "Events · For your batch",
+        eyebrow: "Events · New",
         heading: `<em>${d.eventTitle}</em>`,
-        body: p("A new event was just scheduled for your batch. Have a look and RSVP if you can make it.") + button("View the event", d.eventUrl, "navy"),
-        reason: "You're getting this because you allow event emails for your batch.",
+        body: p("A new event was just scheduled for the NNAWCA alumni network. Have a look and RSVP if you can make it.") + button("View the event", d.eventUrl, "navy"),
+        reason: "You're getting this because you allow event emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  reaction_milestone: {
+    subject: (d) => `Your post hit ${d.count} reactions 🎉`,
+    text: (d) => `Your post is trending — it just crossed ${d.count} reactions.\n\nSee it: ${d.postUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Trending",
+        eyebrow: "Feed · Milestone",
+        heading: `Your post hit <em>${d.count} reactions</em>`,
+        body: p(`Your post is resonating with the alumni community — it just crossed <strong>${d.count}</strong> reactions. Nice one.`) + button("See your post", d.postUrl, "blue"),
+        reason: "You're getting this because it's about your own post.",
         manageUrl: MANAGE_URL,
         unsubscribeUrl: MANAGE_URL,
       }),
@@ -231,6 +247,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   mention: "engagement",
   contact_reveal_request: "engagement",
   new_event_in_batch: "engagement",
+  reaction_milestone: "engagement",
 }
 
 /**

@@ -10,6 +10,7 @@ export type NotificationKind =
   | "mention"
   | "contact_reveal_request"
   | "new_event_in_batch"
+  | "reaction_milestone"
 
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",
@@ -20,6 +21,7 @@ const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   mention: "mention",
   contact_reveal_request: "contact_reveal_request",
   new_event_in_batch: "new_event_in_batch",
+  reaction_milestone: "reaction_milestone",
 }
 
 export interface NotificationInput<K extends NotificationKind> {
