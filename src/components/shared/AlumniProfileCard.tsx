@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { MapPin, ShieldCheck } from "lucide-react"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import Link from "next/link"
+import Image from "next/image"
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
 
 const houseColors: Record<string, string> = {
@@ -72,9 +73,11 @@ export function AlumniProfileCard({ alumni, profileHref, verified, footer, actio
       {/* Profile photo - square with rounded corners and subtle border */}
       <div className="mt-10 mb-3 flex-shrink-0">
         <Link href={href} aria-label={`View ${alumni.name}'s profile`}>
-          <img
+          <Image
             src={alumni.image}
             alt={alumni.name}
+            width={135}
+            height={135}
             className="h-[135px] w-[135px] rounded object-cover border border-gray-200 cursor-pointer transition-transform duration-300 hover:scale-105"
           />
         </Link>

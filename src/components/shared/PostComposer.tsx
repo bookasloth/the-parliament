@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import {
   Type,
   Image as ImageIcon,
@@ -290,10 +291,11 @@ export default function PostComposer({
                 <VenetianMask className="h-5 w-5" />
               </div>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={me?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(me?.name ?? "You")}`}
                 alt=""
+                width={44}
+                height={44}
                 className="h-11 w-11 rounded-full object-cover ring-2 ring-brand/60"
               />
             )}
@@ -444,8 +446,7 @@ export default function PostComposer({
                         {m.type === "video" ? (
                           <video src={m.url} className="h-full w-full object-cover" muted />
                         ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={m.url} alt="" className="h-full w-full object-cover" />
+                          <Image src={m.url} alt="" fill sizes="(max-width: 768px) 33vw, 150px" className="object-cover" />
                         )}
                         <button
                           onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}

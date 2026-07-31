@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Search, SlidersHorizontal, PenSquare } from "lucide-react"
 import { conversations } from "./chat-data"
@@ -63,9 +64,11 @@ export function ChatSidebar() {
                 >
                   {/* Square avatar */}
                   <div className="relative flex-shrink-0">
-                    <img
+                    <Image
                       src={c.avatar}
                       alt={c.name}
+                      width={44}
+                      height={44}
                       className="h-11 w-11 rounded-lg object-cover"
                       style={c.houseColor ? { boxShadow: `0 0 0 2px ${c.houseColor}` } : undefined}
                     />

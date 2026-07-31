@@ -141,7 +141,7 @@ export default function MembershipPage() {
       {/* Confirm modal — non-refundable disclosure per MEMBERSHIP_PLAN §7a */}
       {showConfirm && selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirm(false)} />
+          <div role="presentation" className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirm(false)} />
           <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <button onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600" aria-label="Close"><X className="h-5 w-5" /></button>
             {(() => {

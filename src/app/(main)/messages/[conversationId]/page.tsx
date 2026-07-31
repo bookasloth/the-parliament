@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
 import { useParams } from "next/navigation"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
@@ -91,9 +92,11 @@ export default function ConversationPage() {
           <a href="/messages" className="lg:hidden p-1 -ml-1 text-gray-500 hover:text-brand">
             <ArrowLeft className="h-5 w-5" />
           </a>
-          <img
+          <Image
             src={convo.avatar}
             alt={convo.name}
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
             style={convo.houseColor ? { boxShadow: `0 0 0 2px ${convo.houseColor}` } : undefined}
           />
@@ -214,7 +217,7 @@ export default function ConversationPage() {
                 )}
                 <div className={`flex mb-1 ${isMe ? "justify-end" : "items-end gap-2"}`}>
                   {!isMe && (
-                    <img src={convo.avatar} alt="" className="h-6 w-6 rounded-md object-cover flex-shrink-0 mb-5" />
+                    <Image src={convo.avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-md object-cover flex-shrink-0 mb-5" />
                   )}
                   <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[78%] sm:max-w-[65%]`}>
                     <div

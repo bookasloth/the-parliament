@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
   ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, BarChart2, Clock,
@@ -112,8 +113,7 @@ export default async function PostAnalyticsPage({
               return (
                 <li key={tc.authorId} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-gray-400 w-4 tabular-nums">{i + 1}</span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" />
+                  <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" width={36} height={36} />
                   <div className="flex-1 min-w-0">
                     <Link
                       href={u?.username ? `/${u.username}` : "#"}

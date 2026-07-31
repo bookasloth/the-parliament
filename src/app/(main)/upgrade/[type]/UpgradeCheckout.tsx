@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ArrowLeftRight, Crown, Tag, Check } from "lucide-react"
 import {
@@ -86,10 +87,9 @@ export default function UpgradeCheckout({
                 style={profile.coverUrl ? { backgroundImage: `url(${profile.coverUrl})` } : undefined}
               />
               <div className="px-5 pb-5 -mt-9 text-center">
-                <div className="mx-auto h-16 w-16 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
+                <div className="relative mx-auto h-16 w-16 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
                   {profile.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profile.photoUrl} alt={profile.name} className="h-full w-full object-cover" />
+                    <Image src={profile.photoUrl} alt={profile.name} className="h-full w-full object-cover" fill sizes="(max-width: 768px) 100vw, 400px" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xl font-bold text-gray-400">
                       {profile.name.charAt(0)}

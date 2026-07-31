@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
@@ -260,7 +261,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
       </div>
       {navOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} />
+          <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} />
           <div className="fixed left-0 top-0 z-50 h-full w-72 overflow-y-auto bg-[#f3f2ef] p-4 shadow-xl lg:hidden">
             <div className="mb-3 flex justify-end"><button onClick={() => setNavOpen(false)} className="text-gray-400"><X className="h-5 w-5" /></button></div>
             {SideNav}
@@ -332,8 +333,7 @@ function MiniHero({
         disabled={cover.busy}
         className="group relative block h-[120px] w-full sm:h-[160px]"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={coverSrc} alt="" className="h-full w-full object-cover" />
+        <Image src={coverSrc} alt="" fill sizes="100vw" className="h-full w-full object-cover" />
         <span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Camera className="h-4 w-4" />
           <span className="text-xs font-semibold">{cover.busy ? "Uploading…" : "Change cover"}</span>
@@ -351,8 +351,7 @@ function MiniHero({
           disabled={photo.busy}
           className="group relative -mt-10 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-sm sm:h-28 sm:w-28"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+          <Image src={photoUrl} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="h-full w-full object-cover" />
           <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
             <Camera className="h-5 w-5" />
             <span className="text-[10px] font-semibold">{photo.busy ? "…" : "Change"}</span>

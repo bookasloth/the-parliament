@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Star } from "lucide-react";
 import type { Testimonial } from "@/lib/homepage-data";
 
@@ -62,11 +63,12 @@ export function Testimonials({ testimonials = [] }: TestimonialsProps) {
                 </p>
 
                 <div className="mt-5 flex items-center gap-3">
-                  <img
+                  <Image
                     src={t.image}
                     alt={t.name}
+                    width={40}
+                    height={40}
                     className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                    loading="lazy"
                   />
                   <div>
                     <p className="text-sm font-bold text-charcoal-800">{t.name}</p>

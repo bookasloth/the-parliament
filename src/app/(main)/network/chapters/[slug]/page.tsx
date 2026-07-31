@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useParams, notFound } from "next/navigation"
 import { motion } from "framer-motion"
 import {
@@ -58,7 +59,7 @@ export default function ChapterDetailPage() {
         {/* Hero */}
         <div className="overflow-hidden border-0 border-gray-200 bg-white sm:rounded-xl sm:border">
           <div className="relative h-36 sm:h-48">
-            <img src={chapter.hero} alt="" className="h-full w-full object-cover" />
+            <Image src={chapter.hero} alt="" fill sizes="100vw" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
             <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-xs text-white/85">
               <MapPin className="h-3.5 w-3.5" /> {chapter.city}
@@ -145,7 +146,7 @@ export default function ChapterDetailPage() {
                   <ul className="space-y-3">
                     {chapter.members_list.filter((m) => m.role).map((m) => (
                       <li key={m.card.id} className="flex items-center gap-3">
-                        <img src={m.card.image} alt={m.card.name} loading="lazy" className="h-10 w-10 rounded-full object-cover" />
+                        <Image src={m.card.image} alt={m.card.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-gray-900">{m.card.name}</p>
                           <p className="truncate text-xs text-brand">{m.role}</p>

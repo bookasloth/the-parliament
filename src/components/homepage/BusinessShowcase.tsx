@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { ExternalLink } from "lucide-react";
 import type { BusinessCard } from "@/lib/homepage-data";
 
@@ -34,12 +35,13 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
               className="group rounded-xl bg-white card-shadow hover:shadow-lg transition-all duration-300 border border-gray-100 overflow-hidden flex"
             >
               {/* Left 30% - Photo */}
-              <div className="w-[30%] flex-shrink-0 overflow-hidden bg-gray-50">
-                <img
+              <div className="relative w-[30%] flex-shrink-0 overflow-hidden bg-gray-50">
+                <Image
                   src={biz.logo}
                   alt={biz.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 400px"
                   className="h-full w-full object-cover"
-                  loading="lazy"
                 />
               </div>
 

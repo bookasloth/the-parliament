@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { UserPlus, CalendarCheck, Award, FileText, ArrowRight } from "lucide-react"
 import type { ActivityEntry } from "../network-data"
 
@@ -21,7 +22,7 @@ export function ActivityCard({ entry }: { entry: ActivityEntry }) {
   return (
     <li className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50">
       <Link href={`/${entry.username}`} className="relative flex-shrink-0">
-        <img src={entry.avatar} alt={entry.name} loading="lazy" className="h-10 w-10 rounded-full object-cover" />
+        <Image src={entry.avatar} alt={entry.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
         <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-brand text-white ring-2 ring-white">
           <Icon className="h-3 w-3" />
         </span>

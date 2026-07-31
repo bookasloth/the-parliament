@@ -168,7 +168,7 @@ export default function AdminShell({
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Mobile overlay */}
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div role="presentation" className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar — mobile offcanvas */}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>

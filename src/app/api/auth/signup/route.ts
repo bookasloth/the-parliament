@@ -1,8 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { colorAvatar } from "@/lib/avatar";
 import { checkRateLimit } from "@/lib/rate-limit";
+
+export const signupSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(200),
+});
 
 function clientIp(req: NextRequest): string {
   const fwd = req.headers.get("x-forwarded-for");
@@ -10,7 +17,7 @@ function clientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip") ?? "unknown";
 }
 
-function generateUsername(name: string): string {
+export function generateUsername(name: string): string {
   const base = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -57,16 +64,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password } = await req.json();
-
-    if (!name || !email || !password) {
+    const parsed = signupSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
         { status: 400 },
       );
     }
+    const { name, email, password } = parsed.data;
 
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedEmail = email;
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return NextResponse.json(

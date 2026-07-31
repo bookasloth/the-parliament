@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import {
   Search, Plus, Users, Lock, Globe, ChevronRight, Bell, BellOff,
   Home, Calendar, Menu, X, Sparkles, Star, TrendingUp, BookOpen,
@@ -74,7 +75,7 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <div className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex justify-end p-3 border-b"><button onClick={() => setSidebarOpen(false)}><X className="h-5 w-5 text-gray-400" /></button></div>
       </div>
@@ -157,7 +158,7 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
               <div key={g.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden group hover:shadow-md transition-shadow">
                 {/* Cover */}
                 <div className="relative h-24 overflow-hidden">
-                  <img src={g.cover} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <Image src={g.cover} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
                     <span className="text-xl">{g.icon}</span>

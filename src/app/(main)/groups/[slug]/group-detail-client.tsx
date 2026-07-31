@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import {
   ArrowLeft, Users, Lock, Globe, Settings, Bell, BellOff,
@@ -170,7 +171,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <div className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex justify-end p-3 border-b"><button onClick={() => setSidebarOpen(false)}><X className="h-5 w-5 text-gray-400" /></button></div>
       </div>
@@ -195,7 +196,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
         {/* Hero */}
         <div className="bg-white border-0 sm:border border-gray-200 rounded-none sm:rounded-xl overflow-hidden">
           <div className="relative h-36 sm:h-48">
-            <img src={group.cover} alt="" className="w-full h-full object-cover" />
+            <Image src={group.cover} alt="" fill sizes="100vw" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute bottom-3 left-4 flex items-center gap-2">
               <span className="text-3xl">{group.icon}</span>
@@ -267,7 +268,7 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
                   </div>
                   <div className="px-4 py-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <img src={pinnedPost.avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
+                      <Image src={pinnedPost.avatar} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
                       <div>
                         <div className="flex items-center gap-1">
                           <span className="text-sm font-semibold text-gray-900">{pinnedPost.author}</span>
@@ -301,14 +302,14 @@ export default function GroupDetailClient({ realGroup }: { realGroup?: RealGroup
                   <p className="text-2xl font-bold text-gray-900 mb-2">{group.members.toLocaleString()}</p>
                   <div className="flex -space-x-1.5 mb-3">
                     {recentMemberAvatars.map(m => (
-                      <img key={m.id} src={m.avatar} alt={m.name}
+                      <Image key={m.id} src={m.avatar} alt={m.name} width={32} height={32}
                         className="h-8 w-8 rounded-full object-cover border-2 border-white" />
                     ))}
                   </div>
                   <div className="space-y-2">
                     {group.admins.map(a => (
                       <div key={a.id} className="flex items-center gap-2">
-                        <img src={a.avatar} alt={a.name} className="h-7 w-7 rounded-full object-cover" />
+                        <Image src={a.avatar} alt={a.name} width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
                         <div className="flex-1 min-w-0">
                           <span className="text-xs font-medium text-gray-800 truncate block">{a.name}</span>
                         </div>

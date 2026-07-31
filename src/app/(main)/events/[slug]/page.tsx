@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
   ArrowLeft, Calendar, MapPin, Video, Users, Star, Ticket,
@@ -48,12 +49,15 @@ export default async function EventDetailPage({
       </Link>
 
       {event.bannerUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={event.bannerUrl}
-          alt={event.title}
-          className="w-full h-48 sm:h-64 object-cover rounded-xl border border-gray-200"
-        />
+        <div className="relative w-full h-48 sm:h-64 overflow-hidden rounded-xl border border-gray-200">
+          <Image
+            src={event.bannerUrl}
+            alt={event.title}
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

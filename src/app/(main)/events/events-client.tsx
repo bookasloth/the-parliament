@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
+import Image from "next/image"
 import {
   Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
   X, Search, Home, Users, Menu, Video, MapPin, Globe,
@@ -39,8 +40,8 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col hover:shadow-card transition-shadow">
       {/* Image + badge */}
       <div className="relative">
-        <a href={`/events/${event.slug}`}>
-          <img src={event.cover} alt={event.title} className="w-full h-36 object-cover" />
+        <a href={`/events/${event.slug}`} className="relative block h-36">
+          <Image src={event.cover} alt={event.title} fill sizes="(max-width: 768px) 100vw, 400px" className="w-full h-36 object-cover" />
         </a>
         <span className={`absolute top-2 right-2 rounded-md px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
           {event.isFree ? "Free" : `₹${event.price}`}
@@ -220,7 +221,7 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
       {/* Create event modal (placeholder) */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCreateOpen(false)} />
+          <div role="presentation" className="absolute inset-0 bg-black/50" onClick={() => setCreateOpen(false)} />
           <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <h5 className="text-base font-bold text-gray-900">Create Event</h5>

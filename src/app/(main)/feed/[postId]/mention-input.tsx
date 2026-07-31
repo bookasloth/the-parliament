@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { ShieldCheck } from "lucide-react"
 import { searchMentionsAction } from "../actions"
 import type { MentionTarget } from "@/modules/feed/comments"
@@ -157,8 +158,7 @@ export default function MentionInput({
                   i === active ? "bg-brand-50" : "hover:bg-gray-50"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={t.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                <Image src={t.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" width={32} height={32} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1">
                     <span className="truncate text-sm font-medium text-gray-900">

@@ -301,7 +301,7 @@ export default function AdminUsersClient({
       </div>
 
       {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setInviteOpen(false)}>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setInviteOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">Invite User</h3>
