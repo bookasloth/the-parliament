@@ -1,4 +1,7 @@
 import { auth } from "@/lib/auth"
+import { ForbiddenError, UnauthorizedError } from "@/lib/errors"
+
+export { ForbiddenError, UnauthorizedError }
 
 export type SessionUser = {
   id: string
@@ -32,18 +35,4 @@ export async function requireAdmin(): Promise<SessionUser> {
   if (!session?.user?.id) throw new UnauthorizedError()
   if (!session.user.isAdmin) throw new ForbiddenError("Admin access required")
   return session.user as SessionUser
-}
-
-export class UnauthorizedError extends Error {
-  constructor() {
-    super("Unauthorized")
-    this.name = "UnauthorizedError"
-  }
-}
-
-export class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message)
-    this.name = "ForbiddenError"
-  }
 }

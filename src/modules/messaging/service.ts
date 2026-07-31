@@ -1,11 +1,5 @@
 import { prisma } from "@/lib/prisma"
-
-export class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message)
-    this.name = "ForbiddenError"
-  }
-}
+import { ForbiddenError } from "@/lib/errors"
 
 export function dmKeyFor(a: string, b: string): string {
   return [a, b].sort().join(":")
