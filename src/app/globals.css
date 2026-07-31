@@ -183,3 +183,15 @@ h1, h2 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Admin console — dark, Poppins, scoped to .admin-root only */
+.admin-root {
+  --admin-bg: #0a0a0a;
+  --admin-panel: #111113;
+  --admin-border: #27272a; /* zinc-800 */
+  background: var(--admin-bg);
+  color: #f4f4f5; /* zinc-100 */
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; /* Poppins */
+  min-height: 100dvh;
+}
+.admin-root h1, .admin-root h2, .admin-root h3 { font-family: var(--font-body); }

@@ -9,5 +9,5 @@ export const plusJakartaSans = Plus_Jakarta_Sans({
 export const poppins = Poppins({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
 });
