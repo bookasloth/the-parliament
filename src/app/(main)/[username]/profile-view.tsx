@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
+import { startConversationAction } from "../messages/actions"
 import {
   Briefcase, MapPin, CalendarPlus, UserPlus, MoreHorizontal, Asterisk,
   ShieldCheck, Award, Droplet, Cake, Home, Users, Pencil, Share2,
@@ -163,6 +165,7 @@ function Timeline({ items }: { items: { role: string; org: string; period: strin
 type Tab = "posts" | "about" | "followers"
 
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
+  const router = useRouter()
   const [tab, setTabState] = useState<Tab>(initialTab)
   const setTab = (t: Tab) => {
     setTabState(t)
@@ -172,6 +175,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
     }
   }
   const [copied, setCopied] = useState(false)
+  const [messagingLoading, setMessagingLoading] = useState(false)
 
   const isOwn = !!data.owner
   const houseColor = data.house?.color ?? "#1a3a6b"
@@ -190,6 +194,22 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     })
+  }
+
+  async function openConversation() {
+    setMessagingLoading(true)
+    try {
+      const r = await startConversationAction(data.userId)
+      if (r.ok) {
+        router.push(`/messages/${r.conversationId}`)
+      } else {
+        alert(r.error)
+      }
+    } catch (err) {
+      alert("Failed to start conversation")
+    } finally {
+      setMessagingLoading(false)
+    }
   }
 
   return (
@@ -254,8 +274,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 ) : (
                   <>
                     <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
-                    <button className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}>
-                      <MessageSquare className="h-4 w-4" /> Message
+                    <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                      <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
                     </button>
                     <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
                       <MoreHorizontal className="h-5 w-5" />
