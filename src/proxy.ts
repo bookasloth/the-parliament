@@ -25,7 +25,7 @@ const PUBLIC_ROUTES = new Set([
   "/newsroom",
 ])
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (
