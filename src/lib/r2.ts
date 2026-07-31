@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import crypto from "node:crypto"
 
@@ -110,4 +110,41 @@ export function publicUrlFor(key: string): string {
   const base = process.env.R2_PUBLIC_BASE_URL
   if (!base) return key
   return `${base.replace(/\/$/, "")}/${key}`
+}
+
+/** True only if `key` is under this owner's own post-media prefix. */
+export function isOwnedPostKey(ownerId: string, key: string): boolean {
+  return key.startsWith(`${PREFIX.post}/${ownerId}/`)
+}
+
+/** HEAD an object; returns its byte size, or null if it can't be read. */
+export async function objectSize(key: string): Promise<number | null> {
+  try {
+    const r = await getClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
+    return r.ContentLength ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Validate post media the client asks to attach. The presigned PUT can't enforce
+ * a size limit (SigV4 PUT carries no content-length-range) and createPost trusts
+ * a client-supplied object key — so at attach time we (1) reject any key outside
+ * the caller's own posts/<userId>/ prefix and (2) HEAD the object and delete +
+ * reject anything over the post size cap. A caller can still upload an oversized
+ * blob that is never attached; a bucket lifecycle rule / presigned-POST rollout
+ * is the complete fix (tracked as a follow-up).
+ */
+export async function validatePostMedia(ownerId: string, keys: string[]): Promise<void> {
+  for (const key of keys) {
+    if (!isOwnedPostKey(ownerId, key)) {
+      throw new Error("Invalid media reference")
+    }
+    const size = await objectSize(key)
+    if (size !== null && size > MAX_BYTES.post) {
+      await deleteObject(key).catch(() => {})
+      throw new Error("Uploaded media exceeds the size limit")
+    }
+  }
 }

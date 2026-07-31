@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { computeIsAdmin } from "@/modules/auth/admin";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
 
 // Precomputed once at module load. Compared against for unknown emails so an
 // existing account and a nonexistent one take the same ~bcrypt time — closes
@@ -46,7 +47,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Always run a compare (dummy hash when the user/hash is absent) so the
         // response time doesn't reveal whether the email is registered.
         const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-        if (!user?.passwordHash || !valid) return null;
+        if (!user?.passwordHash || !valid) {
+          // Audit trail for failed logins (brute-force/credential-stuffing
+          // forensics). Never log the password. IP goes in the JSON payload.
+          await audit({ action: "auth.login.failed", payload: { email: email.toLowerCase(), ip } });
+          return null;
+        }
+        await audit({ actorId: user.id, action: "auth.login.success", payload: { ip } });
         return { id: user.id, email: user.email, name: user.legalName };
       },
     }),
