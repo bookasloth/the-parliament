@@ -18,6 +18,25 @@ const host = storageHost();
 // clickjacking/base-tag/plugin protection (frame-ancestors/base-uri/object-src)
 // — deliberately NOT a script-src CSP, which would need a monitored rollout to
 // avoid breaking the Razorpay checkout script on this live payment app.
+// Full script-src CSP shipped as REPORT-ONLY first: it never blocks, it only
+// reports violations to /api/csp-report so the policy can be tuned (nonces, real
+// third-party origins) before being promoted to an enforced Content-Security-Policy.
+// 'unsafe-inline' is present only because Next injects inline styles/scripts today;
+// the goal of the report phase is to replace it with nonces, then enforce.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.razorpay.com https://*.supabase.co",
+  "frame-src https://*.razorpay.com",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "report-uri /api/csp-report",
+].join("; ");
+
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -25,6 +44,7 @@ const SECURITY_HEADERS = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
+  { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
 ];
 
 const nextConfig: NextConfig = {
