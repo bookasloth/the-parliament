@@ -4,6 +4,12 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { computeIsAdmin } from "@/modules/auth/admin";
+import { enforceRateLimit } from "@/lib/rate-limit";
+
+// Precomputed once at module load. Compared against for unknown emails so an
+// existing account and a nonexistent one take the same ~bcrypt time — closes
+// the login-timing user-enumeration channel.
+const DUMMY_HASH = bcrypt.hashSync("no-such-user-placeholder", 12);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -20,14 +26,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = credentials?.email as string;
         const password = credentials?.password as string;
         if (!email || !password) return null;
+
+        // Throttle online brute force / credential stuffing. The credentials
+        // path had no limiter (signup/forgot did). DB-backed limiter is shared
+        // across serverless instances. IP is the primary guard; the per-email
+        // cap is kept high enough that a legit user's retries don't lock them
+        // out (a low cap would let an attacker DoS a victim's account).
+        const ip =
+          request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          "unknown";
+        await enforceRateLimit({ bucket: "auth.login.ip", identifier: ip, limit: 20, windowSec: 900 });
+        await enforceRateLimit({ bucket: "auth.login.email", identifier: email.toLowerCase(), limit: 8, windowSec: 900 });
+
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null;
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        // Always run a compare (dummy hash when the user/hash is absent) so the
+        // response time doesn't reveal whether the email is registered.
+        const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+        if (!user?.passwordHash || !valid) return null;
         return { id: user.id, email: user.email, name: user.legalName };
       },
     }),
