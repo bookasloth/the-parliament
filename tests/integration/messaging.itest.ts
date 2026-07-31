@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead } from "@/modules/messaging/service";
+import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead, getConversationMeta } from "@/modules/messaging/service";
 
 const rnd = () => Math.random().toString(36).slice(2);
 async function makeUser() {
@@ -90,5 +90,23 @@ describe("send/edit/delete/markRead", () => {
     await markRead(b, id);
     const listForB = await listConversations(b);
     expect(listForB[0].unreadCount).toBe(0);
+  });
+});
+
+describe("getConversationMeta", () => {
+  it("returns the other participant's info and read state; rejects non-participants", async () => {
+    const a = await makeUser(), b = await makeUser(), c = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+
+    const metaForA = await getConversationMeta(a, id);
+    expect(metaForA.otherUser.id).toBe(b);
+    expect(metaForA.otherLastReadAt).toBeNull();
+
+    await markRead(b, id);
+    const metaForA2 = await getConversationMeta(a, id);
+    expect(metaForA2.otherLastReadAt).not.toBeNull();
+
+    await expect(getConversationMeta(c, id)).rejects.toThrow();
   });
 });

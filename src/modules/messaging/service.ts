@@ -78,6 +78,29 @@ export async function listConversations(viewerId: string): Promise<ConversationS
   }))
 }
 
+export async function getConversationMeta(
+  viewerId: string,
+  conversationId: string,
+): Promise<{ otherUser: { id: string; name: string; username: string | null; avatar: string | null }; otherLastReadAt: string | null }> {
+  await assertParticipant(viewerId, conversationId)
+  const other = await prisma.conversationParticipant.findFirstOrThrow({
+    where: { conversationId, userId: { not: viewerId } },
+    select: {
+      lastReadAt: true,
+      user: { select: { id: true, displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } },
+    },
+  })
+  return {
+    otherUser: {
+      id: other.user.id,
+      name: other.user.displayName || other.user.legalName,
+      username: other.user.username,
+      avatar: other.user.profile?.photoUrl ?? null,
+    },
+    otherLastReadAt: other.lastReadAt?.toISOString() ?? null,
+  }
+}
+
 export async function getMessages(
   viewerId: string,
   conversationId: string,

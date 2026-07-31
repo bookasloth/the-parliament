@@ -63,6 +63,16 @@ export async function refreshMessagesAction(conversationId: string, before?: str
   }
 }
 
+export async function conversationMetaAction(conversationId: string) {
+  const u = await requireUser()
+  try {
+    const meta = await svc.getConversationMeta(u.id, conversationId)
+    return { ok: true as const, meta }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
 export async function refreshConversationsAction(): Promise<ConversationSummary[]> {
   try {
     const u = await requireUser()
