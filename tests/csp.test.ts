@@ -17,6 +17,10 @@ describe("CSP policy", () => {
     expect(prod).toContain("wss://*.supabase.co")
   })
 
+  it("allows Sentry ingest (else the enforced CSP silently blocks client reporting)", () => {
+    expect(prod).toContain("https://*.sentry.io")
+  })
+
   it("keeps report-uri so violations are logged even while enforcing", () => {
     expect(prod).toContain("report-uri /api/csp-report")
   })
