@@ -22,10 +22,12 @@ import {
   type CommentReactionType,
 } from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
-import { getFeed } from "@/modules/feed/query"
+import { getFeed, listPostComments } from "@/modules/feed/query"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { mapRowToFeedPost } from "./map-row"
+import { buildCommentViews } from "./[postId]/comment-view"
+import type { CommentView } from "./[postId]/comments-section"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
@@ -72,6 +74,50 @@ export async function commentOnPost(postId: string, body: string, parentId?: str
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { id: comment.id }
+}
+
+export interface InlineComments {
+  comments: CommentView[]
+  count: number
+  viewer: null | { id: string; displayName: string; avatarUrl: string }
+}
+
+/** Lazy-load a post's comment thread for the inline feed expander. */
+export async function loadPostCommentsAction(postId: string): Promise<InlineComments> {
+  const viewer = await optionalUser()
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { authorId: true, commentCount: true, deletedAt: true },
+  })
+  if (!post || post.deletedAt) return { comments: [], count: 0, viewer: null }
+
+  const rows = await listPostComments(postId, 100, viewer?.id)
+  const comments = buildCommentViews(rows, post.authorId)
+
+  let viewerObj: InlineComments["viewer"] = null
+  if (viewer?.id) {
+    const u = await prisma.user.findUnique({
+      where: { id: viewer.id },
+      select: {
+        id: true,
+        displayName: true,
+        legalName: true,
+        profile: { select: { photoUrl: true } },
+      },
+    })
+    if (u) {
+      const name = u.displayName || u.legalName
+      viewerObj = {
+        id: u.id,
+        displayName: name,
+        avatarUrl:
+          u.profile?.photoUrl ??
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
+      }
+    }
+  }
+
+  return { comments, count: Math.max(post.commentCount, comments.length), viewer: viewerObj }
 }
 
 export async function reactToComment(

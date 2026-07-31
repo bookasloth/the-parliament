@@ -283,6 +283,23 @@ export async function toggleReaction(input: {
         entityType: "post",
         entityId: post.id,
       })
+
+      // In-app notification (no email — reactions are too frequent to mail).
+      // ponytail: fires on add + on switch-from-downvote; rapid toggle can dup.
+      // Add a "already notified" guard only if users complain of noise.
+      const actor = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { displayName: true, legalName: true },
+      })
+      const fromName = actor?.displayName || actor?.legalName || "Someone"
+      await sendNotification({
+        userId: post.authorId,
+        kind: "reaction_on_post",
+        title: `${fromName} reacted to your post`,
+        entityType: "post",
+        entityId: post.id,
+        sendEmail: false,
+      })
     } else if (input.type === "downvote") {
       await awardKarma({
         userId: post.authorId,

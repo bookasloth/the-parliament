@@ -27,6 +27,7 @@ import {
   loadMoreFeedAction,
   votePollAction,
   countNewPostsAction,
+  loadPostCommentsAction,
 } from "./actions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
@@ -506,6 +507,7 @@ export function FeedContent({
                   post={post}
                   isAuthor={isAuthor}
                   initialSaved={post.savedByViewer}
+                  commentsLoader={loadPostCommentsAction}
                   onUpvote={() => void reactToPost(post.id, "upvote")}
                   onDownvote={() => void reactToPost(post.id, "downvote")}
                   onComment={(body) => void commentOnPost(post.id, body)}
