@@ -8,7 +8,11 @@ import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/onboarding"
 
 const schema = z.object({
   step: z.enum(ONBOARDING_STEPS),
-  data: z.record(z.string(), z.unknown()),
+  // Cap the free-form blob so it can't be used as an unbounded per-user storage
+  // sink. 20 KB is generous for onboarding form data.
+  data: z
+    .record(z.string(), z.unknown())
+    .refine((d) => JSON.stringify(d).length <= 20_000, { message: "Onboarding payload too large" }),
 })
 
 export async function POST(req: NextRequest) {
