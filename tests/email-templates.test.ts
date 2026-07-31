@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest"
 import { renderEmail, EMAIL_TEMPLATE_KEYS, EMAIL_CATEGORY, type EmailTemplates } from "@/lib/email"
 import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
 import { SEED_TEMPLATES } from "@/modules/email/templates"
+import { welcomeTemplateFor } from "@/modules/membership/activation"
+import { extractMentionHandles } from "@/modules/feed/mentions"
 
 // Representative data for every lib/email template.
 const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
@@ -17,6 +19,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   mention: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
   contact_reveal_request: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
   new_event_in_batch: { eventTitle: "Reunion 2026", eventUrl: "https://x/e/1" },
+  reaction_milestone: { postUrl: "https://x/p/1", count: "50" },
 }
 
 describe("email-layout shell", () => {
@@ -53,8 +56,8 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 12 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(12)
+  it("covers all 13 keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(13)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
@@ -74,8 +77,8 @@ describe("lib/email templates", () => {
 })
 
 describe("modules/email seed templates", () => {
-  it("has the expected 7 templates with unique codes", () => {
-    expect(SEED_TEMPLATES).toHaveLength(7)
+  it("has the expected 5 templates with unique codes", () => {
+    expect(SEED_TEMPLATES).toHaveLength(5)
     const codes = SEED_TEMPLATES.map((t) => t.code)
     expect(new Set(codes).size).toBe(codes.length)
   })
@@ -95,4 +98,53 @@ describe("modules/email seed templates", () => {
       }
     })
   }
+})
+
+describe("membership welcome email wiring", () => {
+  it("maps each newly-activated paid tier to its welcome template", () => {
+    expect(welcomeTemplateFor("associate", "purchase")).toBe("membership.welcome_associate")
+    expect(welcomeTemplateFor("premium", "upgrade")).toBe("membership.welcome_premium")
+    expect(welcomeTemplateFor("life", "admin_grant")).toBe("membership.welcome_life")
+  })
+  it("sends no welcome on renewal, or for student/committee tiers", () => {
+    expect(welcomeTemplateFor("premium", "renewal")).toBeNull()
+    expect(welcomeTemplateFor("student", "purchase")).toBeNull()
+    expect(welcomeTemplateFor("committee", "admin_grant")).toBeNull()
+  })
+})
+
+// Pin the variable sets the welcome/expiry wirings fill, so a template edit that
+// drops or renames a var breaks this test instead of silently sending "".
+// (payment_receipt is a code template owned by #82 — covered in its own suite.)
+const WIRED_DB_VARS: Record<string, string[]> = {
+  "membership.welcome_associate": ["firstName", "manageUrl", "renewalDate"],
+  "membership.welcome_premium": ["firstName", "manageUrl", "renewalDate"],
+  "membership.welcome_life": ["firstName", "profileUrl"],
+  "membership.expiry_t_minus_7": ["firstName", "planName", "expiresOn", "renewUrl"],
+}
+
+describe("wired DB templates expose exactly the variables their callers fill", () => {
+  for (const [code, vars] of Object.entries(WIRED_DB_VARS)) {
+    it(`${code} declares ${vars.join(", ")}`, () => {
+      const t = SEED_TEMPLATES.find((s) => s.code === code)
+      if (!t) throw new Error(`seed template ${code} missing`)
+      expect(Object.keys(t.variables).sort()).toEqual([...vars].sort())
+    })
+  }
+})
+
+describe("mention extraction", () => {
+  it("pulls unique lowercased @handles from a body", () => {
+    expect(extractMentionHandles("hi @Neha and @amit_k, cc @Neha")).toEqual(["neha", "amit_k"])
+  })
+  it("ignores emails and bare @, handles empty/null", () => {
+    expect(extractMentionHandles("mail me at foo@bar.com")).toEqual([])
+    expect(extractMentionHandles("just @ symbol")).toEqual([])
+    expect(extractMentionHandles("")).toEqual([])
+    expect(extractMentionHandles(null)).toEqual([])
+  })
+  it("caps the number of handles", () => {
+    const body = Array.from({ length: 30 }, (_, i) => `@user${i}`).join(" ")
+    expect(extractMentionHandles(body, 5)).toHaveLength(5)
+  })
 })

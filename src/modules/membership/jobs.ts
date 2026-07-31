@@ -1,9 +1,10 @@
 import type { PgBoss } from "pg-boss"
 import { prisma } from "@/lib/prisma"
 import { QUEUE } from "@/lib/jobs"
-import { MEMBERSHIP_GRACE_DAYS, COMMITTEE_INVITE_TTL_DAYS } from "@/config/membership"
+import { MEMBERSHIP_GRACE_DAYS, COMMITTEE_INVITE_TTL_DAYS, PLANS, type PlanCode } from "@/config/membership"
 import { expireMembership } from "@/modules/membership/activation"
 import { sendNotification } from "@/modules/notifications/service"
+import { queueEmail } from "@/modules/email/service"
 import { audit } from "@/lib/audit"
 
 const DAY_MS = 86400000
@@ -116,6 +117,32 @@ async function reminderHandler() {
         body: "Renew now to keep your benefits active.",
         sendEmail: false,
       })
+
+      // Only the 7-day window has a mail template; other windows stay in-app.
+      if (w.days === 7 && r.endsAt) {
+        try {
+          const u = await prisma.user.findUnique({
+            where: { id: r.userId },
+            select: { email: true, legalName: true },
+          })
+          if (u?.email) {
+            const base = process.env.AUTH_URL || "https://nnawca.org"
+            await queueEmail({
+              templateCode: "membership.expiry_t_minus_7",
+              toAddress: u.email,
+              userId: r.userId,
+              variables: {
+                firstName: u.legalName?.split(" ")[0] || "there",
+                planName: PLANS[r.planCode as PlanCode]?.displayName ?? r.planCode,
+                expiresOn: r.endsAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+                renewUrl: `${base}/membership`,
+              },
+            })
+          }
+        } catch (e) {
+          console.error(`expiry_t_minus_7 email failed for ${r.userId}`, e)
+        }
+      }
 
       await prisma.membershipEvent.create({
         data: { userId: r.userId, type: w.type, prevPlan: r.planCode },
