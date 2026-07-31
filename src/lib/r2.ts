@@ -52,6 +52,21 @@ const ALLOWED_MIME: Record<UploadKind, string[]> = {
   event_banner: ["image/jpeg", "image/png", "image/webp"],
 }
 
+// The object-key extension is derived from the (allowlist-checked) content type,
+// never from a client-supplied `ext` — otherwise a caller could key an object
+// `.html`/`.svg` while it is stored as image/png, which a CDN that types by
+// extension could re-serve as markup.
+const MIME_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "application/pdf": "pdf",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+}
+
 export interface SignedUpload {
   key: string
   uploadUrl: string
@@ -62,15 +77,14 @@ export async function getSignedUpload(opts: {
   kind: UploadKind
   ownerId: string
   contentType: string
-  ext: string
 }): Promise<SignedUpload> {
   if (!ALLOWED_MIME[opts.kind].includes(opts.contentType)) {
     throw new Error(`Content type ${opts.contentType} not allowed for ${opts.kind}`)
   }
 
-  const cleanExt = opts.ext.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 5)
+  const ext = MIME_EXT[opts.contentType] ?? "bin"
   const id = crypto.randomUUID()
-  const key = `${PREFIX[opts.kind]}/${opts.ownerId}/${id}.${cleanExt}`
+  const key = `${PREFIX[opts.kind]}/${opts.ownerId}/${id}.${ext}`
 
   const cmd = new PutObjectCommand({
     Bucket: bucket(),

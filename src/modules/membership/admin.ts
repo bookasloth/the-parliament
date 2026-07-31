@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { ForbiddenError } from "@/modules/auth/session"
+import { ForbiddenError } from "@/lib/errors"
 import {
   COMMITTEE_DEFAULT_TENURE_YEARS,
   COMMITTEE_INVITE_TTL_DAYS,
@@ -80,6 +80,11 @@ export async function adminRevoke(input: { adminId: string; membershipId: string
 export async function adminRefund(input: { adminId: string; orderId: string; reason: string; razorpayRefundId: string; amountPaise: number }) {
   const order = await prisma.membershipOrder.findUnique({ where: { id: input.orderId } })
   if (!order) throw new ForbiddenError("Order not found")
+
+  // A refund can never exceed what was actually charged for the order.
+  if (input.amountPaise <= 0 || input.amountPaise > order.amountPaise) {
+    throw new ForbiddenError("Refund amount exceeds the order amount")
+  }
 
   const refund = await prisma.membershipRefund.create({
     data: {
