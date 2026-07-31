@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        # Wait until Postgres is accepting connections before the job runs.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Local throwaway DB for the integration suite (guard.ts requires localhost + _test).
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/the_parliament_test
+      # Satisfies prisma.config.ts (DIRECT_URL ?? DATABASE_URL) at generate time.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type-check (hard gate)
+        run: npx tsc --noEmit
+
+      - name: Lint (advisory — legacy <a>/effect debt not yet cleared)
+        run: npx eslint src
+        continue-on-error: true
+
+      - name: Unit tests (hard gate)
+        run: npm test
+
+      - name: Integration tests (hard gate)
+        run: npm run test:integration
