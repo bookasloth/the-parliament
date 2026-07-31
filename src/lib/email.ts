@@ -8,6 +8,7 @@ type EmailTemplate<T> = {
 
 export type EmailTemplates = {
   email_verification: { legalName: string; code: string }
+  email_verify_link: { legalName: string; verifyUrl: string }
   password_reset: { legalName: string; resetUrl: string; isNew: boolean }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
@@ -41,6 +42,18 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
          <p style="color:#374151">Hi ${d.legalName}, use this code to confirm your email address:</p>
          <p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#009ae4;margin:16px 0">${d.code}</p>
          <p style="color:#6b7280;font-size:12px">This code expires in 15 minutes. If you didn't request this, ignore this email.</p>`,
+      ),
+  },
+  email_verify_link: {
+    subject: () => "Confirm your NNAWCA email",
+    text: (d) =>
+      `Hi ${d.legalName},\n\nConfirm your email to activate your account:\n${d.verifyUrl}\n\nThis link expires in 24 hours. If you didn't sign up, ignore this email.`,
+    html: (d) =>
+      baseLayout(
+        `<h2 style="margin:0 0 12px;color:#0f172a">Confirm your email</h2>
+         <p style="color:#374151">Hi ${d.legalName}, confirm your email address to activate your NNAWCA account.</p>
+         <p><a href="${d.verifyUrl}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Confirm my email</a></p>
+         <p style="color:#6b7280;font-size:12px">This link expires in 24 hours. If you didn't sign up, ignore this email.</p>`,
       ),
   },
   password_reset: {

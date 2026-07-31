@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { colorAvatar } from "@/lib/avatar";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { createVerifyToken, verifyUrl } from "@/lib/email-verify";
+import { sendEmail } from "@/lib/email";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
@@ -86,13 +88,16 @@ export async function POST(req: NextRequest) {
     const baseUsername = generateUsername(name);
     const username = await ensureUniqueUsername(baseUsername);
 
+    // Self-signup does NOT prove email ownership. Create the account with a null
+    // emailVerifiedAt; the credentials login gate rejects it until the emailed
+    // verification link is clicked (imported members verify via the reset flow).
     const user = await prisma.user.create({
       data: {
         legalName: name,
         email: normalizedEmail,
         username,
         passwordHash: hashedPassword,
-        emailVerifiedAt: new Date(),
+        emailVerifiedAt: null,
         status: "active",
         onboardingStep: "profile",
       },
@@ -120,7 +125,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ ok: true });
+    // Issue + email a verification link. A mail failure must not fail signup
+    // (the account exists; forgot-password also re-verifies), so it's best-effort.
+    try {
+      const rawToken = await createVerifyToken(user.id);
+      await sendEmail("email_verify_link", user.email, {
+        legalName: user.legalName,
+        verifyUrl: verifyUrl(rawToken),
+      });
+    } catch (mailErr) {
+      console.error("signup verification email failed:", mailErr);
+    }
+
+    return NextResponse.json({ ok: true, verifyEmailSent: true });
   } catch (e) {
     console.error("signup error:", e);
     return NextResponse.json(
