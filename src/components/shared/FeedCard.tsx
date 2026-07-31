@@ -187,8 +187,26 @@ export function FeedCard({
                   {post.isEdited && <span className="text-[#6B7280]"> · Edited</span>}
                 </span>
               </div>
-              {!post.isSponsored && post.batch && (
-                <p className="mb-0 text-xs text-gray-500 mt-0.5">{post.batch}</p>
+              {/* Headline (the job) — LinkedIn-style primary subtitle */}
+              {!post.isSponsored && post.headline && (
+                <p className="mb-0 text-xs text-gray-600 mt-0.5 line-clamp-1">{post.headline}</p>
+              )}
+              {/* Alumni graph context — batch + house, surfaced on every card */}
+              {!post.isSponsored && (post.batch || post.house) && (
+                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-500">
+                  {post.batch && <span>{post.batch}</span>}
+                  {post.batch && post.house && <span className="text-gray-300">·</span>}
+                  {post.house && (
+                    <span className="inline-flex items-center gap-1">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: post.house.color }}
+                        aria-hidden
+                      />
+                      {post.house.name}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>
