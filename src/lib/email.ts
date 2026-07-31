@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import { emailShell, p, small, button, details, codeBox } from "@/lib/email-layout"
 
 type EmailTemplate<T> = {
   subject: (data: T) => string
@@ -20,16 +21,10 @@ export type EmailTemplates = {
   new_event_in_batch: { eventTitle: string; eventUrl: string }
 }
 
-const baseLayout = (body: string) => `
-  <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#f3f2ef;padding:32px 0">
-    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px">
-      <div style="font-weight:700;color:#009ae4;font-size:18px;margin-bottom:24px">NNAWCA · The Parliament</div>
-      ${body}
-      <hr style="border:0;border-top:1px solid #e5e7eb;margin:32px 0 16px"/>
-      <div style="font-size:12px;color:#6b7280">Nagpur Navodaya Alumni Welfare and Charitable Association</div>
-    </div>
-  </div>
-`
+// Engagement/lifecycle mail links to the member's email-preference page. These
+// aren't tokenised one-click unsubscribes (that's the modules/email queue's job)
+// — just an honest path to turn the category off.
+const MANAGE_URL = `${process.env.AUTH_URL || "https://nnawca.org"}/settings/email`
 
 const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]> } = {
   email_verification: {
@@ -37,12 +32,17 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
     text: (d) =>
       `Hi ${d.legalName},\n\nYour email verification code is: ${d.code}\n\nEnter it to confirm your email. It expires in 15 minutes. If you didn't request this, ignore this email.`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">Verify your email</h2>
-         <p style="color:#374151">Hi ${d.legalName}, use this code to confirm your email address:</p>
-         <p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#009ae4;margin:16px 0">${d.code}</p>
-         <p style="color:#6b7280;font-size:12px">This code expires in 15 minutes. If you didn't request this, ignore this email.</p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Verify",
+        eyebrow: "Account · Security",
+        heading: "Confirm your email",
+        body:
+          p(`Hi ${d.legalName}, use this one-time code to activate your NNAWCA account.`) +
+          codeBox(d.code) +
+          small("The code expires in <strong>15 minutes</strong>. Didn't request it? You can safely ignore this email — nothing will change."),
+        reason: "This is a transactional message about your account.",
+      }),
   },
   email_verify_link: {
     subject: () => "Confirm your NNAWCA email",
@@ -61,91 +61,141 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
     text: (d) =>
       `Hi ${d.legalName},\n\n${d.isNew ? "Welcome to The Parliament. Set your password to activate your account:" : "Reset your password:"}\n${d.resetUrl}\n\nThis link expires soon. If you didn't request this, ignore this email.`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">${d.isNew ? "Activate your account" : "Reset your password"}</h2>
-         <p style="color:#374151">Hi ${d.legalName}, ${d.isNew ? "set your password to start using The Parliament." : "click below to set a new password."}</p>
-         <p><a href="${d.resetUrl}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${d.isNew ? "Set my password" : "Reset password"}</a></p>
-         <p style="color:#6b7280;font-size:12px">This link expires soon. If you didn't request this, ignore this email.</p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Security",
+        eyebrow: "Account · Security",
+        heading: d.isNew ? "Activate your account" : "Reset your password",
+        body:
+          p(`Hi ${d.legalName}, ${d.isNew ? "set a password to start using The Parliament." : "use the button below to set a new password."}`) +
+          button(d.isNew ? "Set my password" : "Reset password", d.resetUrl, "blue") +
+          small("This link expires soon. If you didn't request it, you can safely ignore this email."),
+        reason: "This is a transactional message about your account.",
+      }),
   },
   verification_approved: {
-    subject: () => "Your NNAWCA verification was approved",
+    subject: () => "You're a Verified Alumnus of NNAWCA",
     text: (d) =>
       `Hi ${d.legalName},\n\nYour alumni verification has been approved. Welcome to The Parliament.\n\nSign in: ${d.loginUrl}`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">Welcome, ${d.legalName}!</h2>
-         <p style="color:#374151">Your alumni verification has been approved. You're now a Verified Alumni on The Parliament.</p>
-         <p><a href="${d.loginUrl}" style="display:inline-block;background:#009ae4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Open The Parliament</a></p>`,
-      ),
+      emailShell({
+        accent: "emerald",
+        pill: "Approved",
+        eyebrow: "Verification · Approved",
+        heading: "You're <em>verified</em>",
+        body:
+          p(`Welcome, ${d.legalName}. Your alumni verification has been approved — you're now a Verified Alumnus on The Parliament, with the badge to prove it.`) +
+          button("Open The Parliament", d.loginUrl, "emerald"),
+        reason: "You're getting this because you applied for alumni verification.",
+      }),
   },
   verification_rejected: {
-    subject: () => "About your NNAWCA verification",
+    subject: () => "Your NNAWCA verification needs another look",
     text: (d) =>
-      `Hi ${d.legalName},\n\nWe couldn't verify your application. Reason: ${d.reason}\n\nYou can re-submit with updated documents.`,
+      `Hi ${d.legalName},\n\nWe couldn't verify your application. Reason: ${d.reason}\n\nYou can re-submit with updated documents from your profile.`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">Verification needs another look</h2>
-         <p style="color:#374151">Hi ${d.legalName}, we couldn't verify your application.</p>
-         <p style="color:#374151"><strong>Reason:</strong> ${d.reason}</p>
-         <p style="color:#374151">You can re-submit with updated documents from your profile.</p>`,
-      ),
+      emailShell({
+        accent: "navy",
+        pill: "Verification",
+        eyebrow: "Verification · Update needed",
+        heading: "Your verification needs another look",
+        body:
+          p(`Hi ${d.legalName}, we couldn't verify your application just yet.`) +
+          details([["Reason", d.reason]], "navy") +
+          p(`Re-submit with updated documents from your profile and we'll review it again.`) +
+          button("Update my documents", MANAGE_URL.replace("/settings/email", "/profile/edit"), "navy"),
+        reason: "You're getting this because you applied for alumni verification.",
+      }),
   },
   new_follower: {
     subject: (d) => `${d.fromName} started following you`,
     text: (d) => `${d.fromName} started following you.\n\nView profile: ${d.profileUrl}`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">${d.fromName} started following you</h2>
-         <p><a href="${d.profileUrl}" style="color:#009ae4">View their profile</a></p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Network",
+        eyebrow: "Network · New follower",
+        heading: `<em>${d.fromName}</em> started following you`,
+        body: p(`${d.fromName} just followed you on The Parliament. Take a look at their profile and follow back if you'd like.`) + button("View their profile", d.profileUrl, "blue"),
+        reason: "You're getting this because you allow network emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
   comment_on_post: {
     subject: (d) => `${d.fromName} commented on your post`,
     text: (d) => `${d.fromName} commented on your post: ${d.postUrl}`,
     html: (d) =>
-      baseLayout(
-        `<p style="color:#374151"><strong>${d.fromName}</strong> commented on your post.</p>
-         <p><a href="${d.postUrl}" style="color:#009ae4">View post</a></p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Activity",
+        eyebrow: "Feed · New comment",
+        heading: `<em>${d.fromName}</em> commented on your post`,
+        body: p("Someone's talking about what you shared. Jump in and keep the conversation going.") + button("View the conversation", d.postUrl, "blue"),
+        reason: "You're getting this because you allow engagement emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
   reaction_on_post: {
     subject: (d) => `${d.fromName} reacted to your post`,
     text: (d) => `${d.fromName} reacted to your post: ${d.postUrl}`,
     html: (d) =>
-      baseLayout(
-        `<p style="color:#374151"><strong>${d.fromName}</strong> reacted to your post.</p>
-         <p><a href="${d.postUrl}" style="color:#009ae4">View post</a></p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Activity",
+        eyebrow: "Feed · New reaction",
+        heading: `<em>${d.fromName}</em> reacted to your post`,
+        body: p("Your post is getting attention from the alumni community.") + button("View your post", d.postUrl, "blue"),
+        reason: "You're getting this because you allow engagement emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
   mention: {
     subject: (d) => `${d.fromName} mentioned you`,
     text: (d) => `${d.fromName} mentioned you in a post: ${d.postUrl}`,
     html: (d) =>
-      baseLayout(
-        `<p style="color:#374151"><strong>${d.fromName}</strong> mentioned you in a post.</p>
-         <p><a href="${d.postUrl}" style="color:#009ae4">Open post</a></p>`,
-      ),
+      emailShell({
+        accent: "blue",
+        pill: "Mention",
+        eyebrow: "Feed · Mention",
+        heading: `<em>${d.fromName}</em> mentioned you`,
+        body: p(`${d.fromName} tagged you in a post. See what it's about.`) + button("Open the post", d.postUrl, "blue"),
+        reason: "You're getting this because you allow engagement emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
   contact_reveal_request: {
     subject: (d) => `${d.fromName} asked to exchange contact info`,
     text: (d) => `${d.fromName} would like to exchange contact info.\n\nReview: ${d.profileUrl}`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">Contact exchange request</h2>
-         <p style="color:#374151"><strong>${d.fromName}</strong> would like to exchange contact info with you.</p>
-         <p><a href="${d.profileUrl}" style="color:#009ae4">Review request</a></p>`,
-      ),
+      emailShell({
+        accent: "navy",
+        pill: "Request",
+        eyebrow: "Directory · Contact request",
+        heading: `<em>${d.fromName}</em> wants to exchange contact info`,
+        body: p(`${d.fromName} has asked to share contact details with you. You decide whether to accept.`) + button("Review the request", d.profileUrl, "navy"),
+        reason: "You're getting this because you allow directory emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
   new_event_in_batch: {
     subject: (d) => `New event for your batch: ${d.eventTitle}`,
     text: (d) => `${d.eventTitle}\n\nView: ${d.eventUrl}`,
     html: (d) =>
-      baseLayout(
-        `<h2 style="margin:0 0 12px;color:#0f172a">${d.eventTitle}</h2>
-         <p style="color:#374151">A new event was scheduled for your batch.</p>
-         <p><a href="${d.eventUrl}" style="color:#009ae4">View event</a></p>`,
-      ),
+      emailShell({
+        accent: "navy",
+        pill: "Event",
+        eyebrow: "Events · For your batch",
+        heading: `<em>${d.eventTitle}</em>`,
+        body: p("A new event was just scheduled for your batch. Have a look and RSVP if you can make it.") + button("View the event", d.eventUrl, "navy"),
+        reason: "You're getting this because you allow event emails for your batch.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
   },
 }
 
@@ -165,24 +215,29 @@ function getTransport(): nodemailer.Transporter {
   return cachedTransport
 }
 
+/** Render a template to its subject/text/html without sending. Pure — for tests + previews. */
+export function renderEmail<K extends keyof EmailTemplates>(
+  template: K,
+  data: EmailTemplates[K],
+): { subject: string; text: string; html: string } {
+  const tpl = templates[template]
+  return { subject: tpl.subject(data), text: tpl.text(data), html: tpl.html(data) }
+}
+
+export const EMAIL_TEMPLATE_KEYS = Object.keys(templates) as (keyof EmailTemplates)[]
+
 export async function sendEmail<K extends keyof EmailTemplates>(
   template: K,
   to: string,
   data: EmailTemplates[K],
 ): Promise<void> {
-  const tpl = templates[template]
   const from = process.env.SMTP_FROM || "NNAWCA <noreply@nnawca.com>"
+  const { subject, text, html } = renderEmail(template, data)
 
   if (!process.env.SMTP_HOST) {
     console.log(`[email:dev] ${template} → ${to}`, data)
     return
   }
 
-  await getTransport().sendMail({
-    from,
-    to,
-    subject: tpl.subject(data),
-    text: tpl.text(data),
-    html: tpl.html(data),
-  })
+  await getTransport().sendMail({ from, to, subject, text, html })
 }
