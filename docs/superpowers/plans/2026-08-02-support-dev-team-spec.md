@@ -13,8 +13,8 @@ page shows compact cards referencing real feed posts.
 |---|---|---|
 | Payment gateway | **Razorpay** (existing `src/lib/razorpay.ts`) | Already wired; same as original site. Zero new cost/env. |
 | Supporter storage | **Own table** `support_dev_team` | Fully independent per requirement; one campaign → no namespace column. |
-| Auto-post on paid | **A: system account → dedicated support feed** | Supporters are non-members → author must be a system account. Isolates noise from main feed. Anonymous respected. |
-| Updates→post link | **H1 inline clipped-preview cards + H2 public read-only permalink** | Logged-out visitors read gist inline; full post at a public `/support-dev-team/updates/[postId]` (no feed chrome, no gate). Main feed gate untouched. |
+| Auto-post on paid | **Text post to the feed via the existing `createPost` engine**, authored by `sndatarkar@gmail.com` | Reuse the real create-post path; no bespoke posting. Anonymous respected. |
+| Updates page | **Dropped.** Updates are posted manually on the feed. | No `/updates` routes, no post references, no permalink page. |
 
 ## Routes
 
@@ -22,8 +22,6 @@ page shows compact cards referencing real feed posts.
 |---|---|---|
 | `/support-dev-team` | public | Pick + pay panel |
 | `/support-dev-team/supporters` | public | Tiered supporter wall |
-| `/support-dev-team/updates` | public | Clipped-preview update cards |
-| `/support-dev-team/updates/[postId]` | public | Read-only full post (H2) |
 | `POST /api/support-dev-team/order` | public (IP rate-limited) | Create pending row + Razorpay order |
 | `POST /api/support-dev-team/confirm` | public | Verify signature → mark paid → side-effects |
 
@@ -38,7 +36,6 @@ All public paths added to `PUBLIC_ROUTES` in `src/proxy.ts`. Dynamic `[postId]` 
 - **Currency:** INR, symbol ₹.
 - **Tiers** (lifetime ₹, highest first): Pillars ≥2500 (crown), Guardians ≥1000 (shield),
   Torchbearers ≥1 (flame — floor, every paid supporter lands somewhere).
-- **Featured update post IDs:** array of Post UUIDs referenced by `/updates`.
 
 ## Data model — `SupportContribution` (`@@map("support_dev_team")`)
 
@@ -90,23 +87,18 @@ Clone the `MembershipOrder` shape (UUID id, `@map` snake_case, `@db.Timestamptz`
 - The **confirm route is the only writer** of `status = paid`.
 - Signature compare uses `crypto.timingSafeEqual` (via existing `safeEqual`).
 
-## Auto-post (option A)
+## Auto-post on paid
 
-On real `pending → paid`: the thank-you Post is authored by an existing account —
-**`sndatarkar@gmail.com`** (primary) — into a **dedicated support group/feed** (not the main
-network feed). Anonymous supporters → "An anonymous supporter." No system-account seed needed;
-resolve the author `User` by email at runtime/config. Update posts (the `/updates` references)
-are authored by **`sndatarkar@gmail.com`** and **`djlaxne@gmail.com`**. Still need a support
-group/category (`categoryId`, `schoolId` are required on `Post`).
-
-## Updates rendering
-
-- `/support-dev-team/updates`: server-fetch each config-referenced post (`getPostById`, no auth),
-  render compact card with **clipped excerpt** + thumbnail. Card links to the public permalink.
-- `/support-dev-team/updates/[postId]`: public read-only render of the post, no feed chrome, no gate.
+On the real `pending → paid` transition, call the existing **`createPost`** engine
+(`src/modules/feed/posts.ts`) with a `text` post — same path the app uses for normal feed posts.
+Author = the `User` resolved by email **`sndatarkar@gmail.com`** (fallback `djlaxne@gmail.com`),
+using that user's `schoolId`. Body is the thank-you copy; `isAnonymous` respected → "An anonymous
+supporter." Posts to the main feed (no dedicated group). No system-account seed, no bespoke Post
+insert.
 
 ## Out of scope (v1)
 
+- **Updates page** — updates are posted manually on the feed.
 - CAPTCHA (rate-limit covers basic abuse; add if abused).
 - Refunds UI (Razorpay dashboard).
 - Multi-campaign namespacing.
