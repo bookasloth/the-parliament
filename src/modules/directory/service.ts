@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache"
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 
@@ -120,21 +119,16 @@ export async function searchDirectory(
   }
 }
 
-// Facets (batch/house/division lists) are near-static and fetched on every
-// community page load — cache them. Time-based revalidate keeps it simple; these
-// only change when an admin adds a batch/house/division, so 1h staleness is fine.
-// ponytail: add a `revalidateTag("directory-facets")` on those admin mutations if
-// instant freshness ever matters.
-export const getDirectoryFacets = unstable_cache(
-  async (schoolId?: string) => {
-    const where = schoolId ? { schoolId } : {}
-    const [batches, houses, divisions] = await Promise.all([
-      prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
-      prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
-      prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    ])
-    return { batches, houses, divisions }
-  },
-  ["directory-facets"],
-  { revalidate: 3600, tags: ["directory-facets"] },
-)
+// Facets (batch/house/division lists) are near-static. NOT cached here — the
+// community page already wraps this in unstable_cache under the shared "directory"
+// tag, so a second inner cache would shadow revalidateTag("directory") and serve
+// stale facets. Keep this a plain query; the caller owns caching + invalidation.
+export async function getDirectoryFacets(schoolId?: string) {
+  const where = schoolId ? { schoolId } : {}
+  const [batches, houses, divisions] = await Promise.all([
+    prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
+    prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
+    prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ])
+  return { batches, houses, divisions }
+}
