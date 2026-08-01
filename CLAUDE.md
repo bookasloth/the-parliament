@@ -217,7 +217,8 @@ npm run lint     # ESLint
 
 ## Environment Variables (`.env`)
 ```
-DATABASE_URL
+DATABASE_URL     # app runtime — Supabase transaction pooler (pgBouncer, port 6543, ?pgbouncer=true)
+DIRECT_URL       # migrations/studio — direct/session connection (port 5432); prisma.config.ts prefers this
 AUTH_SECRET, AUTH_URL
 RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
 R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
