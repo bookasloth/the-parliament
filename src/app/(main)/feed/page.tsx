@@ -5,6 +5,7 @@ import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime } from "./map-row"
+import { injectFeedAds } from "@/config/feed-ads"
 
 export const dynamic = "force-dynamic"
 
@@ -83,7 +84,7 @@ export default async function FeedPage({
       ]),
     ])
 
-    mappedReal = rows.map(mapRowToFeedPost)
+    mappedReal = injectFeedAds(rows.map(mapRowToFeedPost))
     hasMore = rows.length === FIRST_PAGE_SIZE
 
     if (u) {
