@@ -1,23 +1,29 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   UserCircle, Phone, GraduationCap, Share2, Trash2, Camera,
   Globe, Link2, AtSign, MessageCircle, X, SlidersHorizontal, Lock,
+  Sparkles, ArrowRight, Check,
 } from "lucide-react"
+import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
+import type { AlumniCard, Membership } from "@/lib/homepage-data"
+import { computeStrength, type StrengthTab } from "@/lib/profile-strength"
 import { saveAccount, saveContact, saveProfessional, saveSocial, closeAccount } from "./actions"
 
 export interface EditInitial {
   firstName: string; lastName: string; nickname: string; username: string; email: string
-  dateOfBirth: string; gender: string; photoUrl: string; coverUrl: string; bio: string
-  houseId: string; batchId: string; bloodGroup: string
-  city: string; address: string; homeTown: string
-  company: string; jobTitle: string; higherEducation: string; skills: string
+  dateOfBirth: string; gender: string; photoUrl: string; coverUrl: string; bio: string; headline: string
+  houseId: string; batchId: string; bloodGroup: string; bloodDonor: boolean
+  city: string; address: string; homeTown: string; phone: string; whatsappOptIn: boolean
+  company: string; jobTitle: string; industry: string; department: string; workSince: string
+  higherEducation: string; skills: string
   linkedin: string; github: string; twitter: string; facebook: string; instagram: string; website: string
-  visibility: string
+  visibility: string; showOnMap: boolean; isPublicIndexed: boolean
+  membershipStatus: string
 }
 type Facets = { batches: { id: string; label: string }[]; houses: { id: string; name: string; colorHex: string }[] }
 type TabKey = "account" | "contact" | "education" | "social" | "close"
@@ -26,21 +32,42 @@ const TABS: { key: TabKey; label: string; icon: typeof UserCircle }[] = [
   { key: "account", label: "Account", icon: UserCircle },
   { key: "contact", label: "Contact", icon: Phone },
   { key: "education", label: "Education & Profession", icon: GraduationCap },
-  { key: "social", label: "Social Media Handles", icon: Share2 },
+  { key: "social", label: "Social & Privacy", icon: Share2 },
   { key: "close", label: "Close account", icon: Trash2 },
 ]
 const BLOOD = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-const input = "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-colors"
+const input = "w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-colors"
 
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
-  return <div className={full ? "col-span-full" : ""}><label className="mb-1.5 block text-xs font-semibold text-gray-700">{label}</label>{children}</div>
+function Field({ label, hint, children, full }: { label: string; hint?: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <div className={full ? "col-span-full" : ""}>
+      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+        {label}
+        {hint && <span className="rounded-[3px] bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand">{hint}</span>}
+      </label>
+      {children}
+    </div>
+  )
 }
 function Card({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
+    <div className="rounded-[4px] border border-gray-200 bg-white">
       <div className="px-4 pt-4 sm:px-5"><h2 className="text-base font-bold text-gray-900">{title}</h2>{desc && <p className="mt-0.5 text-xs text-gray-500">{desc}</p>}</div>
       <div className="px-4 py-4 sm:px-5">{children}</div>
     </div>
+  )
+}
+function Toggle({ on, onChange, label, hint }: { on: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <button type="button" onClick={() => onChange(!on)} className="flex w-full items-center gap-3 rounded-[4px] border border-gray-200 px-3 py-2.5 text-left transition-colors hover:border-gray-300">
+      <span className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors ${on ? "bg-brand" : "bg-gray-300"}`}>
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs font-semibold text-gray-800">{label}</span>
+        {hint && <span className="block text-[11px] text-gray-400">{hint}</span>}
+      </span>
+    </button>
   )
 }
 function SaveBar({ label = "Save changes", onSave }: { label?: string; onSave: () => Promise<void> }) {
@@ -54,10 +81,27 @@ function SaveBar({ label = "Save changes", onSave }: { label?: string; onSave: (
   return (
     <div className="flex items-center justify-end gap-3">
       {err && <span className="text-xs text-red-600">{err}</span>}
-      <button onClick={run} disabled={state === "saving"} className={`rounded-lg px-4 py-2 text-xs font-bold text-white transition-colors disabled:opacity-60 ${state === "saved" ? "bg-green-600" : "bg-brand hover:bg-brand-600"}`}>
+      <button onClick={run} disabled={state === "saving"} className={`rounded-[4px] px-4 py-2 text-xs font-bold text-white transition-colors disabled:opacity-60 ${state === "saved" ? "bg-green-600" : "bg-brand hover:bg-brand-600"}`}>
         {state === "saving" ? "Saving…" : state === "saved" ? "Saved ✓" : label}
       </button>
     </div>
+  )
+}
+
+/** Animated completion ring (SVG so the arc tweens smoothly). */
+function StrengthRing({ score, color }: { score: number; color: string }) {
+  const r = 30
+  const c = 2 * Math.PI * r
+  return (
+    <svg width="72" height="72" viewBox="0 0 72 72" className="flex-shrink-0">
+      <circle cx="36" cy="36" r={r} fill="none" stroke="#e6e9ee" strokeWidth="7" />
+      <circle
+        cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - score / 100)} transform="rotate(-90 36 36)"
+        style={{ transition: "stroke-dashoffset .6s ease, stroke .3s" }}
+      />
+      <text x="36" y="41" textAnchor="middle" className="fill-gray-900 text-[16px] font-extrabold">{score}%</text>
+    </svg>
   )
 }
 
@@ -67,9 +111,50 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   const [navOpen, setNavOpen] = useState(false)
   const [f, setF] = useState(initial)
   const set = (patch: Partial<EditInitial>) => setF((prev) => ({ ...prev, ...patch }))
-  // House and batch lock once set (based on the loaded value, not the edited state).
   const houseLocked = initial.houseId !== ""
   const batchLocked = initial.batchId !== ""
+
+  // Dirty guard — warn before leaving with unsaved edits.
+  const dirty = useMemo(() => JSON.stringify(f) !== JSON.stringify(initial), [f, initial])
+  useEffect(() => {
+    if (!dirty) return
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = "" }
+    window.addEventListener("beforeunload", h)
+    return () => window.removeEventListener("beforeunload", h)
+  }, [dirty])
+
+  // ---- Profile strength ----
+  const skillsArr = f.skills.split(",").map((s) => s.trim()).filter(Boolean)
+  const socialCount = [f.linkedin, f.github, f.twitter, f.facebook, f.instagram, f.website].filter(Boolean).length
+  const strength = computeStrength({
+    firstName: f.firstName, lastName: f.lastName, username: f.username,
+    headline: f.headline, bio: f.bio, hasCover: !!f.coverUrl,
+    houseId: f.houseId, batchId: f.batchId, city: f.city, phone: f.phone,
+    industry: f.industry, company: f.company, designation: f.jobTitle,
+    higherEducation: f.higherEducation, skills: skillsArr, socialCount,
+  })
+
+  const houseName = facets.houses.find((h) => h.id === f.houseId)?.name ?? ""
+  const batchLabel = facets.batches.find((b) => b.id === f.batchId)?.label ?? ""
+  const previewCard: AlumniCard = {
+    id: f.username || "me",
+    name: f.nickname?.trim() || `${f.firstName} ${f.lastName}`.trim() || "Your name",
+    batch: batchLabel, batchLabel, batchAlt: batchLabel,
+    house: houseName, company: f.company, achievement: "",
+    image: f.photoUrl, location: f.city || undefined,
+    membership: (f.membershipStatus as Membership) || "student",
+    bio: f.headline || undefined, industry: f.industry || undefined,
+  }
+
+  function goTab(t: StrengthTab) { setTab(t); setNavOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }) }
+
+  async function saveAccountNow() {
+    await saveAccount({
+      firstName: f.firstName, lastName: f.lastName, nickname: f.nickname, username: f.username,
+      dateOfBirth: f.dateOfBirth || undefined, gender: f.gender || undefined, bio: f.bio, headline: f.headline,
+      houseId: f.houseId || undefined, batchId: f.batchId || undefined, bloodGroup: f.bloodGroup || undefined, bloodDonor: f.bloodDonor,
+    })
+  }
 
   const AccountTab = (
     <div className="space-y-4">
@@ -84,22 +169,28 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="First name"><input className={input} value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} /></Field>
             <Field label="Last name"><input className={input} value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} /></Field>
-            <Field label="Nickname (Optional)"><input className={input} placeholder="Kaalu" value={f.nickname} onChange={(e) => set({ nickname: e.target.value })} /></Field>
+            <Field label="Nickname" hint="optional"><input className={input} placeholder="Kaalu" value={f.nickname} onChange={(e) => set({ nickname: e.target.value })} /></Field>
             <Field label="Username"><input className={input} value={f.username} onChange={(e) => set({ username: e.target.value })} /></Field>
             <Field label="Birthday"><input type="date" className={input} value={f.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} /></Field>
             <Field label="Gender">
               <div className="flex gap-2">
                 {["male", "female", "other"].map((g) => (
-                  <button key={g} onClick={() => set({ gender: g })} className={`flex-1 rounded-lg border py-2 text-xs font-semibold capitalize transition-colors ${f.gender === g ? "border-brand bg-brand/10 text-brand" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}>{g}</button>
+                  <button key={g} onClick={() => set({ gender: g })} className={`flex-1 rounded-[4px] border py-2 text-xs font-semibold capitalize transition-colors ${f.gender === g ? "border-brand bg-brand/10 text-brand" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}>{g}</button>
                 ))}
               </div>
             </Field>
           </div>
         </div>
         <div className="mt-4">
-          <Field label="Overview" full>
-            <textarea rows={4} maxLength={128} className={input} value={f.bio} onChange={(e) => set({ bio: e.target.value })} />
-            <p className="mt-1 text-[11px] text-gray-400">Character limit: 128 ({128 - f.bio.length} left)</p>
+          <Field label="Headline" hint="shown on every card" full>
+            <input className={input} maxLength={200} placeholder="Senior Product Manager · Fintech · JNV Nagpur ’15" value={f.headline} onChange={(e) => set({ headline: e.target.value })} />
+            <p className="mt-1 text-[11px] text-gray-400">Your one-line tagline across the directory, community and profile.</p>
+          </Field>
+        </div>
+        <div className="mt-4">
+          <Field label="Overview" hint="optional" full>
+            <textarea rows={2} maxLength={128} className={`${input} resize-none`} placeholder="A sentence about you…" value={f.bio} onChange={(e) => set({ bio: e.target.value })} />
+            <p className="mt-1 text-[11px] text-gray-400">{128 - f.bio.length} characters left</p>
           </Field>
         </div>
         <div className="mt-4"><SaveBar onSave={saveAccountNow} /></div>
@@ -110,13 +201,13 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           <Field label="House">
             {houseLocked ? (
               <div className="flex items-center gap-2">
-                <span className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ backgroundColor: facets.houses.find((h) => h.id === f.houseId)?.colorHex ?? "#6c757d" }}>{facets.houses.find((h) => h.id === f.houseId)?.name ?? "—"}</span>
+                <span className="rounded-[4px] px-3 py-1.5 text-xs font-semibold text-white" style={{ backgroundColor: facets.houses.find((h) => h.id === f.houseId)?.colorHex ?? "#6c757d" }}>{houseName || "—"}</span>
                 <span className="flex items-center gap-1 text-[11px] text-gray-400"><Lock className="h-3 w-3" /> Locked</span>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {facets.houses.map((h) => (
-                  <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
+                  <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-[4px] px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
                 ))}
               </div>
             )}
@@ -124,7 +215,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           <Field label="Batch">
             {batchLocked ? (
               <div className="flex items-center gap-2">
-                <span className={`${input} inline-flex w-auto bg-gray-50`}>{facets.batches.find((b) => b.id === f.batchId)?.label ?? "—"}</span>
+                <span className={`${input} inline-flex w-auto bg-gray-50`}>{batchLabel || "—"}</span>
                 <span className="flex items-center gap-1 whitespace-nowrap text-[11px] text-gray-400"><Lock className="h-3 w-3" /> Locked</span>
               </div>
             ) : (
@@ -136,13 +227,16 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           </Field>
         </div>
         {(houseLocked || batchLocked) && <p className="mt-2 text-[11px] text-gray-400">House and batch can&rsquo;t be changed once set. Contact an admin to correct a mistake.</p>}
-        <div className="mt-4">
-          <Field label="Blood Group" full>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Blood Group">
             <div className="flex flex-wrap gap-2">
               {BLOOD.map((bg) => (
-                <button key={bg} onClick={() => set({ bloodGroup: f.bloodGroup === bg ? "" : bg })} className={`h-9 min-w-[3rem] rounded-lg border text-sm font-bold transition-colors ${f.bloodGroup === bg ? "border-red-500 bg-red-500 text-white" : "border-red-300 bg-white text-red-500 hover:bg-red-50"}`}>{bg}</button>
+                <button key={bg} onClick={() => set({ bloodGroup: f.bloodGroup === bg ? "" : bg })} className={`h-9 min-w-[3rem] rounded-[4px] border text-sm font-bold transition-colors ${f.bloodGroup === bg ? "border-red-500 bg-red-500 text-white" : "border-red-300 bg-white text-red-500 hover:bg-red-50"}`}>{bg}</button>
               ))}
             </div>
+          </Field>
+          <Field label="Blood donor" hint="community">
+            <Toggle on={f.bloodDonor} onChange={(v) => set({ bloodDonor: v })} label="Available as a blood donor" hint="Helps alumni find donors in emergencies." />
           </Field>
         </div>
         <div className="mt-4"><SaveBar onSave={saveAccountNow} /></div>
@@ -150,24 +244,20 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     </div>
   )
 
-  async function saveAccountNow() {
-    await saveAccount({
-      firstName: f.firstName, lastName: f.lastName, nickname: f.nickname, username: f.username,
-      dateOfBirth: f.dateOfBirth || undefined, gender: f.gender || undefined, bio: f.bio,
-      houseId: f.houseId || undefined, batchId: f.batchId || undefined, bloodGroup: f.bloodGroup || undefined,
-    })
-  }
-
   const ContactTab = (
     <Card title="Contact Details" desc="Keep your contact details updated for better networking.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Phone number"><input type="tel" className={input} placeholder="+91 98765 43210" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
+        <Field label="Primary Email"><input className={`${input} bg-gray-50`} value={f.email} readOnly /></Field>
         <Field label="Address" full><input className={input} placeholder="Street address" value={f.address} onChange={(e) => set({ address: e.target.value })} /></Field>
         <Field label="City"><input className={input} value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
         <Field label="Home Town"><input className={input} value={f.homeTown} onChange={(e) => set({ homeTown: e.target.value })} /></Field>
-        <Field label="Primary Email"><input className={`${input} bg-gray-50`} value={f.email} readOnly /></Field>
       </div>
-      <p className="mt-3 text-[11px] text-gray-400">Email changes and emergency contacts aren&rsquo;t editable here yet.</p>
-      <div className="mt-4"><SaveBar label="Update Contact" onSave={() => saveContact({ city: f.city, address: f.address, homeTown: f.homeTown })} /></div>
+      <div className="mt-3">
+        <Toggle on={f.whatsappOptIn} onChange={(v) => set({ whatsappOptIn: v })} label="I'm reachable on WhatsApp at this number" hint="Only shown to verified alumni." />
+      </div>
+      <p className="mt-3 text-[11px] text-gray-400">Email changes aren&rsquo;t editable here yet.</p>
+      <div className="mt-4"><SaveBar label="Update Contact" onSave={() => saveContact({ city: f.city, address: f.address, homeTown: f.homeTown, phone: f.phone, whatsappOptIn: f.whatsappOptIn })} /></div>
     </Card>
   )
 
@@ -175,11 +265,18 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     <Card title="Profession & Education" desc="Your current role and academic background.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Current Company"><input className={input} placeholder="Company name" value={f.company} onChange={(e) => set({ company: e.target.value })} /></Field>
-        <Field label="Job Title"><input className={input} placeholder="Your position" value={f.jobTitle} onChange={(e) => set({ jobTitle: e.target.value })} /></Field>
-        <Field label="Highest Education / Institution" full><input className={input} placeholder="e.g. B.Tech, VNIT Nagpur" value={f.higherEducation} onChange={(e) => set({ higherEducation: e.target.value })} /></Field>
-        <Field label="Key Skills (comma separated)" full><input className={input} placeholder="SEO, Project Management, Design" value={f.skills} onChange={(e) => set({ skills: e.target.value })} /></Field>
+        <Field label="Designation / Job Title"><input className={input} placeholder="Your position" value={f.jobTitle} onChange={(e) => set({ jobTitle: e.target.value })} /></Field>
+        <Field label="Industry" hint="shown on card"><input className={input} placeholder="e.g. Fintech, Healthcare" value={f.industry} onChange={(e) => set({ industry: e.target.value })} /></Field>
+        <Field label="Department"><input className={input} placeholder="e.g. Engineering" value={f.department} onChange={(e) => set({ department: e.target.value })} /></Field>
+        <Field label="Working since" hint="optional"><input type="date" className={input} value={f.workSince} onChange={(e) => set({ workSince: e.target.value })} /></Field>
+        <Field label="Highest Education / Institution"><input className={input} placeholder="e.g. B.Tech, VNIT Nagpur" value={f.higherEducation} onChange={(e) => set({ higherEducation: e.target.value })} /></Field>
       </div>
-      <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, higherEducation: f.higherEducation, skills: f.skills })} /></div>
+      <div className="mt-4">
+        <Field label="Key skills" hint="press Enter to add" full>
+          <SkillsInput value={skillsArr} onChange={(arr) => set({ skills: arr.join(", ") })} />
+        </Field>
+      </div>
+      <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills })} /></div>
     </Card>
   )
 
@@ -192,11 +289,11 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     { key: "website" as const, label: "Personal Website", color: "#0d6efd", icon: Globe },
   ]
   const SocialTab = (
-    <Card title="Social Media & Online Presence" desc="Connect your social profiles to expand your network.">
+    <Card title="Social & Privacy" desc="Connect your profiles and control who can find you.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {SOCIALS.map((s) => (
           <Field key={s.key} label={s.label}>
-            <div className="flex overflow-hidden rounded-lg border border-gray-200 transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+            <div className="flex overflow-hidden rounded-[4px] border border-gray-200 transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
               <span className="flex w-10 items-center justify-center text-white" style={{ background: s.color }}><s.icon className="h-4 w-4" /></span>
               <input type="url" placeholder={`https://…`} value={f[s.key]} onChange={(e) => set({ [s.key]: e.target.value } as Partial<EditInitial>)} className="flex-1 px-3 py-2 text-sm outline-none" />
             </div>
@@ -218,22 +315,32 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           ))}
         </div>
       </div>
-      <div className="mt-4"><SaveBar label="Update Social Profiles" onSave={() => saveSocial({ linkedin: f.linkedin, github: f.github, twitter: f.twitter, facebook: f.facebook, instagram: f.instagram, website: f.website, visibility: f.visibility })} /></div>
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Toggle on={f.showOnMap} onChange={(v) => set({ showOnMap: v })} label="Show me on the alumni map" hint="Uses your city, never your exact address." />
+        <Toggle on={f.isPublicIndexed} onChange={(v) => set({ isPublicIndexed: v })} label="Let search engines index my profile" hint="Only applies when profile is Public." />
+      </div>
+      <div className="mt-4"><SaveBar label="Update Social Profiles" onSave={() => saveSocial({ linkedin: f.linkedin, github: f.github, twitter: f.twitter, facebook: f.facebook, instagram: f.instagram, website: f.website, visibility: f.visibility, showOnMap: f.showOnMap, isPublicIndexed: f.isPublicIndexed })} /></div>
     </Card>
   )
 
   const CloseTab = <CloseAccount />
 
   const SideNav = (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-[4px] border border-gray-200 bg-white">
       <ul className="space-y-1 p-2">
-        {TABS.map((t) => (
-          <li key={t.key}>
-            <button onClick={() => { setTab(t.key); setNavOpen(false) }} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${tab === t.key ? "bg-brand/10 text-brand" : "text-gray-600 hover:bg-gray-50"}`}>
-              <t.icon className={`h-[18px] w-[18px] ${tab === t.key ? "text-brand" : "text-gray-400"}`} /> {t.label}
-            </button>
-          </li>
-        ))}
+        {TABS.map((t) => {
+          const sectionDone = strength.items.filter((i) => i.tab === (t.key as StrengthTab))
+          const allDone = t.key !== "close" && sectionDone.length > 0 && sectionDone.every((i) => i.done)
+          return (
+            <li key={t.key}>
+              <button onClick={() => { setTab(t.key); setNavOpen(false) }} className={`flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm font-semibold transition-colors ${tab === t.key ? "bg-brand/10 text-brand" : "text-gray-600 hover:bg-gray-50"}`}>
+                <t.icon className={`h-[18px] w-[18px] ${tab === t.key ? "text-brand" : "text-gray-400"}`} />
+                <span className="flex-1 text-left">{t.label}</span>
+                {allDone && <Check className="h-4 w-4 text-green-600" />}
+              </button>
+            </li>
+          )
+        })}
       </ul>
       <div className="border-t border-gray-100 py-2.5 text-center">
         <a href={`/${f.username}`} className="text-xs font-medium text-gray-500 hover:text-brand">View Profile</a>
@@ -241,15 +348,70 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     </div>
   )
 
+  const RightRail = (
+    <div className="space-y-4">
+      {/* Strength summary */}
+      <div className="rounded-[4px] border border-gray-200 bg-white p-4">
+        <div className="flex items-center gap-3">
+          <StrengthRing score={strength.score} color={strength.tier.color} />
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+              <Sparkles className="h-4 w-4 text-brand" /> Profile Strength
+            </p>
+            <span className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: strength.tier.color }}>{strength.tier.label}</span>
+          </div>
+        </div>
+        {strength.next.length > 0 ? (
+          <div className="mt-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Next best actions</p>
+            <div className="space-y-1.5">
+              {strength.next.slice(0, 3).map((it) => (
+                <button key={it.key} onClick={() => goTab(it.tab)} className="flex w-full items-center gap-2 rounded-[4px] border border-gray-200 px-2.5 py-2 text-left text-xs font-medium text-gray-700 transition-colors hover:border-brand hover:bg-brand-50">
+                  <span className="flex-1">{it.label}</span>
+                  <span className="font-bold text-brand">+{it.points}%</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-[4px] bg-green-50 px-3 py-2 text-xs font-medium text-green-700">🎉 Your profile is complete. Nice work!</p>
+        )}
+      </div>
+
+      {/* Live preview */}
+      <div className="rounded-[4px] border border-gray-200 bg-white p-4">
+        <p className="mb-1 text-sm font-bold text-gray-900">Live preview</p>
+        <p className="mb-3 text-[11px] text-gray-400">How alumni see you.</p>
+        <AlumniProfileCard alumni={previewCard} profileHref={`/${f.username}`} verified={f.membershipStatus !== "student"} actions={<span className="text-[11px] text-gray-400">Preview</span>} />
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-6">
       <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 sm:py-6">
-        <button onClick={() => setNavOpen(true)} className="mb-4 flex items-center gap-2 lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-white"><SlidersHorizontal className="h-4 w-4" /></span>
-          <span className="text-base font-bold text-gray-900">Settings</span>
-        </button>
+        <div className="mb-4 flex items-center justify-between">
+          <button onClick={() => setNavOpen(true)} className="flex items-center gap-2 lg:hidden">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-brand text-white"><SlidersHorizontal className="h-4 w-4" /></span>
+            <span className="text-base font-bold text-gray-900">Settings</span>
+          </button>
+          {dirty && <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes</span>}
+        </div>
+
+        {/* Mobile strength banner */}
+        <div className="mb-4 flex items-center gap-3 rounded-[4px] border border-gray-200 bg-white p-3 xl:hidden">
+          <StrengthRing score={strength.score} color={strength.tier.color} />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-gray-900"><Sparkles className="h-4 w-4 text-brand" /> {strength.tier.label}</p>
+            {strength.next[0]
+              ? <button onClick={() => goTab(strength.next[0].tab)} className="mt-1 text-xs font-medium text-brand">Next: {strength.next[0].label} +{strength.next[0].points}% →</button>
+              : <p className="mt-1 text-xs font-medium text-green-700">Profile complete 🎉</p>}
+          </div>
+        </div>
+
         <div className="flex flex-col gap-5 lg:flex-row">
-          <div className="hidden w-[280px] flex-shrink-0 lg:block"><div className="sticky top-[72px]">{SideNav}</div></div>
+          <div className="hidden w-[240px] flex-shrink-0 lg:block"><div className="sticky top-[72px]">{SideNav}</div></div>
           <div className="min-w-0 flex-1">
             {tab === "account" && AccountTab}
             {tab === "contact" && ContactTab}
@@ -257,8 +419,10 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
             {tab === "social" && SocialTab}
             {tab === "close" && CloseTab}
           </div>
+          <div className="hidden w-[320px] flex-shrink-0 xl:block"><div className="sticky top-[72px]">{RightRail}</div></div>
         </div>
       </div>
+
       {navOpen && (
         <>
           <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} />
@@ -272,27 +436,66 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   )
 
   function CloseAccount() {
-    const [confirm, setConfirm] = useState(false)
+    const [confirmText, setConfirmText] = useState("")
     const [busy, setBusy] = useState(false)
+    const canDelete = confirmText.trim().toUpperCase() === "DELETE"
     async function del() {
+      if (!canDelete) return
       setBusy(true)
       try { await closeAccount(); await signOut({ callbackUrl: "/" }) } catch { setBusy(false) }
     }
     return (
-      <Card title="Delete account" desc="This action is permanent. Read the notes below before continuing.">
-        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-600">
-          <li>If you delete your account, your profile is removed and you lose access.</li>
+      <Card title="Close account" desc="This deactivates your account. Read the notes below before continuing.">
+        <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-gray-600">
+          <li>Your profile is hidden from the directory and you&rsquo;ll be signed out.</li>
+          <li>Posts, connections and karma are retained but no longer visible.</li>
+          <li>Contact an admin within 30 days to restore your account.</li>
         </ul>
-        <label className="my-4 flex cursor-pointer items-center gap-2.5">
-          <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="h-4 w-4 accent-red-500" />
-          <span className="text-sm text-gray-700">Yes, I&rsquo;d like to delete my account</span>
-        </label>
-        <button disabled={!confirm || busy} onClick={del} className="rounded-lg bg-red-500 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
-          {busy ? "Deleting…" : "Delete my account"}
-        </button>
+        <div className="mt-4 rounded-[4px] border border-red-200 bg-red-50 p-4">
+          <p className="text-xs font-semibold text-red-700">To confirm, type <span className="rounded-[3px] bg-white px-1.5 py-0.5 font-mono">DELETE</span> below.</p>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="DELETE"
+            className="mt-2 w-full max-w-[220px] rounded-[4px] border border-red-300 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
+          />
+          <div className="mt-3">
+            <button disabled={!canDelete || busy} onClick={del} className="rounded-[4px] bg-red-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+              {busy ? "Closing…" : "Close my account"}
+            </button>
+          </div>
+        </div>
       </Card>
     )
   }
+}
+
+/** Token-chip skills editor. */
+function SkillsInput({ value, onChange }: { value: string[]; onChange: (arr: string[]) => void }) {
+  const [draft, setDraft] = useState("")
+  function add(raw: string) {
+    const s = raw.trim().replace(/,$/, "")
+    if (s && !value.some((v) => v.toLowerCase() === s.toLowerCase())) onChange([...value, s])
+    setDraft("")
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-gray-200 p-2 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+      {value.map((s) => (
+        <span key={s} className="flex items-center gap-1.5 rounded-[4px] bg-brand-50 py-1 pl-2.5 pr-1.5 text-xs font-medium text-brand">
+          {s}
+          <button type="button" onClick={() => onChange(value.filter((v) => v !== s))} aria-label={`Remove ${s}`}><X className="h-3 w-3" /></button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(draft) } else if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1)) }}
+        onBlur={() => add(draft)}
+        placeholder={value.length ? "" : "SEO, Product Management, Design"}
+        className="min-w-[120px] flex-1 bg-transparent px-1 py-1 text-sm outline-none"
+      />
+    </div>
+  )
 }
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1400&q=70"
@@ -326,7 +529,7 @@ function MiniHero({
   const cover = useImageUpload("/api/profile/cover", "coverUrl", onCover)
   const coverSrc = coverUrl || DEFAULT_COVER
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200">
+    <div className="relative overflow-hidden rounded-[4px] border border-gray-200">
       <button
         type="button"
         onClick={() => cover.inputRef.current?.click()}
@@ -338,7 +541,7 @@ function MiniHero({
           <Camera className="h-4 w-4" />
           <span className="text-xs font-semibold">{cover.busy ? "Uploading…" : "Change cover"}</span>
         </span>
-        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-md bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-700 shadow-sm group-hover:bg-white">
+        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-[4px] bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-700 shadow-sm group-hover:bg-white">
           <Camera className="h-3.5 w-3.5" /> Cover
         </span>
       </button>
