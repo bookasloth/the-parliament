@@ -1,11 +1,12 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { FormEvent, Suspense, useState } from "react"
 import { Field, SubmitButton, FormError } from "../ui"
 
-export function SignUpForm() {
+function SignUpFormInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -40,8 +41,8 @@ export function SignUpForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <FormError>{error}</FormError>}
 
-      <Field label="Full name" id="name" name="name" required autoComplete="name" />
-      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
+      <Field label="Full name" id="name" name="name" required autoComplete="name" defaultValue={searchParams.get("name") ?? ""} />
+      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" defaultValue={searchParams.get("email") ?? ""} />
       <Field
         label="Password"
         id="password"
@@ -56,5 +57,13 @@ export function SignUpForm() {
         <a href="/auth/signin" className="font-medium text-[#009ae4] hover:underline">Sign in</a>
       </p>
     </form>
+  )
+}
+
+export function SignUpForm() {
+  return (
+    <Suspense>
+      <SignUpFormInner />
+    </Suspense>
   )
 }

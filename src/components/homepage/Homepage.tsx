@@ -1,13 +1,14 @@
 import { StickyNav } from "./StickyNav";
 import { HeroSection } from "./HeroSection";
-import { WhyJoin } from "./WhyJoin";
-import { FeaturedAlumni } from "./FeaturedAlumni";
-import { BusinessShowcase } from "./BusinessShowcase";
-import { UpcomingEvents } from "./UpcomingEvents";
-import { ImpactDashboard } from "./ImpactDashboard";
-import { Testimonials } from "./Testimonials";
-import { HousePride } from "./HousePride";
-import { FinalCTA } from "./FinalCTA";
+// Parked with the sections below — re-import when the logged-out homepage grows past the hero.
+// import { WhyJoin } from "./WhyJoin";
+// import { FeaturedAlumni } from "./FeaturedAlumni";
+// import { BusinessShowcase } from "./BusinessShowcase";
+// import { UpcomingEvents } from "./UpcomingEvents";
+// import { ImpactDashboard } from "./ImpactDashboard";
+// import { Testimonials } from "./Testimonials";
+// import { HousePride } from "./HousePride";
+// import { FinalCTA } from "./FinalCTA";
 import { Footer } from "./Footer";
 import { defaultHomepageContent, type HomepageContent } from "@/lib/homepage-data";
 
@@ -49,15 +50,15 @@ export function Homepage({
       {sections.nav && <StickyNav {...content.nav} />}
       <main id="main-content" className="flex flex-1 flex-col">
         {sections.hero && <HeroSection content={content.hero} />}
-        {/* activity section removed */}
-        {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />}
-        {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />}
-        {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />}
-        {sections.events && <UpcomingEvents events={content.upcomingEvents} />}
-        {sections.impact && <ImpactDashboard metrics={content.impactMetrics} />}
-        {sections.testimonials && <Testimonials testimonials={content.testimonials} />}
-        {sections.houses && <HousePride houses={content.houses} />}
-        {sections.finalCta && <FinalCTA {...content.finalCta} />}
+        {/* Logged-out homepage = hero only. Rest parked until launch. */}
+        {/* {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />} */}
+        {/* {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />} */}
+        {/* {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />} */}
+        {/* {sections.events && <UpcomingEvents events={content.upcomingEvents} />} */}
+        {/* {sections.impact && <ImpactDashboard metrics={content.impactMetrics} />} */}
+        {/* {sections.testimonials && <Testimonials testimonials={content.testimonials} />} */}
+        {/* {sections.houses && <HousePride houses={content.houses} />} */}
+        {/* {sections.finalCta && <FinalCTA {...content.finalCta} />} */}
       </main>
       {sections.footer && <Footer {...content.footer} />}
     </div>
