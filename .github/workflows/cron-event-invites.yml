@@ -1,0 +1,48 @@
+name: Event invite waves (hourly)
+
+# Drives /api/cron/event-invites once an hour.
+#
+# Why this exists: invite waves are staggered by tier (Life now, Premium +2h,
+# Associate +4h, Student +6h), which needs an hourly tick — but Vercel's Hobby
+# plan rejects any cron more frequent than daily, and such a schedule fails the
+# whole deployment. vercel.json therefore keeps a DAILY tick as a safety net and
+# this workflow supplies the hourly precision for free (public repo => unlimited
+# Actions minutes).
+#
+# Caveats:
+#  - GitHub's scheduler is best-effort; runs can lag the stated minute under load.
+#  - Scheduled workflows are auto-disabled after 60 days without repo activity.
+#    The daily Vercel cron still covers waves if that happens.
+#  - Processing is idempotent (waves flip to sent), so an extra tick is harmless.
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: # manual run, for testing
+
+# Never let two ticks overlap.
+concurrency:
+  group: cron-event-invites
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger due invite waves
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # Override by setting a CRON_TARGET_URL repo variable (e.g. when the
+          # site moves to its custom domain).
+          TARGET: ${{ vars.CRON_TARGET_URL || 'https://nnawca.vercel.app' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET repo secret is not set — the endpoint fails closed and would 401."
+            exit 1
+          fi
+          # -f => non-2xx exits non-zero, so a broken tick fails the run loudly.
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${TARGET}/api/cron/event-invites"
+          echo # newline after the JSON response

@@ -8,8 +8,9 @@ import { processDueInviteWaves } from "@/modules/events/invites"
 // ("Hobby accounts are limited to daily cron jobs"), and such a schedule fails
 // the whole deployment. vercel.json therefore runs this daily; all due waves
 // fire in one batch on that tick.
-// To restore hourly precision: upgrade to Pro, or drive this endpoint from an
-// external scheduler (it accepts `Authorization: Bearer $CRON_SECRET`).
+// Hourly precision is restored for free by .github/workflows/cron-event-invites.yml,
+// which calls this endpoint every hour with `Authorization: Bearer $CRON_SECRET`.
+// The daily Vercel cron stays as a safety net if that workflow is ever disabled.
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
