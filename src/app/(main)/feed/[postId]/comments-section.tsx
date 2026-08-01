@@ -98,15 +98,6 @@ function applyCommentAction(state: CommentView[], action: OptimisticAction): Com
   return state.map((c) => ({ ...patch(c), replies: c.replies.map(patch) }))
 }
 
-// Membership tier → avatar ring colour (mirrors map-row.ts / AlumniProfileCard).
-const RING: Record<string, string> = {
-  life: "#D4A017",
-  committee: "#8B5CF6",
-  premium: "#1E3A5F",
-  student: "#059669",
-  associate: "#2563EB",
-  inactive: "#6B7280",
-}
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
   const min = Math.floor(diffMs / 60000)
@@ -179,8 +170,7 @@ function Avatar({ c }: { c: CommentView }) {
       <Image
         src={c.author.avatarUrl}
         alt={c.author.displayName}
-        className="h-9 w-9 rounded-full object-cover"
-        style={{ boxShadow: `0 0 0 2px ${RING[c.author.membershipStatus] ?? "#2563EB"}` }}
+        className="h-9 w-9 rounded-full border-[0.5px] border-gray-300 object-cover"
         width={36}
         height={36}
       />
