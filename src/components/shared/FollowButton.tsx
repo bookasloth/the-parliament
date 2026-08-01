@@ -7,9 +7,12 @@ import { followAction, unfollowAction } from "@/app/(main)/connections/actions"
 export function FollowButton({
   userId,
   initialFollowing = false,
+  iconOnly = false,
 }: {
   userId: string
   initialFollowing?: boolean
+  /** Square icon-only button (mobile/compact). */
+  iconOnly?: boolean
 }) {
   const [following, setFollowing] = useState(initialFollowing)
   const [busy, setBusy] = useState(false)
@@ -26,6 +29,25 @@ export function FollowButton({
     } finally {
       setBusy(false)
     }
+  }
+
+  if (iconOnly) {
+    const label = following ? "Following" : "Follow"
+    return (
+      <button
+        onClick={toggle}
+        disabled={busy}
+        aria-label={label}
+        title={label}
+        className={`flex h-11 w-11 items-center justify-center rounded-[4px] border transition-colors disabled:opacity-60 ${
+          following
+            ? "border-gray-200 bg-gray-100 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+            : "border-brand bg-brand text-white hover:bg-brand-600"
+        }`}
+      >
+        {following ? <Check className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+      </button>
+    )
   }
 
   if (following) {
