@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Building2, MapPin, Star, BadgePercent, Plus } from "lucide-react"
+import { unstable_cache } from "next/cache"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { getCurrent } from "@/modules/membership/service"
@@ -8,9 +9,18 @@ import { listBusinesses } from "@/modules/business/service"
 
 export const dynamic = "force-dynamic"
 
+// Shared, non-per-viewer data → cache it. The approved-business list only
+// changes on (rare) admin approval, so a 2-min window is plenty; tagged
+// "businesses" for explicit revalidateTag when an approval flow lands.
+const getBusinessesCached = unstable_cache(
+  (schoolId: string) => listBusinesses(schoolId),
+  ["business-directory"],
+  { tags: ["businesses"], revalidate: 120 },
+)
+
 export default async function BusinessDirectoryPage() {
   const schoolId = await getDefaultSchoolId()
-  const businesses = schoolId ? await listBusinesses(schoolId) : []
+  const businesses = schoolId ? await getBusinessesCached(schoolId) : []
 
   const user = await optionalUser()
   const canList = user ? (await getCurrent(user.id)).benefits.businessListing : false

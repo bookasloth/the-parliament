@@ -4,7 +4,9 @@ import { notFound } from "next/navigation"
 import { Building2, MapPin, Star, BadgePercent, Globe, Mail, Phone } from "lucide-react"
 import { getBusinessBySlug } from "@/modules/business/service"
 
-export const dynamic = "force-dynamic"
+// No per-viewer data on this page — pure ISR. Reviews/rating drift slowly;
+// a 2-min window is fine. (Was force-dynamic, which rebuilt it every hit.)
+export const revalidate = 120
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const fmt = (d: Date) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
