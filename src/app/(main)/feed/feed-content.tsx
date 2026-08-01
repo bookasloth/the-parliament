@@ -296,9 +296,6 @@ export function FeedContent({
   initialEgged = [],
   loadedAt,
   activeTab = "forYou",
-  categories = [],
-  activeCategory = null,
-  activeSort = "top",
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -311,9 +308,6 @@ export function FeedContent({
   initialEgged?: string[]
   loadedAt?: string
   activeTab?: "forYou" | "following"
-  categories?: { key: string; label: string }[]
-  activeCategory?: string | null
-  activeSort?: "top" | "recent"
 }) {
   const followingOnly = activeTab === "following"
   const router = useRouter()
@@ -340,13 +334,7 @@ export function FeedContent({
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
-        const r = await loadMoreFeedAction(
-          page,
-          pageSize,
-          followingOnly,
-          activeCategory ?? undefined,
-          activeSort === "recent" ? "recency" : undefined,
-        )
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
@@ -356,7 +344,7 @@ export function FeedContent({
         // Silent — user can retry via button.
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, activeCategory, activeSort])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly])
 
   // Auto-load when sentinel enters viewport (Twitter/LinkedIn feel).
   useEffect(() => {
@@ -397,18 +385,6 @@ export function FeedContent({
     setNewCount(0)
     router.refresh()
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  // Build a /feed href preserving current tab, overriding category/sort as given.
-  function feedHref(next: { category?: string | null; sort?: "top" | "recent" }) {
-    const p = new URLSearchParams()
-    if (followingOnly) p.set("tab", "following")
-    const cat = next.category !== undefined ? next.category : activeCategory
-    if (cat) p.set("category", cat)
-    const sort = next.sort ?? activeSort
-    if (sort === "recent") p.set("sort", "recent")
-    const qs = p.toString()
-    return qs ? `/feed?${qs}` : "/feed"
   }
 
   async function handleThrowEgg(username: string) {
@@ -454,45 +430,6 @@ export function FeedContent({
                 </a>
               </div>
             )}
-            {/* Filter bar — sort toggle + category pills (searchParam-driven) */}
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
-              <div className="flex items-center gap-1 text-xs font-semibold">
-                <a
-                  href={feedHref({ sort: "top" })}
-                  className={`rounded-full px-3 py-1 transition-colors ${activeSort === "top" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100"}`}
-                >
-                  Top
-                </a>
-                <a
-                  href={feedHref({ sort: "recent" })}
-                  className={`rounded-full px-3 py-1 transition-colors ${activeSort === "recent" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100"}`}
-                >
-                  Recent
-                </a>
-              </div>
-              {categories.length > 0 && (
-                <>
-                  <span className="mx-1 h-4 w-px bg-gray-200" />
-                  <div className="flex flex-wrap items-center gap-1 text-xs font-medium">
-                    <a
-                      href={feedHref({ category: null })}
-                      className={`rounded-full px-3 py-1 transition-colors ${!activeCategory ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"}`}
-                    >
-                      All
-                    </a>
-                    {categories.map((c) => (
-                      <a
-                        key={c.key}
-                        href={feedHref({ category: c.key })}
-                        className={`rounded-full px-3 py-1 transition-colors ${activeCategory === c.key ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"}`}
-                      >
-                        {c.label}
-                      </a>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
             {newCount > 0 && (
               <div className="sticky top-16 z-20 flex justify-center">
                 <button
