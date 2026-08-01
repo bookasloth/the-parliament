@@ -33,6 +33,12 @@ export interface AwardKarmaInput {
   reasonCode?: string
   entityType?: string
   entityId?: string
+  /** Credit balance + lifetime but NOT earned-30d — e.g. payment karma, which must
+   *  not buy social unlocks. */
+  excludeFromEarned?: boolean
+  /** Award at most once for this (userId, actionType, entityId). Makes webhook
+   *  retries / double-submits safe. Requires entityId. */
+  oncePerEntity?: boolean
 }
 
 export interface KarmaBalance {
@@ -158,6 +164,23 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
   const day = istDay()
 
   return prisma.$transaction(async (tx) => {
+    // Idempotency: never award twice for the same source event (payment webhook
+    // retry, double-submit). Return the current balance untouched.
+    if (input.oncePerEntity && input.entityId) {
+      const prior = await tx.karmaTransaction.findFirst({
+        where: { userId: input.userId, actionType: input.actionType, entityId: input.entityId },
+        select: { id: true },
+      })
+      if (prior) {
+        const row = await tx.userKarma.findUnique({ where: { userId: input.userId } })
+        return {
+          balance: row?.karmaBalance.toNumber() ?? 0,
+          earned30d: row?.earnedKarma30d.toNumber() ?? 0,
+          lifetimeEarned: row?.lifetimeEarned.toNumber() ?? 0,
+        }
+      }
+    }
+
     const incLike = role === "actor" && kind === "like"
     const incComment = role === "actor" && kind === "comment"
     const incShare = role === "actor" && kind === "share"
@@ -285,7 +308,10 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
     const existing = await tx.userKarma.findUnique({ where: { userId: input.userId } })
     const prevBalance = existing?.karmaBalance.toNumber() ?? 0
     const nextBalance = Math.max(KARMA.TOTAL_FLOOR, prevBalance + appliedNum)
-    const earnInc = positive ? appliedNum : 0
+    // Payment karma (excludeFromEarned) still grows lifetime + balance, but never
+    // the 30-day pool that gates social unlocks — money can't buy Mentor.
+    const earnInc = positive && !input.excludeFromEarned ? appliedNum : 0
+    const lifeInc = positive ? appliedNum : 0
 
     const updated = await tx.userKarma.upsert({
       where: { userId: input.userId },
@@ -293,12 +319,12 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
         userId: input.userId,
         karmaBalance: new Prisma.Decimal(Math.max(KARMA.TOTAL_FLOOR, appliedNum)),
         earnedKarma30d: new Prisma.Decimal(earnInc),
-        lifetimeEarned: new Prisma.Decimal(earnInc),
+        lifetimeEarned: new Prisma.Decimal(lifeInc),
       },
       update: {
         karmaBalance: new Prisma.Decimal(nextBalance),
         earnedKarma30d: { increment: earnInc },
-        lifetimeEarned: { increment: earnInc },
+        lifetimeEarned: { increment: lifeInc },
       },
     })
 
@@ -326,6 +352,39 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
       earned30d: updated.earnedKarma30d.toNumber(),
       lifetimeEarned: updated.lifetimeEarned.toNumber(),
     }
+  })
+}
+
+/**
+ * Award karma for a confirmed membership payment. Perks-only (never feeds the
+ * 30-day unlock pool) and idempotent per order. First time a user reaches a tier
+ * pays that tier's value; renewing the same tier pays the flat renewal value.
+ *
+ * ponytail: renewal is detected by an out-of-txn lookup, so two simultaneous
+ *   same-tier orders for one user could both pay tier value. Vanishingly rare
+ *   (one person, two concurrent purchases); add a unique guard only if it shows up.
+ */
+export async function awardMembershipKarma(
+  userId: string,
+  planCode: string,
+  orderId: string,
+): Promise<void> {
+  const tier = KARMA.MEMBERSHIP_KARMA[planCode]
+  if (!tier) return // non-purchasable / unknown tier → no karma
+  const prior = await prisma.karmaTransaction.findFirst({
+    where: { userId, actionType: "membership_payment", reasonCode: planCode },
+    select: { id: true },
+  })
+  await awardKarma({
+    userId,
+    actionType: "membership_payment",
+    baseValue: prior ? KARMA.MEMBERSHIP_RENEWAL : tier,
+    role: "self",
+    reasonCode: planCode,
+    entityType: "payment",
+    entityId: orderId,
+    excludeFromEarned: true,
+    oncePerEntity: true,
   })
 }
 

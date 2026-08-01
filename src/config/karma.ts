@@ -20,6 +20,13 @@ export const KARMA = {
   // accounts can't farm a target to the top.
   GIVER_TRUST_MIN_AGE_DAYS: 7,
   GIVER_WEIGHT_UNTRUSTED: 0.5,
+  // Karma for paying. Perks-only: credited to balance + lifetime but NOT to the
+  // 30-day "earned" pool, so money can never buy a social unlock (Poller/Mentor).
+  // One-time per tier reached; renewing the same tier pays the flat renewal value.
+  MEMBERSHIP_KARMA: { associate: 10, premium: 25, life: 100 } as Record<string, number>,
+  MEMBERSHIP_RENEWAL: 5,
+  // Donations reward per ₹500 (charity beats self-benefit), capped per payment.
+  // DONATION_PER_500 / DONATION_MAX live under ACTIVITY above.
   BONUS: {
     COMMENT_3_LIKES: 2,
     POST_5_LIKES: 3,

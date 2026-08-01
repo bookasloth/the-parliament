@@ -106,6 +106,22 @@ describe("mutual downvote", () => {
   })
 })
 
+describe("payment / membership karma config", () => {
+  it("tier values are perks-worthy and ordered", () => {
+    const m = KARMA.MEMBERSHIP_KARMA
+    expect(m.associate).toBeLessThan(m.premium)
+    expect(m.premium).toBeLessThan(m.life)
+    expect(KARMA.MEMBERSHIP_RENEWAL).toBeLessThan(m.associate)
+  })
+  it("payment karma computes at full value (no social caps apply)", () => {
+    // actionType "membership_payment" classifies as "other", role self, no counterparty.
+    expect(classifyKind("membership_payment")).toBe("other")
+    expect(computeApplied("other", KARMA.MEMBERSHIP_KARMA.life, ctx({ role: "self" }))).toBe(
+      KARMA.MEMBERSHIP_KARMA.life,
+    )
+  })
+})
+
 describe("negative daily floor", () => {
   it("zeroes further negatives once at/below the floor", () => {
     expect(computeApplied("downvote_post", -0.5, ctx({ netKarma: KARMA.NEGATIVE_DAILY_FLOOR }))).toBe(0)

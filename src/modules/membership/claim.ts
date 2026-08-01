@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { activateMembership } from "./activation"
 import { issueReceiptAndInvoice } from "./receipt"
+import { awardMembershipKarma } from "@/modules/karma/ledger"
 import { type PlanCode } from "@/config/membership"
 
 export interface ClaimResult {
@@ -59,6 +60,10 @@ export async function claimAndActivateOrder(
   // Paperwork: numbered invoice + receipt email. Best-effort — never throws, so a
   // failed receipt can't undo the grant above. Runs once (claim fires once).
   await issueReceiptAndInvoice(order.id)
+
+  // Perks-only karma for paying. Best-effort + idempotent per order, so it can
+  // never undo the grant and a webhook/verify double-fire won't double-award.
+  await awardMembershipKarma(order.userId, order.planCode, order.id).catch(() => {})
 
   return {
     claimed: true,
