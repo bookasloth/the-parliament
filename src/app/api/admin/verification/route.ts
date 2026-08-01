@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server"
+import { updateTag } from "next/cache"
 import { z } from "zod"
 import { handleError, ok } from "@/lib/api"
 import { requireAdmin } from "@/lib/gate"
@@ -42,6 +43,10 @@ export async function POST(req: NextRequest) {
         reviewerId: admin.id,
         loginUrl,
       })
+      // Verified status feeds the cached community directory (badge, verified
+      // count, "verified only" filter) — refresh it now instead of waiting out
+      // the revalidate window.
+      updateTag("directory")
     } else {
       await rejectVerification({
         verificationId: body.verificationId,
