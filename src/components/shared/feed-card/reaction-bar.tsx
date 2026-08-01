@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { useDropdown } from "./use-dropdown"
 import { awards } from "./types"
+import EmojiPicker from "@/components/shared/EmojiPicker"
 
 // --- Award Modal ---
 function AwardModal({
@@ -352,18 +353,24 @@ export function ReactionBar({
       </div>
       {commentOpen && !commentHref && (
         <div className="flex items-center gap-2 px-1 pb-2">
-          <input
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmitComment()
-              }
-            }}
-            placeholder="Write a comment…"
-            className="flex-1 rounded-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-brand"
-          />
+          <div className="relative flex-1">
+            <input
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmitComment()
+                }
+              }}
+              placeholder="Write a comment…"
+              className="w-full rounded-full border border-gray-200 pl-4 pr-9 py-2 text-sm outline-none focus:border-brand"
+            />
+            <EmojiPicker
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+              onPick={(e) => setCommentText((t) => t + e)}
+            />
+          </div>
           <button
             onClick={handleSubmitComment}
             disabled={!commentText.trim()}

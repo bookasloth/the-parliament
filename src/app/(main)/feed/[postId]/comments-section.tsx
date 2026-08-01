@@ -2,16 +2,44 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react"
-import { ThumbsDown, ThumbsUp, Flag, MoreHorizontal, Smile, Trash2 } from "lucide-react"
+import { useEffect, useOptimistic, useRef, useState, useTransition, type ChangeEvent } from "react"
+import { ThumbsDown, ThumbsUp, Flag, ImageIcon, MoreHorizontal, Trash2, X } from "lucide-react"
 import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction } from "../actions"
 import { VerifiedBadge } from "@/components/shared/feed-card/blocks"
 import type { FeedMembership } from "@/components/shared/feed-card/types"
+import EmojiPicker from "@/components/shared/EmojiPicker"
 import MentionInput from "./mention-input"
+
+function ComposerTools({
+  onEmoji,
+  onImageClick,
+  imageDisabled,
+}: {
+  onEmoji: (e: string) => void
+  onImageClick: () => void
+  imageDisabled?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <EmojiPicker className="relative" onPick={onEmoji} />
+      <button
+        type="button"
+        title="Add an image"
+        disabled={imageDisabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onImageClick}
+        className="inline-flex items-center rounded p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
 
 export interface CommentView {
   id: string
   body: string
+  imageUrl: string | null
   createdAt: string // ISO
   score: number
   myReaction: "upvote" | "downvote" | null
@@ -61,8 +89,6 @@ const RING: Record<string, string> = {
   associate: "#2563EB",
   inactive: "#6B7280",
 }
-const EMOJIS = ["😀", "😂", "❤️", "🔥", "👏", "🎉", "🙏", "💯", "😮", "😢", "👍", "🚀"]
-
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
   const min = Math.floor(diffMs / 60000)
@@ -77,10 +103,11 @@ function relativeTime(iso: string): string {
   })
 }
 
-function makeView(body: string, viewer: Viewer): CommentView {
+function makeView(body: string, viewer: Viewer, imageUrl: string | null = null): CommentView {
   return {
     id: `optimistic-${Date.now()}-${Math.round(performance.now())}`,
     body,
+    imageUrl,
     createdAt: new Date().toISOString(),
     score: 0,
     myReaction: null,
@@ -189,9 +216,22 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
           </div>
           {canFollow && <CommentFollow />}
         </div>
-        <div className="mt-1">
-          <Body text={c.body} />
-        </div>
+        {c.body && (
+          <div className="mt-1">
+            <Body text={c.body} />
+          </div>
+        )}
+        {c.imageUrl && (
+          <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+            {/* Comment media is user-uploaded to our own bucket; plain img keeps it simple. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={c.imageUrl}
+              alt="Comment attachment"
+              className="max-h-80 w-auto max-w-full rounded-lg border border-gray-200 object-cover"
+            />
+          </a>
+        )}
       </div>
     </>
   )
@@ -412,7 +452,31 @@ export default function CommentsSection({ postId, initialComments, initialCount,
   const [count, setCount] = useState(initialCount)
   const [sort, setSort] = useState<SortMode>("top")
   const [text, setText] = useState("")
-  const [showEmoji, setShowEmoji] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [image, setImage] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function onPickImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-picking the same file
+    if (!file) return
+    setError(null)
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/comments/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Upload failed")
+      setImage(data.url)
+      setFocused(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const [comments, applyOptimistic] = useOptimistic<CommentView[], OptimisticAction>(
     initialComments,
@@ -444,15 +508,17 @@ export default function CommentsSection({ postId, initialComments, initialCount,
   function submitTop() {
     if (!viewer) return
     const body = text.trim()
-    if (!body) return
+    const img = image
+    if (!body && !img) return
     setError(null)
     setText("")
-    setShowEmoji(false)
+    setImage(null)
+    setFocused(false)
     startTransition(async () => {
-      applyOptimistic({ type: "top", comment: makeView(body, viewer) })
+      applyOptimistic({ type: "top", comment: makeView(body, viewer, img) })
       setCount((c) => c + 1)
       try {
-        await commentOnPost(postId, body)
+        await commentOnPost(postId, body, undefined, img ?? undefined)
       } catch {
         setError("Failed to post comment. Please try again.")
         setCount((c) => c - 1)
@@ -520,7 +586,7 @@ export default function CommentsSection({ postId, initialComments, initialCount,
   }
 
   return (
-    <section className={embedded ? "border-t border-gray-100" : "bg-white border border-gray-200 rounded-xl"}>
+    <section className={embedded ? "" : "bg-white border border-gray-200 rounded-xl"}>
       <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">
           {count} {count === 1 ? "comment" : "comments"}
@@ -543,58 +609,85 @@ export default function CommentsSection({ postId, initialComments, initialCount,
         )}
       </div>
 
-      {viewer && (
-        <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
-          <Image src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
-          <div className="flex-1 space-y-2">
-            <div className="relative">
-              <MentionInput
-                value={text}
-                onChange={setText}
-                multiline
-                rows={2}
-                placeholder="Write a comment…"
-                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+      {viewer && (() => {
+        const expanded = focused || text.trim().length > 0 || !!image || uploading
+        const canPost = (text.trim().length > 0 || !!image) && !uploading
+        return (
+          <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
+            <Image src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={onPickImage}
               />
-            </div>
-            {error && <p className="text-xs text-red-500">{error}</p>}
-            <div className="flex items-center justify-between">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowEmoji((s) => !s)}
-                  className="inline-flex items-center rounded-full p-1.5 text-gray-500 hover:bg-gray-100"
-                  aria-label="Add emoji"
-                >
-                  <Smile className="h-5 w-5" />
-                </button>
-                {showEmoji && (
-                  <div className="absolute left-0 top-full z-20 mt-1 grid w-56 grid-cols-6 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
-                    {EMOJIS.map((e) => (
-                      <button
-                        key={e}
-                        type="button"
-                        onClick={() => setText((t) => t + e)}
-                        className="rounded p-1 text-lg hover:bg-gray-100"
-                      >
-                        {e}
-                      </button>
-                    ))}
+              <div className={expanded ? "rounded-2xl border border-gray-300 px-3 py-2" : "relative"}>
+                <MentionInput
+                  value={text}
+                  onChange={setText}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  multiline
+                  rows={expanded ? 2 : 1}
+                  hideEmoji
+                  placeholder="Add a comment…"
+                  className={
+                    expanded
+                      ? "w-full resize-none bg-transparent text-sm outline-none"
+                      : "w-full resize-none rounded-full border border-gray-200 py-2.5 pl-4 pr-24 text-sm outline-none focus:border-brand"
+                  }
+                />
+
+                {uploading && <p className="mt-1 text-xs text-gray-400">Uploading image…</p>}
+                {image && (
+                  <div className="relative mt-2 inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image} alt="Attachment preview" className="max-h-40 rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => setImage(null)}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-white hover:bg-gray-900"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {!expanded && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <ComposerTools
+                      onEmoji={(e) => setText((t) => t + e)}
+                      onImageClick={() => fileInputRef.current?.click()}
+                      imageDisabled={uploading || !!image}
+                    />
+                  </div>
+                )}
+                {expanded && (
+                  <div className="mt-1 flex items-center justify-between">
+                    <ComposerTools
+                      onEmoji={(e) => setText((t) => t + e)}
+                      onImageClick={() => fileInputRef.current?.click()}
+                      imageDisabled={uploading || !!image}
+                    />
+                    <button
+                      type="button"
+                      onClick={submitTop}
+                      disabled={!canPost}
+                      className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                    >
+                      Comment
+                    </button>
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={submitTop}
-                disabled={!text.trim()}
-                className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-              >
-                Post
-              </button>
+              {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <ul className="divide-y divide-gray-100">
         {comments.length === 0 ? (

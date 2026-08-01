@@ -363,7 +363,7 @@ export function FeedCard({
       {/* Inline comment thread (lazy-loaded on first open) */}
       {commentsOpen && commentsLoader && (
         loadingComments && !commentsData ? (
-          <div className="border-t border-gray-100 px-5 py-6 text-center text-sm text-gray-400">
+          <div className="px-5 py-6 text-center text-sm text-gray-400">
             Loading comments…
           </div>
         ) : commentsData ? (

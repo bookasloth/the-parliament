@@ -68,9 +68,9 @@ export async function votePollAction(postId: string, pollId: string, optionId: s
   return r
 }
 
-export async function commentOnPost(postId: string, body: string, parentId?: string) {
+export async function commentOnPost(postId: string, body: string, parentId?: string, imageUrl?: string) {
   const user = await requireUser()
-  const comment = await createComment({ userId: user.id, postId, body, parentId })
+  const comment = await createComment({ userId: user.id, postId, body, parentId, imageUrl })
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { id: comment.id }

@@ -4,18 +4,23 @@ import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { ShieldCheck } from "lucide-react"
 import { searchMentionsAction } from "../actions"
+import EmojiPicker from "@/components/shared/EmojiPicker"
 import type { MentionTarget } from "@/modules/feed/comments"
 
 interface Props {
   value: string
   onChange: (v: string) => void
   onEnter?: () => void
+  onFocus?: () => void
+  onBlur?: () => void
   placeholder?: string
   multiline?: boolean
   autoFocus?: boolean
   disabled?: boolean
   rows?: number
   className?: string
+  /** Hide the built-in bottom-right emoji trigger (e.g. when a toolbar owns it). */
+  hideEmoji?: boolean
 }
 
 // Matches an in-progress "@token" immediately before the caret.
@@ -31,12 +36,15 @@ export default function MentionInput({
   value,
   onChange,
   onEnter,
+  onFocus,
+  onBlur,
   placeholder,
   multiline,
   autoFocus,
   disabled,
   rows = 2,
   className = "",
+  hideEmoji = false,
 }: Props) {
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null)
   const [caret, setCaret] = useState(0)
@@ -132,7 +140,9 @@ export default function MentionInput({
     onKeyUp: syncCaret,
     onClick: syncCaret,
     onKeyDown,
-    className,
+    onFocus: () => onFocus?.(),
+    onBlur: () => onBlur?.(),
+    className: hideEmoji ? className : `${className} pr-9`,
   }
 
   return (
@@ -141,6 +151,13 @@ export default function MentionInput({
         <textarea {...shared} rows={rows} />
       ) : (
         <input {...shared} type="text" />
+      )}
+
+      {!hideEmoji && (
+        <EmojiPicker
+          className={`absolute right-2 ${multiline ? "bottom-2" : "top-1/2 -translate-y-1/2"}`}
+          onPick={(e) => onChange(value + e)}
+        />
       )}
 
       {open && (

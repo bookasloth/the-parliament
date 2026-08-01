@@ -6,6 +6,7 @@ import { sendNotification } from "@/modules/notifications/service"
 import { notifyMentions } from "@/modules/feed/mentions"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
+import { isOurPublicUrl } from "@/lib/supabase-storage"
 
 const APP_BASE = process.env.AUTH_URL || "https://nnawca.org"
 
@@ -505,8 +506,14 @@ export async function createComment(input: {
   postId: string
   body: string
   parentId?: string
+  imageUrl?: string
 }) {
-  if (!input.body.trim()) throw new ForbiddenError("Empty comment")
+  // An image-only comment (no text) is allowed; reject only when both are empty.
+  const image = input.imageUrl?.trim() || null
+  if (!input.body.trim() && !image) throw new ForbiddenError("Empty comment")
+  // Only accept image URLs that point at our own storage bucket — never an
+  // arbitrary client-supplied third-party URL.
+  if (image && !isOurPublicUrl(image)) throw new ForbiddenError("Invalid image reference")
   const post = await prisma.post.findUnique({
     where: { id: input.postId },
     select: { id: true, authorId: true, deletedAt: true },
@@ -519,6 +526,7 @@ export async function createComment(input: {
       authorId: input.userId,
       parentId: input.parentId,
       body: input.body,
+      imageUrl: image,
     },
   })
 
