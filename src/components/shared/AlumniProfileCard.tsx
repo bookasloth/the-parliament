@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { MapPin, ShieldCheck } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import Link from "next/link"
 import Image from "next/image"
@@ -14,32 +14,14 @@ const houseColors: Record<string, string> = {
   Laxmi: "#e75480",
 }
 
-function HouseBadge({ house }: { house: string }) {
-  const bg = houseColors[house] || "#6c757d"
-  const isUdaigiri = house === "Udaigiri"
-  return (
-    <span
-      className="absolute top-4 right-4 z-10 rounded-full px-2.5 py-0.5 text-xs font-medium select-none"
-      style={{
-        backgroundColor: bg,
-        color: isUdaigiri ? "#000" : "#fff",
-      }}
-    >
-      {house}
-    </span>
-  )
-}
-
-function MembershipStripe({ membership }: { membership: Membership }) {
-  const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
-  return (
-    <div
-      className="absolute top-0 left-0 w-full h-2 rounded-t-lg pointer-events-none select-none overflow-hidden"
-      style={{ textIndent: "-9999px" }}
-    >
-      <div className="w-full h-full" style={{ background: tier.background }} />
-    </div>
-  )
+/** Lighten a hex color toward white by `amount` (0–1) for the cover gradient's second stop. */
+function lighten(hex: string, amount: number): string {
+  const n = hex.replace("#", "")
+  const r = parseInt(n.slice(0, 2), 16)
+  const g = parseInt(n.slice(2, 4), 16)
+  const b = parseInt(n.slice(4, 6), 16)
+  const mix = (c: number) => Math.round(c + (255 - c) * amount)
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`
 }
 
 interface AlumniProfileCardProps {
@@ -48,7 +30,7 @@ interface AlumniProfileCardProps {
   profileHref?: string
   /** Show a verified check next to the name */
   verified?: boolean
-  /** Extra content rendered between location and the action buttons (e.g. mutual connections) */
+  /** Extra content rendered above the action buttons (e.g. mutual connections / role) */
   footer?: ReactNode
   /** Replace the default View Profile / Follow buttons */
   actions?: ReactNode
@@ -56,80 +38,88 @@ interface AlumniProfileCardProps {
 
 export function AlumniProfileCard({ alumni, profileHref, verified, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
+  const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   const href = profileHref ?? `/${alumni.id}`
 
+  const houseColor = alumni.house ? houseColors[alumni.house] : undefined
+  const cover = houseColor
+    ? `linear-gradient(120deg, ${houseColor}, ${lighten(houseColor, 0.4)})`
+    : "linear-gradient(120deg, #009ae4, #4fc3f7)"
+  const houseTextColor = alumni.house === "Udaigiri" ? "#8a7a00" : houseColor
+
+  const batchShort = alumni.batch || alumni.batchLabel?.replace(/\s*Batch\s*$/i, "") || "—"
+
   return (
-    <div className="relative bg-white rounded-lg shadow-md flex flex-col items-center text-center w-full max-w-[350px] mx-auto pt-3">
-      <MembershipStripe membership={membership} />
+    <div className="w-full max-w-[350px] mx-auto overflow-hidden rounded-2xl border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
+      {/* House-colored cover band */}
+      <div className="h-[70px] w-full" style={{ background: cover }} />
 
-      {/* Batch badge - top left */}
-      <span className="absolute top-4 left-4 z-10 rounded-full bg-[#6c757d] px-2.5 py-0.5 text-xs font-semibold text-white select-none">
-        {alumni.batchLabel}
-      </span>
-
-      {/* House badge - top right */}
-      <HouseBadge house={alumni.house} />
-
-      {/* Profile photo - square with rounded corners and subtle border */}
-      <div className="mt-10 mb-3 flex-shrink-0">
-        <Link href={href} aria-label={`View ${alumni.name}'s profile`}>
-          <Image
-            src={alumni.image}
-            alt={alumni.name}
-            width={135}
-            height={135}
-            className="h-[135px] w-[135px] rounded object-cover border border-gray-200 cursor-pointer transition-transform duration-300 hover:scale-105"
-          />
-        </Link>
-      </div>
-
-      {/* Name */}
-      <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-1.5 px-4">
-        <Link
-          href={href}
-          className="text-inherit no-underline hover:text-brand transition-colors duration-300"
-        >
-          {alumni.name}
-        </Link>
-        {verified && (
-          <ShieldCheck className="h-4.5 w-4.5 text-blue-500 fill-blue-100 flex-shrink-0" />
-        )}
-      </h3>
-
-      {/* Bio - primary color */}
-      {alumni.bio && (
-        <p className="text-sm text-brand mx-4 leading-snug">
-          {alumni.bio}
-        </p>
-      )}
-
-      {/* Location */}
-      <div className="flex items-center justify-center gap-1.5 text-sm text-gray-600 mt-2 mb-4">
-        <MapPin className="h-3.5 w-3.5" />
-        <span>{alumni.location || "India"}</span>
-      </div>
-
-      {/* Extra footer info */}
-      {footer && <div className="-mt-2 mb-3 px-4 w-full">{footer}</div>}
-
-      {/* Buttons */}
-      {actions ? (
-        <div className="flex gap-3 w-full justify-center px-4 pb-4 flex-wrap">{actions}</div>
-      ) : (
-        <div className="flex gap-3 w-full justify-center px-4 pb-4">
-          <Link
-            href={href}
-            className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300"
-          >
-            View Profile
+      <div className="px-[18px] pb-[18px]">
+        {/* Avatar overlapping the cover */}
+        <div className="-mt-[38px]">
+          <Link href={href} aria-label={`View ${alumni.name}'s profile`}>
+            <Image
+              src={alumni.image}
+              alt={alumni.name}
+              width={76}
+              height={76}
+              className="mx-auto h-[76px] w-[76px] rounded-full border-4 border-white object-cover cursor-pointer transition-transform duration-300 hover:scale-105"
+            />
           </Link>
-          <button
-            className="rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300"
-          >
-            Follow
-          </button>
         </div>
-      )}
+
+        {/* Name */}
+        <h3 className="mt-1.5 flex items-center justify-center gap-1.5 text-[17px] font-bold text-gray-900">
+          <Link href={href} className="text-inherit no-underline transition-colors duration-300 hover:text-brand">
+            {alumni.name}
+          </Link>
+          {verified && <ShieldCheck className="h-4 w-4 flex-shrink-0 fill-blue-100 text-blue-500" />}
+        </h3>
+
+        {/* Headline */}
+        {alumni.bio && <p className="mt-1 line-clamp-1 text-[13px] text-gray-500">{alumni.bio}</p>}
+
+        {/* Stat strip: Batch · House · Member tier */}
+        <div className="-mx-[18px] my-3 flex items-stretch border-y border-gray-100">
+          <div className="flex-1 py-2.5">
+            <p className="text-sm font-bold text-gray-900 tabular-nums leading-none">{batchShort}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">Batch</p>
+          </div>
+          <div className="flex-1 border-l border-gray-100 py-2.5">
+            <p className="text-sm font-bold leading-none" style={{ color: houseTextColor || "#374151" }}>
+              {alumni.house || "—"}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">House</p>
+          </div>
+          <div className="flex-1 border-l border-gray-100 py-2.5">
+            <span className="flex items-center justify-center gap-1.5 text-sm font-bold leading-none text-gray-900">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: tier.background }} />
+              {tier.label}
+            </span>
+            <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">Member</p>
+          </div>
+        </div>
+
+        {/* Extra footer info (role, mutual connections) */}
+        {footer && <div className="mb-3">{footer}</div>}
+
+        {/* Buttons */}
+        {actions ? (
+          <div className="flex flex-wrap justify-center gap-2">{actions}</div>
+        ) : (
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-brand-600">
+              Follow
+            </button>
+            <Link
+              href={href}
+              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-[13px] font-semibold text-gray-700 transition-colors duration-300 hover:bg-gray-50"
+            >
+              Profile
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
