@@ -18,6 +18,7 @@ const FOOTER_COLUMNS = [
       { label: "Committee", href: "/committee" },
       { label: "Governance", href: "/governance" },
       { label: "Newsroom", href: "/newsroom" },
+      { label: "Changelog", href: "/changelog" },
       { label: "Contact", href: "/contact" },
     ],
   },
