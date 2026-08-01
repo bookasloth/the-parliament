@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import AdminUsersClient, { MOCK_USERS, type AdminUser } from "./users-client"
+import AdminUsersClient, { type AdminUser } from "./users-client"
 
 export const dynamic = "force-dynamic"
 
@@ -57,7 +57,7 @@ export default async function AdminUsersPage() {
 
   return (
     <AdminUsersClient
-      users={[...mappedReal, ...MOCK_USERS]}
+      users={mappedReal}
       stats={{ total, verified, pending, suspended }}
     />
   )

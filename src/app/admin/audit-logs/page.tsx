@@ -1,21 +1,37 @@
-"use client"
+import { requireAdmin } from "@/modules/auth/session"
+import { prisma } from "@/lib/prisma"
+import AuditLogsClient, { type AuditRow } from "./audit-logs-client"
 
-import { Scroll } from "@phosphor-icons/react"
-import { ComingSoon } from "../admin-ui"
+export const dynamic = "force-dynamic"
 
-export default function AdminAuditLogsPage() {
-  return (
-    <ComingSoon
-      title="Audit Logs"
-      description="A tamper-evident trail of every administrative action — who did what, when, and from where."
-      icon={<Scroll className="h-7 w-7" weight="duotone" />}
-      planned={[
-        "Chronological log of all admin and moderator actions",
-        "Filter by actor, action type, target entity, and date range",
-        "IP address and session metadata for each entry",
-        "Immutable retention policy with scheduled exports",
-        "Alerts for sensitive actions (deletions, role changes, key rotations)",
-      ]}
-    />
-  )
+export default async function AdminAuditLogsPage() {
+  await requireAdmin()
+
+  const logs = await prisma.auditLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  })
+
+  // Plain actorId field (no FK relation) — app-layer join to names.
+  const actorIds = [...new Set(logs.map((l) => l.actorId).filter((x): x is string => !!x))]
+  const actors = actorIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: actorIds } },
+        select: { id: true, legalName: true, displayName: true, username: true, email: true },
+      })
+    : []
+  const nameById = new Map(actors.map((a) => [a.id, a.legalName || a.displayName || a.username || a.email]))
+
+  const rows: AuditRow[] = logs.map((l) => ({
+    id: String(l.id),
+    actor: l.actorId ? nameById.get(l.actorId) ?? l.actorId : "system",
+    action: l.action,
+    entityType: l.entityType,
+    entityId: l.entityId,
+    payload: JSON.stringify(l.payload ?? {}),
+    ip: l.ipInet,
+    at: l.createdAt.toISOString(),
+  }))
+
+  return <AuditLogsClient rows={rows} />
 }
