@@ -128,13 +128,30 @@ export function CommunityClient({
   const sel = "w-full rounded-lg border border-gray-200 bg-white pl-3 pr-7 py-2 text-sm text-gray-700 outline-none focus:border-brand appearance-none"
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
-      <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Community</h1>
-        <p className="text-sm text-gray-500">Search and filter the alumni network.</p>
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-heading text-xl font-bold text-gray-900 sm:text-2xl">Community</h1>
+          <p className="text-xs text-gray-500 sm:text-sm">Search and filter the alumni network.</p>
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2 sm:justify-start sm:gap-4">
+          {[
+            { label: "Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
+            { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <ShieldCheck className="h-4 w-4 text-blue-500" /> },
+            { label: "Batches", value: `${stats.batches}`, icon: <GraduationCap className="h-4 w-4 text-amber-500" /> },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center gap-1.5 sm:gap-2">
+              {s.icon}
+              <div className="leading-none">
+                <span className="text-base font-bold text-gray-900 tabular-nums">{s.value}</span>
+                <span className="ml-1 text-[11px] text-gray-500">{s.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative max-w-xl">
+      <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           value={q}
@@ -143,22 +160,6 @@ export function CommunityClient({
           className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
         />
       </form>
-
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Total Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
-          { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <ShieldCheck className="h-4 w-4 text-blue-500" /> },
-          { label: "Batches", value: `${stats.batches}`, icon: <GraduationCap className="h-4 w-4 text-amber-500" /> },
-        ].map((s, i) => (
-          <div key={i} className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white p-3">
-            <div className="flex-shrink-0">{s.icon}</div>
-            <div>
-              <p className="text-lg font-bold leading-none text-gray-900 tabular-nums">{s.value}</p>
-              <p className="text-[10px] text-gray-500">{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button
