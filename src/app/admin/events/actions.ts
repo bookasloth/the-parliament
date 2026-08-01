@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { z } from "zod"
 import { requireAdmin } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
@@ -51,6 +51,8 @@ export async function createAdminEventAction(input: CreateEventInput) {
     select: { id: true },
   })
 
+  // New published event enters the cached shared list (tag "events").
+  updateTag("events")
   revalidatePath("/admin/events")
   revalidatePath("/events")
   return { id: event.id, isPaid: parsed.isPaid }
