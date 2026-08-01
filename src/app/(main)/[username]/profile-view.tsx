@@ -9,7 +9,7 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { startConversationAction } from "../messages/actions"
 import {
-  Briefcase, MapPin, CalendarPlus, UserPlus, MoreHorizontal, BadgeCheck,
+  Briefcase, MapPin, Building2, MoreHorizontal, BadgeCheck,
   Award, Droplet, Cake, Home, Users, Pencil, Share2,
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
@@ -184,8 +184,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
   const metaBits: { icon: React.ReactNode; text: string }[] = []
   if (data.profession) metaBits.push({ icon: <Briefcase className="h-4 w-4" />, text: data.profession })
+  if (data.company) metaBits.push({ icon: <Building2 className="h-4 w-4" />, text: data.company })
   if (data.city) metaBits.push({ icon: <MapPin className="h-4 w-4" />, text: data.city })
-  if (data.memberSince) metaBits.push({ icon: <CalendarPlus className="h-4 w-4" />, text: `NNAWCA member since ${data.memberSince}` })
 
   function shareProfile() {
     if (typeof window === "undefined") return
@@ -229,63 +229,65 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             )}
           </div>
           <div className="relative px-7 pb-2">
-            <div className="flex flex-wrap items-end justify-between gap-3.5">
-              <div>
-                <div className="relative -mt-[62px] inline-block rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
-                  {data.photoUrl ? (
-                    <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" width={118} height={118} />
-                  ) : (
-                    <div className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
-                  )}
-                  {isOwn && <AvatarUploader />}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <h1 className="font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-                  {data.isVerified && <BadgeCheck className="h-6 w-6 text-brand" aria-label="Verified" />}
-                </div>
-                {data.headline && <p className="mt-0.5 text-[13px] text-gray-700">{data.headline}</p>}
+            {/* Avatar (overlaps cover) + name·tick + actions — all one line */}
+            <div className="flex items-end gap-4">
+              <div className="relative -mt-[62px] shrink-0 rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
+                {data.photoUrl ? (
+                  <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" width={118} height={118} />
+                ) : (
+                  <div className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
+                )}
+                {isOwn && <AvatarUploader />}
               </div>
 
-              {/* Header actions — owner sees Edit + Share; visitor sees Connect + Message + More */}
-              <div className="flex items-center gap-2">
-                {isOwn ? (
-                  <>
-                    <Link
-                      href="/profile/edit"
-                      className={`${R_EL} flex items-center gap-1.5 border border-brand bg-brand px-[18px] py-2.5 text-[13px] font-semibold text-white hover:bg-brand-600 transition-colors`}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit profile
-                    </Link>
-                    <button
-                      onClick={shareProfile}
-                      className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}
-                    >
-                      <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
-                    <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
-                      <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
-                    </button>
-                    <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-                  </>
-                )}
+              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 pb-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="truncate font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
+                  {data.isVerified && <BadgeCheck className="h-6 w-6 shrink-0 text-brand" aria-label="Verified" />}
+                </div>
+
+                {/* Header actions — owner sees Edit + Share; visitor sees Follow + Message + More */}
+                <div className="flex shrink-0 items-center gap-2">
+                  {isOwn ? (
+                    <>
+                      <Link
+                        href="/profile/edit"
+                        className={`${R_EL} flex items-center gap-1.5 border border-brand bg-brand px-[18px] py-2.5 text-[13px] font-semibold text-white hover:bg-brand-600 transition-colors`}
+                      >
+                        <Pencil className="h-4 w-4" /> Edit profile
+                      </Link>
+                      <button
+                        onClick={shareProfile}
+                        className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}
+                      >
+                        <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
+                      <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                        <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
+                      </button>
+                      <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* Short bio — one line, clipped */}
+            {data.headline && <p className="mt-3 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
+
+            {/* Industry · Company · Location */}
             {metaBits.length > 0 && (
-              <div className="mt-3.5 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">
+              <div className="mt-3 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">
                 {metaBits.map((m, i) => (
                   <span key={i} className="flex items-center gap-1.5"><span className="text-brand">{m.icon}</span>{m.text}</span>
                 ))}
               </div>
-            )}
-            {data.yearsSince !== null && (
-              <div className="mt-1.5 text-[13px] font-semibold text-brand">{data.yearsSince} years since graduation</div>
             )}
 
             {/* tabs */}
