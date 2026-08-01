@@ -9,8 +9,8 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { startConversationAction } from "../messages/actions"
 import {
-  Briefcase, MapPin, CalendarPlus, UserPlus, MoreHorizontal, Asterisk,
-  ShieldCheck, Award, Droplet, Cake, Home, Users, Pencil, Share2,
+  Briefcase, MapPin, CalendarPlus, UserPlus, MoreHorizontal, BadgeCheck,
+  Award, Droplet, Cake, Home, Users, Pencil, Share2,
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
 
@@ -241,17 +241,9 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <h1 className="font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-                  <Asterisk className="h-4 w-4" style={{ color: msColor }} aria-label={`${data.membership.label} member`} />
-                  {data.isVerified && <ShieldCheck className="h-5 w-5 text-brand" aria-label="Verified" />}
+                  {data.isVerified && <BadgeCheck className="h-6 w-6 text-brand" aria-label="Verified" />}
                 </div>
                 {data.headline && <p className="mt-0.5 text-[13px] text-gray-700">{data.headline}</p>}
-                <p className="mt-0.5 text-[13px] text-gray-500">
-                  {data.followersCount} Follower{data.followersCount === 1 ? "" : "s"}
-                  {" · "}
-                  {data.followingCount} Following
-                  {" · "}
-                  {data.postsCount} Post{data.postsCount === 1 ? "" : "s"}
-                </p>
               </div>
 
               {/* Header actions — owner sees Edit + Share; visitor sees Connect + Message + More */}
@@ -290,8 +282,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 {metaBits.map((m, i) => (
                   <span key={i} className="flex items-center gap-1.5"><span className="text-brand">{m.icon}</span>{m.text}</span>
                 ))}
-                {data.yearsSince !== null && <span className="font-semibold text-brand">{data.yearsSince} years since graduation</span>}
               </div>
+            )}
+            {data.yearsSince !== null && (
+              <div className="mt-1.5 text-[13px] font-semibold text-brand">{data.yearsSince} years since graduation</div>
             )}
 
             {/* tabs */}
@@ -346,7 +340,59 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <Users className="h-4 w-4 text-brand" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
                 </li>
               )}
+              {data.currentStatus && (
+                <li className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-brand" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
+                </li>
+              )}
+              {data.homeTown && (
+                <li className="flex items-center gap-2">
+                  <Home className="h-4 w-4 text-brand" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
+                </li>
+              )}
             </ul>
+            {(() => {
+              const links: { key: string; href: string; label: string; Icon: Brand }[] = []
+              const seen = new Set<string>()
+              const add = (key: string, href: string, label: string, Icon: Brand) => {
+                const k = key.toLowerCase()
+                if (!href || seen.has(k)) return
+                seen.add(k)
+                links.push({ key, href, label, Icon })
+              }
+              if (data.linkedinUrl) add("linkedin", data.linkedinUrl, "LinkedIn", LinkedinIcon)
+              for (const [platform, url] of Object.entries(data.socialLinks)) {
+                const p = platform.toLowerCase()
+                const Icon: Brand =
+                  p === "linkedin" ? LinkedinIcon :
+                  p === "twitter" || p === "x" ? TwitterIcon :
+                  p === "instagram" ? InstagramIcon :
+                  p === "facebook" ? FacebookIcon :
+                  p === "youtube" ? YoutubeIcon :
+                  p === "github" ? GithubIcon :
+                  p === "website" || p === "web" || p === "site" ? (Globe as unknown as Brand) :
+                  (LinkIcon as unknown as Brand)
+                add(platform, url, platform, Icon)
+              }
+              if (links.length === 0) return null
+              return (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {links.map(({ key, href, label, Icon }) => (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      title={label}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-brand hover:bg-brand hover:text-white transition-colors"
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         </Card>
 
@@ -479,73 +525,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 </div>
               </Card>
             )}
-          </div>
-
-          {/* ===== RIGHT RAIL ===== */}
-          <div className="flex flex-col gap-[18px]">
-            <Card>
-              <SectionTitle>Quick facts</SectionTitle>
-              <div className="px-7 pb-6 pt-2 space-y-2 text-[13px] text-gray-700">
-                {data.currentStatus && (
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-brand" />
-                    <span className="capitalize">{data.currentStatus}</span>
-                  </div>
-                )}
-                {data.homeTown && (
-                  <div className="flex items-center gap-2">
-                    <Home className="h-4 w-4 text-brand" />
-                    Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
-                  </div>
-                )}
-                {(() => {
-                  const links: { key: string; href: string; label: string; Icon: Brand }[] = []
-                  if (data.linkedinUrl) {
-                    links.push({ key: "linkedin", href: data.linkedinUrl, label: "LinkedIn", Icon: LinkedinIcon })
-                  }
-                  for (const [platform, url] of Object.entries(data.socialLinks)) {
-                    if (!url) continue
-                    const p = platform.toLowerCase()
-                    const Icon: Brand =
-                      p === "linkedin" ? LinkedinIcon :
-                      p === "twitter" || p === "x" ? TwitterIcon :
-                      p === "instagram" ? InstagramIcon :
-                      p === "facebook" ? FacebookIcon :
-                      p === "youtube" ? YoutubeIcon :
-                      p === "github" ? GithubIcon :
-                      p === "website" || p === "web" || p === "site" ? (Globe as unknown as Brand) :
-                      (LinkIcon as unknown as Brand)
-                    links.push({ key: platform, href: url, label: platform, Icon })
-                  }
-                  if (links.length === 0) return null
-                  return (
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {links.map(({ key, href, label, Icon }) => (
-                        <a
-                          key={key}
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={label}
-                          title={label}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-brand hover:bg-brand hover:text-white transition-colors"
-                        >
-                          <Icon className="h-4 w-4" />
-                        </a>
-                      ))}
-                    </div>
-                  )
-                })()}
-                {!data.currentStatus && !data.homeTown && !data.linkedinUrl &&
-                  Object.values(data.socialLinks).every((v) => !v) && (
-                    <p className="text-gray-500">
-                      {isOwn
-                        ? "Add hometown, status, or social links from Edit profile."
-                        : "No extra details shared."}
-                    </p>
-                  )}
-              </div>
-            </Card>
           </div>
         </div>
       </div>
