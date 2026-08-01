@@ -120,7 +120,7 @@ export default async function PostAnalyticsPage({
                   <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" width={36} height={36} />
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={u?.username ? `/profile/${u.username}` : "#"}
+                      href={u?.username ? `/${u.username}` : "#"}
                       className="text-sm font-medium text-gray-900 hover:text-brand-600 truncate block"
                     >
                       {name}

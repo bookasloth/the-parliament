@@ -8,7 +8,7 @@ export interface FeedPost {
   id: string
   /** Real author user id when known — enables author-only menu items. */
   authorId?: string
-  /** Author username — links avatar/name to /profile/[username]. Absent for anon/mock rows. */
+  /** Author username — links avatar/name to /[username]. Absent for anon/mock rows. */
   username?: string
   /** Whether the current viewer has saved this post. */
   savedByViewer?: boolean

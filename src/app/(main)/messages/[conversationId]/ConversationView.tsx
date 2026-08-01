@@ -392,7 +392,7 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full mt-1 z-30 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                <a href={otherUser.username ? `/profile/${otherUser.username}` : "#"} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                <a href={otherUser.username ? `/${otherUser.username}` : "#"} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
                   <UserCheck className="h-4 w-4" /> View profile
                 </a>
                 <button className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50">

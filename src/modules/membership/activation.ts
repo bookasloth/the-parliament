@@ -148,7 +148,7 @@ async function sendWelcomeEmail(input: ActivateInput, result: ActivateResult): P
     const base = process.env.AUTH_URL || "https://nnawca.org"
     const variables: Record<string, string> =
       input.planCode === "life"
-        ? { firstName, profileUrl: u.username ? `${base}/profile/${u.username}` : `${base}/membership` }
+        ? { firstName, profileUrl: u.username ? `${base}/${u.username}` : `${base}/membership` }
         : {
             firstName,
             manageUrl: `${base}/membership`,
