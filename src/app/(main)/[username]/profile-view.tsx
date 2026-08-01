@@ -228,10 +228,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               </span>
             )}
           </div>
-          <div className="relative px-7 pb-2">
-            {/* Avatar (overlaps cover) + name·tick + actions — all one line */}
-            <div className="flex items-end gap-4">
-              <div className="relative -mt-[62px] shrink-0 rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
+          <div className="relative px-7 pb-2 text-center">
+            {/* Avatar — centred, overlaps cover */}
+            <div className="mx-auto -mt-[62px] w-fit rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
+              <div className="relative">
                 {data.photoUrl ? (
                   <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" width={118} height={118} />
                 ) : (
@@ -239,51 +239,50 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 )}
                 {isOwn && <AvatarUploader />}
               </div>
-
-              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 pb-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h1 className="truncate font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-                  {data.isVerified && <BadgeCheck className="h-6 w-6 shrink-0 text-brand" aria-label="Verified" />}
-                </div>
-
-                {/* Header actions — owner sees Edit + Share; visitor sees Follow + Message + More */}
-                <div className="flex shrink-0 items-center gap-2">
-                  {isOwn ? (
-                    <>
-                      <Link
-                        href="/profile/edit"
-                        className={`${R_EL} flex items-center gap-1.5 border border-brand bg-brand px-[18px] py-2.5 text-[13px] font-semibold text-white hover:bg-brand-600 transition-colors`}
-                      >
-                        <Pencil className="h-4 w-4" /> Edit profile
-                      </Link>
-                      <button
-                        onClick={shareProfile}
-                        className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}
-                      >
-                        <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
-                      <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
-                        <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
-                      </button>
-                      <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
 
-            {/* Short bio — one line, clipped */}
-            {data.headline && <p className="mt-3 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
+            {/* Name + verified tick — centred */}
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <h1 className="truncate font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
+              {data.isVerified && <BadgeCheck className="h-6 w-6 shrink-0 text-brand" aria-label="Verified" />}
+            </div>
 
-            {/* Industry · Company · Location */}
+            {/* Short bio — one line, clipped, centred */}
+            {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
+
+            {/* Actions — three in one centred line */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {isOwn ? (
+                <>
+                  <Link
+                    href="/profile/edit"
+                    className={`${R_EL} flex items-center gap-1.5 border border-brand bg-brand px-[18px] py-2.5 text-[13px] font-semibold text-white hover:bg-brand-600 transition-colors`}
+                  >
+                    <Pencil className="h-4 w-4" /> Edit profile
+                  </Link>
+                  <button
+                    onClick={shareProfile}
+                    className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50`}
+                  >
+                    <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
+                  <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                    <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
+                  </button>
+                  <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Industry · Company · Location — centred */}
             {metaBits.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">
                 {metaBits.map((m, i) => (
                   <span key={i} className="flex items-center gap-1.5"><span className="text-brand">{m.icon}</span>{m.text}</span>
                 ))}
@@ -291,7 +290,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             )}
 
             {/* tabs */}
-            <div className="mt-3 flex gap-1.5 border-t border-gray-100 px-1 pt-1.5">
+            <div className="mt-3 flex justify-center gap-1.5 border-t border-gray-100 px-1 pt-1.5">
               {([["posts", "Posts"], ["about", "About"], ["followers", "Followers"]] as const).map(([key, label]) => (
                 <button
                   key={key}
