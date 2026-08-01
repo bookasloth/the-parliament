@@ -34,46 +34,58 @@ function formatTime(d: Date): string {
 }
 
 /**
- * List published events for a school, mapped to the EventItem shape the
- * client UI expects. `userId` is used to resolve the per-user `interested`
- * flag (going/interested RSVP).
+ * Shared, non-per-viewer event list (interested=false baseline). Safe to
+ * cache across viewers; the per-user `interested` overlay is applied by
+ * `listEvents` / the page via `myInterestedEventIds`.
+ */
+export async function listEventsShared(schoolId: string): Promise<EventItem[]> {
+  const events = await prisma.event.findMany({
+    where: { schoolId, status: "published" },
+    orderBy: { startsAt: "asc" },
+  })
+  const now = new Date()
+  return events.map((e) => ({
+    id: e.id,
+    slug: e.id,
+    title: e.title,
+    date: formatDate(e.startsAt),
+    time: formatTime(e.startsAt),
+    mode: mapMode(e.mode),
+    cover: e.bannerUrl ?? "",
+    isFree: true,
+    price: undefined,
+    interested: false,
+    category: e.mode || "General",
+    isPast: e.startsAt < now,
+  }))
+}
+
+/**
+ * Event ids the user has a "going" RSVP for (per-viewer overlay). Matches the
+ * prior behavior: only "going" flips the UI's `interested` flag (the old code
+ * also OR'd a non-existent "interested" status, which never matched).
+ */
+export async function myInterestedEventIds(userId: string): Promise<Set<string>> {
+  const rows = await prisma.eventRsvp.findMany({
+    where: { userId, status: "going" },
+    select: { eventId: true },
+  })
+  return new Set(rows.map((r) => r.eventId))
+}
+
+/**
+ * List published events for a school. `userId` resolves the per-user
+ * `interested` flag. Composed from the cacheable shared list + a per-viewer
+ * RSVP overlay so callers that can cache the shared half (the events page) do.
  */
 export async function listEvents(
   schoolId: string,
   userId: string | null,
 ): Promise<EventItem[]> {
-  const events = await prisma.event.findMany({
-    where: { schoolId, status: "published" },
-    orderBy: { startsAt: "asc" },
-    include: {
-      rsvps: userId
-        ? { where: { userId }, select: { status: true } }
-        : false,
-    },
-  })
-
-  const now = new Date()
-
-  return events.map((e) => {
-    const myRsvps = (e as { rsvps?: { status: string }[] }).rsvps ?? []
-    const interested = myRsvps.some(
-      (r) => r.status === "going" || r.status === "interested",
-    )
-    return {
-      id: e.id,
-      slug: e.id,
-      title: e.title,
-      date: formatDate(e.startsAt),
-      time: formatTime(e.startsAt),
-      mode: mapMode(e.mode),
-      cover: e.bannerUrl ?? "",
-      isFree: true,
-      price: undefined,
-      interested,
-      category: e.mode || "General",
-      isPast: e.startsAt < now,
-    }
-  })
+  const shared = await listEventsShared(schoolId)
+  if (!userId) return shared
+  const going = await myInterestedEventIds(userId)
+  return shared.map((e) => (going.has(e.id) ? { ...e, interested: true } : e))
 }
 
 /** Upsert an RSVP for the given user/event. */
