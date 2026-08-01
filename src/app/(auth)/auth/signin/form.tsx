@@ -24,14 +24,16 @@ function SignInFormInner() {
       redirect: false,
     })
 
-    setLoading(false)
-
     if (result?.error) {
       setError("Invalid email or password")
-    } else {
-      router.push(callbackUrl)
-      router.refresh()
+      setLoading(false)
+      return
     }
+
+    // Success: keep the button in its loading state and let the navigation
+    // take over, so it never snaps back to "Sign in" while /feed loads.
+    router.push(callbackUrl)
+    router.refresh()
   }
 
   return (

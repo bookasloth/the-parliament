@@ -24,14 +24,16 @@ function AdminSignInInner() {
       redirect: false,
     })
 
-    setLoading(false)
-
     if (result?.error) {
       setError("Invalid credentials, or this account is not an administrator.")
-    } else {
-      router.push(callbackUrl)
-      router.refresh()
+      setLoading(false)
+      return
     }
+
+    // Success: hold the loading state through navigation so the button doesn't
+    // snap back to "Sign in" while /admin loads.
+    router.push(callbackUrl)
+    router.refresh()
   }
 
   return (
