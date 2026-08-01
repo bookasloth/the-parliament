@@ -460,7 +460,9 @@ export function FeedContent({
 
             {localPosts.map((post) => {
               if (removedIds.has(post.id)) return null
-              const isReal = post.id.length > 10 // real DB rows use UUIDs; mock rows use "1".."6"
+              // Real DB rows use UUIDs; mock rows use "1".."6". Sponsored ads
+              // are never server-backed, so they take the handler-free branch.
+              const isReal = post.id.length > 10 && !post.isSponsored
               const isAuthor = !!(viewerId && post.authorId && viewerId === post.authorId)
               if (!isReal) {
                 return <FeedCard key={post.id} post={post} />
