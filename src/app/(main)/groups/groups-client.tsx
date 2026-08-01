@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import {
   Search, Plus, Users, Lock, Globe, ChevronRight, Bell, BellOff,
-  Home, Calendar, Menu, X, Sparkles, Star, TrendingUp, BookOpen,
+  Home, Menu, X, Sparkles, Star, TrendingUp, BookOpen,
   Briefcase, Dumbbell, Music, Cpu, FlaskConical,
 } from "lucide-react"
 import { joinGroupAction, leaveGroupAction } from "./actions"
@@ -74,7 +74,7 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
   )
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
+    <div className="min-h-screen bg-[#f3f2ef]">
       {sidebarOpen && <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <div className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex justify-end p-3 border-b"><button onClick={() => setSidebarOpen(false)}><X className="h-5 w-5 text-gray-400" /></button></div>
@@ -221,17 +221,6 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 lg:hidden">
-        <div className="flex items-center justify-around py-1.5">
-          <a href="/feed" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Home className="h-5 w-5" /><span className="text-[10px] font-medium">Home</span></a>
-          <a href="/connections" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Users className="h-5 w-5" /><span className="text-[10px] font-medium">Network</span></a>
-          <span className="flex flex-col items-center px-3 py-1 -mt-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-brand to-brand-700 flex items-center justify-center shadow-md"><Plus className="h-5 w-5 text-white" /></div>
-          </span>
-          <a href="/events" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Calendar className="h-5 w-5" /><span className="text-[10px] font-medium">Events</span></a>
-          <button onClick={() => setSidebarOpen(true)} className="flex flex-col items-center gap-0.5 text-gray-400 px-3 py-1"><Menu className="h-5 w-5" /><span className="text-[10px] font-medium">Menu</span></button>
-        </div>
-      </nav>
     </div>
   )
 }
