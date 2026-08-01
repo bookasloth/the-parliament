@@ -9,7 +9,7 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { startConversationAction } from "../messages/actions"
 import {
-  Briefcase, MapPin, Building2, MoreHorizontal, BadgeCheck,
+  Briefcase, MapPin, Building2, MoreHorizontal, Check,
   Award, Droplet, Cake, Home, Users, Pencil, Share2,
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
@@ -227,9 +227,17 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
   )
 
   const nameTick = (
-    <div className="flex min-w-0 items-center gap-2">
-      <h1 className="truncate font-heading text-2xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-      {data.isVerified && <BadgeCheck className="h-6 w-6 shrink-0 text-brand" aria-label="Verified" />}
+    <div className="flex min-w-0 items-center gap-1.5">
+      <h1 className="truncate font-heading text-xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
+      {data.isVerified && (
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand"
+          aria-label="Verified"
+          title="Verified"
+        >
+          <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
+        </span>
+      )}
     </div>
   )
 
@@ -250,11 +258,17 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
     </>
   ) : (
     <>
-      <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} />
-      <button onClick={openConversation} disabled={messagingLoading} className={`${R_EL} flex items-center gap-1.5 border border-gray-200 bg-white px-[14px] py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
-        <MessageSquare className="h-4 w-4" /> {messagingLoading ? "Starting..." : "Message"}
+      <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} iconOnly />
+      <button
+        onClick={openConversation}
+        disabled={messagingLoading}
+        aria-label={messagingLoading ? "Starting…" : "Message"}
+        title="Message"
+        className={`${R_EL} flex h-11 w-11 items-center justify-center border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        <MessageSquare className="h-5 w-5" />
       </button>
-      <button className={`${R_EL} flex h-[42px] w-[42px] items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50`}>
+      <button aria-label="More" title="More" className={`${R_EL} flex h-11 w-11 items-center justify-center border border-gray-200 text-gray-600 hover:bg-gray-50`}>
         <MoreHorizontal className="h-5 w-5" />
       </button>
     </>

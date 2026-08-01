@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { UserPlus, Check } from "lucide-react"
+import { UserPlus, UserCheck, UserMinus, Check } from "lucide-react"
 import { followAction, unfollowAction } from "@/app/(main)/connections/actions"
 
 export function FollowButton({
@@ -32,20 +32,28 @@ export function FollowButton({
   }
 
   if (iconOnly) {
-    const label = following ? "Following" : "Follow"
+    const label = following ? "Following — click to unfollow" : "Follow"
     return (
       <button
         onClick={toggle}
         disabled={busy}
         aria-label={label}
         title={label}
-        className={`flex h-11 w-11 items-center justify-center rounded-[4px] border transition-colors disabled:opacity-60 ${
+        className={`group flex h-11 w-11 items-center justify-center rounded-[4px] border transition-colors disabled:opacity-60 ${
           following
-            ? "border-gray-200 bg-gray-100 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+            ? "border-green-200 bg-green-50 text-green-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
             : "border-brand bg-brand text-white hover:bg-brand-600"
         }`}
       >
-        {following ? <Check className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+        {following ? (
+          <>
+            {/* following = green user-tick; on hover = red user-minus (unfollow) */}
+            <UserCheck className="h-5 w-5 group-hover:hidden" />
+            <UserMinus className="hidden h-5 w-5 group-hover:block" />
+          </>
+        ) : (
+          <UserPlus className="h-5 w-5" />
+        )}
       </button>
     )
   }
