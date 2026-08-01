@@ -147,6 +147,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
   return {
     id: row.id,
     authorId: author.id,
+    username: anon ? undefined : author.username ?? undefined,
     savedByViewer: savedRows.length > 0,
     viewerReaction,
     name,
