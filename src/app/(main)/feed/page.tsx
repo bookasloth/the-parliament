@@ -13,13 +13,14 @@ const FIRST_PAGE_SIZE = 15
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; category?: string; sort?: string }>
 }) {
-  const [{ tab }, [schoolId, viewer]] = await Promise.all([
+  const [{ tab, category, sort }, [schoolId, viewer]] = await Promise.all([
     searchParams,
     Promise.all([getDefaultSchoolId(), optionalUser()]),
   ])
   const followingOnly = tab === "following" && !!viewer?.id
+  const rankerName = sort === "recent" ? "recency" : undefined
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
@@ -27,13 +28,19 @@ export default async function FeedPage({
   let suggestions: SuggestedConnection[] = []
   let news: NewsItem[] = []
   let eggedUsernames: string[] = []
+  let categories: { key: string; label: string }[] = []
 
   if (schoolId) {
+    categories = await prisma.postCategory.findMany({
+      where: { schoolId, isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { key: true, label: true },
+    })
     // These three are mutually independent (feed, the viewer's own card, and
     // the sidebar rails) — one round-trip group instead of three sequential
     // awaits. The egg overlay below depends on `users`, so it stays a second hop.
     const [{ rows }, u, [users, pinned]] = await Promise.all([
-      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
+      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly, categoryKey: category || undefined, rankerName }),
       viewer?.id
         ? prisma.user.findUnique({
             where: { id: viewer.id },
@@ -143,6 +150,9 @@ export default async function FeedPage({
       initialEgged={eggedUsernames}
       loadedAt={new Date().toISOString()}
       activeTab={followingOnly ? "following" : "forYou"}
+      categories={categories}
+      activeCategory={category ?? null}
+      activeSort={sort === "recent" ? "recent" : "top"}
     />
   )
 }

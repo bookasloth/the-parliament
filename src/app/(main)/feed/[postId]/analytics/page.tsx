@@ -2,7 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
-  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, BarChart2, Clock,
+  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, BarChart2, Clock, Eye, Bookmark,
 } from "lucide-react"
 import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
@@ -45,10 +45,14 @@ export default async function PostAnalyticsPage({
     : []
   const profileMap = new Map(commenterProfiles.map((p) => [p.id, p]))
 
+  const bookmarkCount = await prisma.savedPost.count({ where: { postId } })
+
   const totalReactions = post.upvoteCount + post.downvoteCount
   const upvotePct = totalReactions === 0 ? 0 : Math.round((post.upvoteCount / totalReactions) * 100)
 
   const stats: { label: string; value: string | number; icon: React.ReactNode; color: string; bg: string }[] = [
+    { label: "Views", value: post.viewCount, icon: <Eye className="h-5 w-5" />, color: "text-sky-600", bg: "bg-sky-50" },
+    { label: "Bookmarks", value: bookmarkCount, icon: <Bookmark className="h-5 w-5" />, color: "text-indigo-500", bg: "bg-indigo-50" },
     { label: "Upvotes", value: post.upvoteCount, icon: <ThumbsUp className="h-5 w-5" />, color: "text-brand-700", bg: "bg-brand-50" },
     { label: "Downvotes", value: post.downvoteCount, icon: <ThumbsDown className="h-5 w-5" />, color: "text-red-500", bg: "bg-red-50" },
     { label: "Comments", value: post.commentCount, icon: <MessageCircle className="h-5 w-5" />, color: "text-green-600", bg: "bg-green-50" },
@@ -116,7 +120,7 @@ export default async function PostAnalyticsPage({
                   <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" width={36} height={36} />
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={u?.username ? `/${u.username}` : "#"}
+                      href={u?.username ? `/profile/${u.username}` : "#"}
                       className="text-sm font-medium text-gray-900 hover:text-brand-600 truncate block"
                     >
                       {name}

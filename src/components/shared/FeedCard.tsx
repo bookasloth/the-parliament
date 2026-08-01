@@ -13,6 +13,9 @@ import {
   Trash2,
   Copy,
   Edit3,
+  Send,
+  Share2,
+  MessageCircle,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
@@ -106,6 +109,24 @@ export function FeedCard({
     }
   }
 
+  function shareUrl(): string {
+    return typeof window !== "undefined" ? `${window.location.origin}/feed/${post.id}` : ""
+  }
+  function openShare(intent: "twitter" | "linkedin" | "whatsapp") {
+    setActionOpen(false)
+    if (typeof window === "undefined") return
+    const url = encodeURIComponent(shareUrl())
+    const text = encodeURIComponent(`${post.name} on NNAWCA Alumni Feed`)
+    const target =
+      intent === "twitter"
+        ? `https://twitter.com/intent/tweet?url=${url}&text=${text}`
+        : intent === "linkedin"
+        ? `https://www.linkedin.com/sharing/share-offsite/?url=${url}`
+        : `https://wa.me/?text=${text}%20${url}`
+    window.open(target, "_blank", "noopener,noreferrer")
+    onShare?.()
+  }
+
   function handleDelete() {
     setActionOpen(false)
     if (!onDelete) return
@@ -129,7 +150,21 @@ export function FeedCard({
     void onReport(reason)
   }
 
+  // Profile link — sponsors go to their URL, alumni to /profile/[username]; "#!" when unknown (anon/mock).
+  const profileHref = post.isSponsored
+    ? post.sponsorUrl ?? "#!"
+    : post.username
+    ? `/profile/${post.username}`
+    : "#!"
+  const postHref = `/feed/${post.id}`
+
   type ActionItem = { icon: React.ReactNode; label: string; onClick?: () => void; danger?: boolean }
+  const shareItems: ActionItem[] = [
+    { icon: <Share2 className="h-4 w-4" />, label: "Share to X", onClick: () => openShare("twitter") },
+    { icon: <Send className="h-4 w-4" />, label: "Share to LinkedIn", onClick: () => openShare("linkedin") },
+    { icon: <MessageCircle className="h-4 w-4" />, label: "Share to WhatsApp", onClick: () => openShare("whatsapp") },
+    { icon: <Copy className="h-4 w-4" />, label: "Copy link", onClick: handleCopy },
+  ]
   const actionItems: ActionItem[] = post.isSponsored
     ? [{ icon: <Flag className="h-4 w-4" />, label: "Report Ad", onClick: handleReport }]
     : isAuthor
@@ -139,7 +174,7 @@ export function FeedCard({
           label: saved ? "Saved" : "Bookmark It",
           onClick: handleSave,
         },
-        { icon: <Copy className="h-4 w-4" />, label: "Copy link", onClick: handleCopy },
+        ...shareItems,
         {
           icon: <Edit3 className="h-4 w-4" />,
           label: "Edit post",
@@ -161,6 +196,7 @@ export function FeedCard({
           label: "Hide It",
           onClick: onHide ? () => { setActionOpen(false); void onHide() } : undefined,
         },
+        ...shareItems,
         { icon: <Ban className="h-4 w-4" />, label: "Block Them" },
         { icon: <Flag className="h-4 w-4" />, label: "Report It", onClick: handleReport, danger: true },
       ]
@@ -172,7 +208,7 @@ export function FeedCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
             {/* Avatar */}
-            <a href="#!" className="flex-shrink-0">
+            <a href={profileHref} className="flex-shrink-0">
               <Image
                 src={post.avatar}
                 alt={post.name}
@@ -185,7 +221,7 @@ export function FeedCard({
             <div>
               <div className="flex items-center gap-1.5">
                 <h6 className="text-[16px] font-semibold text-gray-900 mb-0">
-                  <a href="#!" className="hover:text-brand transition-colors">
+                  <a href={profileHref} className="hover:text-brand transition-colors">
                     {post.isSponsored ? post.sponsorName : post.name}
                   </a>
                 </h6>
@@ -194,10 +230,20 @@ export function FeedCard({
                 {!post.isSponsored && post.connectionDegree && (
                   <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
                 )}
-                <span className="text-xs text-[#6B7280] whitespace-nowrap">
-                  {post.timestamp}
-                  {post.isEdited && <span> · Edited</span>}
-                </span>
+                {post.isSponsored ? (
+                  <span className="text-xs text-[#6B7280] whitespace-nowrap">
+                    {post.timestamp}
+                    {post.isEdited && <span> · Edited</span>}
+                  </span>
+                ) : (
+                  <a
+                    href={postHref}
+                    className="text-xs text-[#6B7280] whitespace-nowrap hover:underline"
+                  >
+                    {post.timestamp}
+                    {post.isEdited && <span> · Edited</span>}
+                  </a>
+                )}
               </div>
               {/* Alumni graph context — "21st batch (2006 - 2013)" */}
               {!post.isSponsored && post.batch && (

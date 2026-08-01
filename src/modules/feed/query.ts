@@ -281,6 +281,7 @@ function postSelect(viewerId?: string) {
     downvoteCount: true,
     commentCount: true,
     shareCount: true,
+    viewCount: true,
     qualityScore: true,
     reportPenalty: true,
     createdAt: true,

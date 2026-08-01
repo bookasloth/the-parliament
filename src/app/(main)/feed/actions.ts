@@ -254,6 +254,8 @@ export async function loadMoreFeedAction(
   page: number,
   pageSize = 15,
   followingOnly = false,
+  categoryKey?: string,
+  rankerName?: string,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -267,6 +269,8 @@ export async function loadMoreFeedAction(
     page,
     pageSize,
     followingOnly,
+    categoryKey: categoryKey || undefined,
+    rankerName: rankerName || undefined,
   })
   return {
     posts: rows.map(mapRowToFeedPost),
