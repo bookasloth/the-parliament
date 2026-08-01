@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import {
-  X,
-  Users,
-  ChevronRight,
-  Sparkles,
-  Home,
-  Plus,
-  Calendar,
-  Menu,
-} from "lucide-react"
+import { ChevronRight, Sparkles } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
 import {
@@ -321,7 +312,6 @@ export function FeedContent({
   const followingOnly = activeTab === "following"
   const router = useRouter()
   const [newCount, setNewCount] = useState(0)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
@@ -411,28 +401,7 @@ export function FeedContent({
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef] pb-16 lg:pb-0">
-      {/* Offcanvas backdrop */}
-      {sidebarOpen && (
-        <div role="presentation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Offcanvas Sidebar (mobile) */}
-      <div
-        className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transition-transform lg:hidden ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex justify-end p-3 border-b border-gray-100">
-          <button onClick={() => setSidebarOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto h-[calc(100%-53px)] px-3 py-4">
-          <LeftSidebar userName={userName} viewer={viewer} />
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-[#f3f2ef]">
       {/* Feed Layout */}
       <div className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -696,36 +665,6 @@ export function FeedContent({
           </div>
         </div>
       </div>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 lg:hidden safe-area-bottom">
-        <div className="flex items-center justify-around py-1.5">
-          <button className="flex flex-col items-center gap-0.5 text-brand px-3 py-1">
-            <Home className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Home</span>
-          </button>
-          <button className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 px-3 py-1">
-            <Users className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Network</span>
-          </button>
-          <a href="/compose" className="flex flex-col items-center gap-0.5 text-gray-400 px-3 py-1 -mt-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-brand to-brand-700 flex items-center justify-center shadow-md">
-              <Plus className="h-5 w-5 text-white" />
-            </div>
-          </a>
-          <button className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 px-3 py-1">
-            <Calendar className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Events</span>
-          </button>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 px-3 py-1"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Menu</span>
-          </button>
-        </div>
-      </nav>
     </div>
   )
 }

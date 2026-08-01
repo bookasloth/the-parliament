@@ -1,4 +1,5 @@
 import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNavbar"
+import { MobileTabBar } from "@/components/shared/MobileTabBar"
 import { optionalUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 
@@ -43,7 +44,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   return (
     <>
       <PrivateNavbar viewer={viewer} />
-      {children}
+      {/* Reserve space for the mobile tab bar (incl. safe-area) so fixed bottom
+          nav never covers page content. Desktop has no bottom bar. */}
+      <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        {children}
+      </div>
+      <MobileTabBar />
     </>
   )
 }

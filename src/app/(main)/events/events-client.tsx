@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useTransition } from "react"
 import Image from "next/image"
 import {
   Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
-  X, Search, Home, Users, Menu, Video, MapPin, Globe,
+  X, Search, Video, MapPin, Globe,
 } from "lucide-react"
 import type { EventItem } from "@/modules/events/service"
 import { rsvpAction } from "./actions"
@@ -261,18 +261,6 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
         </div>
       )}
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 lg:hidden">
-        <div className="flex items-center justify-around py-1.5">
-          <a href="/feed" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Home className="h-5 w-5" /><span className="text-[10px] font-medium">Home</span></a>
-          <a href="/connections" className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-brand px-3 py-1"><Users className="h-5 w-5" /><span className="text-[10px] font-medium">Network</span></a>
-          <a href="/compose" className="flex flex-col items-center px-3 py-1 -mt-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-brand to-brand-700 flex items-center justify-center shadow-md"><Plus className="h-5 w-5 text-white" /></div>
-          </a>
-          <a href="/events" className="flex flex-col items-center gap-0.5 text-brand px-3 py-1"><Calendar className="h-5 w-5" /><span className="text-[10px] font-medium">Events</span></a>
-          <a href="/messages" className="flex flex-col items-center gap-0.5 text-gray-400 px-3 py-1"><Menu className="h-5 w-5" /><span className="text-[10px] font-medium">Menu</span></a>
-        </div>
-      </nav>
     </div>
   )
 }
