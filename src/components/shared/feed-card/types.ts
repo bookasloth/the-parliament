@@ -51,6 +51,8 @@ export interface FeedPost {
   sponsorName?: string
   sponsorUrl?: string
   sponsorTagline?: string
+  /** Sponsored CTA button label (defaults to "Learn more"). */
+  sponsorCta?: string
   upvotes: number
   downvotes: number
   comments: number

@@ -78,6 +78,26 @@ type OptimisticAction =
   | { type: "vote"; id: string; next: "upvote" | "downvote" | null; delta: number }
   | { type: "remove"; id: string }
 
+// Pure reducer — used both for the transient optimistic overlay AND to commit a
+// change into the real base state once the server confirms it. (The base can't
+// come from revalidatePath here: comments are client-loaded, so we hold the
+// source of truth locally instead of letting the optimistic value snap back.)
+function applyCommentAction(state: CommentView[], action: OptimisticAction): CommentView[] {
+  if (action.type === "top") return [...state, action.comment]
+  if (action.type === "reply")
+    return state.map((c) =>
+      c.id === action.parentId ? { ...c, replies: [...c.replies, action.comment] } : c,
+    )
+  if (action.type === "remove")
+    return state
+      .filter((c) => c.id !== action.id)
+      .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== action.id) }))
+  // vote — patch matching top-level or reply.
+  const patch = (c: CommentView): CommentView =>
+    c.id === action.id ? { ...c, score: c.score + action.delta, myReaction: action.next } : c
+  return state.map((c) => ({ ...patch(c), replies: c.replies.map(patch) }))
+}
+
 // Membership tier → avatar ring colour (mirrors map-row.ts / AlumniProfileCard).
 const RING: Record<string, string> = {
   life: "#D4A017",
@@ -474,23 +494,12 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
     }
   }
 
+  // Committed source of truth (client-loaded — not refreshed by revalidatePath).
+  // Successful mutations write here so the optimistic value doesn't snap back.
+  const [base, setBase] = useState<CommentView[]>(initialComments)
   const [comments, applyOptimistic] = useOptimistic<CommentView[], OptimisticAction>(
-    initialComments,
-    (state, action) => {
-      if (action.type === "top") return [...state, action.comment]
-      if (action.type === "reply")
-        return state.map((c) =>
-          c.id === action.parentId ? { ...c, replies: [...c.replies, action.comment] } : c,
-        )
-      if (action.type === "remove")
-        return state
-          .filter((c) => c.id !== action.id)
-          .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== action.id) }))
-      // vote — patch matching top-level or reply.
-      const patch = (c: CommentView): CommentView =>
-        c.id === action.id ? { ...c, score: c.score + action.delta, myReaction: action.next } : c
-      return state.map((c) => ({ ...patch(c), replies: c.replies.map(patch) }))
-    },
+    base,
+    applyCommentAction,
   )
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -509,10 +518,12 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
     setText("")
     setImage(null)
     setFocused(false)
+    const action: OptimisticAction = { type: "top", comment: makeView(body, viewer, img) }
     startTransition(async () => {
-      applyOptimistic({ type: "top", comment: makeView(body, viewer, img) })
+      applyOptimistic(action)
       try {
         await commentOnPost(postId, body, undefined, img ?? undefined)
+        setBase((s) => applyCommentAction(s, action)) // commit on success
       } catch {
         setError("Failed to post comment. Please try again.")
       }
@@ -521,10 +532,12 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
 
   function handleReply(parentId: string, body: string) {
     if (!viewer) return
+    const action: OptimisticAction = { type: "reply", parentId, comment: makeView(body, viewer) }
     startTransition(async () => {
-      applyOptimistic({ type: "reply", parentId, comment: makeView(body, viewer) })
+      applyOptimistic(action)
       try {
         await commentOnPost(postId, body, parentId)
+        setBase((s) => applyCommentAction(s, action)) // commit on success
       } catch {
         setError("Failed to post reply. Please try again.")
       }
@@ -534,10 +547,12 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
   function handleVote(c: CommentView, type: "upvote" | "downvote") {
     if (!viewer || c.id.startsWith("optimistic-")) return
     const { next, delta } = voteChange(c.myReaction, type)
+    const action: OptimisticAction = { type: "vote", id: c.id, next, delta }
     startTransition(async () => {
-      applyOptimistic({ type: "vote", id: c.id, next, delta })
+      applyOptimistic(action)
       try {
         await reactToComment(postId, c.id, type)
+        setBase((s) => applyCommentAction(s, action)) // commit on success
       } catch {
         setError("Failed to record your vote. Please try again.")
       }
@@ -546,13 +561,14 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
 
   function handleDelete(c: CommentView) {
     if (!viewer) return
+    const action: OptimisticAction = { type: "remove", id: c.id }
     startTransition(async () => {
-      applyOptimistic({ type: "remove", id: c.id })
+      applyOptimistic(action)
       try {
         await deleteCommentAction(postId, c.id)
+        setBase((s) => applyCommentAction(s, action)) // commit on success
       } catch {
-        // useOptimistic reverts automatically when the transition ends without
-        // the server having removed it.
+        // Optimistic overlay reverts to committed base if the server failed.
         setError("Failed to delete the comment. Please try again.")
       }
     })
