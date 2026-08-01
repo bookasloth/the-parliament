@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { MediaGallery } from "@/components/shared/MediaGallery"
@@ -48,6 +48,8 @@ export function FeedCard({
   onPollVote,
   onFollow,
   commentsLoader,
+  defaultCommentsOpen = false,
+  disableCardNav = false,
 }: {
   post: FeedPost
   isAuthor?: boolean
@@ -66,14 +68,29 @@ export function FeedCard({
   onFollow?: () => void | Promise<unknown>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
+  /** Detail-page use: open the comment thread on mount instead of on click. */
+  defaultCommentsOpen?: boolean
+  /** Detail-page use: card is already the post view, so disable click-to-open. */
+  disableCardNav?: boolean
 }) {
   const router = useRouter()
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
   const [following, setFollowing] = useState(post.isFollowing ?? false)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen)
   const [commentsData, setCommentsData] = useState<InlineComments | null>(null)
   const [loadingComments, setLoadingComments] = useState(false)
+
+  // Detail page opens the thread on mount — lazy-load it once.
+  useEffect(() => {
+    if (!defaultCommentsOpen || !commentsLoader) return
+    setLoadingComments(true)
+    commentsLoader(post.id)
+      .then(setCommentsData)
+      .catch(() => setCommentsData({ comments: [], count: post.comments, viewer: null }))
+      .finally(() => setLoadingComments(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function toggleComments() {
     const next = !commentsOpen
@@ -155,7 +172,7 @@ export function FeedCard({
   // Whole-card click → open the post, but only on "empty" areas. Any real
   // interactive target (button/link) or an active text selection is left alone.
   function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (post.isSponsored) return
+    if (post.isSponsored || disableCardNav) return
     if (e.target instanceof Element && e.target.closest("a,button,input,textarea,label,[role='button']")) return
     if (typeof window !== "undefined" && window.getSelection()?.toString()) return
     router.push(`/feed/${post.id}`)
@@ -214,9 +231,9 @@ export function FeedCard({
 
   return (
     <div
-      onClick={post.isSponsored ? undefined : handleCardClick}
+      onClick={post.isSponsored || disableCardNav ? undefined : handleCardClick}
       className={`bg-white border border-[#E5E7EB] rounded-[6px] transition-shadow hover:shadow-card${
-        post.isSponsored ? "" : " cursor-pointer"
+        post.isSponsored || disableCardNav ? "" : " cursor-pointer"
       }`}
     >
       {/* Card Header */}
