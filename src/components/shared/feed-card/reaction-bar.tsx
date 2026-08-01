@@ -13,6 +13,7 @@ import {
   Send,
   Share2,
   Newspaper,
+  BarChart2,
 } from "lucide-react"
 import { useDropdown } from "./use-dropdown"
 import { awards } from "./types"
@@ -227,6 +228,7 @@ export function ReactionBar({
   onComment,
   onShare,
   onAward,
+  isAuthor = false,
 }: {
   postId: string
   initialUpvotes: number
@@ -245,6 +247,8 @@ export function ReactionBar({
   onComment?: (body: string) => void
   onShare?: () => void | Promise<unknown>
   onAward?: (awardKey: string) => Promise<{ ok: boolean; error?: string }> | void
+  /** Author can't award their own post — show an Analytics link in that slot instead. */
+  isAuthor?: boolean
 }) {
   const [awardModalOpen, setAwardModalOpen] = useState(false)
   const [voteState, setVoteState] = useState<"up" | "down" | null>(initialVote)
@@ -342,14 +346,24 @@ export function ReactionBar({
         {/* Share */}
         <ShareDropdown postId={postId} shares={shares} onShare={onShare} />
 
-        {/* Award */}
-        <button
-          onClick={() => setAwardModalOpen(true)}
-          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50/30 transition-all"
-        >
-          <Award className="h-4 w-4" strokeWidth={1.6} />
-          <span className="text-[13px] font-medium hidden sm:inline">Award It</span>
-        </button>
+        {/* Award (others) / Analytics (author — can't award own post) */}
+        {isAuthor ? (
+          <a
+            href={`/feed/${postId}/analytics`}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
+          >
+            <BarChart2 className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium hidden sm:inline">Analytics</span>
+          </a>
+        ) : (
+          <button
+            onClick={() => setAwardModalOpen(true)}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50/30 transition-all"
+          >
+            <Award className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium hidden sm:inline">Award It</span>
+          </button>
+        )}
       </div>
       {commentOpen && !commentHref && (
         <div className="flex items-center gap-2 px-1 pb-2">

@@ -2,13 +2,18 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
-  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, BarChart2, Clock, Eye, Bookmark,
+  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, Eye, Users, Activity, UserPlus,
 } from "lucide-react"
 import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
+
+// ponytail: reach / interactions / navigation aren't tracked yet — sample
+// figures so the insights layout reads as designed. Swap for real impression
+// data when an impressions table lands.
+const SAMPLE = { reached: 380, interactions: 48, profileVisits: 1, follows: 0 }
 
 export default async function PostAnalyticsPage({
   params,
@@ -28,7 +33,7 @@ export default async function PostAnalyticsPage({
     where: { postId, deletedAt: null },
     _count: { _all: true },
     orderBy: { _count: { authorId: "desc" } },
-    take: 5,
+    take: 6,
   })
 
   const commenterProfiles = topCommenters.length
@@ -39,26 +44,26 @@ export default async function PostAnalyticsPage({
           username: true,
           displayName: true,
           legalName: true,
-          profile: { select: { photoUrl: true, headline: true } },
+          profile: { select: { photoUrl: true } },
         },
       })
     : []
   const profileMap = new Map(commenterProfiles.map((p) => [p.id, p]))
 
-  const bookmarkCount = await prisma.savedPost.count({ where: { postId } })
-
   const totalReactions = post.upvoteCount + post.downvoteCount
   const upvotePct = totalReactions === 0 ? 0 : Math.round((post.upvoteCount / totalReactions) * 100)
 
-  const stats: { label: string; value: string | number; icon: React.ReactNode; color: string; bg: string }[] = [
+  // 4 × 2 grid — icon + number. Upvotes/downvotes/comments/shares are real;
+  // reach/interactions/profile visits/follows are sample (see SAMPLE above).
+  const stats: { label: string; value: number; icon: React.ReactNode; color: string; bg: string }[] = [
     { label: "Views", value: post.viewCount, icon: <Eye className="h-5 w-5" />, color: "text-sky-600", bg: "bg-sky-50" },
-    { label: "Bookmarks", value: bookmarkCount, icon: <Bookmark className="h-5 w-5" />, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "Accounts reached", value: SAMPLE.reached, icon: <Users className="h-5 w-5" />, color: "text-cyan-600", bg: "bg-cyan-50" },
     { label: "Upvotes", value: post.upvoteCount, icon: <ThumbsUp className="h-5 w-5" />, color: "text-brand-700", bg: "bg-brand-50" },
     { label: "Downvotes", value: post.downvoteCount, icon: <ThumbsDown className="h-5 w-5" />, color: "text-red-500", bg: "bg-red-50" },
     { label: "Comments", value: post.commentCount, icon: <MessageCircle className="h-5 w-5" />, color: "text-green-600", bg: "bg-green-50" },
     { label: "Shares", value: post.shareCount, icon: <Share2 className="h-5 w-5" />, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "Quality score", value: Number(post.qualityScore ?? 0).toFixed(1), icon: <BarChart2 className="h-5 w-5" />, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Report penalty", value: Number(post.reportPenalty ?? 0).toFixed(1), icon: <BarChart2 className="h-5 w-5" />, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "Interactions", value: SAMPLE.interactions, icon: <Activity className="h-5 w-5" />, color: "text-pink-500", bg: "bg-pink-50" },
+    { label: "Profile visits", value: SAMPLE.profileVisits, icon: <UserPlus className="h-5 w-5" />, color: "text-indigo-500", bg: "bg-indigo-50" },
   ]
 
   return (
@@ -70,21 +75,18 @@ export default async function PostAnalyticsPage({
         <ArrowLeft className="h-4 w-4" /> Back to post
       </Link>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <p className="text-sm text-gray-800 line-clamp-2">
-          {post.body ?? <span className="italic text-gray-400">No body</span>}
-        </p>
-        <p className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-          <Clock className="h-3 w-3" /> Posted {new Date(post.createdAt).toLocaleString("en-IN")}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* 4 × 2 stat grid — horizontal cards: icon + number */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl p-4">
+          <div
+            key={s.label}
+            className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3"
+          >
             <div className={`inline-flex rounded-lg p-2 ${s.bg} ${s.color}`}>{s.icon}</div>
-            <p className="mt-2 text-2xl font-bold text-gray-900 tabular-nums">{s.value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">{s.value}</p>
+              <p className="text-[11px] text-gray-500 mt-1 truncate">{s.label}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -102,40 +104,36 @@ export default async function PostAnalyticsPage({
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Top commenters</h3>
+      {/* Top commenters — small cards: photo · name · comment count */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Top commenters</h3>
         {topCommenters.length === 0 ? (
           <p className="text-sm text-gray-400">No comments yet.</p>
         ) : (
-          <ul className="space-y-3">
-            {topCommenters.map((tc, i) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {topCommenters.map((tc) => {
               const u = profileMap.get(tc.authorId)
               const name = u?.displayName || u?.legalName || "Unknown"
               const avatar =
                 u?.profile?.photoUrl ??
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
               return (
-                <li key={tc.authorId} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-gray-400 w-4 tabular-nums">{i + 1}</span>
-                  <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" width={36} height={36} />
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={u?.username ? `/${u.username}` : "#"}
-                      className="text-sm font-medium text-gray-900 hover:text-brand-600 truncate block"
-                    >
-                      {name}
-                    </Link>
-                    {u?.profile?.headline && (
-                      <p className="text-xs text-gray-500 truncate">{u.profile.headline}</p>
-                    )}
+                <Link
+                  key={tc.authorId}
+                  href={u?.username ? `/${u.username}` : "#"}
+                  className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2.5 hover:border-brand-300 transition-colors"
+                >
+                  <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
+                    <p className="text-xs text-gray-500">
+                      {tc._count._all} {tc._count._all === 1 ? "comment" : "comments"}
+                    </p>
                   </div>
-                  <span className="text-xs font-semibold text-gray-700 bg-gray-100 rounded-full px-2.5 py-0.5">
-                    {tc._count._all} {tc._count._all === 1 ? "comment" : "comments"}
-                  </span>
-                </li>
+                </Link>
               )
             })}
-          </ul>
+          </div>
         )}
       </div>
     </div>

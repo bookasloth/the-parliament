@@ -417,6 +417,7 @@ export function FeedCard({
       <div className="mx-4 mt-[15px] mb-[30px] py-0.5 border-t-[0.5px] border-b-[0.5px] border-[#bfbfc4]">
         <ReactionBar
           postId={post.id}
+          isAuthor={isAuthor}
           initialUpvotes={post.upvotes}
           initialDownvotes={post.downvotes}
           initialVote={
