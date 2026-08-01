@@ -2,15 +2,46 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Eye, Clock, Quote, Check } from "lucide-react"
-import type { FeedPost } from "./types"
+import { Eye, Clock, Quote } from "lucide-react"
+import type { FeedPost, FeedMembership } from "./types"
 import { truncateForPreview } from "@/lib/text-preview"
 
-// --- Verified badge (filled blue square + check) ---
-export function VerifiedBadge() {
+// Scalloped verified seal (Twitter-style 24pt burst) + check, styled per tier:
+// life = solid gold / black tick, student = green, premium = solid blue,
+// associate = blue outline ("liner"). Others fall back to solid blue.
+const SEAL_PATH =
+  "M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z"
+
+const BADGE_STYLES: Record<FeedMembership, { seal: string; check: string; liner?: boolean }> = {
+  life: { seal: "#E0A400", check: "#000000" }, // solid gold, black tick
+  student: { seal: "#16A34A", check: "#ffffff" }, // green
+  premium: { seal: "#009ae4", check: "#ffffff" }, // solid blue
+  associate: { seal: "#009ae4", check: "#009ae4", liner: true }, // blue outline
+  committee: { seal: "#009ae4", check: "#ffffff" },
+  inactive: { seal: "#94a3b8", check: "#ffffff" },
+}
+
+// --- Verified badge ---
+export function VerifiedBadge({ membership = "premium" }: { membership?: FeedMembership }) {
+  const s = BADGE_STYLES[membership] ?? BADGE_STYLES.premium
   return (
-    <span className="group relative inline-flex h-[15px] w-[15px] items-center justify-center rounded-[4px] bg-brand text-white">
-      <Check className="h-[11px] w-[11px]" strokeWidth={3} />
+    <span className="group relative inline-flex items-center justify-center">
+      <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" aria-hidden>
+        <path
+          d={SEAL_PATH}
+          fill={s.liner ? "none" : s.seal}
+          stroke={s.liner ? s.seal : "none"}
+          strokeWidth={s.liner ? 1.4 : 0}
+        />
+        <path
+          d="M8.6 12.4l2.3 2.3 4.6-5"
+          fill="none"
+          stroke={s.check}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
       <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[10px] text-white shadow-lg">
         Verified Alumni
       </span>

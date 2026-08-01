@@ -52,6 +52,30 @@ function textBgFrom(media: unknown): string | undefined {
   return s?.bg
 }
 
+// "21st batch (2006 - 2013)". Ordinal = startYear − 1985 (JNV Nagpur's 1st
+// batch entered 1986). ponytail: single-school constant; derive from the
+// school's earliest batch if/when multi-school batches land.
+function ordinalSuffix(n: number): string {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return "th"
+  switch (n % 10) {
+    case 1: return "st"
+    case 2: return "nd"
+    case 3: return "rd"
+    default: return "th"
+  }
+}
+
+export function formatBatch(
+  batch: { label: string; startYear?: number; endYear?: number } | null | undefined,
+): string | undefined {
+  if (!batch) return undefined
+  if (batch.startYear == null || batch.endYear == null) return batch.label
+  const ordinal = batch.startYear - 1985
+  const prefix = ordinal >= 1 ? `${ordinal}${ordinalSuffix(ordinal)} batch ` : ""
+  return `${prefix}(${batch.startYear} - ${batch.endYear})`
+}
+
 export function relativeTime(date: Date): string {
   const diffMs = Date.now() - new Date(date).getTime()
   const sec = Math.floor(diffMs / 1000)
@@ -127,7 +151,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
     viewerReaction,
     name,
     headline: anon ? "" : author.profile?.headline ?? "",
-    batch: anon ? undefined : author.profile?.batch?.label,
+    batch: anon ? undefined : formatBatch(author.profile?.batch),
     location: undefined,
     house,
     membership,

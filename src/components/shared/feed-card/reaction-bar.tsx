@@ -168,11 +168,11 @@ function ShareDropdown({
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
       >
-        <Send className="h-[18px] w-[18px]" strokeWidth={1.6} />
-        <span className="text-[13px] font-medium">Share{shares > 0 ? ` (${shares})` : ""}</span>
+        <Send className="h-4 w-4" strokeWidth={1.6} />
+        <span className="text-[13px] font-medium"><span className="hidden sm:inline">Share</span>{shares > 0 ? ` (${shares})` : ""}</span>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           <button
             onClick={() => extShare("dm")}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -288,18 +288,18 @@ export function ReactionBar({
 
   return (
     <>
-      <div className="flex items-center justify-between py-1">
+      <div className="flex items-center justify-between py-1 tabular-nums">
         {/* Upvote */}
         <button
           onClick={handleUpvote}
           className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
             voteState === "up"
-              ? "text-brand bg-brand-50/50"
+              ? "text-brand hover:bg-brand-50/30"
               : "text-gray-500 hover:text-brand hover:bg-brand-50/30"
           }`}
         >
-          <ThumbsUp className={`h-[18px] w-[18px] ${voteState === "up" ? "fill-brand" : ""}`} strokeWidth={1.6} />
-          <span className="text-[13px] font-medium">Upvote ({upvotes})</span>
+          <ThumbsUp className={`h-4 w-4 ${voteState === "up" ? "fill-brand" : ""}`} strokeWidth={1.6} />
+          <span className="text-[13px] font-medium"><span className="hidden sm:inline">Upvote </span>({upvotes})</span>
         </button>
 
         {/* Downvote */}
@@ -307,12 +307,12 @@ export function ReactionBar({
           onClick={handleDownvote}
           className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
             voteState === "down"
-              ? "text-red-500 bg-red-50/50"
+              ? "text-red-500 hover:bg-red-50/30"
               : "text-gray-500 hover:text-red-500 hover:bg-red-50/30"
           }`}
         >
-          <ThumbsDown className={`h-[18px] w-[18px] ${voteState === "down" ? "fill-red-500" : ""}`} strokeWidth={1.6} />
-          <span className="text-[13px] font-medium">Downvote ({downvotes})</span>
+          <ThumbsDown className={`h-4 w-4 ${voteState === "down" ? "fill-red-500" : ""}`} strokeWidth={1.6} />
+          <span className="text-[13px] font-medium"><span className="hidden sm:inline">Downvote </span>({downvotes})</span>
         </button>
 
         {/* Comment — detail link (commentHref) › inline expander (onCommentClick) › built-in composer */}
@@ -321,20 +321,20 @@ export function ReactionBar({
             href={commentHref}
             className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
           >
-            <MessageCircle className="h-[18px] w-[18px]" strokeWidth={1.6} />
-            <span className="text-[13px] font-medium">Comments ({commentCount})</span>
+            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
           </a>
         ) : (
           <button
             onClick={onCommentClick ?? (() => setCommentOpen((o) => !o))}
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
               (onCommentClick ? commentsExpanded : commentOpen)
-                ? "text-blue-500 bg-blue-50/50"
+                ? "text-blue-500 hover:bg-blue-50/30"
                 : "text-gray-500 hover:text-blue-500 hover:bg-blue-50/30"
             }`}
           >
-            <MessageCircle className="h-[18px] w-[18px]" strokeWidth={1.6} />
-            <span className="text-[13px] font-medium">Comments ({commentCount})</span>
+            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
           </button>
         )}
 
@@ -346,8 +346,8 @@ export function ReactionBar({
           onClick={() => setAwardModalOpen(true)}
           className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50/30 transition-all"
         >
-          <Award className="h-[18px] w-[18px]" strokeWidth={1.6} />
-          <span className="text-[13px] font-medium">Award It</span>
+          <Award className="h-4 w-4" strokeWidth={1.6} />
+          <span className="text-[13px] font-medium hidden sm:inline">Award It</span>
         </button>
       </div>
       {commentOpen && !commentHref && (

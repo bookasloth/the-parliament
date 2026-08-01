@@ -1,4 +1,5 @@
 import type { listPostComments } from "@/modules/feed/query"
+import { formatBatch } from "../map-row"
 import type { CommentView } from "./comments-section"
 
 // Shared mapping: DB comment rows → CommentView the client section renders.
@@ -27,6 +28,7 @@ function toView(
         r.author.profile?.photoUrl ??
         `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
       headline: r.author.profile?.headline ?? null,
+      batch: formatBatch(r.author.profile?.batch) ?? null,
     },
   }
 }

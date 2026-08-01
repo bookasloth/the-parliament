@@ -19,6 +19,10 @@ export interface FeedPost {
   house?: { name: string; color: string }
   membership: FeedMembership
   timestamp: string
+  /** LinkedIn-style connection degree shown next to the name, e.g. "2nd". */
+  connectionDegree?: string
+  /** Whether the viewer already follows the author — flips the header CTA to "Message". */
+  isFollowing?: boolean
   isVerified?: boolean
   isPinned?: boolean
   isEdited?: boolean
