@@ -192,6 +192,7 @@ export async function getPostById(id: string, viewerId?: string) {
 const commentSelect = {
   id: true,
   body: true,
+  imageUrl: true,
   likeCount: true,
   createdAt: true,
   parentId: true,

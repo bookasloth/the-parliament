@@ -363,9 +363,20 @@ export function FeedCard({
       {/* Inline comment thread (lazy-loaded on first open) */}
       {commentsOpen && commentsLoader && (
         loadingComments && !commentsData ? (
-          <div className="border-t border-gray-100 px-5 py-6 text-center text-sm text-gray-400">
-            Loading comments…
-          </div>
+          // Known-empty post → no spinner, just say so instantly. Otherwise a
+          // one-comment skeleton while the thread loads.
+          post.comments > 0 ? (
+            <div className="flex gap-3 px-5 py-4">
+              <div className="h-9 w-9 flex-shrink-0 animate-pulse rounded-full bg-gray-200" />
+              <div className="flex-1 space-y-2 py-0.5">
+                <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
+              </div>
+            </div>
+          ) : (
+            <div className="px-5 py-4 text-sm text-gray-400">No comments yet.</div>
+          )
         ) : commentsData ? (
           <CommentsSection
             embedded

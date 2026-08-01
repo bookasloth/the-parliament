@@ -14,6 +14,7 @@ function toView(
   return {
     id: r.id,
     body: r.body,
+    imageUrl: r.imageUrl ?? null,
     createdAt: r.createdAt.toISOString(),
     score: r.likeCount,
     myReaction: r.myReaction,

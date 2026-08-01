@@ -95,3 +95,7 @@ export async function uploadCover(userId: string, bytes: Uint8Array, contentType
 export async function uploadMessageImage(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   return uploadImage("messages/", userId, bytes, contentType)
 }
+
+export async function uploadCommentImage(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  return uploadImage("comments/", userId, bytes, contentType)
+}
