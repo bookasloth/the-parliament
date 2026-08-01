@@ -294,7 +294,7 @@ async function birthdayHandler() {
       u.email,
       {
         firstName: u.legal_name?.split(" ")[0] || "there",
-        profileUrl: u.username ? `${base}/profile/${u.username}` : `${base}/feed`,
+        profileUrl: u.username ? `${base}/${u.username}` : `${base}/feed`,
       },
       u.id,
     ).catch((e) => console.error(`birthday email failed for ${u.id}`, e))

@@ -150,11 +150,11 @@ export function FeedCard({
     void onReport(reason)
   }
 
-  // Profile link — sponsors go to their URL, alumni to /profile/[username]; "#!" when unknown (anon/mock).
+  // Profile link — sponsors go to their URL, alumni to /[username]; "#!" when unknown (anon/mock).
   const profileHref = post.isSponsored
     ? post.sponsorUrl ?? "#!"
     : post.username
-    ? `/profile/${post.username}`
+    ? `/${post.username}`
     : "#!"
   const postHref = `/feed/${post.id}`
 
