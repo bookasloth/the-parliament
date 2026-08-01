@@ -44,6 +44,7 @@ export interface AlumniCard {
   location?: string;
   membership?: Membership;
   bio?: string;
+  industry?: string;
 }
 
 export interface BusinessCard {
