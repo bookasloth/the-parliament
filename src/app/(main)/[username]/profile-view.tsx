@@ -260,6 +260,29 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
     </>
   )
 
+  // Mobile: icon-only action row (square 44px touch targets).
+  const ICON_BTN = `${R_EL} flex h-11 w-11 items-center justify-center border border-gray-200 text-gray-600 hover:bg-gray-50`
+  const actionsCompact = isOwn ? (
+    <>
+      <Link href="/profile/edit" aria-label="Edit profile" title="Edit profile" className={`${R_EL} flex h-11 w-11 items-center justify-center border border-brand bg-brand text-white hover:bg-brand-600`}>
+        <Pencil className="h-5 w-5" />
+      </Link>
+      <button onClick={shareProfile} aria-label={copied ? "Copied!" : "Share"} title={copied ? "Copied!" : "Share"} className={ICON_BTN}>
+        <Share2 className="h-5 w-5" />
+      </button>
+    </>
+  ) : (
+    <>
+      <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} iconOnly />
+      <button onClick={openConversation} disabled={messagingLoading} aria-label="Message" title="Message" className={`${ICON_BTN} disabled:opacity-50 disabled:cursor-not-allowed`}>
+        <MessageSquare className="h-5 w-5" />
+      </button>
+      <button aria-label="More" title="More" className={ICON_BTN}>
+        <MoreHorizontal className="h-5 w-5" />
+      </button>
+    </>
+  )
+
   const metaRow = metaBits.length > 0 && (
     <>
       {metaBits.map((m, i) => (
@@ -290,7 +313,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div className="-mt-[62px] flex justify-center">{avatarInner}</div>
               <div className="mt-3 flex justify-center">{nameTick}</div>
               {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{actions}</div>
+              <div className="mt-4 flex items-center justify-center gap-2.5">{actionsCompact}</div>
               {metaRow && (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">{metaRow}</div>
               )}
