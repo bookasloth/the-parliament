@@ -23,6 +23,7 @@ const PUBLIC_ROUTES = new Set([
   "/wall-of-honour",
   "/sponsorship",
   "/newsroom",
+  "/changelog",
 ])
 
 export async function proxy(req: NextRequest) {
