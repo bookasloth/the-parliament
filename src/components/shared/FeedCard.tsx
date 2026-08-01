@@ -356,16 +356,33 @@ export function FeedCard({
 
         {post.isSponsored && (
           <div>
-            <p className="text-sm text-gray-700 leading-relaxed">{post.sponsorTagline}</p>
-            <p className="text-sm text-gray-700 mt-1">{post.content}</p>
+            {post.sponsorTagline && (
+              <p className="text-sm font-medium text-gray-800 leading-relaxed">{post.sponsorTagline}</p>
+            )}
+            {post.content && <p className="text-sm text-gray-700 mt-1">{post.content}</p>}
+            {post.image && (
+              // External OG image — plain <img> avoids next/image remote-host config.
+              // eslint-disable-next-line @next/next/no-img-element
+              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-lg border border-gray-100">
+                <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
+              </a>
+            )}
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-gray-500">Trusted by 100+ Clients</p>
               <a
                 href={post.sponsorUrl}
                 target="_blank"
-                className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-gray-500 hover:text-brand truncate"
               >
-                Get Quote
+                {(post.sponsorUrl ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+              </a>
+              <a
+                href={post.sponsorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
+              >
+                {post.sponsorCta ?? "Learn more"}
               </a>
             </div>
           </div>

@@ -7,16 +7,20 @@ import type { FeedPost } from "@/components/shared/FeedCard"
 export const FEED_ADS: FeedPost[] = [
   {
     id: "ad-bookasloth",
-    name: "BookASloth",
+    name: "Book A Sloth",
     headline: "",
     membership: "premium",
     timestamp: "Sponsored",
     isSponsored: true,
-    sponsorName: "BookASloth",
-    sponsorUrl: "https://bookasloth.com",
-    sponsorTagline: "Book experiences without the rush.",
-    content: "Plan your next trip the lazy way — handpicked stays, zero hassle.",
-    avatar: "https://ui-avatars.com/api/?name=BookASloth&background=009ae4&color=fff",
+    sponsorName: "Book A Sloth",
+    sponsorUrl: "https://www.bookasloth.com",
+    sponsorTagline: "Stop chasing appointments. Let clients book you.",
+    content:
+      "One professional booking page that automates scheduling, payments and reminders — built for coaches, consultants, doctors, trainers and photographers. Less admin, more work that pays.",
+    sponsorCta: "Try it free",
+    // Book A Sloth's own OG image (1200×630).
+    image: "https://company-assets.bookasloth.in/images/seo/home-og-1200x630.jpg",
+    avatar: "https://ui-avatars.com/api/?name=Book+A+Sloth&background=009ae4&color=fff",
     borderType: "darkBlue",
     upvotes: 0,
     downvotes: 0,
