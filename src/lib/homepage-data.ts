@@ -131,11 +131,11 @@ export const defaultHomepageContent: HomepageContent = {
   nav: {
     logoLabel: "Nagpur Navodaya Alumni Network",
     centerLinks: [
-      { label: "About", href: "#" },
-      { label: "Events", href: "#" },
-      { label: "Businesses", href: "#" },
-      { label: "Impact", href: "#" },
-      { label: "Blog", href: "#" },
+      { label: "About", href: "/about" },
+      { label: "Events", href: "#events" },
+      { label: "Businesses", href: "#businesses" },
+      { label: "Impact", href: "#impact" },
+      { label: "Blog", href: "/newsroom" },
     ],
     ctaLabel: "Join Community",
   },
@@ -288,7 +288,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Education",
       city: "Nagpur",
       logo: "https://images.unsplash.com/photo-1523050854058-8df90110c7f1?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Affordable test prep and career counselling for rural students across Maharashtra.",
     },
     {
@@ -298,7 +298,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Agriculture",
       city: "Pune",
       logo: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Farm-to-table organic produce delivering fresh vegetables to 500+ homes weekly.",
     },
     {
@@ -308,7 +308,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Technology",
       city: "Bangalore",
       logo: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Full-stack development studio building SaaS products for early-stage startups.",
     },
     {
@@ -318,7 +318,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Healthcare",
       city: "Delhi",
       logo: "https://images.unsplash.com/photo-1551076805-e1869033e561?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Chain of affordable primary care clinics with online consultation across NCR.",
     },
     {
@@ -328,7 +328,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Food & Beverage",
       city: "Nagpur",
       logo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Authentic Nagpurian snacks and sweets delivered fresh across India.",
     },
     {
@@ -338,7 +338,7 @@ export const defaultHomepageContent: HomepageContent = {
       category: "Design",
       city: "Mumbai",
       logo: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=200&h=200&fit=crop",
-      website: "#",
+      website: "/join",
       bio: "Branding and UI/UX design studio with a portfolio of 50+ D2C brands.",
     },
   ],
@@ -568,25 +568,25 @@ export const defaultHomepageContent: HomepageContent = {
       {
         title: "Organization",
         links: [
-          { label: "About", href: "#" },
-          { label: "Committee", href: "#" },
-          { label: "Chapters", href: "#" },
+          { label: "About", href: "/about" },
+          { label: "Committee", href: "/committee" },
+          { label: "Chapters", href: "/join" },
         ],
       },
       {
         title: "Community",
         links: [
-          { label: "Events", href: "#" },
-          { label: "Businesses", href: "#" },
-          { label: "Blog", href: "#" },
+          { label: "Events", href: "#events" },
+          { label: "Businesses", href: "#businesses" },
+          { label: "Blog", href: "/newsroom" },
         ],
       },
       {
         title: "Legal",
         links: [
-          { label: "Privacy", href: "#" },
-          { label: "Terms", href: "#" },
-          { label: "Refund Policy", href: "#" },
+          { label: "Privacy", href: "/privacy" },
+          { label: "Terms", href: "/terms" },
+          { label: "Refund Policy", href: "/terms" },
         ],
       },
     ],

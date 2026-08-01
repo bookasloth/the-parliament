@@ -19,13 +19,17 @@ interface HouseBtn {
   textColor: string;
 }
 
+// Backgrounds darkened so text clears WCAG AA (4.5:1) in every state. House hues
+// kept; only lightness dropped. Udaigiri/Indira use black text (vivid on yellow/
+// orange). ponytail: revert to the brighter shades if the palette matters more
+// than the contrast audit.
 const houseButtons: HouseBtn[] = [
-  { id: "btn-1", name: "Aravali", hoverText: "Jawahar", defaultBg: "#5a9bd5", hoverBg: "#428bca", activeBg: "#2e6da4", textColor: "#ffffff" },
-  { id: "btn-2", name: "Nilgiri", hoverText: "Tilak", defaultBg: "#70ad47", hoverBg: "#5c9e3d", activeBg: "#447f2a", textColor: "#ffffff" },
-  { id: "btn-3", name: "Shiwalik", hoverText: "Subhash", defaultBg: "#e8503a", hoverBg: "#c7432f", activeBg: "#a53422", textColor: "#ffffff" },
+  { id: "btn-1", name: "Aravali", hoverText: "Jawahar", defaultBg: "#2e6da4", hoverBg: "#255a87", activeBg: "#1e4a70", textColor: "#ffffff" },
+  { id: "btn-2", name: "Nilgiri", hoverText: "Tilak", defaultBg: "#3a6b23", hoverBg: "#30591d", activeBg: "#274a18", textColor: "#ffffff" },
+  { id: "btn-3", name: "Shiwalik", hoverText: "Subhash", defaultBg: "#a53422", hoverBg: "#8f2c1d", activeBg: "#7a2518", textColor: "#ffffff" },
   { id: "btn-4", name: "Udaigiri", hoverText: "Rajiv", defaultBg: "#ffe135", hoverBg: "#ffda03", activeBg: "#edc001", textColor: "#000000" },
-  { id: "btn-5", name: "Indira", hoverText: "Indira", defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#ffffff" },
-  { id: "btn-6", name: "Laxmi", hoverText: "Laxmi", defaultBg: "#e75480", hoverBg: "#d6336c", activeBg: "#b82055", textColor: "#ffffff" },
+  { id: "btn-5", name: "Indira", hoverText: "Indira", defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#000000" },
+  { id: "btn-6", name: "Laxmi", hoverText: "Laxmi", defaultBg: "#b82055", hoverBg: "#a01c49", activeBg: "#87173d", textColor: "#ffffff" },
 ];
 
 export function SignupCard() {
@@ -60,8 +64,8 @@ export function SignupCard() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Batch (7 Years)</label>
-            <select defaultValue="" className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 text-gray-500 appearance-none">
+            <label htmlFor="signup-batch" className="block text-xs font-semibold text-gray-700 mb-1">Batch (7 Years)</label>
+            <select id="signup-batch" aria-label="Batch (7 Years)" defaultValue="" className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 text-gray-500 appearance-none">
               <option value="" disabled>Select your batch</option>
               {batchOptions.map((b) => (
                 <option key={b.value} value={b.value}>{b.label}</option>
@@ -106,9 +110,9 @@ export function SignupCard() {
 
         <p className="mt-4 text-center text-xs text-gray-400">
           By continuing, you agree to{" "}
-          <a href="#" className="text-brand underline underline-offset-2 hover:text-brand-600">Terms</a>
+          <a href="/terms" className="text-brand underline underline-offset-2 hover:text-brand-600">Terms</a>
           {" & "}
-          <a href="#" className="text-brand underline underline-offset-2 hover:text-brand-600">Privacy Policy</a>
+          <a href="/privacy" className="text-brand underline underline-offset-2 hover:text-brand-600">Privacy Policy</a>
         </p>
       </div>
     </motion.div>

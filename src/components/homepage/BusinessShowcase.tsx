@@ -13,7 +13,7 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
   if (businesses.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28 bg-brand-50/20">
+    <section id="businesses" className="scroll-mt-20 py-20 lg:py-28 bg-brand-50/20">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
@@ -73,7 +73,7 @@ export function BusinessShowcase({ businesses = [] }: BusinessShowcaseProps) {
 
         <div className="mt-10 text-center">
           <a
-            href="#"
+            href="/join"
             className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
           >
             Explore All Businesses

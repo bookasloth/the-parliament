@@ -47,16 +47,18 @@ export function Homepage({
   return (
     <div className="flex min-h-screen flex-col">
       {sections.nav && <StickyNav {...content.nav} />}
-      {sections.hero && <HeroSection content={content.hero} />}
-      {/* activity section removed */}
-      {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />}
-      {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />}
-      {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />}
-      {sections.events && <UpcomingEvents events={content.upcomingEvents} />}
-      {sections.impact && <ImpactDashboard metrics={content.impactMetrics} />}
-      {sections.testimonials && <Testimonials testimonials={content.testimonials} />}
-      {sections.houses && <HousePride houses={content.houses} />}
-      {sections.finalCta && <FinalCTA {...content.finalCta} />}
+      <main id="main-content" className="flex flex-1 flex-col">
+        {sections.hero && <HeroSection content={content.hero} />}
+        {/* activity section removed */}
+        {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />}
+        {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />}
+        {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />}
+        {sections.events && <UpcomingEvents events={content.upcomingEvents} />}
+        {sections.impact && <ImpactDashboard metrics={content.impactMetrics} />}
+        {sections.testimonials && <Testimonials testimonials={content.testimonials} />}
+        {sections.houses && <HousePride houses={content.houses} />}
+        {sections.finalCta && <FinalCTA {...content.finalCta} />}
+      </main>
       {sections.footer && <Footer {...content.footer} />}
     </div>
   );
