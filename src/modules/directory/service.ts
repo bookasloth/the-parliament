@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache"
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 
@@ -119,12 +120,21 @@ export async function searchDirectory(
   }
 }
 
-export async function getDirectoryFacets(schoolId?: string) {
-  const where = schoolId ? { schoolId } : {}
-  const [batches, houses, divisions] = await Promise.all([
-    prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
-    prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
-    prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-  ])
-  return { batches, houses, divisions }
-}
+// Facets (batch/house/division lists) are near-static and fetched on every
+// community page load — cache them. Time-based revalidate keeps it simple; these
+// only change when an admin adds a batch/house/division, so 1h staleness is fine.
+// ponytail: add a `revalidateTag("directory-facets")` on those admin mutations if
+// instant freshness ever matters.
+export const getDirectoryFacets = unstable_cache(
+  async (schoolId?: string) => {
+    const where = schoolId ? { schoolId } : {}
+    const [batches, houses, divisions] = await Promise.all([
+      prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
+      prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
+      prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    ])
+    return { batches, houses, divisions }
+  },
+  ["directory-facets"],
+  { revalidate: 3600, tags: ["directory-facets"] },
+)
