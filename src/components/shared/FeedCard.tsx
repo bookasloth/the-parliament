@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { MediaGallery } from "@/components/shared/MediaGallery"
 import {
   MoreHorizontal,
@@ -66,6 +67,7 @@ export function FeedCard({
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
 }) {
+  const router = useRouter()
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
   const [following, setFollowing] = useState(post.isFollowing ?? false)
@@ -150,6 +152,15 @@ export function FeedCard({
     void onReport(reason)
   }
 
+  // Whole-card click → open the post, but only on "empty" areas. Any real
+  // interactive target (button/link) or an active text selection is left alone.
+  function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (post.isSponsored) return
+    if (e.target instanceof Element && e.target.closest("a,button,input,textarea,label,[role='button']")) return
+    if (typeof window !== "undefined" && window.getSelection()?.toString()) return
+    router.push(`/feed/${post.id}`)
+  }
+
   // Profile link — sponsors go to their URL, alumni to /[username]; "#!" when unknown (anon/mock).
   const profileHref = post.isSponsored
     ? post.sponsorUrl ?? "#!"
@@ -202,7 +213,12 @@ export function FeedCard({
       ]
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-[6px] transition-shadow hover:shadow-card">
+    <div
+      onClick={post.isSponsored ? undefined : handleCardClick}
+      className={`bg-white border border-[#E5E7EB] rounded-[6px] transition-shadow hover:shadow-card${
+        post.isSponsored ? "" : " cursor-pointer"
+      }`}
+    >
       {/* Card Header */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-start justify-between">
