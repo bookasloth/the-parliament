@@ -203,7 +203,13 @@ const commentSelect = {
       legalName: true,
       isVerified: true,
       membershipStatus: true,
-      profile: { select: { photoUrl: true, headline: true } },
+      profile: {
+        select: {
+          photoUrl: true,
+          headline: true,
+          batch: { select: { label: true, startYear: true, endYear: true } },
+        },
+      },
     },
   },
 } satisfies Prisma.CommentSelect
@@ -306,7 +312,7 @@ function postSelect(viewerId?: string) {
             photoUrl: true,
             headline: true,
             house: { select: { id: true, name: true, colorHex: true } },
-            batch: { select: { id: true, label: true } },
+            batch: { select: { id: true, label: true, startYear: true, endYear: true } },
           },
         },
       },

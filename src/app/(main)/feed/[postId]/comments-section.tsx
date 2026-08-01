@@ -3,8 +3,10 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react"
-import { ArrowBigDown, ArrowBigUp, Flag, MoreHorizontal, ShieldCheck, Smile, Trash2 } from "lucide-react"
+import { ThumbsDown, ThumbsUp, Flag, MoreHorizontal, Smile, Trash2 } from "lucide-react"
 import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction } from "../actions"
+import { VerifiedBadge } from "@/components/shared/feed-card/blocks"
+import type { FeedMembership } from "@/components/shared/feed-card/types"
 import MentionInput from "./mention-input"
 
 export interface CommentView {
@@ -22,6 +24,7 @@ export interface CommentView {
     membershipStatus: string
     avatarUrl: string
     headline: string | null
+    batch: string | null
   }
   replies: CommentView[]
 }
@@ -58,14 +61,6 @@ const RING: Record<string, string> = {
   associate: "#2563EB",
   inactive: "#6B7280",
 }
-const ASTERISK: Record<string, string> = {
-  associate: "text-amber-500",
-  student: "text-green-500",
-  premium: "text-blue-800",
-  life: "text-yellow-500",
-  inactive: "text-gray-400",
-  committee: "text-pink-500",
-}
 const EMOJIS = ["😀", "😂", "❤️", "🔥", "👏", "🎉", "🙏", "💯", "😮", "😢", "👍", "🚀"]
 
 function relativeTime(iso: string): string {
@@ -98,6 +93,7 @@ function makeView(body: string, viewer: Viewer): CommentView {
       membershipStatus: "inactive",
       avatarUrl: viewer.avatarUrl,
       headline: null,
+      batch: null,
     },
     replies: [],
   }
@@ -147,29 +143,55 @@ function Avatar({ c }: { c: CommentView }) {
   )
 }
 
-function CommentBubble({ c }: { c: CommentView }) {
+// Local Follow/Message CTA — mirrors the FeedCard header (optimistic, wire later).
+function CommentFollow() {
+  const [following, setFollowing] = useState(false)
+  return following ? (
+    <a href="/messages" className="text-xs font-semibold text-brand hover:underline whitespace-nowrap">
+      Message
+    </a>
+  ) : (
+    <button
+      onClick={() => setFollowing(true)}
+      className="text-xs font-semibold text-brand hover:underline whitespace-nowrap"
+    >
+      Follow
+    </button>
+  )
+}
+
+function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null }) {
   const isOptimistic = c.id.startsWith("optimistic-")
+  const canFollow = !!viewer && viewer.id !== c.author.id
   return (
     <>
       <Avatar c={c} />
       <div className="flex-1 min-w-0">
-        <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-sm font-semibold text-gray-900">{c.author.displayName}</span>
-            <span className={`text-sm leading-none ${ASTERISK[c.author.membershipStatus] ?? "text-gray-400"}`}>*</span>
-            {c.author.isVerified && <ShieldCheck className="h-3 w-3 text-blue-500 fill-blue-100" />}
-            {c.isAuthor && (
-              <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
-                Author
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-gray-900">{c.author.displayName}</span>
+              {c.author.isVerified && (
+                <VerifiedBadge membership={c.author.membershipStatus as FeedMembership} />
+              )}
+              {c.isAuthor && (
+                <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
+                  Author
+                </span>
+              )}
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                · {isOptimistic ? "Posting…" : relativeTime(c.createdAt)}
               </span>
+            </div>
+            {c.author.batch && (
+              <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{c.author.batch}</div>
             )}
           </div>
-          {c.author.headline && <p className="text-xs text-gray-500 mb-1">{c.author.headline}</p>}
+          {canFollow && <CommentFollow />}
+        </div>
+        <div className="mt-1">
           <Body text={c.body} />
         </div>
-        <p className="mt-1 text-xs text-gray-400">
-          {isOptimistic ? "Posting…" : relativeTime(c.createdAt)}
-        </p>
       </div>
     </>
   )
@@ -254,7 +276,7 @@ function VoteRow({
         }`}
         aria-label="Upvote"
       >
-        <ArrowBigUp className="h-4 w-4" fill={c.myReaction === "upvote" ? "currentColor" : "none"} />
+        <ThumbsUp className="h-4 w-4" fill={c.myReaction === "upvote" ? "currentColor" : "none"} />
       </button>
       <span className={`min-w-[1ch] text-center font-medium ${
         c.myReaction === "upvote" ? "text-brand" : c.myReaction === "downvote" ? "text-red-500" : "text-gray-600"
@@ -269,7 +291,7 @@ function VoteRow({
         }`}
         aria-label="Downvote"
       >
-        <ArrowBigDown className="h-4 w-4" fill={c.myReaction === "downvote" ? "currentColor" : "none"} />
+        <ThumbsDown className="h-4 w-4" fill={c.myReaction === "downvote" ? "currentColor" : "none"} />
       </button>
       {viewer && (
         <button onClick={onReplyClick} className="ml-2 font-medium text-gray-500 hover:text-brand">
@@ -312,7 +334,7 @@ function CommentItem({
   return (
     <li className="px-5 py-4">
       <div className="flex gap-3">
-        <CommentBubble c={comment} />
+        <CommentBubble c={comment} viewer={viewer} />
       </div>
 
       <VoteRow
@@ -358,7 +380,7 @@ function CommentItem({
           {comment.replies.map((r) => (
             <li key={r.id} className={r.id.startsWith("optimistic-") ? "opacity-70" : ""}>
               <div className="flex gap-3">
-                <CommentBubble c={r} />
+                <CommentBubble c={r} viewer={viewer} />
               </div>
               <VoteRow
                 c={r}

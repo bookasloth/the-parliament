@@ -42,6 +42,7 @@ export function FeedCard({
   onReport,
   onHide,
   onPollVote,
+  onFollow,
   commentsLoader,
 }: {
   post: FeedPost
@@ -57,11 +58,14 @@ export function FeedCard({
   onReport?: (reason: string) => void | Promise<unknown>
   onHide?: () => void | Promise<unknown>
   onPollVote?: (optionId: string) => void | Promise<unknown>
+  /** Header follow CTA. When omitted the button still shows but only updates local state. */
+  onFollow?: () => void | Promise<unknown>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
 }) {
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
+  const [following, setFollowing] = useState(post.isFollowing ?? false)
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [commentsData, setCommentsData] = useState<InlineComments | null>(null)
   const [loadingComments, setLoadingComments] = useState(false)
@@ -107,6 +111,11 @@ export function FeedCard({
     if (!onDelete) return
     if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return
     void onDelete()
+  }
+
+  function handleFollow() {
+    setFollowing(true)
+    if (onFollow) Promise.resolve(onFollow()).catch(() => setFollowing(false))
   }
 
   function handleReport() {
@@ -157,10 +166,10 @@ export function FeedCard({
       ]
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-xl transition-shadow hover:shadow-card">
+    <div className="bg-white border border-[#E5E7EB] rounded-[6px] transition-shadow hover:shadow-card">
       {/* Card Header */}
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
             {/* Avatar */}
             <a href="#!" className="flex-shrink-0">
@@ -175,41 +184,46 @@ export function FeedCard({
             {/* Info */}
             <div>
               <div className="flex items-center gap-1.5">
-                <h6 className="text-[15px] font-semibold text-gray-900 mb-0">
+                <h6 className="text-[16px] font-semibold text-gray-900 mb-0">
                   <a href="#!" className="hover:text-brand transition-colors">
                     {post.isSponsored ? post.sponsorName : post.name}
                   </a>
                 </h6>
-                {!post.isSponsored && post.isVerified && <VerifiedBadge />}
+                {!post.isSponsored && post.isVerified && <VerifiedBadge membership={post.membership} />}
                 {post.isSponsored && <span className="text-xs text-gray-500">Sponsored</span>}
-                <span className="text-xs text-[#6B7280]">
-                  · {post.timestamp}
-                  {post.isEdited && <span className="text-[#6B7280]"> · Edited</span>}
+                {!post.isSponsored && post.connectionDegree && (
+                  <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
+                )}
+                <span className="text-xs text-[#6B7280] whitespace-nowrap">
+                  {post.timestamp}
+                  {post.isEdited && <span> · Edited</span>}
                 </span>
               </div>
-              {/* Headline (the job) — LinkedIn-style primary subtitle */}
-              {!post.isSponsored && post.headline && (
-                <p className="mb-0 text-xs text-gray-600 mt-0.5 line-clamp-1">{post.headline}</p>
-              )}
-              {/* Alumni graph context — batch + house, surfaced on every card */}
-              {!post.isSponsored && (post.batch || post.house) && (
-                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-500">
-                  {post.batch && <span>{post.batch}</span>}
-                  {post.batch && post.house && <span className="text-gray-300">·</span>}
-                  {post.house && (
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: post.house.color }}
-                        aria-hidden
-                      />
-                      {post.house.name}
-                    </span>
-                  )}
-                </div>
+              {/* Alumni graph context — "21st batch (2006 - 2013)" */}
+              {!post.isSponsored && post.batch && (
+                <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{post.batch}</div>
               )}
             </div>
           </div>
+          {/* Right cluster — Follow/Message · overflow */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!post.isSponsored && !isAuthor && (
+              following ? (
+                <a
+                  href="/messages"
+                  className="text-[13px] font-semibold text-brand hover:underline whitespace-nowrap"
+                >
+                  Message
+                </a>
+              ) : (
+                <button
+                  onClick={handleFollow}
+                  className="text-[13px] font-semibold text-brand hover:underline whitespace-nowrap"
+                >
+                  Follow
+                </button>
+              )
+            )}
           {/* Overflow Menu */}
           <div className="relative" ref={actionRef}>
             <button
@@ -235,6 +249,7 @@ export function FeedCard({
                 ))}
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
@@ -319,7 +334,7 @@ export function FeedCard({
       </div>
 
       {/* Reaction Bar */}
-      <div className="px-4 pb-2">
+      <div className="mx-4 mt-[15px] mb-[30px] py-0.5 border-t-[0.5px] border-b-[0.5px] border-[#bfbfc4]">
         <ReactionBar
           postId={post.id}
           initialUpvotes={post.upvotes}
