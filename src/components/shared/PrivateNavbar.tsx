@@ -7,7 +7,7 @@ import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
   FileText, UsersRound, Building2, Clock, TrendingUp, ChevronRight,
-  ArrowUpRight, Network,
+  ArrowUpRight,
 } from "lucide-react"
 
 /* ---------------- Membership system ----------------
@@ -254,7 +254,8 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   const profileRef = useClickOutside<HTMLLIElement>(() => setProfileOpen(false))
 
   const iconLinks = [
-    { href: "/network", icon: Network, label: "Network" },
+    // Network hidden for now — page/data still being figured out. Restore when ready.
+    // { href: "/network", icon: Network, label: "Network" },
     { href: "/community", icon: Users, label: "Community" },
     { href: "/events", icon: Calendar, label: "Events" },
     { href: "/messages", icon: MessageSquareText, label: "Messages" },
