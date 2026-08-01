@@ -13,7 +13,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import type { MessageView } from "@/modules/messaging/types"
 import {
   sendMessageAction, markReadAction, realtimeTokenAction,
-  editMessageAction, deleteMessageAction,
+  editMessageAction, deleteMessageAction, refreshMessagesAction,
 } from "../actions"
 
 const EMOJIS = [
@@ -71,7 +71,7 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, otherTyping])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -147,7 +147,20 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
           setOtherOnline(Object.keys(state).some((k) => k !== viewerId))
         })
         .subscribe((status) => {
-          if (status === "SUBSCRIBED") channel.track({ online_at: Date.now() })
+          if (status === "SUBSCRIBED") {
+            channel.track({ online_at: Date.now() })
+            // Catch up on anything sent while the socket was down / connecting so
+            // an open chat never sits on a stale view.
+            refreshMessagesAction(conversationId).then((fresh) => {
+              if (cancelled || fresh.length === 0) return
+              setMessages((prev) => {
+                const seen = new Set(prev.map((m) => m.id))
+                const added = fresh.filter((m) => !seen.has(m.id))
+                if (added.length === 0) return prev
+                return [...prev, ...added].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+              })
+            })
+          }
         })
     }
 
@@ -487,6 +500,18 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
               </div>
             )
           })}
+          {otherTyping && (
+            <div className="flex items-end gap-2">
+              <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-md object-cover flex-shrink-0" />
+              <div className="rounded-2xl px-3.5 py-2.5 shadow-sm" style={{ background: theme.received.background, color: theme.received.color }}>
+                <span className="flex gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-typing-dot" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-typing-dot [animation-delay:0.15s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-typing-dot [animation-delay:0.3s]" />
+                </span>
+              </div>
+            </div>
+          )}
           <div ref={endRef} />
         </div>
       </div>

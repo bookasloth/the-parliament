@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import { after } from "next/server"
 
 // Server-only Supabase Realtime helpers:
 //   - signRealtimeToken: mints a Supabase-format JWT so a logged-in Auth.js user
@@ -32,12 +33,7 @@ export function conversationTopic(conversationId: string): string {
   return `conversation:${conversationId}`
 }
 
-/**
- * Push a broadcast event to a private conversation channel. Best-effort:
- * callers must not let a Realtime hiccup fail the underlying DB write, so this
- * swallows errors (the client's initial fetch + reconnect covers any drop).
- */
-export async function broadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
+async function postBroadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return
@@ -51,5 +47,23 @@ export async function broadcast(conversationId: string, event: string, payload: 
     })
   } catch {
     // ignore — DB write already succeeded; delivery falls back to reconnect fetch
+  }
+}
+
+/**
+ * Push a broadcast event to a private conversation channel. Best-effort:
+ * callers must not let a Realtime hiccup fail the underlying DB write, so this
+ * swallows errors (the client's initial fetch + reconnect covers any drop).
+ *
+ * Runs via `after()` so the ~200-300ms Realtime REST roundtrip lands *after* the
+ * response is flushed — the sender's action returns as soon as the DB write is
+ * durable, and the peer still gets the event on the same request.
+ */
+export async function broadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
+  try {
+    after(() => postBroadcast(conversationId, event, payload))
+  } catch {
+    // outside a request scope (scripts, tests) — just send inline
+    await postBroadcast(conversationId, event, payload)
   }
 }
