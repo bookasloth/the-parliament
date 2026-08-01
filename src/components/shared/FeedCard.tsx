@@ -23,6 +23,7 @@ import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
 import { ReactionBar } from "./feed-card/reaction-bar"
 import CommentsSection from "@/app/(main)/feed/[postId]/comments-section"
+import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 import type { InlineComments } from "@/app/(main)/feed/actions"
 
 // Public surface — kept stable so existing `@/components/shared/FeedCard` imports keep working.
@@ -443,15 +444,10 @@ export function FeedCard({
       {commentsOpen && commentsLoader && (
         loadingComments && !commentsData ? (
           // Known-empty post → no spinner, just say so instantly. Otherwise a
-          // one-comment skeleton while the thread loads.
+          // skeleton (up to 3 rows) while the thread loads.
           post.comments > 0 ? (
-            <div className="flex gap-3 px-5 py-4">
-              <div className="h-9 w-9 flex-shrink-0 animate-pulse rounded-full bg-gray-200" />
-              <div className="flex-1 space-y-2 py-0.5">
-                <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
-              </div>
+            <div className="px-1 py-2">
+              <CommentsSkeleton count={Math.min(post.comments, 3)} />
             </div>
           ) : (
             <div className="px-5 py-4 text-sm text-gray-400">No comments yet.</div>

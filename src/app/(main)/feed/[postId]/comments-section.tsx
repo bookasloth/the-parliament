@@ -72,8 +72,6 @@ interface Props {
   embedded?: boolean
 }
 
-type SortMode = "top" | "new"
-
 type OptimisticAction =
   | { type: "top"; comment: CommentView }
   | { type: "reply"; parentId: string; comment: CommentView }
@@ -449,7 +447,6 @@ function voteChange(
 }
 
 export default function CommentsSection({ postId, initialComments, viewer, embedded = false }: Props) {
-  const [sort, setSort] = useState<SortMode>("top")
   const [text, setText] = useState("")
   const [focused, setFocused] = useState(false)
   const [image, setImage] = useState<string | null>(null)
@@ -498,10 +495,9 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  const sorted = [...comments].sort((a, b) =>
-    sort === "top"
-      ? b.score - a.score || +new Date(b.createdAt) - +new Date(a.createdAt)
-      : +new Date(b.createdAt) - +new Date(a.createdAt),
+  // Top-ranked: highest score first, newest breaks ties.
+  const sorted = [...comments].sort(
+    (a, b) => b.score - a.score || +new Date(b.createdAt) - +new Date(a.createdAt),
   )
 
   function submitTop() {
@@ -580,25 +576,6 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
 
   return (
     <section className={embedded ? "" : "bg-white border border-gray-200 rounded-xl"}>
-      {comments.length > 1 && (
-        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-end">
-          <div className="flex items-center gap-1 text-xs">
-            <button
-              onClick={() => setSort("top")}
-              className={`rounded-full px-2.5 py-1 font-medium ${sort === "top" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
-            >
-              Top
-            </button>
-            <button
-              onClick={() => setSort("new")}
-              className={`rounded-full px-2.5 py-1 font-medium ${sort === "new" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
-            >
-              Newest
-            </button>
-          </div>
-        </div>
-      )}
-
       {viewer && (() => {
         const expanded = focused || text.trim().length > 0 || !!image || uploading
         const canPost = (text.trim().length > 0 || !!image) && !uploading
