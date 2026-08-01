@@ -448,8 +448,7 @@ function voteChange(
   return { next: type, delta: type === "upvote" ? 2 : -2 } // switching sides
 }
 
-export default function CommentsSection({ postId, initialComments, initialCount, viewer, embedded = false }: Props) {
-  const [count, setCount] = useState(initialCount)
+export default function CommentsSection({ postId, initialComments, viewer, embedded = false }: Props) {
   const [sort, setSort] = useState<SortMode>("top")
   const [text, setText] = useState("")
   const [focused, setFocused] = useState(false)
@@ -516,12 +515,10 @@ export default function CommentsSection({ postId, initialComments, initialCount,
     setFocused(false)
     startTransition(async () => {
       applyOptimistic({ type: "top", comment: makeView(body, viewer, img) })
-      setCount((c) => c + 1)
       try {
         await commentOnPost(postId, body, undefined, img ?? undefined)
       } catch {
         setError("Failed to post comment. Please try again.")
-        setCount((c) => c - 1)
       }
     })
   }
@@ -530,12 +527,10 @@ export default function CommentsSection({ postId, initialComments, initialCount,
     if (!viewer) return
     startTransition(async () => {
       applyOptimistic({ type: "reply", parentId, comment: makeView(body, viewer) })
-      setCount((c) => c + 1)
       try {
         await commentOnPost(postId, body, parentId)
       } catch {
         setError("Failed to post reply. Please try again.")
-        setCount((c) => c - 1)
       }
     })
   }
@@ -557,14 +552,12 @@ export default function CommentsSection({ postId, initialComments, initialCount,
     if (!viewer) return
     startTransition(async () => {
       applyOptimistic({ type: "remove", id: c.id })
-      setCount((n) => Math.max(0, n - 1))
       try {
         await deleteCommentAction(postId, c.id)
       } catch {
         // useOptimistic reverts automatically when the transition ends without
         // the server having removed it.
         setError("Failed to delete the comment. Please try again.")
-        setCount((n) => n + 1)
       }
     })
   }
@@ -587,11 +580,8 @@ export default function CommentsSection({ postId, initialComments, initialCount,
 
   return (
     <section className={embedded ? "" : "bg-white border border-gray-200 rounded-xl"}>
-      <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">
-          {count} {count === 1 ? "comment" : "comments"}
-        </h2>
-        {comments.length > 1 && (
+      {comments.length > 1 && (
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-end">
           <div className="flex items-center gap-1 text-xs">
             <button
               onClick={() => setSort("top")}
@@ -606,8 +596,8 @@ export default function CommentsSection({ postId, initialComments, initialCount,
               Newest
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {viewer && (() => {
         const expanded = focused || text.trim().length > 0 || !!image || uploading
