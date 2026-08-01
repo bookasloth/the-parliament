@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { Prisma } from "@/generated/prisma/client"
 import type { ProfileVisibility } from "@/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
@@ -74,6 +74,7 @@ export async function saveAccount(input: {
     },
   })
   revalidatePath(`/${username}`)
+  updateTag("directory")
 }
 
 export async function saveContact(input: { city?: string; address?: string; homeTown?: string }) {
@@ -83,6 +84,7 @@ export async function saveContact(input: { city?: string; address?: string; home
     update: { city: input.city || null, correspondenceAddress: input.address || null, homeTown: input.homeTown || null },
     create: { userId: user.id, city: input.city || null, correspondenceAddress: input.address || null, homeTown: input.homeTown || null },
   })
+  updateTag("directory")
 }
 
 export async function saveProfessional(input: {
@@ -111,6 +113,7 @@ export async function saveProfessional(input: {
       skills,
     },
   })
+  updateTag("directory")
 }
 
 export async function saveSocial(input: {
@@ -143,4 +146,5 @@ export async function closeAccount() {
     where: { id: user.id },
     data: { deletedAt: new Date(), status: "inactive" },
   })
+  updateTag("directory")
 }
