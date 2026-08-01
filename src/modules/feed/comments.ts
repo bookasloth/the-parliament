@@ -105,6 +105,15 @@ export async function toggleCommentReaction(input: {
       })
     } else {
       await awardKarma({
+        userId: input.userId,
+        actionType: "downvote_comment_actor",
+        baseValue: KARMA.CONTENT.DOWNVOTE_COMMENT.actor,
+        counterpartyId: comment.authorId,
+        role: "actor",
+        entityType: "comment",
+        entityId: comment.id,
+      })
+      await awardKarma({
         userId: comment.authorId,
         actionType: "downvote_comment_publisher",
         baseValue: KARMA.CONTENT.DOWNVOTE_COMMENT.publisher,
