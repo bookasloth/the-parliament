@@ -51,7 +51,10 @@ async function assertParticipant(viewerId: string, conversationId: string) {
 
 export async function listConversations(viewerId: string): Promise<ConversationSummary[]> {
   const rows = await prisma.conversation.findMany({
-    where: { participants: { some: { userId: viewerId } } },
+    // lastMessageAt is only set by sendMessage, so an opened-but-never-used chat
+    // (findOrCreateConversation writes the row on "Message" click) stays out of
+    // both sidebars until someone actually says something.
+    where: { participants: { some: { userId: viewerId } }, lastMessageAt: { not: null } },
     orderBy: { lastMessageAt: { sort: "desc", nulls: "last" } },
     select: {
       id: true,
@@ -133,22 +136,38 @@ export async function sendMessage(
   conversationId: string,
   input: { body: string; media?: string[] },
 ): Promise<MessageView> {
-  await assertParticipant(viewerId, conversationId)
   const body = input.body.trim()
   if (body.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
   const media = input.media ?? []
   if (media.some((m) => !isOurPublicUrl(m))) throw new ForbiddenError("Invalid media URL")
   if (!body && media.length === 0) throw new ForbiddenError("Empty message")
-  const [msg] = await prisma.$transaction([
-    prisma.message.create({
-      data: { conversationId, senderId: viewerId, body, media },
-      select: { id: true, senderId: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true },
-    }),
-    prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } }),
-  ])
+
+  // One roundtrip instead of five (participant check + BEGIN + insert + update +
+  // COMMIT). Over a pooled remote Postgres that was the bulk of send latency.
+  // The insert is gated on participation, so a non-participant inserts 0 rows.
+  const rows = await prisma.$queryRaw<
+    { id: string; sender_id: string; body: string; media: string[]; created_at: Date }[]
+  >`
+    WITH ins AS (
+      INSERT INTO messages (id, conversation_id, sender_id, body, media, created_at)
+      SELECT gen_random_uuid(), ${conversationId}::uuid, ${viewerId}::uuid, ${body}, ${JSON.stringify(media)}::jsonb, now()
+      WHERE EXISTS (
+        SELECT 1 FROM conversation_participants
+        WHERE conversation_id = ${conversationId}::uuid AND user_id = ${viewerId}::uuid
+      )
+      RETURNING id, sender_id, body, media, created_at
+    ), bump AS (
+      UPDATE conversations SET last_message_at = now()
+      WHERE id = ${conversationId}::uuid AND EXISTS (SELECT 1 FROM ins)
+    )
+    SELECT id, sender_id, body, media, created_at FROM ins
+  `
+  const msg = rows[0]
+  if (!msg) throw new ForbiddenError("Not a participant")
+
   const view: MessageView = {
-    id: msg.id, senderId: msg.senderId, body: msg.body, media: msg.media as string[],
-    createdAt: msg.createdAt.toISOString(), editedAt: null, deleted: false,
+    id: msg.id, senderId: msg.sender_id, body: msg.body, media: msg.media,
+    createdAt: msg.created_at.toISOString(), editedAt: null, deleted: false,
   }
   await broadcast(conversationId, "new_message", view)
   return view
