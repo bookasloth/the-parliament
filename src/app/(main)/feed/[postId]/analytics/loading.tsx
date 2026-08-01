@@ -5,8 +5,8 @@ export default function AnalyticsLoading() {
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 space-y-5">
       <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
             <div className="space-y-1.5">

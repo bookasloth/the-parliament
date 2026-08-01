@@ -2,18 +2,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
-  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, Eye, Users, Activity, UserPlus,
+  ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Share2, Eye, Bookmark,
 } from "lucide-react"
 import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
-
-// ponytail: reach / interactions / navigation aren't tracked yet — sample
-// figures so the insights layout reads as designed. Swap for real impression
-// data when an impressions table lands.
-const SAMPLE = { reached: 380, interactions: 48, profileVisits: 1, follows: 0 }
 
 export default async function PostAnalyticsPage({
   params,
@@ -50,20 +45,19 @@ export default async function PostAnalyticsPage({
     : []
   const profileMap = new Map(commenterProfiles.map((p) => [p.id, p]))
 
+  const bookmarkCount = await prisma.savedPost.count({ where: { postId } })
+
   const totalReactions = post.upvoteCount + post.downvoteCount
   const upvotePct = totalReactions === 0 ? 0 : Math.round((post.upvoteCount / totalReactions) * 100)
 
-  // 4 × 2 grid — icon + number. Upvotes/downvotes/comments/shares are real;
-  // reach/interactions/profile visits/follows are sample (see SAMPLE above).
+  // Only metrics we actually track — icon + number cards.
   const stats: { label: string; value: number; icon: React.ReactNode; color: string; bg: string }[] = [
     { label: "Views", value: post.viewCount, icon: <Eye className="h-5 w-5" />, color: "text-sky-600", bg: "bg-sky-50" },
-    { label: "Accounts reached", value: SAMPLE.reached, icon: <Users className="h-5 w-5" />, color: "text-cyan-600", bg: "bg-cyan-50" },
     { label: "Upvotes", value: post.upvoteCount, icon: <ThumbsUp className="h-5 w-5" />, color: "text-brand-700", bg: "bg-brand-50" },
     { label: "Downvotes", value: post.downvoteCount, icon: <ThumbsDown className="h-5 w-5" />, color: "text-red-500", bg: "bg-red-50" },
     { label: "Comments", value: post.commentCount, icon: <MessageCircle className="h-5 w-5" />, color: "text-green-600", bg: "bg-green-50" },
     { label: "Shares", value: post.shareCount, icon: <Share2 className="h-5 w-5" />, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "Interactions", value: SAMPLE.interactions, icon: <Activity className="h-5 w-5" />, color: "text-pink-500", bg: "bg-pink-50" },
-    { label: "Profile visits", value: SAMPLE.profileVisits, icon: <UserPlus className="h-5 w-5" />, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "Bookmarks", value: bookmarkCount, icon: <Bookmark className="h-5 w-5" />, color: "text-indigo-500", bg: "bg-indigo-50" },
   ]
 
   return (
@@ -75,8 +69,8 @@ export default async function PostAnalyticsPage({
         <ArrowLeft className="h-4 w-4" /> Back to post
       </Link>
 
-      {/* 4 × 2 stat grid — horizontal cards: icon + number */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Stat grid — horizontal cards: icon + number (tracked metrics only) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {stats.map((s) => (
           <div
             key={s.label}
