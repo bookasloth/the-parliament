@@ -3,9 +3,23 @@ export const KARMA = {
     LIKE: { actor: 1, publisher: 1 },
     COMMENT: { actor: 1.5, publisher: 2 },
     SHARE: { actor: 2, publisher: 3 },
-    DOWNVOTE_POST: { actor: 0, publisher: -2 },
-    DOWNVOTE_COMMENT: { actor: 0, publisher: -1 },
+    DOWNVOTE_POST: { actor: -0.5, publisher: -2 },
+    DOWNVOTE_COMMENT: { actor: -1, publisher: -1 },
   },
+  // Reduced actor value once the daily comment cap is exceeded (see DAILY_COMMENT_CAP).
+  COMMENT_OVER_CAP_ACTOR: 0.5,
+  // Repeated comments on the same target within this window are halved.
+  REPEAT_COMMENT_FACTOR: 0.5,
+  REPEAT_COMMENT_WINDOW_MIN: 10,
+  // If the target downvoted the actor within this window, actor earns no negative.
+  MUTUAL_DOWNVOTE_WINDOW_HOURS: 24,
+  // Running balance never drops below this.
+  TOTAL_FLOOR: 0,
+  // Sybil blunt: karma a user GIVES counts full only if they're verified or their
+  // account is at least this old; otherwise it's weighted down. Fresh throwaway
+  // accounts can't farm a target to the top.
+  GIVER_TRUST_MIN_AGE_DAYS: 7,
+  GIVER_WEIGHT_UNTRUSTED: 0.5,
   BONUS: {
     COMMENT_3_LIKES: 2,
     POST_5_LIKES: 3,

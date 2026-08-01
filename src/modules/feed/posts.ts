@@ -401,6 +401,15 @@ export async function toggleReaction(input: {
       }
     } else if (input.type === "downvote") {
       await awardKarma({
+        userId: input.userId,
+        actionType: "downvote_post_actor",
+        baseValue: KARMA.CONTENT.DOWNVOTE_POST.actor,
+        counterpartyId: post.authorId,
+        role: "actor",
+        entityType: "post",
+        entityId: post.id,
+      })
+      await awardKarma({
         userId: post.authorId,
         actionType: "downvote_publisher",
         baseValue: KARMA.CONTENT.DOWNVOTE_POST.publisher,
