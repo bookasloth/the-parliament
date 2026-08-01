@@ -23,34 +23,69 @@ export default async function FeedPage({
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
+  let viewerCard: ViewerCard | null = null
+  let suggestions: SuggestedConnection[] = []
+  let news: NewsItem[] = []
+  let eggedUsernames: string[] = []
+
   if (schoolId) {
-    const { rows } = await getFeed({
-      schoolId,
-      viewerId: viewer?.id,
-      pageSize: FIRST_PAGE_SIZE,
-      followingOnly,
-    })
+    // These three are mutually independent (feed, the viewer's own card, and
+    // the sidebar rails) — one round-trip group instead of three sequential
+    // awaits. The egg overlay below depends on `users`, so it stays a second hop.
+    const [{ rows }, u, [users, pinned]] = await Promise.all([
+      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
+      viewer?.id
+        ? prisma.user.findUnique({
+            where: { id: viewer.id },
+            select: {
+              displayName: true,
+              legalName: true,
+              profile: {
+                select: {
+                  photoUrl: true,
+                  headline: true,
+                  batch: { select: { label: true } },
+                  house: { select: { name: true } },
+                },
+              },
+            },
+          })
+        : Promise.resolve(null),
+      Promise.all([
+        prisma.user.findMany({
+          where: {
+            schoolId,
+            status: "active",
+            ...(viewer?.id ? { id: { not: viewer.id } } : {}),
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            legalName: true,
+            profile: {
+              select: {
+                photoUrl: true,
+                headline: true,
+                city: true,
+              },
+            },
+          },
+        }),
+        prisma.post.findMany({
+          where: { schoolId, isPinned: true, status: "visible" },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { id: true, body: true, createdAt: true },
+        }),
+      ]),
+    ])
+
     mappedReal = rows.map(mapRowToFeedPost)
     hasMore = rows.length === FIRST_PAGE_SIZE
-  }
 
-  let viewerCard: ViewerCard | null = null
-  if (viewer?.id) {
-    const u = await prisma.user.findUnique({
-      where: { id: viewer.id },
-      select: {
-        displayName: true,
-        legalName: true,
-        profile: {
-          select: {
-            photoUrl: true,
-            headline: true,
-            batch: { select: { label: true } },
-            house: { select: { name: true } },
-          },
-        },
-      },
-    })
     if (u) {
       const name = u.displayName || u.legalName
       viewerCard = {
@@ -63,42 +98,7 @@ export default async function FeedPage({
         house: u.profile?.house?.name ?? "—",
       }
     }
-  }
 
-  let suggestions: SuggestedConnection[] = []
-  let news: NewsItem[] = []
-  let eggedUsernames: string[] = []
-  if (schoolId) {
-    const [users, pinned] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          schoolId,
-          status: "active",
-          ...(viewer?.id ? { id: { not: viewer.id } } : {}),
-        },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          legalName: true,
-          profile: {
-            select: {
-              photoUrl: true,
-              headline: true,
-              city: true,
-            },
-          },
-        },
-      }),
-      prisma.post.findMany({
-        where: { schoolId, isPinned: true, status: "visible" },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { id: true, body: true, createdAt: true },
-      }),
-    ])
     suggestions = users.map((u) => {
       const name = u.displayName || u.legalName
       return {

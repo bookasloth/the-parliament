@@ -44,18 +44,16 @@ function relative(date: Date): string {
   return "recently"
 }
 
-export async function listGroups(
-  schoolId: string,
-  userId: string | null,
-): Promise<GroupListItem[]> {
+/**
+ * Shared, non-per-viewer group list (isJoined=false baseline). Safe to cache
+ * across viewers; the per-user membership overlay comes from `myGroupIds`.
+ */
+export async function listGroupsShared(schoolId: string): Promise<GroupListItem[]> {
   const groups = await prisma.group.findMany({
     where: { schoolId },
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { members: { where: { status: "active" } } } },
-      members: userId
-        ? { where: { userId, status: "active" }, select: { userId: true } }
-        : false,
     },
   })
 
@@ -69,11 +67,30 @@ export async function listGroups(
     category: g.type,
     cover: g.bannerUrl ?? "",
     icon: iconForType(g.type),
-    isJoined: userId ? (g as { members?: unknown[] }).members?.length ? true : false : false,
+    isJoined: false,
     lastActivity: relative(g.createdAt),
     postsThisWeek: 0,
     isFeatured: false,
   }))
+}
+
+/** Group ids the user is an active member of (per-viewer overlay). */
+export async function myGroupIds(userId: string): Promise<Set<string>> {
+  const rows = await prisma.groupMember.findMany({
+    where: { userId, status: "active" },
+    select: { groupId: true },
+  })
+  return new Set(rows.map((r) => r.groupId))
+}
+
+export async function listGroups(
+  schoolId: string,
+  userId: string | null,
+): Promise<GroupListItem[]> {
+  const shared = await listGroupsShared(schoolId)
+  if (!userId) return shared
+  const joined = await myGroupIds(userId)
+  return shared.map((g) => (joined.has(g.id) ? { ...g, isJoined: true } : g))
 }
 
 export async function joinGroup(userId: string, groupId: string): Promise<void> {
