@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { updateTag } from "next/cache"
+import { revalidateTag } from "next/cache"
 import { z } from "zod"
 import { handleError, ok } from "@/lib/api"
 import { requireAdmin } from "@/lib/gate"
@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
       // Verified status feeds the cached community directory (badge, verified
       // count, "verified only" filter) — refresh it now instead of waiting out
       // the revalidate window.
-      updateTag("directory")
+      // Route handlers can't use updateTag (Server Actions only); revalidateTag
+      // with a cache-life profile is the route-handler-safe purge.
+      revalidateTag("directory", "max")
     } else {
       await rejectVerification({
         verificationId: body.verificationId,
