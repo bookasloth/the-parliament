@@ -39,7 +39,7 @@ export function HeroSection({
                 {content.primaryCta}
               </a>
               <a
-                href="#"
+                href="/about"
                 className="rounded border border-charcoal-200 bg-white px-7 py-3 text-sm font-semibold text-charcoal-600 hover:bg-charcoal-50 transition-all shadow-sm"
               >
                 {content.secondaryCta}

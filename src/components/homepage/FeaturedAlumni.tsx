@@ -40,7 +40,7 @@ export function FeaturedAlumni({ alumni = [] }: FeaturedAlumniProps) {
 
         <div className="mt-10 text-center">
           <a
-            href="#"
+            href="/join"
             className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
           >
             Explore Alumni Directory

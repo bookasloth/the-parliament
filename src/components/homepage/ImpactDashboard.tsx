@@ -43,7 +43,7 @@ export function ImpactDashboard({ metrics = [] }: ImpactDashboardProps) {
   if (metrics.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28">
+    <section id="impact" className="scroll-mt-20 py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">

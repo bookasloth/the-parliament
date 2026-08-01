@@ -13,7 +13,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
   if (events.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28">
+    <section id="events" className="scroll-mt-20 py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand">
@@ -65,7 +65,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
                   </div>
                 </div>
                 <a
-                  href="#"
+                  href="/join"
                   className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-600 transition-colors group/cta"
                 >
                   Register Now
@@ -78,7 +78,7 @@ export function UpcomingEvents({ events = [] }: UpcomingEventsProps) {
 
         <div className="mt-10 text-center">
           <a
-            href="#"
+            href="/join"
             className="inline-flex items-center gap-2 rounded border border-charcoal-200 bg-white px-7 py-3 text-sm font-semibold text-charcoal-600 hover:bg-charcoal-50 transition-all shadow-sm"
           >
             View All Events
