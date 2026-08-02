@@ -15,27 +15,27 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://nnawca.org"),
   title: {
-    default: "The Parliament | JNV Nagpur Alumni Network",
-    template: "%s | The Parliament",
+    default: "NNAWCA | JNV Nagpur Alumni Network",
+    template: "%s | NNAWCA",
   },
   description:
     "The official alumni network of Jawahar Navodaya Vidyalaya, Navegaon Khairi, Nagpur — managed by NNAWCA",
-  applicationName: "The Parliament",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "The Parliament" },
+  applicationName: "NNAWCA",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "NNAWCA" },
   formatDetection: { telephone: false },
   keywords: ["JNV Nagpur", "NNAWCA", "alumni", "Navodaya", "Jawahar Navodaya Vidyalaya"],
   openGraph: {
-    title: "The Parliament | JNV Nagpur Alumni Network",
+    title: "NNAWCA | JNV Nagpur Alumni Network",
     description:
       "The official alumni network of JNV Nagpur, managed by NNAWCA.",
     url: "https://nnawca.org",
-    siteName: "The Parliament",
+    siteName: "NNAWCA",
     type: "website",
     locale: "en_IN",
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Parliament | JNV Nagpur Alumni Network",
+    title: "NNAWCA | JNV Nagpur Alumni Network",
     description:
       "The official alumni network of JNV Nagpur, managed by NNAWCA.",
   },

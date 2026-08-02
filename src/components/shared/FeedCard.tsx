@@ -289,7 +289,7 @@ export function FeedCard({
             {/* Sponsored chip — clickable, opens mail to advertise. */}
             {post.isSponsored && (
               <a
-                href="mailto:sndatarkar@gmail.com?subject=Advertise%20on%20The%20Parliament"
+                href="mailto:sndatarkar@gmail.com?subject=Advertise%20on%20NNAWCA"
                 className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-200 transition-colors whitespace-nowrap"
                 title="Advertise here"
               >

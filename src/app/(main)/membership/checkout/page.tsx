@@ -74,7 +74,7 @@ function CheckoutInner() {
         order_id: data.razorpayOrderId,
         amount: data.amountPaise,
         currency: data.currency,
-        name: "NNAWCA · The Parliament",
+        name: "NNAWCA",
         description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} membership — contribution to NNAWCA`,
         prefill: { name: data.customer?.name, email: data.customer?.email },
         theme: { color: "#009ae4" },

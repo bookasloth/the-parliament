@@ -128,7 +128,7 @@ function ShareDropdown({
 
   const postUrl =
     typeof window !== "undefined" ? `${window.location.origin}/feed/${postId}` : `/feed/${postId}`
-  const shareText = `Check out this post on The Parliament`
+  const shareText = `Check out this post on NNAWCA`
 
   function reshare() {
     // One-click, no quote prompt.

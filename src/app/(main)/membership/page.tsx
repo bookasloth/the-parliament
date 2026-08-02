@@ -571,6 +571,6 @@ const whereItGoes = [
   { icon: <Briefcase className="h-5 w-5" />, title: "Career Support", desc: "Job board, referrals, business directory, hiring pipelines for alumni." },
   { icon: <BookOpen className="h-5 w-5" />, title: "Knowledge & Archives", desc: "Yearbooks, magazines, the digital history of JNV Nagpur." },
   { icon: <MapPin className="h-5 w-5" />, title: "Alumni Map", desc: "City-level network — find alumni anywhere in the world." },
-  { icon: <MessageCircle className="h-5 w-5" />, title: "Platform & Tools", desc: "Hosting, maintenance, and continued development of The Parliament." },
+  { icon: <MessageCircle className="h-5 w-5" />, title: "Platform & Tools", desc: "Hosting, maintenance, and continued development of NNAWCA." },
   { icon: <FileText className="h-5 w-5" />, title: "Governance", desc: "Annual reports, audits, AGMs, transparency for every contribution." },
 ]

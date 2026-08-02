@@ -88,7 +88,7 @@ export async function approveVerification(opts: {
     userId: v.userId,
     kind: "verification_approved",
     title: "Verification approved",
-    body: "Welcome to The Parliament. You're now a Verified Alumni.",
+    body: "Welcome to NNAWCA. You're now a Verified Alumni.",
     entityType: "alumni_verification",
     entityId: v.id,
     email: { legalName: v.user.legalName, loginUrl: opts.loginUrl },
