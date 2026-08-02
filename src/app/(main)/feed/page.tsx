@@ -24,6 +24,7 @@ export default async function FeedPage({
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
+  let caughtUp = false
   let viewerCard: ViewerCard | null = null
   let suggestions: SuggestedConnection[] = []
   let news: NewsItem[] = []
@@ -33,7 +34,7 @@ export default async function FeedPage({
     // These three are mutually independent (feed, the viewer's own card, and
     // the sidebar rails) — one round-trip group instead of three sequential
     // awaits. The egg overlay below depends on `users`, so it stays a second hop.
-    const [{ rows }, u, [users, pinned]] = await Promise.all([
+    const [{ rows, caughtUp: cu }, u, [users, pinned]] = await Promise.all([
       getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
       viewer?.id
         ? prisma.user.findUnique({
@@ -86,6 +87,7 @@ export default async function FeedPage({
 
     mappedReal = injectFeedAds(rows.map(mapRowToFeedPost))
     hasMore = rows.length === FIRST_PAGE_SIZE
+    caughtUp = cu
 
     if (u) {
       const name = u.displayName || u.legalName
@@ -144,6 +146,7 @@ export default async function FeedPage({
       initialEgged={eggedUsernames}
       loadedAt={new Date().toISOString()}
       activeTab={followingOnly ? "following" : "forYou"}
+      caughtUp={caughtUp}
     />
   )
 }

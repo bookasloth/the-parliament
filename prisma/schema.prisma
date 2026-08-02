@@ -184,6 +184,7 @@ model User {
   sentMessages             Message[]                 @relation("message_sender")
   savedPosts               SavedPost[]
   hiddenPosts              HiddenPost[]
+  postImpressions          PostImpression[]
   postAwards               PostAward[]
   pollVotes                PollVote[]
   notifications            Notification[]
@@ -519,6 +520,7 @@ model Post {
   mentions PostMention[]
   savedBy  SavedPost[]
   hiddenBy HiddenPost[]
+  impressions PostImpression[]
   awards   PostAward[]
   hashtags PostHashtag[]
   poll     Poll?
@@ -662,6 +664,23 @@ model HiddenPost {
   @@id([userId, postId])
   @@index([userId])
   @@map("hidden_posts")
+}
+
+// Feed "seen" log — one row per (viewer, post) the viewer has actually had on
+// screen. Powers the never-repeat feed: getFeed excludes recently-seen posts so
+// each visit surfaces fresh content. Indexed by (userId, seenAt) so the exclusion
+// query can bound itself to the viewer's most-recent impressions.
+model PostImpression {
+  userId String   @map("user_id") @db.Uuid
+  postId String   @map("post_id") @db.Uuid
+  seenAt DateTime @default(now()) @map("seen_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([userId, seenAt])
+  @@map("post_impressions")
 }
 
 model PostAward {
