@@ -1,25 +1,30 @@
-// Onboarding flow — post-registration wizard.
-// Split-screen: left = process (60%), right = house-colour panel (40%).
-// Steps: verify email → work → media & blood → interests → intro post.
+// Onboarding flow — post-verification wizard.
+// Split-screen: left = form, right = live preview.
+// Steps: verify email → profile (mandatory) → work → follow → plan → introduce.
 
-export const ONBOARDING_STEPS = ["verify", "work", "media", "interests", "intro"] as const
+export const ONBOARDING_STEPS = ["verify", "profile", "work", "follow", "plan", "intro"] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 export const STEP_INDEX: Record<OnboardingStep, number> = {
   verify: 0,
-  work: 1,
-  media: 2,
-  interests: 3,
-  intro: 4,
+  profile: 1,
+  work: 2,
+  follow: 3,
+  plan: 4,
+  intro: 5,
 }
 
 export const STEP_LABELS: Record<string, string> = {
   verify: "Verify",
+  profile: "Profile",
   work: "Work",
-  media: "Profile",
-  interests: "Interests",
+  follow: "Follow",
+  plan: "Plan",
   intro: "Introduce",
 }
+
+// Screen 1 is the only required step; the rest can be skipped.
+export const MANDATORY_STEPS: OnboardingStep[] = ["verify", "profile"]
 
 // ── Per-step data shapes ─────────────────────────────────────────
 export interface VerifyData {
@@ -27,26 +32,29 @@ export interface VerifyData {
   verified: boolean
 }
 
+export interface ProfileData {
+  photoUrl: string // local object URL (preview) or public URL
+  photoKey: string // R2 object key (persisted → public URL on save)
+  username: string
+  bio: string
+  location: string
+}
+
 export interface WorkData {
+  industry: string
   company: string
   position: string
   sinceYear: string
-  sinceMonth: string // revealed only after a year is picked
-  sinceDay: string // revealed only after a month is picked
+  sinceMonth: string
+  current: boolean
 }
 
-export interface MediaData {
-  photoUrl: string // local object URL, for preview only
-  coverUrl: string
-  photoKey: string // R2 object key (persisted → public URL on finalize)
-  coverKey: string
-  bio: string
-  bloodGroup: string
-  willingToDonate: boolean
+export interface FollowData {
+  followedIds: string[]
 }
 
-export interface InterestsData {
-  interestIds: string[]
+export interface PlanData {
+  planCode: string // student | associate | premium | life
 }
 
 export interface IntroData {
@@ -55,54 +63,38 @@ export interface IntroData {
 
 export interface OnboardingData {
   verify: VerifyData
+  profile: ProfileData
   work: WorkData
-  media: MediaData
-  interests: InterestsData
+  follow: FollowData
+  plan: PlanData
   intro: IntroData
 }
 
 export const EMPTY_ONBOARDING: OnboardingData = {
   verify: { email: "", verified: false },
-  work: { company: "", position: "", sinceYear: "", sinceMonth: "", sinceDay: "" },
-  media: { photoUrl: "", coverUrl: "", photoKey: "", coverKey: "", bio: "", bloodGroup: "", willingToDonate: false },
-  interests: { interestIds: [] },
+  profile: { photoUrl: "", photoKey: "", username: "", bio: "", location: "" },
+  work: { industry: "", company: "", position: "", sinceYear: "", sinceMonth: "", current: true },
+  follow: { followedIds: [] },
+  plan: { planCode: "student" },
   intro: { text: "" },
 }
 
-// ── Interests (pick at least 3) ──────────────────────────────────
-export const INTEREST_OPTIONS = [
-  { slug: "mentorship", name: "Mentorship" },
-  { slug: "networking", name: "Networking" },
-  { slug: "jobs", name: "Jobs" },
-  { slug: "business", name: "Business" },
-  { slug: "events", name: "Events" },
-  { slug: "donations", name: "Donations" },
-  { slug: "volunteering", name: "Volunteering" },
-  { slug: "sports", name: "Sports" },
-  { slug: "arts", name: "Arts & Culture" },
+// ── Work pickers ─────────────────────────────────────────────────
+export const INDUSTRIES = [
+  "Technology", "Finance", "Healthcare", "Education", "Government / Civil Services",
+  "Engineering", "Law", "Media & Design", "Consulting", "Manufacturing",
+  "Agriculture", "Retail", "Non-profit", "Student", "Other",
 ] as const
 
-export const MIN_INTERESTS = 3
-
-// ── Work "since" pickers ─────────────────────────────────────────
 export const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ] as const
 
-// Current year down to 1970 (year picked first, then month, then day).
 const CURRENT_YEAR = 2026
 export const WORK_YEARS = Array.from({ length: CURRENT_YEAR - 1969 }, (_, i) => String(CURRENT_YEAR - i))
 
-export function daysInMonth(year: number, monthIndex1: number): number {
-  // monthIndex1 is 1-12; day 0 of next month = last day of this month.
-  return new Date(year, monthIndex1, 0).getDate()
-}
-
-export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"] as const
-
 // ── Houses (right panel palette) ─────────────────────────────────
-// Hexes mirror --color-house-* in globals.css.
 export interface HouseColour {
   name: string
   hex: string
@@ -120,35 +112,32 @@ export const HOUSES: HouseColour[] = [
 // Build an intro post from everything the member entered.
 export function buildIntroPost(
   data: OnboardingData,
-  opts: { name?: string } = {},
+  opts: { name?: string; batchLabel?: string; houseName?: string } = {},
 ): string {
   const name = opts.name?.trim()
-  const { work, media, interests } = data
+  const { work, profile } = data
   const lines: string[] = []
 
   lines.push(name ? `Hi everyone, I'm ${name}! 👋` : "Hi everyone! 👋")
 
+  const roots: string[] = []
+  if (opts.houseName) roots.push(`${opts.houseName} House`)
+  if (opts.batchLabel) roots.push(`the ${opts.batchLabel} batch`)
+  if (roots.length) lines.push(`Proud Navodayan from ${roots.join(", ")} at JNV Nagpur.`)
+
   if (work.position || work.company) {
     const role = [work.position, work.company].filter(Boolean).join(" at ")
-    lines.push(`I'm currently working as ${role}${work.sinceYear ? ` (since ${work.sinceYear})` : ""}.`)
+    const tail = work.current && work.sinceYear ? ` (since ${work.sinceYear})` : ""
+    lines.push(`I'm currently working as ${role}${tail}.`)
+  } else if (work.industry) {
+    lines.push(`Working in ${work.industry}.`)
   }
 
-  if (media.bio.trim()) lines.push(media.bio.trim())
+  if (profile.bio.trim()) lines.push(profile.bio.trim())
+  if (profile.location.trim()) lines.push(`Based in ${profile.location.trim()}.`)
 
-  if (interests.interestIds.length) {
-    const names = interests.interestIds
-      .map((slug) => INTEREST_OPTIONS.find((i) => i.slug === slug)?.name)
-      .filter(Boolean)
-    if (names.length) lines.push(`Here to connect around ${names.join(", ")}.`)
-  }
-
-  if (media.willingToDonate) {
-    lines.push(`Happy to help as a blood donor${media.bloodGroup ? ` (${media.bloodGroup})` : ""} if anyone ever needs it. 🩸`)
-  }
-
-  const tags = ["#JNVNagpur", "#Navodayan", "#NNAWCA", ...interests.interestIds.map((s) => `#${s}`)]
   lines.push("")
-  lines.push(tags.join(" "))
+  lines.push("#JNVNagpur #Navodayan #NNAWCA")
 
   return lines.join("\n")
 }
