@@ -2,20 +2,20 @@
 // Split-screen: left = form, right = live preview.
 // Steps: verify email → profile (mandatory) → work → follow → plan → introduce.
 
-export const ONBOARDING_STEPS = ["verify", "profile", "work", "follow", "plan", "intro"] as const
+// Email is verified before login (see /auth/verify), so onboarding starts at
+// the profile step.
+export const ONBOARDING_STEPS = ["profile", "work", "follow", "plan", "intro"] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 export const STEP_INDEX: Record<OnboardingStep, number> = {
-  verify: 0,
-  profile: 1,
-  work: 2,
-  follow: 3,
-  plan: 4,
-  intro: 5,
+  profile: 0,
+  work: 1,
+  follow: 2,
+  plan: 3,
+  intro: 4,
 }
 
 export const STEP_LABELS: Record<string, string> = {
-  verify: "Verify",
   profile: "Profile",
   work: "Work",
   follow: "Follow",
@@ -24,14 +24,9 @@ export const STEP_LABELS: Record<string, string> = {
 }
 
 // Screen 1 is the only required step; the rest can be skipped.
-export const MANDATORY_STEPS: OnboardingStep[] = ["verify", "profile"]
+export const MANDATORY_STEPS: OnboardingStep[] = ["profile"]
 
 // ── Per-step data shapes ─────────────────────────────────────────
-export interface VerifyData {
-  email: string
-  verified: boolean
-}
-
 export interface ProfileData {
   photoUrl: string // local object URL (preview) or public URL
   photoKey: string // R2 object key (persisted → public URL on save)
@@ -62,7 +57,6 @@ export interface IntroData {
 }
 
 export interface OnboardingData {
-  verify: VerifyData
   profile: ProfileData
   work: WorkData
   follow: FollowData
@@ -71,7 +65,6 @@ export interface OnboardingData {
 }
 
 export const EMPTY_ONBOARDING: OnboardingData = {
-  verify: { email: "", verified: false },
   profile: { photoUrl: "", photoKey: "", username: "", bio: "", location: "" },
   work: { industry: "", company: "", position: "", sinceYear: "", sinceMonth: "", current: true },
   follow: { followedIds: [] },

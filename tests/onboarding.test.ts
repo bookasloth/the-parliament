@@ -12,8 +12,8 @@ describe("step ordering", () => {
   it("STEP_INDEX matches the canonical ONBOARDING_STEPS order", () => {
     ONBOARDING_STEPS.forEach((step, i) => expect(STEP_INDEX[step]).toBe(i));
   });
-  it("verify + profile are the mandatory steps", () => {
-    expect(MANDATORY_STEPS).toEqual(["verify", "profile"]);
+  it("profile is the only mandatory step", () => {
+    expect(MANDATORY_STEPS).toEqual(["profile"]);
   });
 });
 

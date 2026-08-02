@@ -3,12 +3,14 @@
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FormEvent, useState, Suspense } from "react"
-import { Field, SubmitButton, FormError } from "../ui"
+import { Field, SubmitButton, FormError, FormSuccess } from "../ui"
 
 function SignInFormInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/feed"
+  const justVerified = searchParams.get("verified") === "1"
+  const prefillEmail = searchParams.get("email") ?? ""
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -37,9 +39,10 @@ function SignInFormInner() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {justVerified && <FormSuccess>Email verified — sign in to finish setting up your account.</FormSuccess>}
       {error && <FormError>{error}</FormError>}
 
-      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" />
+      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" defaultValue={prefillEmail} />
       <Field label="Password" id="password" name="password" type="password" placeholder="Password" required autoComplete="current-password" />
 
       <div className="flex items-center justify-between">
