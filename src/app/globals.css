@@ -180,6 +180,12 @@ h1, h2 {
 }
 .animate-typing-dot { animation: typing-dot 1s ease-in-out infinite; }
 
+/* Profile-edit confetti burst (fires once when strength hits 100%). */
+@keyframes edit-confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

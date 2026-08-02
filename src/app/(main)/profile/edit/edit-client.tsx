@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   UserCircle, Phone, GraduationCap, Share2, Trash2, Camera,
   Globe, Link2, AtSign, MessageCircle, X, SlidersHorizontal, Lock,
-  Sparkles, ArrowRight, Check,
+  Sparkles, ArrowRight, Check, Loader2, AlertCircle,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
@@ -25,7 +25,12 @@ export interface EditInitial {
   visibility: string; showOnMap: boolean; isPublicIndexed: boolean
   membershipStatus: string
 }
-type Facets = { batches: { id: string; label: string }[]; houses: { id: string; name: string; colorHex: string }[] }
+type Facets = {
+  batches: { id: string; label: string }[]
+  houses: { id: string; name: string; colorHex: string }[]
+  industries?: { name: string; count: number }[]
+  cities?: string[]
+}
 type TabKey = "account" | "contact" | "education" | "social" | "close"
 
 const TABS: { key: TabKey; label: string; icon: typeof UserCircle }[] = [
@@ -70,12 +75,12 @@ function Toggle({ on, onChange, label, hint }: { on: boolean; onChange: (v: bool
     </button>
   )
 }
-function SaveBar({ label = "Save changes", onSave }: { label?: string; onSave: () => Promise<void> }) {
+function SaveBar({ label = "Save changes", onSave, onSaved }: { label?: string; onSave: () => Promise<void>; onSaved?: () => void }) {
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle")
   const [err, setErr] = useState("")
   async function run() {
     setErr(""); setState("saving")
-    try { await onSave(); setState("saved"); setTimeout(() => setState("idle"), 2000) }
+    try { await onSave(); onSaved?.(); setState("saved"); setTimeout(() => setState("idle"), 2000) }
     catch (e) { setErr(e instanceof Error ? e.message : "Failed"); setState("idle") }
   }
   return (
@@ -123,6 +128,88 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     return () => window.removeEventListener("beforeunload", h)
   }, [dirty])
 
+  // ---- Live username availability ----
+  const [usernameState, setUsernameState] = useState<{ status: "idle" | "checking" | "available" | "taken" | "invalid"; msg?: string }>({ status: "idle" })
+  useEffect(() => {
+    const raw = f.username.trim()
+    // Unchanged from what's saved → nothing to check.
+    if (raw === initial.username) { setUsernameState({ status: "idle" }); return }
+    if (!raw) { setUsernameState({ status: "invalid", msg: "Username is required" }); return }
+    setUsernameState({ status: "checking" })
+    const ctrl = new AbortController()
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/profile/username-check?u=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
+        const d = await res.json()
+        if (d.available) setUsernameState({ status: "available", msg: `${d.slug} is available` })
+        else setUsernameState({ status: d.reason === "That username is taken" ? "taken" : "invalid", msg: d.reason })
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setUsernameState({ status: "idle" })
+      }
+    }, 450)
+    return () => { clearTimeout(t); ctrl.abort() }
+  }, [f.username, initial.username])
+  const usernameBlocksSave = usernameState.status === "taken" || usernameState.status === "invalid"
+
+  // ---- Debounced autosave (per editable tab) ----
+  const [autoStatus, setAutoStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [autoErr, setAutoErr] = useState("")
+  const savedSlices = useRef<Record<string, string>>({})
+
+  // The serialized slice + save thunk for each editable tab.
+  const tabSave = useMemo(() => ({
+    account: {
+      slice: JSON.stringify([f.firstName, f.lastName, f.nickname, f.username, f.dateOfBirth, f.gender, f.bio, f.headline, f.houseId, f.batchId, f.bloodGroup, f.bloodDonor]),
+      run: () => saveAccount({ firstName: f.firstName, lastName: f.lastName, nickname: f.nickname, username: f.username, dateOfBirth: f.dateOfBirth || undefined, gender: f.gender || undefined, bio: f.bio, headline: f.headline, houseId: f.houseId || undefined, batchId: f.batchId || undefined, bloodGroup: f.bloodGroup || undefined, bloodDonor: f.bloodDonor }),
+      blocked: usernameBlocksSave || usernameState.status === "checking",
+    },
+    contact: {
+      slice: JSON.stringify([f.city, f.address, f.homeTown, f.phone, f.whatsappOptIn]),
+      run: () => saveContact({ city: f.city, address: f.address, homeTown: f.homeTown, phone: f.phone, whatsappOptIn: f.whatsappOptIn }),
+      blocked: false,
+    },
+    education: {
+      slice: JSON.stringify([f.company, f.jobTitle, f.industry, f.department, f.workSince, f.higherEducation, f.skills]),
+      run: () => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills }),
+      blocked: false,
+    },
+    social: {
+      slice: JSON.stringify([f.linkedin, f.github, f.twitter, f.facebook, f.instagram, f.website, f.visibility, f.showOnMap, f.isPublicIndexed]),
+      run: () => saveSocial({ linkedin: f.linkedin, github: f.github, twitter: f.twitter, facebook: f.facebook, instagram: f.instagram, website: f.website, visibility: f.visibility, showOnMap: f.showOnMap, isPublicIndexed: f.isPublicIndexed }),
+      blocked: false,
+    },
+  }), [f, usernameBlocksSave, usernameState.status])
+
+  // Seed the "already saved" snapshot once so autosave doesn't fire on first render.
+  const seeded = useRef(false)
+  if (!seeded.current) {
+    for (const [k, v] of Object.entries(tabSave)) savedSlices.current[k] = v.slice
+    seeded.current = true
+  }
+
+  const markSaved = useCallback((key: string, slice: string) => { savedSlices.current[key] = slice }, [])
+
+  const current = tab === "close" ? null : tabSave[tab]
+  useEffect(() => {
+    if (!current) return
+    if (current.slice === savedSlices.current[tab]) return
+    if (current.blocked) return
+    setAutoStatus("saving"); setAutoErr("")
+    const t = setTimeout(async () => {
+      try {
+        await current.run()
+        savedSlices.current[tab] = current.slice
+        setAutoStatus("saved")
+        setTimeout(() => setAutoStatus((s) => (s === "saved" ? "idle" : s)), 1800)
+      } catch (e) {
+        setAutoErr(e instanceof Error ? e.message : "Autosave failed")
+        setAutoStatus("error")
+      }
+    }, 1400)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.slice, current?.blocked, tab])
+
   // ---- Profile strength ----
   const skillsArr = f.skills.split(",").map((s) => s.trim()).filter(Boolean)
   const socialCount = [f.linkedin, f.github, f.twitter, f.facebook, f.instagram, f.website].filter(Boolean).length
@@ -133,6 +220,19 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
     industry: f.industry, company: f.company, designation: f.jobTitle,
     higherEducation: f.higherEducation, skills: skillsArr, socialCount,
   })
+
+  // Confetti burst the moment the profile first hits 100%.
+  const [confetti, setConfetti] = useState(false)
+  const prevScore = useRef(strength.score)
+  useEffect(() => {
+    if (prevScore.current < 100 && strength.score >= 100) {
+      setConfetti(true)
+      const t = setTimeout(() => setConfetti(false), 2600)
+      prevScore.current = strength.score
+      return () => clearTimeout(t)
+    }
+    prevScore.current = strength.score
+  }, [strength.score])
 
   const houseName = facets.houses.find((h) => h.id === f.houseId)?.name ?? ""
   const batchLabel = facets.batches.find((b) => b.id === f.batchId)?.label ?? ""
@@ -170,7 +270,21 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
             <Field label="First name"><input className={input} value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} /></Field>
             <Field label="Last name"><input className={input} value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} /></Field>
             <Field label="Nickname" hint="optional"><input className={input} placeholder="Kaalu" value={f.nickname} onChange={(e) => set({ nickname: e.target.value })} /></Field>
-            <Field label="Username"><input className={input} value={f.username} onChange={(e) => set({ username: e.target.value })} /></Field>
+            <Field label="Username">
+              <input
+                className={`${input} ${usernameState.status === "available" ? "!border-green-400" : usernameBlocksSave ? "!border-red-400" : ""}`}
+                value={f.username}
+                onChange={(e) => set({ username: e.target.value })}
+              />
+              {usernameState.status !== "idle" && (
+                <p className={`mt-1 flex items-center gap-1 text-[11px] font-medium ${usernameState.status === "available" ? "text-green-600" : usernameState.status === "checking" ? "text-gray-400" : "text-red-600"}`}>
+                  {usernameState.status === "checking" && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {usernameState.status === "available" && <Check className="h-3 w-3" />}
+                  {usernameBlocksSave && <AlertCircle className="h-3 w-3" />}
+                  {usernameState.status === "checking" ? "Checking availability…" : usernameState.msg}
+                </p>
+              )}
+            </Field>
             <Field label="Birthday"><input type="date" className={input} value={f.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} /></Field>
             <Field label="Gender">
               <div className="flex gap-2">
@@ -193,7 +307,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
             <p className="mt-1 text-[11px] text-gray-400">{128 - f.bio.length} characters left</p>
           </Field>
         </div>
-        <div className="mt-4"><SaveBar onSave={saveAccountNow} /></div>
+        <div className="mt-4"><SaveBar onSave={saveAccountNow} onSaved={() => markSaved("account", tabSave.account.slice)} /></div>
       </Card>
 
       <Card title="Details That May Help Alumni" desc="JNV-specific details that help fellow Navodayans find and connect with you.">
@@ -239,7 +353,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
             <Toggle on={f.bloodDonor} onChange={(v) => set({ bloodDonor: v })} label="Available as a blood donor" hint="Helps alumni find donors in emergencies." />
           </Field>
         </div>
-        <div className="mt-4"><SaveBar onSave={saveAccountNow} /></div>
+        <div className="mt-4"><SaveBar onSave={saveAccountNow} onSaved={() => markSaved("account", tabSave.account.slice)} /></div>
       </Card>
     </div>
   )
@@ -250,14 +364,19 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
         <Field label="Phone number"><input type="tel" className={input} placeholder="+91 98765 43210" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
         <Field label="Primary Email"><input className={`${input} bg-gray-50`} value={f.email} readOnly /></Field>
         <Field label="Address" full><input className={input} placeholder="Street address" value={f.address} onChange={(e) => set({ address: e.target.value })} /></Field>
-        <Field label="City"><input className={input} value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
+        <Field label="City">
+          <input className={input} list="city-suggestions" value={f.city} onChange={(e) => set({ city: e.target.value })} />
+          <datalist id="city-suggestions">
+            {(facets.cities ?? []).map((c) => <option key={c} value={c} />)}
+          </datalist>
+        </Field>
         <Field label="Home Town"><input className={input} value={f.homeTown} onChange={(e) => set({ homeTown: e.target.value })} /></Field>
       </div>
       <div className="mt-3">
         <Toggle on={f.whatsappOptIn} onChange={(v) => set({ whatsappOptIn: v })} label="I'm reachable on WhatsApp at this number" hint="Only shown to verified alumni." />
       </div>
       <p className="mt-3 text-[11px] text-gray-400">Email changes aren&rsquo;t editable here yet.</p>
-      <div className="mt-4"><SaveBar label="Update Contact" onSave={() => saveContact({ city: f.city, address: f.address, homeTown: f.homeTown, phone: f.phone, whatsappOptIn: f.whatsappOptIn })} /></div>
+      <div className="mt-4"><SaveBar label="Update Contact" onSave={() => saveContact({ city: f.city, address: f.address, homeTown: f.homeTown, phone: f.phone, whatsappOptIn: f.whatsappOptIn })} onSaved={() => markSaved("contact", tabSave.contact.slice)} /></div>
     </Card>
   )
 
@@ -266,7 +385,12 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Current Company"><input className={input} placeholder="Company name" value={f.company} onChange={(e) => set({ company: e.target.value })} /></Field>
         <Field label="Designation / Job Title"><input className={input} placeholder="Your position" value={f.jobTitle} onChange={(e) => set({ jobTitle: e.target.value })} /></Field>
-        <Field label="Industry" hint="shown on card"><input className={input} placeholder="e.g. Fintech, Healthcare" value={f.industry} onChange={(e) => set({ industry: e.target.value })} /></Field>
+        <Field label="Industry" hint="shown on card">
+          <input className={input} list="industry-suggestions" placeholder="e.g. Fintech, Healthcare" value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
+          <datalist id="industry-suggestions">
+            {(facets.industries ?? []).map((ind) => <option key={ind.name} value={ind.name} />)}
+          </datalist>
+        </Field>
         <Field label="Department"><input className={input} placeholder="e.g. Engineering" value={f.department} onChange={(e) => set({ department: e.target.value })} /></Field>
         <Field label="Working since" hint="optional"><input type="date" className={input} value={f.workSince} onChange={(e) => set({ workSince: e.target.value })} /></Field>
         <Field label="Highest Education / Institution"><input className={input} placeholder="e.g. B.Tech, VNIT Nagpur" value={f.higherEducation} onChange={(e) => set({ higherEducation: e.target.value })} /></Field>
@@ -276,7 +400,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
           <SkillsInput value={skillsArr} onChange={(arr) => set({ skills: arr.join(", ") })} />
         </Field>
       </div>
-      <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills })} /></div>
+      <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills })} onSaved={() => markSaved("education", tabSave.education.slice)} /></div>
     </Card>
   )
 
@@ -319,7 +443,7 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
         <Toggle on={f.showOnMap} onChange={(v) => set({ showOnMap: v })} label="Show me on the alumni map" hint="Uses your city, never your exact address." />
         <Toggle on={f.isPublicIndexed} onChange={(v) => set({ isPublicIndexed: v })} label="Let search engines index my profile" hint="Only applies when profile is Public." />
       </div>
-      <div className="mt-4"><SaveBar label="Update Social Profiles" onSave={() => saveSocial({ linkedin: f.linkedin, github: f.github, twitter: f.twitter, facebook: f.facebook, instagram: f.instagram, website: f.website, visibility: f.visibility, showOnMap: f.showOnMap, isPublicIndexed: f.isPublicIndexed })} /></div>
+      <div className="mt-4"><SaveBar label="Update Social Profiles" onSave={() => saveSocial({ linkedin: f.linkedin, github: f.github, twitter: f.twitter, facebook: f.facebook, instagram: f.instagram, website: f.website, visibility: f.visibility, showOnMap: f.showOnMap, isPublicIndexed: f.isPublicIndexed })} onSaved={() => markSaved("social", tabSave.social.slice)} /></div>
     </Card>
   )
 
@@ -390,13 +514,24 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-6">
+      {confetti && <Confetti />}
       <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 sm:py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={() => setNavOpen(true)} className="flex items-center gap-2 lg:hidden">
             <span className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-brand text-white"><SlidersHorizontal className="h-4 w-4" /></span>
             <span className="text-base font-bold text-gray-900">Settings</span>
           </button>
-          {dirty && <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes</span>}
+          <div className="ml-auto text-[11px] font-medium">
+            {autoStatus === "saving" ? (
+              <span className="flex items-center gap-1.5 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>
+            ) : autoStatus === "saved" ? (
+              <span className="flex items-center gap-1.5 text-green-600"><Check className="h-3 w-3" /> Saved</span>
+            ) : autoStatus === "error" ? (
+              <span className="flex items-center gap-1.5 text-red-600"><AlertCircle className="h-3 w-3" /> {autoErr || "Autosave failed"}</span>
+            ) : dirty ? (
+              <span className="flex items-center gap-1.5 text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes</span>
+            ) : null}
+          </div>
         </div>
 
         {/* Mobile strength banner */}
@@ -468,6 +603,39 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
       </Card>
     )
   }
+}
+
+/** Lightweight CSS confetti burst — no external deps (CSP blocks CDNs). Mounted
+ *  only on the client the moment strength hits 100%, so Math.random is safe here. */
+function Confetti() {
+  const [pieces] = useState(() =>
+    Array.from({ length: 44 }, (_, i) => ({
+      left: Math.random() * 100,
+      delay: Math.random() * 0.35,
+      duration: 1.8 + Math.random() * 1.1,
+      rotate: Math.random() * 360,
+      color: ["#009ae4", "#4CAF50", "#FFD700", "#e75480", "#ff9933", "#8FA9D9"][i % 6],
+      size: 6 + Math.round(Math.random() * 6),
+    })),
+  )
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" aria-hidden="true">
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="absolute top-[-16px] rounded-[2px]"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size * 1.6,
+            background: p.color,
+            transform: `rotate(${p.rotate}deg)`,
+            animation: `edit-confetti-fall ${p.duration}s linear ${p.delay}s forwards`,
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
 /** Token-chip skills editor. */

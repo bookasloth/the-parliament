@@ -30,13 +30,15 @@ interface AlumniProfileCardProps {
   profileHref?: string
   /** Show a verified check next to the name */
   verified?: boolean
+  /** Color the verified check by the member's tier accent instead of the default blue. */
+  tierColoredVerified?: boolean
   /** Extra content rendered above the action buttons (e.g. mutual connections / role) */
   footer?: ReactNode
   /** Replace the default View Profile / Follow buttons */
   actions?: ReactNode
 }
 
-export function AlumniProfileCard({ alumni, profileHref, verified, footer, actions }: AlumniProfileCardProps) {
+export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVerified, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
   const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   const href = profileHref ?? `/${alumni.id}`
@@ -73,7 +75,11 @@ export function AlumniProfileCard({ alumni, profileHref, verified, footer, actio
           <Link href={href} className="text-inherit no-underline transition-colors duration-300 hover:text-brand">
             {alumni.name}
           </Link>
-          {verified && <ShieldCheck className="h-4 w-4 flex-shrink-0 fill-blue-100 text-blue-500" />}
+          {verified && (
+            tierColoredVerified
+              ? <ShieldCheck className="h-4 w-4 flex-shrink-0" style={{ color: tier.accent }} aria-label="Verified" />
+              : <ShieldCheck className="h-4 w-4 flex-shrink-0 fill-blue-100 text-blue-500" aria-label="Verified" />
+          )}
         </h3>
 
         {/* Headline */}

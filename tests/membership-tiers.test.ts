@@ -27,4 +27,14 @@ describe("MEMBERSHIP_TIERS.next agrees with nextUpgradeTier", () => {
       expect(meta.textClass, tier).toMatch(/^text-/);
     }
   });
+
+  // `accent` is used directly as a CSS `color`/`fill` (tier-colored verified icon in the
+  // community grid/list). Unlike `background` it must be a solid hex — never a gradient —
+  // or the icon renders transparent/black.
+  it("every tier accent is a solid hex color", () => {
+    for (const [tier, meta] of Object.entries(MEMBERSHIP_TIERS)) {
+      expect(meta.accent, tier).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(meta.accent, tier).not.toContain("gradient");
+    }
+  });
 });
