@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     // New active member belongs in the community directory (cached under the
     // "directory" tag) — surface them now instead of waiting out the revalidate.
-    revalidateTag("directory");
+    revalidateTag("directory", "max");
 
     // Auto-follow every new member with Shubham (the network anchor), both ways.
     const anchor = await prisma.user.findUnique({
