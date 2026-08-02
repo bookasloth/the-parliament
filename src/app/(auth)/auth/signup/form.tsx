@@ -34,7 +34,8 @@ function SignUpFormInner() {
       return
     }
 
-    router.push("/auth/signin")
+    const email = String(form.get("email") ?? "").trim()
+    router.push(`/auth/verify?email=${encodeURIComponent(email)}`)
   }
 
   return (

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { colorAvatar } from "@/lib/avatar";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { createVerifyToken, verifyUrl } from "@/lib/email-verify";
+import { createEmailCode } from "@/lib/email-code";
 import { sendEmail } from "@/lib/email";
 import { revalidateTag } from "next/cache";
 
@@ -130,19 +130,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Issue + email a verification link. A mail failure must not fail signup
-    // (the account exists; forgot-password also re-verifies), so it's best-effort.
+    // Issue + email a 5-character verification code. A mail failure must not
+    // fail signup (the account exists; the code can be resent), so best-effort.
+    let devCode: string | undefined;
     try {
-      const rawToken = await createVerifyToken(user.id);
-      await sendEmail("email_verify_link", user.email, {
+      const code = await createEmailCode(user.id);
+      if (!process.env.SMTP_HOST) devCode = code; // dev: no SMTP → surface for testing
+      await sendEmail("email_verification", user.email, {
         legalName: user.legalName,
-        verifyUrl: verifyUrl(rawToken),
+        code,
       }, user.id);
     } catch (mailErr) {
       console.error("signup verification email failed:", mailErr);
     }
 
-    return NextResponse.json({ ok: true, verifyEmailSent: true });
+    return NextResponse.json({ ok: true, verifyEmailSent: true, devCode });
   } catch (e) {
     console.error("signup error:", e);
     return NextResponse.json(

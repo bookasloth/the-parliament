@@ -51,7 +51,7 @@ export function SignupCard() {
       setError(data.error ?? "Something went wrong");
       return;
     }
-    router.push("/auth/signin");
+    router.push(`/auth/verify?email=${encodeURIComponent(email.trim())}`);
   }
 
   return (

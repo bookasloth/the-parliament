@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { StepIndicator } from "./StepIndicator"
-import { StepVerify } from "./StepVerify"
 import { StepProfile } from "./StepProfile"
 import { StepWork } from "./StepWork"
 import { StepFollow } from "./StepFollow"
@@ -34,14 +33,13 @@ interface OnboardingWizardProps {
 }
 
 export function OnboardingWizard(props: OnboardingWizardProps) {
-  const { currentStep, memberName, email, houseName, houseColor, batchLabel, suggestions } = props
+  const { currentStep, memberName, houseName, houseColor, batchLabel, suggestions } = props
   const router = useRouter()
   const [step, setStep] = useState<OnboardingStep>(
-    ONBOARDING_STEPS.includes(currentStep) ? currentStep : "verify",
+    ONBOARDING_STEPS.includes(currentStep) ? currentStep : "profile",
   )
   const [data, setData] = useState<OnboardingData>(() => ({
     ...EMPTY_ONBOARDING,
-    verify: { email, verified: false },
     profile: { ...EMPTY_ONBOARDING.profile, username: props.initialUsername, photoUrl: props.initialPhotoUrl },
   }))
 
@@ -83,7 +81,6 @@ export function OnboardingWizard(props: OnboardingWizardProps) {
         <div className="w-full max-w-xl">
           <StepIndicator current={step} />
           <div className="mt-8">
-            {step === "verify" && <StepVerify email={email} onVerified={next} />}
             {step === "profile" && <StepProfile data={data.profile} set={(p) => patch("profile", p)} onNext={next} />}
             {step === "work" && <StepWork data={data.work} set={(p) => patch("work", p)} onNext={next} onSkip={skip} />}
             {step === "follow" && <StepFollow suggestions={suggestions} data={data.follow} set={(p) => patch("follow", p)} onNext={next} onSkip={skip} />}
