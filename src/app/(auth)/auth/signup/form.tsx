@@ -38,24 +38,14 @@ function SignUpFormInner() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && <FormError>{error}</FormError>}
 
-      <Field label="Full name" id="name" name="name" required autoComplete="name" defaultValue={searchParams.get("name") ?? ""} />
-      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" defaultValue={searchParams.get("email") ?? ""} />
-      <Field
-        label="Password"
-        id="password"
-        name="password"
-        type="password"
-        required
-        autoComplete="new-password"
-      />
-      <SubmitButton loading={loading} idleLabel="Create account" />
-      <p className="text-center text-xs text-neutral-400">
-        Already have an account?{" "}
-        <a href="/auth/signin" className="font-medium text-[#009ae4] hover:underline">Sign in</a>
-      </p>
+      <Field label="Full Name" id="name" name="name" placeholder="Your full name" required autoComplete="name" defaultValue={searchParams.get("name") ?? ""} />
+      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" defaultValue={searchParams.get("email") ?? ""} />
+      <Field label="Password" id="password" name="password" type="password" placeholder="Create a password" required autoComplete="new-password" />
+
+      <SubmitButton loading={loading} idleLabel="Register at NNAWCA" />
     </form>
   )
 }

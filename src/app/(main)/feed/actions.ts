@@ -23,6 +23,7 @@ import {
 } from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
 import { getFeed, listPostComments } from "@/modules/feed/query"
+import { prepareImpressionBatch } from "@/modules/feed/impressions"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { mapRowToFeedPost } from "./map-row"
@@ -242,6 +243,34 @@ export async function reportPostAction(
     details,
   })
   return { ok: true as const }
+}
+
+/**
+ * Record that the viewer has seen these posts (feed seen-tracking). Fire-and-
+ * forget from the client's impression observer — deliberately does NOT
+ * revalidate the feed (an impression must not trigger a re-render/re-fetch).
+ * Ids are validated against real, same-school posts before writing so a
+ * tampered client can't insert rows for arbitrary post ids.
+ */
+export async function recordImpressionsAction(postIds: string[]) {
+  const viewer = await optionalUser()
+  if (!viewer?.id) return { recorded: 0 }
+
+  const ids = prepareImpressionBatch(postIds)
+  if (ids.length === 0) return { recorded: 0 }
+
+  const schoolId = await getDefaultSchoolId()
+  const existing = await prisma.post.findMany({
+    where: { id: { in: ids }, ...(schoolId ? { schoolId } : {}) },
+    select: { id: true },
+  })
+  if (existing.length === 0) return { recorded: 0 }
+
+  await prisma.postImpression.createMany({
+    data: existing.map((p) => ({ userId: viewer.id, postId: p.id })),
+    skipDuplicates: true,
+  })
+  return { recorded: existing.length }
 }
 
 export interface LoadMoreResult {

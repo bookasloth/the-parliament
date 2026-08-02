@@ -1,14 +1,15 @@
-import { SignUpForm } from "./form";
+import { SignupCard } from "@/components/homepage/SignupCard";
+import { AuthActions, AuthFooterNote } from "../ui";
 
+// Exact same card as the homepage right panel.
 export default function SignUpPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-[#009ae4]">Get started</p>
-        <h1 className="font-heading text-2xl font-bold text-white">Create your account</h1>
-        <p className="mt-1 text-sm text-neutral-400">Join the JNV Nagpur alumni network</p>
+    <>
+      <AuthActions ghostLabel="Already Member? Login" ghostHref="/auth/signin" />
+      <div className="m-auto w-full max-w-xl">
+        <SignupCard />
+        <AuthFooterNote />
       </div>
-      <SignUpForm />
-    </div>
+    </>
   );
 }

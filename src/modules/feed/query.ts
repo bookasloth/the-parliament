@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
 
 export interface FeedFilters {
   schoolId: string
@@ -55,15 +56,26 @@ export async function getFeed(filters: FeedFilters) {
   // Per-viewer scoping (skipped on a single-author page): blocks, follow graph,
   // hidden posts, and "followers"-visibility enforcement.
   const followingSet = new Set<string>()
+  // Ids the viewer has already seen — excluded so the feed never repeats.
+  // Kept separate from the hidden set because the "caught up" fallback re-runs
+  // with only hidden excluded (seen posts may resurface, hidden never do).
+  let hiddenIds: string[] = []
+  let seenIds: string[] = []
   if (filters.viewerId && !filters.authorId) {
     const viewerId = filters.viewerId
-    const [blocks, follows, hidden] = await Promise.all([
+    const [blocks, follows, hidden, seen] = await Promise.all([
       prisma.userBlock.findMany({
         where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
         select: { blockerId: true, blockedId: true },
       }),
       prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } }),
       prisma.hiddenPost.findMany({ where: { userId: viewerId }, select: { postId: true } }),
+      prisma.postImpression.findMany({
+        where: { userId: viewerId },
+        orderBy: { seenAt: "desc" },
+        take: SEEN_EXCLUSION_WINDOW,
+        select: { postId: true },
+      }),
     ])
     const blocked = new Set(
       blocks.map((b) => (b.blockerId === viewerId ? b.blockedId : b.blockerId)),
@@ -77,9 +89,12 @@ export async function getFeed(filters: FeedFilters) {
       where.authorId = { notIn: [...blocked] }
     }
 
-    // "not interested" — never resurface hidden posts.
-    const hiddenIds = hidden.map((h) => h.postId)
-    if (hiddenIds.length > 0) where.id = { notIn: hiddenIds }
+    // "not interested" (hidden) never resurface; recently-seen posts are excluded
+    // so each visit surfaces fresh content.
+    hiddenIds = hidden.map((h) => h.postId)
+    seenIds = seen.map((s) => s.postId)
+    const excludeIds = planExclusions(hiddenIds, seenIds)
+    if (excludeIds.length > 0) where.id = { notIn: excludeIds }
 
     // Followers-scoped posts are visible only to the author's followers (or self).
     // ponytail: "groups" scope treated as public here; group-feed enforcement lives
@@ -98,13 +113,29 @@ export async function getFeed(filters: FeedFilters) {
       ? [{ isPinned: "desc" }, { createdAt: "desc" }]
       : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
 
-  const rows = await prisma.post.findMany({
+  let rows = await prisma.post.findMany({
     where,
     orderBy,
     skip: (page - 1) * pageSize,
     take: pageSize,
     select: postSelect(filters.viewerId),
   })
+
+  // "Caught up": the viewer has seen everything on page 1. Re-run without the
+  // seen exclusion (hidden/blocked still enforced) so the feed is never blank —
+  // they simply re-browse recent posts.
+  let caughtUp = false
+  if (shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length })) {
+    caughtUp = true
+    where.id = hiddenIds.length > 0 ? { notIn: hiddenIds } : undefined
+    rows = await prisma.post.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: postSelect(filters.viewerId),
+    })
+  }
 
   // Affinity: on the "For You" feed, float posts by followed authors up within
   // the page (stable — keeps hot-score order inside each group). ponytail: an
@@ -142,6 +173,7 @@ export async function getFeed(filters: FeedFilters) {
     page,
     pageSize,
     rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
+    caughtUp,
   }
 }
 
