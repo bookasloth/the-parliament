@@ -74,7 +74,7 @@ export function AuthActions({ ghostLabel, ghostHref }: { ghostLabel: string; gho
       <a href={ghostHref} className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-brand-100">
         {ghostLabel}
       </a>
-      <a href="/directory" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600">
+      <a href="/community" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600">
         Find an Alumni
       </a>
     </div>
