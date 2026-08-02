@@ -6,7 +6,7 @@ import { colorAvatar } from "@/lib/avatar";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createVerifyToken, verifyUrl } from "@/lib/email-verify";
 import { sendEmail } from "@/lib/email";
-import { updateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     // New active member belongs in the community directory (cached under the
     // "directory" tag) — surface them now instead of waiting out the revalidate.
-    updateTag("directory");
+    revalidateTag("directory");
 
     // Auto-follow every new member with Shubham (the network anchor), both ways.
     const anchor = await prisma.user.findUnique({
