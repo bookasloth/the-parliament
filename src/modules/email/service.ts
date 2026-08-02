@@ -78,7 +78,11 @@ export function buildMailPayload(m: {
   unsubscribeToken?: string
 }) {
   return {
-    from: FROM_BY_CATEGORY[m.category],
+    // The SMTP mailbox can only send as its own domain — sending as an
+    // unowned domain (e.g. @nnawca.com) is rejected ("Sender address
+    // rejected: Domain not found"). Prefer the authenticated SMTP_FROM; fall
+    // back to the per-category address only when SMTP_FROM isn't configured.
+    from: process.env.SMTP_FROM || FROM_BY_CATEGORY[m.category],
     to: m.toAddress,
     subject: m.subject,
     text: m.text,
