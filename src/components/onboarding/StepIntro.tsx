@@ -4,63 +4,56 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSession } from "next-auth/react"
 import { Send } from "lucide-react"
+import type { IntroData } from "@/lib/onboarding"
+import { publishIntro, finishOnboarding } from "@/app/(onboarding)/onboarding/actions"
 
-interface StepIntroProps {
+export function StepIntro({
+  text, set,
+}: {
   text: string
-  set: (patch: { text: string }) => void
-  onPublish: (text: string) => Promise<void>
-}
-
-export function StepIntro({ text, set, onPublish }: StepIntroProps) {
+  set: (patch: Partial<IntroData>) => void
+}) {
   const router = useRouter()
-  const [posting, setPosting] = useState(false)
+  const [busy, setBusy] = useState<"share" | "skip" | null>(null)
   const [error, setError] = useState("")
 
-  async function publish() {
-    setPosting(true)
-    setError("")
+  async function done(action: "share" | "skip") {
+    setError(""); setBusy(action)
     try {
-      await onPublish(text)
-      // Onboarding is complete in the DB now — refresh the JWT so middleware
-      // doesn't bounce us back here, then enter the feed.
-      await getSession()
+      if (action === "share") await publishIntro(text)
+      else await finishOnboarding()
+      await getSession() // refresh JWT so the gate sees onboardingCompleted
       router.replace("/feed")
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't publish. Try again.")
-      setPosting(false)
+      setError(e instanceof Error ? e.message : "Something went wrong")
+      setBusy(null)
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Say hello 👋</h1>
-        <p className="text-sm text-gray-500">
-          We drafted an intro from your details. Edit it, then share it with the community.
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Introduce yourself</h1>
+        <p className="text-sm text-gray-500">We drafted this from your details. Edit it, then share it to the feed — or skip.</p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <textarea
-          value={text}
-          onChange={(e) => set({ text: e.target.value })}
-          rows={9}
-          className="w-full resize-none rounded-lg px-4 py-3 text-base leading-relaxed outline-none focus:ring-2 focus:ring-brand/10"
-        />
-      </div>
+      <textarea
+        value={text}
+        onChange={(e) => set({ text: e.target.value })}
+        rows={9}
+        className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm leading-relaxed outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+      />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <button
-        onClick={publish}
-        disabled={posting || !text.trim()}
-        className={`inline-flex w-full items-center justify-center gap-2 rounded py-3 text-base font-semibold text-white transition-colors ${
-          posting || !text.trim() ? "cursor-not-allowed bg-gray-300" : "bg-brand hover:bg-brand-600"
-        }`}
-      >
-        <Send className="h-5 w-5" />
-        {posting ? "Posting…" : "Post & enter community"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button onClick={() => done("skip")} disabled={!!busy} className="rounded-lg px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-60">
+          {busy === "skip" ? "Finishing…" : "Skip & finish"}
+        </button>
+        <button onClick={() => done("share")} disabled={!!busy || !text.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand py-3 text-base font-semibold text-white hover:bg-brand-600 disabled:opacity-60">
+          <Send className="h-4 w-4" /> {busy === "share" ? "Sharing…" : "Share to feed"}
+        </button>
+      </div>
     </div>
   )
 }

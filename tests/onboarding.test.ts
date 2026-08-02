@@ -2,11 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   ONBOARDING_STEPS,
   STEP_INDEX,
+  MANDATORY_STEPS,
   buildIntroPost,
-  daysInMonth,
-  MIN_INTERESTS,
   EMPTY_ONBOARDING,
-  INTEREST_OPTIONS,
   type OnboardingData,
 } from "@/lib/onboarding";
 
@@ -14,18 +12,8 @@ describe("step ordering", () => {
   it("STEP_INDEX matches the canonical ONBOARDING_STEPS order", () => {
     ONBOARDING_STEPS.forEach((step, i) => expect(STEP_INDEX[step]).toBe(i));
   });
-});
-
-describe("daysInMonth — leap year edge", () => {
-  it("Feb has 29 days in leap years, 28 otherwise", () => {
-    expect(daysInMonth(2024, 2)).toBe(29); // leap
-    expect(daysInMonth(2026, 2)).toBe(28);
-    expect(daysInMonth(2000, 2)).toBe(29); // divisible by 400
-    expect(daysInMonth(1900, 2)).toBe(28); // divisible by 100 not 400
-  });
-  it("30/31-day months", () => {
-    expect(daysInMonth(2026, 4)).toBe(30); // April
-    expect(daysInMonth(2026, 12)).toBe(31);
+  it("verify + profile are the mandatory steps", () => {
+    expect(MANDATORY_STEPS).toEqual(["verify", "profile"]);
   });
 });
 
@@ -42,32 +30,36 @@ describe("buildIntroPost", () => {
     expect(buildIntroPost(EMPTY_ONBOARDING)).toContain("Hi everyone! 👋");
   });
 
-  it("includes work, bio, interests and a donor line when present", () => {
+  it("includes house/batch, work, bio and location when present", () => {
     const data: OnboardingData = {
       ...EMPTY_ONBOARDING,
-      work: { company: "Acme", position: "Engineer", sinceYear: "2022", sinceMonth: "", sinceDay: "" },
-      media: { ...EMPTY_ONBOARDING.media, bio: "Love building things.", bloodGroup: "O+", willingToDonate: true },
-      interests: { interestIds: ["mentorship", "jobs"] },
+      profile: { ...EMPTY_ONBOARDING.profile, bio: "Love building things.", location: "Pune, India" },
+      work: { industry: "Technology", company: "Acme", position: "Engineer", sinceYear: "2022", sinceMonth: "", current: true },
     };
-    const post = buildIntroPost(data, { name: "Asha" });
+    const post = buildIntroPost(data, { name: "Asha", houseName: "Aravali", batchLabel: "2006–2013" });
+    expect(post).toContain("Aravali House");
+    expect(post).toContain("2006–2013 batch");
     expect(post).toContain("Engineer at Acme");
     expect(post).toContain("since 2022");
     expect(post).toContain("Love building things.");
-    expect(post).toContain("Mentorship, Jobs"); // slugs resolved to names
-    expect(post).toContain("blood donor (O+)");
-    expect(post).toContain("#mentorship");
+    expect(post).toContain("Based in Pune, India.");
   });
 
-  it("omits the donor line when not willing", () => {
-    const data = { ...EMPTY_ONBOARDING, media: { ...EMPTY_ONBOARDING.media, willingToDonate: false } };
-    expect(buildIntroPost(data)).not.toContain("blood donor");
+  it("omits the 'since' tail when not currently working", () => {
+    const data: OnboardingData = {
+      ...EMPTY_ONBOARDING,
+      work: { industry: "", company: "Acme", position: "Engineer", sinceYear: "2022", sinceMonth: "", current: false },
+    };
+    const post = buildIntroPost(data, { name: "Asha" });
+    expect(post).toContain("Engineer at Acme");
+    expect(post).not.toContain("since 2022");
   });
-});
 
-describe("interest catalog", () => {
-  it("offers at least MIN_INTERESTS distinct options with unique slugs", () => {
-    const slugs = INTEREST_OPTIONS.map((i) => i.slug);
-    expect(slugs.length).toBeGreaterThanOrEqual(MIN_INTERESTS);
-    expect(new Set(slugs).size).toBe(slugs.length);
+  it("falls back to industry when no role/company", () => {
+    const data: OnboardingData = {
+      ...EMPTY_ONBOARDING,
+      work: { ...EMPTY_ONBOARDING.work, industry: "Finance" },
+    };
+    expect(buildIntroPost(data)).toContain("Working in Finance.");
   });
 });
