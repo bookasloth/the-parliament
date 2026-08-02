@@ -704,7 +704,7 @@ export function FeedContent({
                     })}
                   </div>
                   <a
-                    href="/directory"
+                    href="/community"
                     className="block text-center py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors border-t border-gray-100"
                   >
                     View more
