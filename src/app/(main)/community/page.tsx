@@ -55,6 +55,7 @@ export default async function CommunityPage({
       houseId: sp.house || undefined,
       membershipStatus: sp.membership || undefined,
       city: sp.city || undefined,
+      industry: sp.industry || undefined,
       verifiedOnly: sp.verified === "1",
     }),
     getFacetsCached(schoolId),
@@ -70,7 +71,7 @@ export default async function CommunityPage({
       facets={facets}
       current={sp}
       meId={me?.id ?? null}
-      stats={{ totalActive, verifiedCount, batches: facets.batches.length }}
+      stats={{ totalActive, verifiedCount, batches: facets.batches.length, industries: facets.industries.length }}
       followingIds={followingIds}
     />
   )

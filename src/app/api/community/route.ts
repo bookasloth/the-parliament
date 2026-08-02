@@ -27,6 +27,7 @@ export async function GET(req: Request) {
         houseId: sp.get("house") || undefined,
         membershipStatus: sp.get("membership") || undefined,
         city: sp.get("city") || undefined,
+        industry: sp.get("industry") || undefined,
         verifiedOnly: sp.get("verified") === "1",
       },
       { page, pageSize: PAGE_SIZE },

@@ -5,17 +5,7 @@ import { Prisma } from "@/generated/prisma/client"
 import type { ProfileVisibility } from "@/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/modules/auth/session"
-
-const RESERVED = new Set([
-  "feed", "directory", "community", "connections", "business", "businesses", "events",
-  "groups", "membership", "notifications", "settings", "compose", "messages", "network",
-  "profile", "admin", "auth", "api", "onboarding", "companies",
-])
-
-function slugUsername(raw: string): string {
-  return raw.trim().replace(/^@/, "").toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 60)
-}
+import { validateUsernameFormat } from "@/lib/username-check"
 
 export async function saveAccount(input: {
   firstName: string
@@ -35,9 +25,9 @@ export async function saveAccount(input: {
   const fullName = `${input.firstName} ${input.lastName}`.replace(/\s+/g, " ").trim()
   if (!fullName) throw new Error("Name is required")
 
-  const username = slugUsername(input.username)
-  if (!username) throw new Error("Username is required")
-  if (RESERVED.has(username)) throw new Error("That username is reserved")
+  const fmt = validateUsernameFormat(input.username)
+  if (!fmt.ok) throw new Error(fmt.reason)
+  const username = fmt.slug
   const clash = await prisma.user.findFirst({ where: { username, id: { not: user.id } }, select: { id: true } })
   if (clash) throw new Error("That username is taken")
 

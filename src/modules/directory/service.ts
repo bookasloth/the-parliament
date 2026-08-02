@@ -8,6 +8,7 @@ export interface DirectoryFilters {
   divisionId?: string
   city?: string
   profession?: string
+  industry?: string
   memberType?: string
   membershipStatus?: string
   verifiedOnly?: boolean
@@ -28,6 +29,7 @@ export interface DirectoryRow {
   membershipStatus: string
   city: string | null
   profession: string | null
+  industry: string | null
   company: string | null
   headline: string | null
   photoUrl: string | null
@@ -61,6 +63,7 @@ export async function searchDirectory(
   if (filters.houseId) profileFilters.houseId = filters.houseId
   if (filters.city) profileFilters.city = { contains: filters.city, mode: "insensitive" }
   if (filters.profession) profileFilters.profession = { contains: filters.profession, mode: "insensitive" }
+  if (filters.industry) profileFilters.industry = filters.industry
 
   if (Object.keys(profileFilters).length > 0) {
     where.profile = { is: profileFilters }
@@ -87,6 +90,7 @@ export async function searchDirectory(
           select: {
             city: true,
             profession: true,
+            industry: true,
             company: true,
             headline: true,
             photoUrl: true,
@@ -109,6 +113,7 @@ export async function searchDirectory(
       membershipStatus: r.membershipStatus,
       city: r.profile?.city ?? null,
       profession: r.profile?.profession ?? null,
+      industry: r.profile?.industry ?? null,
       company: r.profile?.company ?? null,
       headline: r.profile?.headline ?? null,
       photoUrl: r.profile?.photoUrl ?? null,
@@ -125,10 +130,32 @@ export async function searchDirectory(
 // stale facets. Keep this a plain query; the caller owns caching + invalidation.
 export async function getDirectoryFacets(schoolId?: string) {
   const where = schoolId ? { schoolId } : {}
-  const [batches, houses, divisions] = await Promise.all([
+  const activeUserWhere = { status: "active" as const, deletedAt: null, ...(schoolId ? { schoolId } : {}) }
+  const [batches, houses, divisions, industryGroups, cityGroups] = await Promise.all([
     prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
     prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
     prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    // Distinct industries among active, non-deleted members (for the industry filter + stat).
+    prisma.profile.groupBy({
+      by: ["industry"],
+      where: { industry: { not: null }, user: activeUserWhere },
+      _count: { industry: true },
+      orderBy: { _count: { industry: "desc" } },
+    }),
+    // Distinct cities (for the profile-edit city autocomplete).
+    prisma.profile.groupBy({
+      by: ["city"],
+      where: { city: { not: null }, user: activeUserWhere },
+      _count: { city: true },
+      orderBy: { _count: { city: "desc" } },
+      take: 200,
+    }),
   ])
-  return { batches, houses, divisions }
+  const industries = industryGroups
+    .map((g) => ({ name: (g.industry ?? "").trim(), count: g._count.industry }))
+    .filter((g) => g.name.length > 0)
+  const cities = cityGroups
+    .map((g) => (g.city ?? "").trim())
+    .filter((c) => c.length > 0)
+  return { batches, houses, divisions, industries, cities }
 }
