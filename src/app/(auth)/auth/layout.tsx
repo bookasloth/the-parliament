@@ -1,48 +1,13 @@
-import Link from "next/link"
+import { NetworkPanel } from "@/components/homepage/NetworkPanel"
 
-// Shared shell for all auth flows: dark branded panel (desktop) + dark card.
-// Aesthetic inspired by shubhamdatarkar.com — #0a0a0a surfaces, NNAWCA blue accent.
+// Shared shell for all auth flows: dark network brand panel (desktop) + light
+// form column — same split as the homepage.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-white">
-      {/* Brand panel — hidden on small screens */}
-      <aside className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-white/10 p-12 lg:flex">
-        {/* soft brand glow */}
-        <div
-          className="pointer-events-none absolute -left-24 top-1/3 h-96 w-96 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(closest-side, #009ae4, transparent)" }}
-        />
-        <Link href="/" className="relative font-heading text-xl font-bold tracking-tight">
-          NNAWCA
-        </Link>
-        <div className="relative">
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#009ae4]">
-            JNV Nagpur Alumni Network
-          </p>
-          <h2 className="font-heading text-4xl font-bold leading-tight">
-            The <span className="text-[#009ae4]">Parliament</span>
-          </h2>
-          <p className="mt-4 max-w-sm text-neutral-400">
-            Reconnect with your batch, grow with the network, and give back to
-            Jawahar Navodaya Vidyalaya, Nagpur.
-          </p>
-        </div>
-        <p className="relative text-xs text-neutral-600">
-          © {new Date().getFullYear()} Nagpur Navodaya Alumni Welfare &amp; Charitable Association
-        </p>
-      </aside>
-
-      {/* Form column */}
-      <main className="flex flex-1 items-center justify-center px-4 py-10">
-        <div className="w-full max-w-sm">
-          {/* mobile-only wordmark */}
-          <p className="mb-6 text-center font-heading text-lg font-bold lg:hidden">
-            NNAWCA
-          </p>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-            {children}
-          </div>
-        </div>
+    <div className="flex min-h-[100dvh] flex-col bg-white lg:flex-row">
+      <NetworkPanel className="lg:min-h-[100dvh] lg:w-[44%]" />
+      <main className="relative flex flex-1 flex-col px-6 py-10 sm:px-10 lg:px-16">
+        {children}
       </main>
     </div>
   )

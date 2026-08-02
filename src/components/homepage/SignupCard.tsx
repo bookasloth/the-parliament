@@ -10,159 +10,123 @@ const batchOptions = Array.from({ length: 40 }, (_, i) => {
   return { value: `${start}-${end}`, label: `${start}–${end}` };
 });
 
-// Girls-only houses default their gender to Female (still overridable).
-const FEMALE_HOUSES = new Set(["btn-5", "btn-6"]); // Indira, Laxmi
-
-interface HouseBtn {
-  id: string;
-  name: string;
-  hoverText: string;
-  defaultBg: string;
-  hoverBg: string;
-  activeBg: string;
-  textColor: string;
-}
-
-// Backgrounds darkened so text clears WCAG AA (4.5:1) in every state. House hues
-// kept; only lightness dropped. Udaigiri/Indira use black text (vivid on yellow/
-// orange). ponytail: revert to the brighter shades if the palette matters more
-// than the contrast audit.
-const houseButtons: HouseBtn[] = [
-  { id: "btn-1", name: "Aravali", hoverText: "Jawahar", defaultBg: "#2e6da4", hoverBg: "#255a87", activeBg: "#1e4a70", textColor: "#ffffff" },
-  { id: "btn-2", name: "Nilgiri", hoverText: "Tilak", defaultBg: "#3a6b23", hoverBg: "#30591d", activeBg: "#274a18", textColor: "#ffffff" },
-  { id: "btn-3", name: "Shiwalik", hoverText: "Subhash", defaultBg: "#a53422", hoverBg: "#8f2c1d", activeBg: "#7a2518", textColor: "#ffffff" },
-  { id: "btn-4", name: "Udaigiri", hoverText: "Rajiv", defaultBg: "#ffe135", hoverBg: "#ffda03", activeBg: "#edc001", textColor: "#000000" },
-  { id: "btn-5", name: "Indira", hoverText: "Indira", defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#000000" },
-  { id: "btn-6", name: "Laxmi", hoverText: "Laxmi", defaultBg: "#b82055", hoverBg: "#a01c49", activeBg: "#87173d", textColor: "#ffffff" },
+// House buttons show the house name, and its patron on hover. Backgrounds
+// darkened so text clears WCAG AA in every state.
+const houseButtons = [
+  { id: "aravali", name: "Aravali", hoverText: "Jawahar", defaultBg: "#2e6da4", hoverBg: "#255a87", activeBg: "#1e4a70", textColor: "#ffffff" },
+  { id: "nilgiri", name: "Nilgiri", hoverText: "Tilak", defaultBg: "#3a6b23", hoverBg: "#30591d", activeBg: "#274a18", textColor: "#ffffff" },
+  { id: "shiwalik", name: "Shiwalik", hoverText: "Subhash", defaultBg: "#a53422", hoverBg: "#8f2c1d", activeBg: "#7a2518", textColor: "#ffffff" },
+  { id: "udaigiri", name: "Udaigiri", hoverText: "Rajiv", defaultBg: "#ffe135", hoverBg: "#ffda03", activeBg: "#edc001", textColor: "#000000" },
+  { id: "indira", name: "Indira", hoverText: "Indira", defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#000000" },
+  { id: "laxmi", name: "Laxmi", hoverText: "Laxmi", defaultBg: "#b82055", hoverBg: "#a01c49", activeBg: "#87173d", textColor: "#ffffff" },
 ];
+
+const inputCls =
+  "w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10";
 
 export function SignupCard() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [gender, setGender] = useState("");
-  const [genderTouched, setGenderTouched] = useState(false);
-  const [selectedHouse, setSelectedHouse] = useState<string | null>(null);
-  const [hoveredHouse, setHoveredHouse] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [house, setHouse] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function pickHouse(id: string) {
-    const next = selectedHouse === id ? null : id;
-    setSelectedHouse(next);
-    // Default (don't force) gender for girls-only houses until the user sets it.
-    if (next && FEMALE_HOUSES.has(next) && !genderTouched) setGender("female");
-  }
-
-  // The hero card can't complete signup on its own (no password + email
-  // verification here), so hand off to the real /auth/signup flow, prefilled.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const qs = new URLSearchParams();
-    if (name.trim()) qs.set("name", name.trim());
-    if (email.trim()) qs.set("email", email.trim());
-    const q = qs.toString();
-    router.push(q ? `/auth/signup?${q}` : "/auth/signup");
+    setError("");
+    setLoading(true);
+    const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email: email.trim(), password }),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Something went wrong");
+      return;
+    }
+    router.push("/auth/signin");
   }
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white shadow-xl shadow-brand/5 w-full mx-auto overflow-hidden">
-      <div className="p-6">
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10"
-            />
+    <form className="w-full max-w-xl" onSubmit={handleSubmit}>
+      <p className="text-2xl font-extrabold tracking-tight">
+        <span className="text-brand">Homepage</span>
+        <span className="text-gray-400"> {"\\\\"} </span>
+        <span className="text-charcoal-800">Create a Free NNAWCA Account</span>
+      </p>
+
+      <div className="mt-8 grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Name</label>
+          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" className={inputCls} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Last Name</label>
+          <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" className={inputCls} />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Email Address</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputCls} />
+        </div>
+        <div>
+          <label htmlFor="signup-batch" className="mb-1.5 block text-sm font-bold text-charcoal-800">Batch (7 Years)</label>
+          <select id="signup-batch" aria-label="Batch" defaultValue="" className={`${inputCls} appearance-none`}>
+            <option value="" disabled>Select your batch</option>
+            {batchOptions.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+          </select>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Password</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password (min 8 characters)" minLength={8} required autoComplete="new-password" className={inputCls} />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Select House</label>
+          <div className="grid grid-cols-3 gap-3">
+            {houseButtons.map((h) => {
+              const active = house === h.id;
+              const hov = hovered === h.id;
+              const bg = active ? h.activeBg : hov ? h.hoverBg : h.defaultBg;
+              return (
+                <button
+                  key={h.id}
+                  type="button"
+                  onMouseEnter={() => setHovered(h.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => setHouse(active ? null : h.id)}
+                  className="w-full truncate rounded-xl px-3 py-3 text-sm font-semibold outline-none transition-all"
+                  style={{
+                    backgroundColor: bg,
+                    color: h.textColor,
+                    boxShadow: active ? "inset 0 0 0 2px rgba(0,0,0,0.35)" : "none",
+                  }}
+                >
+                  {hov ? h.hoverText : h.name}
+                </button>
+              );
+            })}
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="signup-batch" className="block text-xs font-semibold text-gray-700 mb-1">Batch (7 Years)</label>
-            <select id="signup-batch" aria-label="Batch (7 Years)" defaultValue="" className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 text-gray-500 appearance-none">
-              <option value="" disabled>Select your batch</option>
-              {batchOptions.map((b) => (
-                <option key={b.value} value={b.value}>{b.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">House</label>
-            <div className="grid grid-cols-3 gap-2">
-              {houseButtons.map((btn) => {
-                const isActive = selectedHouse === btn.id;
-                const isHovered = hoveredHouse === btn.id;
-                let bg = btn.defaultBg;
-                if (isActive) bg = btn.activeBg;
-                else if (isHovered) bg = btn.hoverBg;
-
-                return (
-                  <button
-                    key={btn.id}
-                    type="button"
-                    onMouseEnter={() => setHoveredHouse(btn.id)}
-                    onMouseLeave={() => setHoveredHouse(null)}
-                    onClick={() => pickHouse(btn.id)}
-                    className="rounded px-2 py-2.5 text-xs font-semibold transition-all duration-200 outline-none w-full truncate"
-                    style={{
-                      backgroundColor: bg,
-                      color: btn.textColor,
-                      // 1px grey ring on the selected house; box-shadow avoids the
-                      // border-width/transition-all interaction and keeps layout stable.
-                      boxShadow: isActive ? "inset 0 0 0 1px #9ca3af" : "none",
-                    }}
-                  >
-                    {isHovered ? btn.hoverText : btn.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="signup-gender" className="block text-xs font-semibold text-gray-700 mb-1">Gender</label>
-            <select
-              id="signup-gender"
-              aria-label="Gender"
-              value={gender}
-              onChange={(e) => { setGender(e.target.value); setGenderTouched(true); }}
-              className={`w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 appearance-none ${gender ? "text-gray-900" : "text-gray-500"}`}
-            >
-              <option value="" disabled>Select your gender</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full rounded bg-brand py-2.5 text-sm font-bold text-white hover:bg-brand-600 transition-all shadow-md hover:shadow-lg"
-          >
-            Register at NNAWCA
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-xs text-gray-400">
-          By continuing, you agree to{" "}
-          <a href="/terms" className="text-brand underline underline-offset-2 hover:text-brand-600">Terms</a>
-          {" & "}
-          <a href="/privacy" className="text-brand underline underline-offset-2 hover:text-brand-600">Privacy Policy</a>
-        </p>
+        </div>
       </div>
-    </div>
+
+      {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="mt-8 w-full rounded-xl bg-brand py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-brand-600 hover:shadow-lg disabled:opacity-60"
+      >
+        {loading ? "Creating account…" : "Register at NNAWCA"}
+      </button>
+    </form>
   );
 }

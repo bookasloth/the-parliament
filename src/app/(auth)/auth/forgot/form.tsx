@@ -37,7 +37,7 @@ export function ForgotForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
       <SubmitButton loading={loading} idleLabel="Send reset link" />
-      <a href="/auth/signin" className="block text-center text-xs text-neutral-400 hover:text-[#009ae4] hover:underline">
+      <a href="/auth/signin" className="block text-center text-xs text-gray-500 hover:text-brand hover:underline">
         Back to sign in
       </a>
     </form>
