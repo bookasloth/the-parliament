@@ -260,7 +260,6 @@ export function FeedCard({
                   </a>
                 </h6>
                 {!post.isSponsored && post.isVerified && <VerifiedBadge membership={post.membership} />}
-                {post.isSponsored && <span className="text-xs text-gray-500">Sponsored</span>}
                 {!post.isSponsored && post.connectionDegree && (
                   <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
                 )}
@@ -287,6 +286,16 @@ export function FeedCard({
           </div>
           {/* Right cluster — Follow/Message · overflow */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Sponsored chip — clickable, opens mail to advertise. */}
+            {post.isSponsored && (
+              <a
+                href="mailto:sndatarkar@gmail.com?subject=Advertise%20on%20The%20Parliament"
+                className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-200 transition-colors whitespace-nowrap"
+                title="Advertise here"
+              >
+                Sponsored
+              </a>
+            )}
             {!post.isSponsored && !isAuthor && (
               following ? (
                 <a
@@ -355,32 +364,29 @@ export function FeedCard({
         )}
 
         {post.isSponsored && (
+          // Facebook-style link ad: normal primary text, thumbnail, then a grey
+          // card with headline + description + CTA button. No plain website link.
           <div>
             {post.sponsorTagline && (
-              <p className="text-sm font-medium text-gray-800 leading-relaxed">{post.sponsorTagline}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{post.sponsorTagline}</p>
             )}
-            {post.content && <p className="text-sm text-gray-700 mt-1">{post.content}</p>}
             {post.image && (
               // External OG image — plain <img> avoids next/image remote-host config.
               // eslint-disable-next-line @next/next/no-img-element
-              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-lg border border-gray-100">
+              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-t-lg border border-gray-100">
                 <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
               </a>
             )}
-            <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="min-w-0">
+                {post.headline && <p className="truncate text-sm font-semibold text-gray-900">{post.headline}</p>}
+                {post.content && <p className="line-clamp-2 text-xs text-gray-500">{post.content}</p>}
+              </div>
               <a
                 href={post.sponsorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-medium text-gray-500 hover:text-brand truncate"
-              >
-                {(post.sponsorUrl ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
-              </a>
-              <a
-                href={post.sponsorUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
+                className="flex-shrink-0 rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 {post.sponsorCta ?? "Learn more"}
               </a>

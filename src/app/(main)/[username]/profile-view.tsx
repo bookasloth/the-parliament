@@ -61,15 +61,25 @@ export interface ExperienceItem {
   employmentType: string | null
   startLabel: string
   endLabel: string
+  duration: string
   location: string | null
   locationType: string | null
   description: string | null
   skills: string[]
 }
 
+export interface EducationItem {
+  school: string
+  degree: string | null
+  fieldOfStudy: string | null
+  startYear: number | null
+  endYear: number | null
+}
+
 export interface ProfileViewData {
   username: string
   experiences: ExperienceItem[]
+  educations: EducationItem[]
   name: string
   initials: string
   photoUrl: string | null
@@ -139,22 +149,6 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
         {children}
       </h5>
       {action}
-    </div>
-  )
-}
-
-function Timeline({ items }: { items: { role: string; org: string; period: string }[] }) {
-  return (
-    <div className="relative pl-6">
-      <span className="absolute left-[5px] top-1 bottom-1 w-0.5 bg-brand-100" />
-      {items.map((it, i) => (
-        <div key={i} className="relative mb-4 last:mb-0">
-          <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full border-[3px] border-brand bg-white" />
-          <h4 className="font-heading text-sm font-bold text-gray-900">{it.role}</h4>
-          <div className="text-[13px] text-gray-700">{it.org}</div>
-          {it.period && <div className="text-xs text-gray-400">{it.period}</div>}
-        </div>
-      ))}
     </div>
   )
 }
@@ -479,29 +473,35 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
                 <Card>
                   <SectionTitle>Experience</SectionTitle>
-                  <div className="px-7 pb-6 pt-2 space-y-4">
+                  <div className="px-7 pb-6 pt-2">
                     {data.experiences.length === 0 && <p className="text-[13.5px] text-gray-500">No experience added yet.</p>}
                     {data.experiences.map((e, i) => (
-                      <div key={i} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
-                        <div className="text-sm font-bold text-gray-900">{e.title}</div>
-                        <div className="text-[13px] text-gray-600">
-                          {e.company}
-                          {e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          {e.startLabel} — {e.endLabel}
-                        </div>
-                        {(e.location || e.locationType) && (
-                          <div className="text-xs text-gray-400">
-                            {e.location}{e.location && e.locationType ? " · " : ""}{e.locationType}
+                      <div key={i} className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0 last:border-b-0 last:pb-0">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                          {e.company.trim().charAt(0).toUpperCase() || "?"}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[15px] font-bold leading-tight text-gray-900">{e.title}</div>
+                          <div className="text-[13px] text-gray-700">
+                            {e.company}
+                            {e.employmentType && <span className="text-gray-500"> · {e.employmentType}</span>}
                           </div>
-                        )}
-                        {e.description && <p className="mt-2 text-[13px] leading-relaxed text-gray-700">{e.description}</p>}
-                        {e.skills.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {e.skills.map((s) => <span key={s} className="rounded-[4px] bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">{s}</span>)}
+                          <div className="mt-0.5 text-xs text-gray-500">
+                            {e.startLabel} – {e.endLabel}
+                            {e.duration && <span> · {e.duration}</span>}
                           </div>
-                        )}
+                          {(e.location || e.locationType) && (
+                            <div className="text-xs text-gray-400">
+                              {e.location}{e.location && e.locationType ? " · " : ""}{e.locationType}
+                            </div>
+                          )}
+                          {e.description && <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-gray-700">{e.description}</p>}
+                          {e.skills.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {e.skills.map((s) => <span key={s} className="rounded-[4px] bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">{s}</span>)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -510,10 +510,43 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 <Card>
                   <SectionTitle>Education</SectionTitle>
                   <div className="px-7 pb-6 pt-2">
-                    <Timeline items={[
-                      ...(data.higherEducation ? [{ role: data.higherEducation, org: "Higher education", period: "" }] : []),
-                      { role: "JNV Nagpur", org: data.house ? `${data.house.name} House` : "Jawahar Navodaya Vidyalaya", period: data.batchLabel ?? "" },
-                    ]} />
+                    {data.educations.map((e, i) => (
+                      <div key={i} className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                          {e.school.trim().charAt(0).toUpperCase() || "?"}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[15px] font-bold leading-tight text-gray-900">{e.school}</div>
+                          {(e.degree || e.fieldOfStudy) && (
+                            <div className="text-[13px] text-gray-700">{[e.degree, e.fieldOfStudy].filter(Boolean).join(", ")}</div>
+                          )}
+                          {(e.startYear || e.endYear) && (
+                            <div className="mt-0.5 text-xs text-gray-500">{[e.startYear, e.endYear].filter(Boolean).join(" – ")}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Legacy single higher-education field, kept until migrated into entries. */}
+                    {data.higherEducation && (
+                      <div className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                          {data.higherEducation.trim().charAt(0).toUpperCase() || "?"}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[15px] font-bold leading-tight text-gray-900">{data.higherEducation}</div>
+                          <div className="text-[13px] text-gray-500">Higher education</div>
+                        </div>
+                      </div>
+                    )}
+                    {/* JNV Nagpur — always shown, the shared anchor. */}
+                    <div className="flex gap-3.5 py-4 first:pt-0">
+                      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">J</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[15px] font-bold leading-tight text-gray-900">JNV Nagpur</div>
+                        <div className="text-[13px] text-gray-700">{data.house ? `${data.house.name} House` : "Jawahar Navodaya Vidyalaya"}</div>
+                        {data.batchLabel && <div className="mt-0.5 text-xs text-gray-500">{data.batchLabel}</div>}
+                      </div>
+                    </div>
                   </div>
                 </Card>
 

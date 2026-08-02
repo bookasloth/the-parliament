@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { getCurrent } from "@/modules/membership/service"
 import { colorAvatar } from "@/lib/avatar"
 import type { PlanCode } from "@/config/membership"
-import { ProfileView, type ExperienceItem, type ProfileViewData } from "./profile-view"
+import { ProfileView, type ExperienceItem, type EducationItem, type ProfileViewData } from "./profile-view"
+import { formatDuration } from "@/modules/profile/history"
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "Present"
@@ -108,10 +109,23 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     employmentType: e.employmentType,
     startLabel: fmt(e.startDate),
     endLabel: fmt(e.endDate),
+    duration: formatDuration(e.startDate, e.endDate),
     location: e.location,
     locationType: e.locationType,
     description: e.description,
     skills: Array.isArray(e.skills) ? (e.skills as string[]) : [],
+  }))
+
+  const educations = await prisma.education.findMany({
+    where: { userId: user.id },
+    orderBy: [{ sortOrder: "asc" }, { endYear: "desc" }],
+  })
+  const educationItems: EducationItem[] = educations.map((e) => ({
+    school: e.school,
+    degree: e.degree,
+    fieldOfStudy: e.fieldOfStudy,
+    startYear: e.startYear,
+    endYear: e.endYear,
   }))
 
   const p = user.profile
@@ -142,6 +156,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   const data: ProfileViewData = {
     username: user.username ?? username,
     experiences: experienceItems,
+    educations: educationItems,
     name: user.legalName,
     initials: user.legalName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
     photoUrl: p?.photoUrl || colorAvatar(user.id),

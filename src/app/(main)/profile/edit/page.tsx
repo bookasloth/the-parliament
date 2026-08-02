@@ -3,15 +3,20 @@ import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
 import { getDirectoryFacets } from "@/modules/directory/service"
 import { colorAvatar } from "@/lib/avatar"
-import { EditProfileClient, type EditInitial } from "./edit-client"
+import { EditProfileClient, type EditInitial, type ExpRow, type EduRow } from "./edit-client"
 
 export const dynamic = "force-dynamic"
+
+function ym(d: Date | null): { month?: number; year?: number } {
+  if (!d) return {}
+  return { month: d.getUTCMonth() + 1, year: d.getUTCFullYear() }
+}
 
 export default async function EditProfilePage() {
   const sessionUser = await requireUser()
   const schoolId = (await getDefaultSchoolId()) ?? undefined
 
-  const [user, facets] = await Promise.all([
+  const [user, facets, experiences, educations] = await Promise.all([
     prisma.user.findUnique({
       where: { id: sessionUser.id },
       select: {
@@ -28,8 +33,34 @@ export default async function EditProfilePage() {
       },
     }),
     getDirectoryFacets(schoolId),
+    prisma.experience.findMany({ where: { userId: sessionUser.id }, orderBy: [{ sortOrder: "asc" }, { startDate: "desc" }] }),
+    prisma.education.findMany({ where: { userId: sessionUser.id }, orderBy: [{ sortOrder: "asc" }, { endYear: "desc" }] }),
   ])
   if (!user) throw new Error("User not found")
+
+  const expRows: ExpRow[] = experiences.map((e) => ({
+    id: e.id,
+    title: e.title,
+    company: e.company,
+    employmentType: e.employmentType ?? "",
+    location: e.location ?? "",
+    locationType: e.locationType ?? "",
+    current: e.endDate === null,
+    startMonth: ym(e.startDate).month,
+    startYear: ym(e.startDate).year,
+    endMonth: ym(e.endDate).month,
+    endYear: ym(e.endDate).year,
+    description: e.description ?? "",
+    skills: Array.isArray(e.skills) ? (e.skills as string[]).join(", ") : "",
+  }))
+  const eduRows: EduRow[] = educations.map((e) => ({
+    id: e.id,
+    school: e.school,
+    degree: e.degree ?? "",
+    fieldOfStudy: e.fieldOfStudy ?? "",
+    startYear: e.startYear ?? undefined,
+    endYear: e.endYear ?? undefined,
+  }))
 
   const p = user.profile
   const social = (p?.socialLinks ?? {}) as Record<string, string>
@@ -64,5 +95,5 @@ export default async function EditProfilePage() {
     visibility: p?.visibility ?? "alumni",
   }
 
-  return <EditProfileClient initial={initial} facets={facets} />
+  return <EditProfileClient initial={initial} facets={facets} experiences={expRows} educations={eduRows} />
 }
