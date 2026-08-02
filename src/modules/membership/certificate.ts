@@ -121,7 +121,7 @@ function renderCertificatePdf(data: CertData): Uint8Array {
     "0 -14 Td",
     "(Alumni Welfare and Charitable Association, which funds scholarships,) Tj",
     "0 -14 Td",
-    "(welfare drives, events, mentorship, and the Parliament platform.) Tj",
+    "(welfare drives, events, mentorship, and the NNAWCA platform.) Tj",
     "0 -80 Td",
     `(Issued ${data.issuedAt.toISOString().slice(0, 10)}) Tj`,
     "ET",

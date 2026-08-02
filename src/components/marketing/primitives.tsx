@@ -5,12 +5,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Marketing design kit — "calm editorial" (bookasloth-inspired) on Parliament tokens.
+ * Marketing design kit — "calm editorial" (bookasloth-inspired) on NNAWCA tokens.
  * Warm-paper + ink base, brand-blue-led with Google-style red/green/yellow accents.
  * Reused across every corporate/marketing page. Keep visual decisions HERE, not per page.
  */
 
-// Google-style accent deck, mapped to existing Parliament tokens.
+// Google-style accent deck, mapped to existing NNAWCA tokens.
 // 0 blue (brand) · 1 red (shiwalik) · 2 yellow (gold-500, text-safe) · 3 green (nilgiri)
 export const ACCENT_TEXT = [
   "text-brand",

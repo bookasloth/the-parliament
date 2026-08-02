@@ -72,7 +72,7 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
   password_reset: {
     subject: (d) => (d.isNew ? "Set your NNAWCA password" : "Reset your NNAWCA password"),
     text: (d) =>
-      `Hi ${d.legalName},\n\n${d.isNew ? "Welcome to The Parliament. Set your password to activate your account:" : "Reset your password:"}\n${d.resetUrl}\n\nThis link expires soon. If you didn't request this, ignore this email.`,
+      `Hi ${d.legalName},\n\n${d.isNew ? "Welcome to NNAWCA. Set your password to activate your account:" : "Reset your password:"}\n${d.resetUrl}\n\nThis link expires soon. If you didn't request this, ignore this email.`,
     html: (d) =>
       emailShell({
         accent: "blue",
@@ -80,7 +80,7 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         eyebrow: "Account · Security",
         heading: d.isNew ? "Activate your account" : "Reset your password",
         body:
-          p(`Hi ${d.legalName}, ${d.isNew ? "set a password to start using The Parliament." : "use the button below to set a new password."}`) +
+          p(`Hi ${d.legalName}, ${d.isNew ? "set a password to start using NNAWCA." : "use the button below to set a new password."}`) +
           button(d.isNew ? "Set my password" : "Reset password", d.resetUrl, "blue") +
           small("This link expires soon. If you didn't request it, you can safely ignore this email."),
         reason: "This is a transactional message about your account.",
@@ -114,7 +114,7 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
   verification_approved: {
     subject: () => "You're a Verified Alumnus of NNAWCA",
     text: (d) =>
-      `Hi ${d.legalName},\n\nYour alumni verification has been approved. Welcome to The Parliament.\n\nSign in: ${d.loginUrl}`,
+      `Hi ${d.legalName},\n\nYour alumni verification has been approved. Welcome to NNAWCA.\n\nSign in: ${d.loginUrl}`,
     html: (d) =>
       emailShell({
         accent: "emerald",
@@ -122,8 +122,8 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         eyebrow: "Verification · Approved",
         heading: "You're <em>verified</em>",
         body:
-          p(`Welcome, ${d.legalName}. Your alumni verification has been approved — you're now a Verified Alumnus on The Parliament, with the badge to prove it.`) +
-          button("Open The Parliament", d.loginUrl, "emerald"),
+          p(`Welcome, ${d.legalName}. Your alumni verification has been approved — you're now a Verified Alumnus on NNAWCA, with the badge to prove it.`) +
+          button("Open NNAWCA", d.loginUrl, "emerald"),
         reason: "You're getting this because you applied for alumni verification.",
       }),
   },
@@ -154,7 +154,7 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         pill: "Network",
         eyebrow: "Network · New follower",
         heading: `<em>${d.fromName}</em> started following you`,
-        body: p(`${d.fromName} just followed you on The Parliament. Take a look at their profile and follow back if you'd like.`) + button("View their profile", d.profileUrl, "blue"),
+        body: p(`${d.fromName} just followed you on NNAWCA. Take a look at their profile and follow back if you'd like.`) + button("View their profile", d.profileUrl, "blue"),
         reason: "You're getting this because you allow network emails.",
         manageUrl: MANAGE_URL,
         unsubscribeUrl: MANAGE_URL,

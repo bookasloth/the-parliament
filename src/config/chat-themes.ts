@@ -67,7 +67,7 @@ export interface ChatTheme {
 export const DEFAULT_THEME: ChatTheme = {
   id: "default",
   name: "Default",
-  description: "The standard Parliament chat appearance, used outside festive windows.",
+  description: "The standard NNAWCA chat appearance, used outside festive windows.",
   sent: { background: "#009ae4", color: "#ffffff" },
   received: { background: "#f1f5f9", color: "#007bb8" },
   decoration: "none",

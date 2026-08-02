@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og"
 
 // Site-wide social share card. Next auto-wires this to og:image and
 // twitter:image (summary_large_image). Generated at build/edge — no asset file.
-export const alt = "The Parliament — JNV Nagpur Alumni Network, by NNAWCA"
+export const alt = "NNAWCA — JNV Nagpur Alumni Network"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -36,7 +36,7 @@ export default function OpengraphImage() {
           NNAWCA
         </div>
         <div style={{ marginTop: 28, fontSize: 76, fontWeight: 800, lineHeight: 1.05 }}>
-          The Parliament
+          NNAWCA
         </div>
         <div style={{ marginTop: 20, fontSize: 34, color: "rgba(255,255,255,0.72)", maxWidth: 900 }}>
           The official alumni network of JNV Nagpur

@@ -140,7 +140,7 @@ ${o.body}
 <p style="margin:0 0 12px;font-family:${FONT};font-size:11.5px;color:#9aa3b2">Nagpur, Maharashtra, India · <a href="mailto:${CONTACT_EMAIL}" style="color:#9aa3b2">${CONTACT_EMAIL}</a></p>
 <p style="margin:0 0 10px;font-family:${FONT};font-size:11.5px;color:#9aa3b2;line-height:1.9"><a href="${SITE}/about" style="color:#6b7280;text-decoration:none">About</a> · <a href="mailto:${CONTACT_EMAIL}" style="color:#6b7280;text-decoration:none">Contact</a> · <a href="${SITE}/privacy" style="color:#6b7280;text-decoration:none">Privacy</a> · <a href="${SITE}/terms" style="color:#6b7280;text-decoration:none">Terms</a>${manage}</p>
 ${o.reason ? `<p style="margin:0 0 6px;font-family:${FONT};font-size:11px;color:#B4BBC7">${o.reason}</p>` : ""}
-<p style="margin:0;font-family:${FONT};font-size:11px;color:#B4BBC7">© 2026 NNAWCA · The Parliament</p>
+<p style="margin:0;font-family:${FONT};font-size:11px;color:#B4BBC7">© 2026 NNAWCA</p>
 </td></tr>
 </table>
 </td></tr>

@@ -9,7 +9,7 @@ test("homepage renders", async ({ page }) => {
 
   const res = await page.goto("/");
   expect(res?.status()).toBeLessThan(400);
-  await expect(page).toHaveTitle(/Parliament|NNAWCA|JNV/i);
+  await expect(page).toHaveTitle(/NNAWCA|JNV/i);
   // No uncaught page errors.
   const pageErrors: string[] = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));

@@ -99,7 +99,7 @@ function SidebarContent({
           <Bank className="h-4.5 w-4.5 text-white" weight="fill" />
         </div>
         <div>
-          <p className="text-sm font-bold text-zinc-100 leading-tight">The Parliament</p>
+          <p className="text-sm font-bold text-zinc-100 leading-tight">NNAWCA</p>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Admin Console</p>
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function AdminShell({
         <main className="flex-1 p-4 sm:p-6 bg-[#0a0a0a]">{children}</main>
 
         <footer className="px-6 py-4 text-center text-[11px] text-zinc-600 border-t border-zinc-800">
-          NNAWCA Admin Console · The Parliament Platform
+          NNAWCA Admin Console · NNAWCA Platform
         </footer>
       </div>
     </div>

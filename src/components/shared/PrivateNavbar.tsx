@@ -270,7 +270,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-700 shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3">
             <Users className="h-4 w-4 text-white" />
           </div>
-          <span className="hidden md:inline text-sm font-bold text-gray-900 group-hover:text-brand transition-colors">The Parliament</span>
+          <span className="hidden md:inline text-sm font-bold text-gray-900 group-hover:text-brand transition-colors">NNAWCA</span>
         </a>
 
         {/* Search — grows to the right on focus (desktop) */}
@@ -479,7 +479,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search The Parliament…"
+              placeholder="Search NNAWCA…"
               className="w-full rounded-full border border-gray-200 bg-gray-50 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
             />
           </div>

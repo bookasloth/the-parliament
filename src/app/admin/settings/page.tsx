@@ -34,7 +34,7 @@ export default function AdminSettingsPage() {
   const [showRazorpayKey, setShowRazorpayKey] = useState(false)
 
   const [general, setGeneral] = useState({
-    siteName: "The Parliament",
+    siteName: "NNAWCA",
     orgName: "Nagpur Navodaya Alumni Welfare and Charitable Association (NNAWCA)",
     supportEmail: "support@nnawca.org",
     school: "JNV Nagpur (NGP)",
@@ -70,7 +70,7 @@ export default function AdminSettingsPage() {
     <div className="max-w-3xl">
       <PageHeader
         title="Platform Settings"
-        description="Global configuration for The Parliament"
+        description="Global configuration for NNAWCA"
         actions={
           <button onClick={save}
             className={`flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-semibold text-white transition-colors ${saved ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-500"}`}>
