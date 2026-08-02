@@ -140,9 +140,9 @@ export const defaultHomepageContent: HomepageContent = {
     ctaLabel: "Join Community",
   },
   hero: {
-    title: "Your JNV Journey Didn't End at Graduation.",
+    title: "Welcome home, Navodayan.",
     subtitle:
-      "Reconnect with alumni, discover opportunities, grow your network, support businesses, and shape the future of the community.",
+      "The tiffin-sharing, dorm-laughing, house-cheering family you grew up with is right here. Reconnect with alumni, grow your network, support each other's businesses, and shape what JNV Nagpur becomes next.",
     metrics: [
       { label: "Alumni", value: "500+" },
       { label: "Cities", value: "50+" },

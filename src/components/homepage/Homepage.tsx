@@ -1,66 +1,11 @@
-import { StickyNav } from "./StickyNav";
 import { HeroSection } from "./HeroSection";
-// Parked with the sections below — re-import when the logged-out homepage grows past the hero.
-// import { WhyJoin } from "./WhyJoin";
-// import { FeaturedAlumni } from "./FeaturedAlumni";
-// import { BusinessShowcase } from "./BusinessShowcase";
-// import { UpcomingEvents } from "./UpcomingEvents";
-// import { ImpactDashboard } from "./ImpactDashboard";
-// import { Testimonials } from "./Testimonials";
-// import { HousePride } from "./HousePride";
-// import { FinalCTA } from "./FinalCTA";
-import { Footer } from "./Footer";
-import { defaultHomepageContent, type HomepageContent } from "@/lib/homepage-data";
 
-interface HomepageProps {
-  content?: HomepageContent;
-  sections?: {
-    nav: boolean;
-    hero: boolean;
-    whyJoin: boolean;
-    alumni: boolean;
-    businesses: boolean;
-    events: boolean;
-    impact: boolean;
-    testimonials: boolean;
-    houses: boolean;
-    finalCta: boolean;
-    footer: boolean;
-  };
-}
-
-export function Homepage({
-  content = defaultHomepageContent,
-  sections = {
-    nav: true,
-    hero: true,
-    whyJoin: true,
-    alumni: true,
-    businesses: true,
-    events: true,
-    impact: true,
-    testimonials: true,
-    houses: true,
-    finalCta: true,
-    footer: true,
-  },
-}: HomepageProps) {
+// Pre-login homepage = a single standalone signup split screen.
+// No shared nav/footer or marketing sections.
+export function Homepage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      {sections.nav && <StickyNav {...content.nav} />}
-      <main id="main-content" className="flex flex-1 flex-col">
-        {sections.hero && <HeroSection content={content.hero} />}
-        {/* Logged-out homepage = hero only. Rest parked until launch. */}
-        {/* {sections.whyJoin && <WhyJoin cards={content.whyJoinCards} />} */}
-        {/* {sections.alumni && <FeaturedAlumni alumni={content.featuredAlumni} />} */}
-        {/* {sections.businesses && <BusinessShowcase businesses={content.businessShowcase} />} */}
-        {/* {sections.events && <UpcomingEvents events={content.upcomingEvents} />} */}
-        {/* {sections.impact && <ImpactDashboard metrics={content.impactMetrics} />} */}
-        {/* {sections.testimonials && <Testimonials testimonials={content.testimonials} />} */}
-        {/* {sections.houses && <HousePride houses={content.houses} />} */}
-        {/* {sections.finalCta && <FinalCTA {...content.finalCta} />} */}
-      </main>
-      {sections.footer && <Footer {...content.footer} />}
+    <div id="main-content">
+      <HeroSection />
     </div>
   );
 }
