@@ -30,33 +30,29 @@ function SignInFormInner() {
       return
     }
 
-    // Success: keep the button in its loading state and let the navigation
-    // take over, so it never snaps back to "Sign in" while /feed loads.
+    // Success: keep the button loading and let navigation take over.
     router.push(callbackUrl)
     router.refresh()
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && <FormError>{error}</FormError>}
 
-      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
-      <Field
-        label="Password"
-        id="password"
-        name="password"
-        type="password"
-        required
-        autoComplete="current-password"
-      />
-      <SubmitButton loading={loading} idleLabel="Sign in" />
-      <a href="/auth/forgot" className="block text-center text-xs text-neutral-400 hover:text-[#009ae4] hover:underline">
-        Forgot password?
-      </a>
-      <p className="text-center text-xs text-neutral-400">
-        No account?{" "}
-        <a href="/auth/signup" className="font-medium text-[#009ae4] hover:underline">Sign up</a>
-      </p>
+      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" />
+      <Field label="Password" id="password" name="password" type="password" placeholder="Password" required autoComplete="current-password" />
+
+      <div className="flex items-center justify-between">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-charcoal-600">
+          <input type="checkbox" name="remember" className="h-4 w-4 rounded border-gray-300 accent-brand" />
+          Remember me
+        </label>
+        <a href="/auth/forgot" className="text-sm font-medium text-charcoal-600 hover:text-brand">
+          Forgot password?
+        </a>
+      </div>
+
+      <SubmitButton loading={loading} idleLabel="Log In" />
     </form>
   )
 }
