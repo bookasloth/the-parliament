@@ -19,7 +19,9 @@ import {
   votePollAction,
   countNewPostsAction,
   loadPostCommentsAction,
+  recordImpressionsAction,
 } from "./actions"
+import { prepareImpressionBatch } from "@/modules/feed/impressions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
 
@@ -296,6 +298,7 @@ export function FeedContent({
   initialEgged = [],
   loadedAt,
   activeTab = "forYou",
+  caughtUp = false,
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -308,6 +311,8 @@ export function FeedContent({
   initialEgged?: string[]
   loadedAt?: string
   activeTab?: "forYou" | "following"
+  /** Viewer has seen every fresh post — feed is re-showing recent posts. */
+  caughtUp?: boolean
 }) {
   const followingOnly = activeTab === "following"
   const router = useRouter()
@@ -360,6 +365,60 @@ export function FeedContent({
     io.observe(el)
     return () => io.disconnect()
   }, [hasMore, loadMore])
+
+  // Seen-tracking: record each real post once it's ~half on screen, batched and
+  // debounced. Fire-and-forget — getFeed uses these to never repeat a post.
+  const recordedImpr = useRef<Set<string>>(new Set())
+  const pendingImpr = useRef<Set<string>>(new Set())
+  const imprFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const imprObserver = useRef<IntersectionObserver | null>(null)
+
+  const flushImpressions = useCallback(() => {
+    const batch = prepareImpressionBatch(pendingImpr.current)
+    pendingImpr.current.clear()
+    if (batch.length > 0) void recordImpressionsAction(batch)
+  }, [])
+
+  useEffect(() => {
+    if (!viewerId || typeof IntersectionObserver === "undefined") return
+    const io = new IntersectionObserver(
+      (entries) => {
+        let added = false
+        for (const e of entries) {
+          if (!e.isIntersecting || e.intersectionRatio < 0.5) continue
+          const id = (e.target as HTMLElement).dataset.postId
+          if (!id || recordedImpr.current.has(id)) continue
+          recordedImpr.current.add(id)
+          pendingImpr.current.add(id)
+          added = true
+          io.unobserve(e.target) // one impression per card
+        }
+        if (added) {
+          if (imprFlushTimer.current) clearTimeout(imprFlushTimer.current)
+          imprFlushTimer.current = setTimeout(flushImpressions, 1500)
+        }
+      },
+      { threshold: [0.5] },
+    )
+    imprObserver.current = io
+    document.querySelectorAll<HTMLElement>("[data-post-id]").forEach((n) => io.observe(n))
+    return () => {
+      io.disconnect()
+      imprObserver.current = null
+      if (imprFlushTimer.current) clearTimeout(imprFlushTimer.current)
+      flushImpressions() // flush whatever's pending on unmount
+    }
+  }, [viewerId, flushImpressions])
+
+  // Observe posts appended via load-more (re-observing a node is a no-op).
+  useEffect(() => {
+    const io = imprObserver.current
+    if (!io) return
+    document.querySelectorAll<HTMLElement>("[data-post-id]").forEach((n) => {
+      const id = n.dataset.postId
+      if (id && !recordedImpr.current.has(id)) io.observe(n)
+    })
+  }, [localPosts])
 
   // Poll for posts created since this page was rendered → "N new posts" pill.
   useEffect(() => {
@@ -443,6 +502,13 @@ export function FeedContent({
             {/* Standard compose trigger */}
             <ComposeTrigger />
 
+            {caughtUp && (
+              <div className="flex items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
+                <Sparkles className="h-4 w-4 flex-shrink-0" />
+                You&rsquo;re all caught up — showing recent posts you may want to revisit.
+              </div>
+            )}
+
             {localPosts.length === 0 && (
               <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
                 {followingOnly ? (
@@ -473,8 +539,8 @@ export function FeedContent({
               }
 
               return (
+                <div key={post.id} data-post-id={post.id}>
                 <FeedCard
-                  key={post.id}
                   post={post}
                   isAuthor={isAuthor}
                   initialSaved={post.savedByViewer}
@@ -534,6 +600,7 @@ export function FeedContent({
                       : undefined
                   }
                 />
+                </div>
               )
             })}
 
