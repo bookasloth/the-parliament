@@ -5,7 +5,14 @@ import { Prisma } from "@/generated/prisma/client"
 import type { ProfileVisibility } from "@/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/modules/auth/session"
+import { monthYearToDate } from "@/modules/profile/history"
 import { validateUsernameFormat } from "@/lib/username-check"
+
+async function revalidateOwnProfile(userId: string) {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
+  if (u?.username) revalidatePath(`/${u.username}`)
+  updateTag("directory")
+}
 
 export async function saveAccount(input: {
   firstName: string
@@ -163,11 +170,105 @@ export async function saveSocial(input: {
   updateTag("directory")
 }
 
-export async function closeAccount() {
+export interface ExperienceInput {
+  id?: string
+  title: string
+  company: string
+  employmentType?: string
+  location?: string
+  locationType?: string
+  current: boolean
+  startMonth?: number
+  startYear: number
+  endMonth?: number
+  endYear?: number
+  description?: string
+  skills?: string
+}
+
+export async function saveExperience(input: ExperienceInput) {
+  const user = await requireUser()
+  const title = input.title.trim()
+  const company = input.company.trim()
+  if (!title || !company) throw new Error("Job title and organization are required")
+  const startDate = monthYearToDate(input.startYear, input.startMonth)
+  if (!startDate) throw new Error("Start year is required")
+  const endDate = input.current ? null : monthYearToDate(input.endYear, input.endMonth)
+  const skills = (input.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean)
+  const data = {
+    title, company,
+    employmentType: input.employmentType?.trim() || null,
+    location: input.location?.trim() || null,
+    locationType: input.locationType?.trim() || null,
+    startDate, endDate,
+    description: input.description?.trim() || null,
+    skills,
+  }
+  if (input.id) {
+    // Ownership enforced via userId in the where clause.
+    const res = await prisma.experience.updateMany({ where: { id: input.id, userId: user.id }, data })
+    if (res.count === 0) throw new Error("Not found")
+  } else {
+    await prisma.experience.create({ data: { ...data, userId: user.id } })
+  }
+  await revalidateOwnProfile(user.id)
+}
+
+export async function deleteExperience(id: string) {
+  const user = await requireUser()
+  await prisma.experience.deleteMany({ where: { id, userId: user.id } })
+  await revalidateOwnProfile(user.id)
+}
+
+export interface EducationInput {
+  id?: string
+  school: string
+  degree?: string
+  fieldOfStudy?: string
+  startYear?: number
+  endYear?: number
+}
+
+export async function saveEducation(input: EducationInput) {
+  const user = await requireUser()
+  const school = input.school.trim()
+  if (!school) throw new Error("School is required")
+  const data = {
+    school,
+    degree: input.degree?.trim() || null,
+    fieldOfStudy: input.fieldOfStudy?.trim() || null,
+    startYear: input.startYear || null,
+    endYear: input.endYear || null,
+  }
+  if (input.id) {
+    const res = await prisma.education.updateMany({ where: { id: input.id, userId: user.id }, data })
+    if (res.count === 0) throw new Error("Not found")
+  } else {
+    await prisma.education.create({ data: { ...data, userId: user.id } })
+  }
+  await revalidateOwnProfile(user.id)
+}
+
+export async function deleteEducation(id: string) {
+  const user = await requireUser()
+  await prisma.education.deleteMany({ where: { id, userId: user.id } })
+  await revalidateOwnProfile(user.id)
+}
+
+export async function closeAccount(reason?: string) {
   const user = await requireUser()
   await prisma.user.update({
     where: { id: user.id },
     data: { deletedAt: new Date(), status: "inactive" },
+  })
+  await prisma.auditLog.create({
+    data: {
+      actorId: user.id,
+      action: "account.delete",
+      entityType: "user",
+      entityId: user.id,
+      payload: { reason: reason?.slice(0, 500) ?? "" },
+    },
   })
   updateTag("directory")
 }

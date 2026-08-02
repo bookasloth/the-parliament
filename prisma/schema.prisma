@@ -191,6 +191,7 @@ model User {
   interests                UserInterest[]
   onboardingProgress       OnboardingProgress[]
   experiences              Experience[]
+  educations               Education[]
 
   @@unique([email])
   @@index([status])
@@ -334,6 +335,24 @@ model Experience {
 
   @@index([userId, startDate])
   @@map("experiences")
+}
+
+model Education {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  school       String    @db.VarChar(200)
+  degree       String?   @db.VarChar(160)
+  fieldOfStudy String?   @map("field_of_study") @db.VarChar(160)
+  startYear    Int?      @map("start_year")
+  endYear      Int?      @map("end_year")
+  sortOrder    Int       @default(0) @map("sort_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, endYear])
+  @@map("educations")
 }
 
 model Profile {

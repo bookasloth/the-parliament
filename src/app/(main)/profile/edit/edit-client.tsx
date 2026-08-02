@@ -7,12 +7,27 @@ import { signOut } from "next-auth/react"
 import {
   UserCircle, Phone, GraduationCap, Share2, Trash2, Camera,
   Globe, Link2, AtSign, MessageCircle, X, SlidersHorizontal, Lock,
+  Plus, Pencil, Briefcase, School,
   Sparkles, ArrowRight, Check, Loader2, AlertCircle,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import { computeStrength, type StrengthTab } from "@/lib/profile-strength"
-import { saveAccount, saveContact, saveProfessional, saveSocial, closeAccount } from "./actions"
+import {
+  saveAccount, saveContact, saveProfessional, saveSocial, closeAccount,
+  saveExperience, deleteExperience, saveEducation, deleteEducation,
+} from "./actions"
+
+export interface ExpRow {
+  id?: string; title: string; company: string; employmentType: string
+  location: string; locationType: string; current: boolean
+  startMonth?: number; startYear?: number; endMonth?: number; endYear?: number
+  description: string; skills: string
+}
+export interface EduRow {
+  id?: string; school: string; degree: string; fieldOfStudy: string
+  startYear?: number; endYear?: number
+}
 
 export interface EditInitial {
   firstName: string; lastName: string; nickname: string; username: string; email: string
@@ -110,7 +125,7 @@ function StrengthRing({ score, color }: { score: number; color: string }) {
   )
 }
 
-export function EditProfileClient({ initial, facets }: { initial: EditInitial; facets: Facets }) {
+export function EditProfileClient({ initial, facets, experiences, educations }: { initial: EditInitial; facets: Facets; experiences: ExpRow[]; educations: EduRow[] }) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>("account")
   const [navOpen, setNavOpen] = useState(false)
@@ -381,27 +396,32 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   )
 
   const EducationTab = (
-    <Card title="Profession & Education" desc="Your current role and academic background.">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Current Company"><input className={input} placeholder="Company name" value={f.company} onChange={(e) => set({ company: e.target.value })} /></Field>
-        <Field label="Designation / Job Title"><input className={input} placeholder="Your position" value={f.jobTitle} onChange={(e) => set({ jobTitle: e.target.value })} /></Field>
-        <Field label="Industry" hint="shown on card">
-          <input className={input} list="industry-suggestions" placeholder="e.g. Fintech, Healthcare" value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
-          <datalist id="industry-suggestions">
-            {(facets.industries ?? []).map((ind) => <option key={ind.name} value={ind.name} />)}
-          </datalist>
-        </Field>
-        <Field label="Department"><input className={input} placeholder="e.g. Engineering" value={f.department} onChange={(e) => set({ department: e.target.value })} /></Field>
-        <Field label="Working since" hint="optional"><input type="date" className={input} value={f.workSince} onChange={(e) => set({ workSince: e.target.value })} /></Field>
-        <Field label="Highest Education / Institution"><input className={input} placeholder="e.g. B.Tech, VNIT Nagpur" value={f.higherEducation} onChange={(e) => set({ higherEducation: e.target.value })} /></Field>
-      </div>
-      <div className="mt-4">
-        <Field label="Key skills" hint="press Enter to add" full>
-          <SkillsInput value={skillsArr} onChange={(arr) => set({ skills: arr.join(", ") })} />
-        </Field>
-      </div>
-      <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills })} onSaved={() => markSaved("education", tabSave.education.slice)} /></div>
-    </Card>
+    <div className="space-y-4">
+      <Card title="Profession & Education" desc="Your current role and academic background.">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Current Company"><input className={input} placeholder="Company name" value={f.company} onChange={(e) => set({ company: e.target.value })} /></Field>
+          <Field label="Designation / Job Title"><input className={input} placeholder="Your position" value={f.jobTitle} onChange={(e) => set({ jobTitle: e.target.value })} /></Field>
+          <Field label="Industry" hint="shown on card">
+            <input className={input} list="industry-suggestions" placeholder="e.g. Fintech, Healthcare" value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
+            <datalist id="industry-suggestions">
+              {(facets.industries ?? []).map((ind) => <option key={ind.name} value={ind.name} />)}
+            </datalist>
+          </Field>
+          <Field label="Department"><input className={input} placeholder="e.g. Engineering" value={f.department} onChange={(e) => set({ department: e.target.value })} /></Field>
+          <Field label="Working since" hint="optional"><input type="date" className={input} value={f.workSince} onChange={(e) => set({ workSince: e.target.value })} /></Field>
+          <Field label="Highest Education / Institution"><input className={input} placeholder="e.g. B.Tech, VNIT Nagpur" value={f.higherEducation} onChange={(e) => set({ higherEducation: e.target.value })} /></Field>
+        </div>
+        <div className="mt-4">
+          <Field label="Key skills" hint="press Enter to add" full>
+            <SkillsInput value={skillsArr} onChange={(arr) => set({ skills: arr.join(", ") })} />
+          </Field>
+        </div>
+        <div className="mt-4"><SaveBar label="Save Details" onSave={() => saveProfessional({ company: f.company, jobTitle: f.jobTitle, industry: f.industry, department: f.department, workSince: f.workSince, higherEducation: f.higherEducation, skills: f.skills })} onSaved={() => markSaved("education", tabSave.education.slice)} /></div>
+      </Card>
+
+      <ExperienceEditor rows={experiences} onChanged={() => router.refresh()} />
+      <EducationEditor rows={educations} onChanged={() => router.refresh()} />
+    </div>
   )
 
   const SOCIALS = [
@@ -571,35 +591,53 @@ export function EditProfileClient({ initial, facets }: { initial: EditInitial; f
   )
 
   function CloseAccount() {
-    const [confirmText, setConfirmText] = useState("")
+    // Two-step guard so deletion is never a single click: (1) type "delete",
+    // (2) give a reason. Only then is the destructive button enabled.
+    const [typed, setTyped] = useState("")
+    const [reason, setReason] = useState("")
     const [busy, setBusy] = useState(false)
-    const canDelete = confirmText.trim().toUpperCase() === "DELETE"
+    const step1Done = typed.trim().toLowerCase() === "delete"
+    const canDelete = step1Done && reason.trim().length > 0
     async function del() {
       if (!canDelete) return
       setBusy(true)
-      try { await closeAccount(); await signOut({ callbackUrl: "/" }) } catch { setBusy(false) }
+      try { await closeAccount(reason.trim()); await signOut({ callbackUrl: "/" }) } catch { setBusy(false) }
     }
     return (
-      <Card title="Close account" desc="This deactivates your account. Read the notes below before continuing.">
+      <Card title="Delete account" desc="This action is permanent. Complete both steps to continue.">
         <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-gray-600">
           <li>Your profile is hidden from the directory and you&rsquo;ll be signed out.</li>
           <li>Posts, connections and karma are retained but no longer visible.</li>
           <li>Contact an admin within 30 days to restore your account.</li>
         </ul>
-        <div className="mt-4 rounded-[4px] border border-red-200 bg-red-50 p-4">
-          <p className="text-xs font-semibold text-red-700">To confirm, type <span className="rounded-[3px] bg-white px-1.5 py-0.5 font-mono">DELETE</span> below.</p>
+
+        <div className="mt-4">
+          <label className="mb-1.5 block text-xs font-semibold text-gray-700">Step 1 — Type <span className="font-bold text-red-600">delete</span> to confirm</label>
           <input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="DELETE"
-            className="mt-2 w-full max-w-[220px] rounded-[4px] border border-red-300 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
+            className={`${input} ${step1Done ? "border-green-400" : ""}`}
+            placeholder="delete"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            autoComplete="off"
           />
-          <div className="mt-3">
-            <button disabled={!canDelete || busy} onClick={del} className="rounded-[4px] bg-red-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
-              {busy ? "Closing…" : "Close my account"}
-            </button>
-          </div>
         </div>
+
+        {step1Done && (
+          <div className="mt-4">
+            <label className="mb-1.5 block text-xs font-semibold text-gray-700">Step 2 — Why are you deleting your account?</label>
+            <textarea
+              rows={3}
+              className={input}
+              placeholder="Tell us what went wrong or why you're leaving…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+        )}
+
+        <button disabled={!canDelete || busy} onClick={del} className="mt-4 rounded-lg bg-red-500 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
+          {busy ? "Deleting…" : "Delete my account"}
+        </button>
       </Card>
     )
   }
@@ -736,5 +774,210 @@ function MiniHero({
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Work experience & education editors ───────────────────────────────
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Self-employed", "Freelance", "Contract", "Internship", "Apprenticeship", "Seasonal"]
+const LOCATION_TYPES = ["On-site", "Hybrid", "Remote"]
+const THIS_YEAR = 2026
+const YEARS = Array.from({ length: THIS_YEAR - 1959 }, (_, i) => THIS_YEAR - i)
+
+function EmptyExp(): ExpRow {
+  return { title: "", company: "", employmentType: "", location: "", locationType: "", current: true, startMonth: undefined, startYear: undefined, endMonth: undefined, endYear: undefined, description: "", skills: "" }
+}
+function EmptyEdu(): EduRow {
+  return { school: "", degree: "", fieldOfStudy: "", startYear: undefined, endYear: undefined }
+}
+
+function expDates(e: ExpRow): string {
+  const s = e.startYear ? `${MONTHS[(e.startMonth ?? 1) - 1].slice(0, 3)} ${e.startYear}` : ""
+  const end = e.current ? "Present" : e.endYear ? `${MONTHS[(e.endMonth ?? 1) - 1].slice(0, 3)} ${e.endYear}` : ""
+  return [s, end].filter(Boolean).join(" — ")
+}
+
+function ExperienceEditor({ rows, onChanged }: { rows: ExpRow[]; onChanged: () => void }) {
+  const [editing, setEditing] = useState<ExpRow | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState("")
+  const upd = (patch: Partial<ExpRow>) => setEditing((p) => (p ? { ...p, ...patch } : p))
+
+  async function save() {
+    if (!editing) return
+    setErr(""); setBusy(true)
+    try {
+      await saveExperience({ ...editing, startYear: editing.startYear ?? 0 })
+      setEditing(null); onChanged()
+    } catch (e) { setErr(e instanceof Error ? e.message : "Failed") } finally { setBusy(false) }
+  }
+  async function remove(id?: string) {
+    if (!id) return
+    setBusy(true)
+    try { await deleteExperience(id); onChanged() } finally { setBusy(false) }
+  }
+
+  return (
+    <Card title="Work Experience" desc="Add every role you've held — as many as you like.">
+      <div className="space-y-3">
+        {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No work experience added yet.</p>}
+        {rows.map((e) => (
+          <div key={e.id} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-white text-gray-400 ring-1 ring-gray-200"><Briefcase className="h-4 w-4" /></span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold text-gray-900">{e.title}</div>
+              <div className="text-[13px] text-gray-600">{e.company}{e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}</div>
+              <div className="text-xs text-gray-400">{expDates(e)}</div>
+            </div>
+            <div className="flex flex-shrink-0 gap-1">
+              <button onClick={() => setEditing(e)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+              <button onClick={() => remove(e.id)} disabled={busy} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {editing ? (
+        <div className="mt-4 rounded-lg border border-gray-200 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Job title *"><input className={input} placeholder="Senior Product Manager" value={editing.title} onChange={(e) => upd({ title: e.target.value })} /></Field>
+            <Field label="Organization *"><input className={input} placeholder="Microsoft" value={editing.company} onChange={(e) => upd({ company: e.target.value })} /></Field>
+            <Field label="Location"><input className={input} placeholder="City or region" value={editing.location} onChange={(e) => upd({ location: e.target.value })} /></Field>
+            <Field label="Location type">
+              <select className={input} value={editing.locationType} onChange={(e) => upd({ locationType: e.target.value })}>
+                <option value="">Please select</option>
+                {LOCATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+            <Field label="Employment type">
+              <select className={input} value={editing.employmentType} onChange={(e) => upd({ employmentType: e.target.value })}>
+                <option value="">Please select</option>
+                {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+          </div>
+          <label className="mt-3 flex cursor-pointer items-center gap-2">
+            <input type="checkbox" checked={editing.current} onChange={(e) => upd({ current: e.target.checked })} className="h-4 w-4 accent-brand" />
+            <span className="text-sm text-gray-700">I currently work here</span>
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Field label="Start month">
+              <select className={input} value={editing.startMonth ?? ""} onChange={(e) => upd({ startMonth: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">Month</option>
+                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+            </Field>
+            <Field label="Start year *">
+              <select className={input} value={editing.startYear ?? ""} onChange={(e) => upd({ startYear: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">Year</option>
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </Field>
+            {!editing.current && <>
+              <Field label="End month">
+                <select className={input} value={editing.endMonth ?? ""} onChange={(e) => upd({ endMonth: e.target.value ? Number(e.target.value) : undefined })}>
+                  <option value="">Month</option>
+                  {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                </select>
+              </Field>
+              <Field label="End year">
+                <select className={input} value={editing.endYear ?? ""} onChange={(e) => upd({ endYear: e.target.value ? Number(e.target.value) : undefined })}>
+                  <option value="">Year</option>
+                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </Field>
+            </>}
+          </div>
+          <div className="mt-3">
+            <Field label="Highlights" full><textarea rows={3} className={input} maxLength={2000} placeholder="Projects, problems you solved, or results you achieved" value={editing.description} onChange={(e) => upd({ description: e.target.value })} /></Field>
+          </div>
+          <div className="mt-3">
+            <Field label="Skills (comma separated)" full><input className={input} placeholder="Leadership, SQL, Figma" value={editing.skills} onChange={(e) => upd({ skills: e.target.value })} /></Field>
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-3">
+            {err && <span className="text-xs text-red-600">{err}</span>}
+            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-lg px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
+            <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setEditing(EmptyExp())} className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
+          <Plus className="h-4 w-4" /> Add experience
+        </button>
+      )}
+    </Card>
+  )
+}
+
+function EducationEditor({ rows, onChanged }: { rows: EduRow[]; onChanged: () => void }) {
+  const [editing, setEditing] = useState<EduRow | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState("")
+  const upd = (patch: Partial<EduRow>) => setEditing((p) => (p ? { ...p, ...patch } : p))
+
+  async function save() {
+    if (!editing) return
+    setErr(""); setBusy(true)
+    try { await saveEducation(editing); setEditing(null); onChanged() }
+    catch (e) { setErr(e instanceof Error ? e.message : "Failed") } finally { setBusy(false) }
+  }
+  async function remove(id?: string) {
+    if (!id) return
+    setBusy(true)
+    try { await deleteEducation(id); onChanged() } finally { setBusy(false) }
+  }
+
+  return (
+    <Card title="Education" desc="Add every school or college — as many as you like.">
+      <div className="space-y-3">
+        {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No education added yet.</p>}
+        {rows.map((e) => (
+          <div key={e.id} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-white text-gray-400 ring-1 ring-gray-200"><School className="h-4 w-4" /></span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold text-gray-900">{e.school}</div>
+              {(e.degree || e.fieldOfStudy) && <div className="text-[13px] text-gray-600">{[e.degree, e.fieldOfStudy].filter(Boolean).join(", ")}</div>}
+              {(e.startYear || e.endYear) && <div className="text-xs text-gray-400">{[e.startYear, e.endYear].filter(Boolean).join(" — ")}</div>}
+            </div>
+            <div className="flex flex-shrink-0 gap-1">
+              <button onClick={() => setEditing(e)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+              <button onClick={() => remove(e.id)} disabled={busy} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {editing ? (
+        <div className="mt-4 rounded-lg border border-gray-200 p-4">
+          <Field label="School *"><input className={input} placeholder="VNIT Nagpur" value={editing.school} onChange={(e) => upd({ school: e.target.value })} /></Field>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Degree"><input className={input} placeholder="Bachelor of Technology" value={editing.degree} onChange={(e) => upd({ degree: e.target.value })} /></Field>
+            <Field label="Field of study"><input className={input} placeholder="Computer Science" value={editing.fieldOfStudy} onChange={(e) => upd({ fieldOfStudy: e.target.value })} /></Field>
+            <Field label="Start year">
+              <select className={input} value={editing.startYear ?? ""} onChange={(e) => upd({ startYear: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">Year</option>
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </Field>
+            <Field label="End year (or expected)">
+              <select className={input} value={editing.endYear ?? ""} onChange={(e) => upd({ endYear: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">Year</option>
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-3">
+            {err && <span className="text-xs text-red-600">{err}</span>}
+            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-lg px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
+            <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setEditing(EmptyEdu())} className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
+          <Plus className="h-4 w-4" /> Add education
+        </button>
+      )}
+    </Card>
   )
 }
