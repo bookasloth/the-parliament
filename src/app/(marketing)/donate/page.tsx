@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { GraduationCap, Building2, HeartHandshake, PartyPopper, Landmark, Smartphone, ReceiptText } from "lucide-react"
+import { GraduationCap, Building2, HeartHandshake, PartyPopper, Landmark, Smartphone, ReceiptText, Target, Wallet } from "lucide-react"
 import {
   Section,
   SectionHeading,
@@ -44,14 +44,17 @@ const CAUSES = [
 
 const STEPS = [
   {
+    icon: Target,
     title: "Pick a cause",
     body: "Choose where your gift goes — or give to the general fund and let the committee direct it where it's needed most.",
   },
   {
+    icon: Wallet,
     title: "Pay your way",
     body: "UPI, card or netbanking through Razorpay, or a direct bank transfer using the details below.",
   },
   {
+    icon: ReceiptText,
     title: "Get your receipt",
     body: "An 80G-eligible receipt lands in your inbox automatically. Keep it for your tax filing.",
   },
@@ -59,18 +62,18 @@ const STEPS = [
 
 // {{PLACEHOLDER}} — replace with the real NNAWCA bank + UPI details round-2.
 const ACCOUNT = [
-  { label: "Account name", value: "Nagpur Navodaya Alumni Welfare and Charitable Association" },
-  { label: "Bank", value: "{{Bank name & branch}}" },
-  { label: "Account number", value: "{{Account number}}" },
-  { label: "IFSC", value: "{{IFSC}}" },
-  { label: "UPI ID", value: "{{upi@bank}}" },
+  { label: "Account Holder", value: "Nagpur Navodaya Alumni Welfare and Charitable Association" },
+  { label: "Bank Name", value: "{{Bank name & branch}}" },
+  { label: "Account Number", value: "{{Account number}}" },
+  { label: "IFSC Code", value: "{{IFSC}}" },
+  { label: "UPI Handle", value: "{{upi@bank}}" },
 ]
 
 export default function DonatePage() {
   return (
     <>
-      {/* ── Hero ── */}
-      <Section width="6xl" className="pt-32 lg:pt-40">
+      {/* ── Hero (full first viewport) ── */}
+      <Section width="6xl" className="pt-32 lg:flex lg:min-h-screen lg:flex-col lg:justify-center lg:pt-24">
         <div className="max-w-3xl">
           <Reveal>
             <Eyebrow accent={1}>Donate</Eyebrow>
@@ -155,22 +158,28 @@ export default function DonatePage() {
           title="Three steps. Two minutes."
         />
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {STEPS.map((s, i) => (
-            <Reveal key={s.title} delay={i * 0.08}>
-              <div className="h-full rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full font-heading text-lg font-semibold text-white"
-                  style={{ backgroundColor: ACCENT_HEX[i % 4] }}
-                >
-                  {i + 1}
+          {STEPS.map((s, i) => {
+            const Icon = s.icon
+            return (
+              <Reveal key={s.title} delay={i * 0.08}>
+                <div className="group h-full rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-18px_rgba(26,26,26,0.2)]">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="flex h-14 w-14 items-center justify-center rounded-2xl transition group-hover:scale-105"
+                      style={{ backgroundColor: `${ACCENT_HEX[i % 4]}1a`, color: ACCENT_HEX[i % 4] }}
+                    >
+                      <Icon className="h-7 w-7" strokeWidth={1.75} />
+                    </div>
+                    <span className="font-heading text-3xl font-semibold text-black/[0.06]">{i + 1}</span>
+                  </div>
+                  <h3 className="mt-5 font-heading text-lg font-semibold text-[#1a1a1a]">
+                    {s.title}
+                  </h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-[#5b5b5b]">{s.body}</p>
                 </div>
-                <h3 className="mt-5 font-heading text-lg font-semibold text-[#1a1a1a]">
-                  {s.title}
-                </h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-[#5b5b5b]">{s.body}</p>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            )
+          })}
         </div>
 
         {/* Give options: online + bank */}
@@ -178,7 +187,9 @@ export default function DonatePage() {
           <Reveal>
             <div className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center gap-3">
-                <Smartphone className="h-6 w-6 text-brand" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <Smartphone className="h-5 w-5" />
+                </span>
                 <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">
                   Give online
                 </h3>
@@ -199,18 +210,18 @@ export default function DonatePage() {
           <Reveal delay={0.08}>
             <div className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center gap-3">
-                <Landmark className="h-6 w-6 text-[#e8503a]" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e8503a]/10 text-[#e8503a]">
+                  <Landmark className="h-5 w-5" />
+                </span>
                 <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">
                   Bank transfer
                 </h3>
               </div>
-              <dl className="mt-5 space-y-2.5">
+              <dl className="mt-5 divide-y divide-black/5 rounded-2xl border border-black/5 bg-[#faf9f6]">
                 {ACCOUNT.map((a) => (
-                  <div key={a.label} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-                    <dt className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#a3a3a3]">
-                      {a.label}
-                    </dt>
-                    <dd className="text-sm font-medium text-[#1a1a1a]">{a.value}</dd>
+                  <div key={a.label} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                    <dt className="text-[13px] font-medium text-[#8a8a8a]">{a.label}</dt>
+                    <dd className="font-heading text-[15px] font-semibold text-[#1a1a1a] sm:text-right">{a.value}</dd>
                   </div>
                 ))}
               </dl>

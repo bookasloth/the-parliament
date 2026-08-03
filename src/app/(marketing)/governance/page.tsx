@@ -55,31 +55,54 @@ export default function GovernancePage() {
     <>
       {/* ── Hero ── */}
       <Section width="6xl" className="pt-32 lg:pt-40">
-        <div className="max-w-3xl">
-          <Reveal>
-            <Eyebrow>Governance</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-6xl lg:leading-[1.05]">
-              Run openly, by the members, for the members.
-            </h1>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mt-6 text-lg leading-relaxed text-[#5b5b5b]">
-              NNAWCA is a registered charitable association governed by two documents — its
-              Memorandum of Association, which sets out what we exist to do, and its Rules &
-              Regulations, which set out how we do it. Both are summarised here and available to
-              download in full.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <div className="mt-7 flex flex-wrap gap-3 text-sm">
-              <a href="/moa" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
-                Read the Memorandum
-              </a>
-              <a href="/rules" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
-                Read the Rules
-              </a>
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <Reveal>
+              <Eyebrow>Governance</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-6xl lg:leading-[1.05]">
+                Run openly, by the members, for the members.
+              </h1>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#5b5b5b]">
+                NNAWCA is a registered charitable association governed by two documents — its
+                Memorandum of Association, which sets out what we exist to do, and its Rules &
+                Regulations, which set out how we do it. Both are summarised here and available to
+                download in full.
+              </p>
+            </Reveal>
+            <Reveal delay={0.15}>
+              <div className="mt-7 flex flex-wrap gap-3 text-sm">
+                <a href="/moa" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-white transition hover:bg-brand-600">
+                  Read the Memorandum
+                </a>
+                <a href="/rules" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
+                  Read the Rules
+                </a>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Right — legal highlight cards */}
+          <Reveal delay={0.2} className="hidden lg:block">
+            <div className="grid gap-4">
+              {[
+                { icon: Landmark, title: "Registered charitable association", body: "Constituted and registered as a not-for-profit alumni welfare body.", accent: "#009ae4" },
+                { icon: FileText, title: "Two governing documents", body: "A Memorandum of Association and a set of Rules & Regulations.", accent: "#e8503a" },
+                { icon: Scale, title: "Member-run & accountable", body: "An elected committee, an AGM, and transparent, audited accounts.", accent: "#3a6b23" },
+              ].map((c) => (
+                <div key={c.title} className="flex items-start gap-4 rounded-2xl border border-black/5 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${c.accent}1a`, color: c.accent }}>
+                    <c.icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="font-heading text-[15px] font-semibold text-[#1a1a1a]">{c.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[#5b5b5b]">{c.body}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </Reveal>
         </div>
