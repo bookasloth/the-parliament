@@ -32,13 +32,15 @@ interface AlumniProfileCardProps {
   verified?: boolean
   /** Color the verified check by the member's tier accent instead of the default blue. */
   tierColoredVerified?: boolean
+  /** Hide the membership-tier stat (show only Batch + House). */
+  hideMembership?: boolean
   /** Extra content rendered above the action buttons (e.g. mutual connections / role) */
   footer?: ReactNode
   /** Replace the default View Profile / Follow buttons */
   actions?: ReactNode
 }
 
-export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVerified, footer, actions }: AlumniProfileCardProps) {
+export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVerified, hideMembership, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
   const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   const href = profileHref ?? `/${alumni.id}`
@@ -52,11 +54,11 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
   const batchShort = alumni.batch || alumni.batchLabel?.replace(/\s*Batch\s*$/i, "") || "—"
 
   return (
-    <div className="w-full max-w-[350px] mx-auto overflow-hidden rounded-2xl border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
+    <div className="mx-auto flex h-full w-full max-w-[350px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
       {/* House-colored cover band */}
-      <div className="h-[70px] w-full" style={{ background: cover }} />
+      <div className="h-[70px] w-full flex-shrink-0" style={{ background: cover }} />
 
-      <div className="px-[18px] pb-[18px]">
+      <div className="flex flex-1 flex-col px-[18px] pb-[18px]">
         {/* Avatar overlapping the cover */}
         <div className="-mt-[38px]">
           <Link href={href} aria-label={`View ${alumni.name}'s profile`}>
@@ -80,10 +82,10 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
           )}
         </h3>
 
-        {/* Headline */}
-        {alumni.bio && <p className="mt-1 line-clamp-1 text-[13px] text-gray-500">{alumni.bio}</p>}
+        {/* Headline — reserve one line so cards stay the same height */}
+        <p className="mt-1 line-clamp-1 min-h-[18px] text-[13px] text-gray-500">{alumni.bio || " "}</p>
 
-        {/* Stat strip: Batch · House · Member tier */}
+        {/* Stat strip: Batch · House (· Member tier unless hidden) */}
         <div className="-mx-[18px] my-3 flex items-stretch border-y border-gray-100">
           <div className="flex-1 py-2.5">
             <p className="text-sm font-bold text-gray-900 tabular-nums leading-none">{batchShort}</p>
@@ -95,23 +97,25 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">House</p>
           </div>
-          <div className="flex-1 border-l border-gray-100 py-2.5">
-            <span className="flex items-center justify-center gap-1.5 text-sm font-bold leading-none text-gray-900">
-              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: tier.background }} />
-              {tier.label}
-            </span>
-            <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">Member</p>
-          </div>
+          {!hideMembership && (
+            <div className="flex-1 border-l border-gray-100 py-2.5">
+              <span className="flex items-center justify-center gap-1.5 text-sm font-bold leading-none text-gray-900">
+                <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: tier.background }} />
+                {tier.label}
+              </span>
+              <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">Member</p>
+            </div>
+          )}
         </div>
 
         {/* Extra footer info (role, mutual connections) */}
         {footer && <div className="mb-3">{footer}</div>}
 
-        {/* Buttons */}
+        {/* Buttons — pinned to the bottom so cards align */}
         {actions ? (
-          <div className="flex flex-wrap justify-center gap-2">{actions}</div>
+          <div className="mt-auto flex flex-wrap justify-center gap-2">{actions}</div>
         ) : (
-          <div className="flex gap-2">
+          <div className="mt-auto flex gap-2">
             <button className="flex-1 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-brand-600">
               Follow
             </button>

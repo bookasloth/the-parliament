@@ -60,7 +60,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       id: true,
       lastMessageAt: true,
       participants: {
-        select: { userId: true, lastReadAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } } },
+        select: { userId: true, lastReadAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } } },
       },
       messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true } },
     },
@@ -77,7 +77,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     const last = c.messages[0]
     return {
       id: c.id,
-      otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null },
+      otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
       lastMessagePreview: last ? (last.body || ((last.media as string[]).length ? "📷 Photo" : "")) : "",
       lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
       unreadCount,
@@ -88,13 +88,13 @@ export async function listConversations(viewerId: string): Promise<ConversationS
 export async function getConversationMeta(
   viewerId: string,
   conversationId: string,
-): Promise<{ otherUser: { id: string; name: string; username: string | null; avatar: string | null }; otherLastReadAt: string | null }> {
+): Promise<{ otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean }; otherLastReadAt: string | null }> {
   await assertParticipant(viewerId, conversationId)
   const other = await prisma.conversationParticipant.findFirstOrThrow({
     where: { conversationId, userId: { not: viewerId } },
     select: {
       lastReadAt: true,
-      user: { select: { id: true, displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } },
+      user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } },
     },
   })
   return {
@@ -103,6 +103,7 @@ export async function getConversationMeta(
       name: other.user.displayName || other.user.legalName,
       username: other.user.username,
       avatar: other.user.profile?.photoUrl ?? null,
+      isVerified: other.user.isVerified,
     },
     otherLastReadAt: other.lastReadAt?.toISOString() ?? null,
   }

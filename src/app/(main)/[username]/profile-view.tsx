@@ -9,10 +9,11 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { startConversationAction } from "../messages/actions"
 import {
-  Briefcase, MapPin, Building2, MoreHorizontal, Check,
+  Briefcase, MapPin, Building2, MoreHorizontal,
   Award, Droplet, Cake, Home, Users, Pencil, Share2,
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 
 // Brand SVGs (lucide 1.17 doesn't ship brand icons). Simple Icons paths.
 type Brand = (props: { className?: string }) => React.JSX.Element
@@ -223,15 +224,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
   const nameTick = (
     <div className="flex min-w-0 items-center gap-1.5">
       <h1 className="truncate font-heading text-xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-      {data.isVerified && (
-        <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand"
-          aria-label="Verified"
-          title="Verified"
-        >
-          <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
-        </span>
-      )}
+      {data.isVerified && <VerifiedTick size={20} />}
     </div>
   )
 

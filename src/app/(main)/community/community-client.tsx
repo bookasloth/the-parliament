@@ -163,7 +163,7 @@ export function CommunityClient({
 
       {/* Search + 4 filters — inline on desktop, search over a 2×2 filter grid on mobile. */}
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:flex-1">
+        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:w-1/2">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             value={q}
@@ -172,20 +172,21 @@ export function CommunityClient({
             className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
           />
         </form>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:flex-none lg:items-center">
-          <select className={`${sel} w-full lg:w-auto`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+        {/* Filters: 2×2 on mobile; on desktop share the other 50% (≈12.5% each). */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:w-1/2 lg:items-center">
+          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
             <option value="">All batches</option>
             {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </select>
-          <select className={`${sel} w-full lg:w-auto`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
             <option value="">All houses</option>
             {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
-          <select className={`${sel} w-full lg:w-auto`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
             <option value="">All tiers</option>
             {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <select className={`${sel} w-full lg:w-auto`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
             <option value="">All industries</option>
             {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
           </select>
@@ -229,12 +230,13 @@ export function CommunityClient({
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((r, i) => (
-            <motion.div key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: (i % 8) * 0.03 }}>
+            <motion.div key={r.id} className="h-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: (i % 8) * 0.03 }}>
               <AlumniProfileCard
                 alumni={toCard(r)}
                 profileHref={`/${r.username}`}
                 verified={r.isVerified}
                 tierColoredVerified
+                hideMembership
                 actions={
                   <div className="flex w-full gap-2">
                     {meId !== r.id && (
