@@ -15,11 +15,13 @@ export const FEED_ADS: FeedPost[] = [
     timestamp: "",
     isSponsored: true,
     sponsorName: "Book A Sloth",
+    sponsorSubhead: "Get booked and paid even before you open register.",
     sponsorUrl: "https://www.bookasloth.com",
     sponsorTagline: "Stop chasing appointments. Let clients book you.",
     content:
       "Automate scheduling, payments and reminders — built for coaches, consultants, doctors, trainers and photographers.",
     sponsorCta: "Try it free",
+    sponsorCta2: "Book A Demo",
     // Book A Sloth's own OG image (1200×630).
     image: "https://company-assets.bookasloth.in/images/seo/home-og-1200x630.jpg",
     avatar: "/bookasloth-icon.png",

@@ -49,10 +49,14 @@ export interface FeedPost {
   }
   isSponsored?: boolean
   sponsorName?: string
+  /** Line under the sponsor name (like a profile's batch line). */
+  sponsorSubhead?: string
   sponsorUrl?: string
   sponsorTagline?: string
   /** Sponsored CTA button label (defaults to "Learn more"). */
   sponsorCta?: string
+  /** Optional secondary CTA (rendered as an outline button before the primary). */
+  sponsorCta2?: string
   upvotes: number
   downvotes: number
   comments: number
