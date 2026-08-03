@@ -9,7 +9,7 @@ export function HeroSection() {
 
       {/* Right — form */}
       <div className="relative flex flex-1 flex-col px-6 py-10 sm:px-10 lg:px-16">
-        <div className="mb-8 flex flex-wrap items-center justify-end gap-3 sm:absolute sm:right-10 sm:top-6 sm:mb-0">
+        <div className="mb-10 flex flex-wrap items-center justify-end gap-3">
           <a href="/auth/signin" className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-brand-100">
             Already Member? Login
           </a>

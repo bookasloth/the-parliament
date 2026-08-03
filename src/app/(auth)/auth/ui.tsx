@@ -70,7 +70,7 @@ export function AuthHeading({ title }: { title: string }) {
 // Top-right actions: a ghost link + the blue "Find an Alumni".
 export function AuthActions({ ghostLabel, ghostHref }: { ghostLabel: string; ghostHref: string }) {
   return (
-    <div className="mb-8 flex flex-wrap items-center justify-end gap-3 sm:absolute sm:right-10 sm:top-6 sm:mb-0">
+    <div className="mb-10 flex flex-wrap items-center justify-end gap-3">
       <a href={ghostHref} className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-brand-100">
         {ghostLabel}
       </a>
