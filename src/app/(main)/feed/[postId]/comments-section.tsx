@@ -170,7 +170,7 @@ function Avatar({ c }: { c: CommentView }) {
       <Image
         src={c.author.avatarUrl}
         alt={c.author.displayName}
-        className="h-9 w-9 rounded-full border-[0.5px] border-gray-300 object-cover"
+        className="h-8 w-8 rounded-full border-[0.5px] border-gray-300 object-cover sm:h-9 sm:w-9"
         width={36}
         height={36}
       />
@@ -182,13 +182,13 @@ function Avatar({ c }: { c: CommentView }) {
 function CommentFollow() {
   const [following, setFollowing] = useState(false)
   return following ? (
-    <a href="/messages" className="text-xs font-semibold text-brand hover:underline whitespace-nowrap">
+    <a href="/messages" className="hidden text-xs font-semibold text-brand hover:underline whitespace-nowrap sm:inline">
       Message
     </a>
   ) : (
     <button
       onClick={() => setFollowing(true)}
-      className="text-xs font-semibold text-brand hover:underline whitespace-nowrap"
+      className="hidden text-xs font-semibold text-brand hover:underline whitespace-nowrap sm:inline"
     >
       Follow
     </button>
@@ -205,7 +205,7 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-semibold text-gray-900">{c.author.displayName}</span>
+              <span className="truncate text-[13px] font-semibold text-gray-900 sm:text-sm">{c.author.displayName}</span>
               {c.author.isVerified && (
                 <VerifiedBadge membership={c.author.membershipStatus as FeedMembership} />
               )}
@@ -315,7 +315,7 @@ function VoteRow({
 }) {
   const disabled = !viewer || c.id.startsWith("optimistic-")
   return (
-    <div className="ml-12 mt-1 flex items-center gap-1 text-xs">
+    <div className="ml-9 sm:ml-12 mt-1 flex items-center gap-1 text-xs">
       <button
         onClick={() => onVote(c, "upvote")}
         disabled={disabled}
@@ -395,7 +395,7 @@ function CommentItem({
       />
 
       {open && viewer && (
-        <div className="ml-12 mt-2 flex items-center gap-2">
+        <div className="ml-9 sm:ml-12 mt-2 flex items-center gap-2">
           <MentionInput
             value={text}
             onChange={setText}
@@ -417,14 +417,14 @@ function CommentItem({
       {comment.replies.length > 0 && !showReplies && (
         <button
           onClick={() => setShowReplies(true)}
-          className="ml-12 mt-2 text-xs font-semibold text-gray-500 hover:text-brand"
+          className="ml-9 sm:ml-12 mt-2 text-xs font-semibold text-gray-500 hover:text-brand"
         >
           View {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
         </button>
       )}
 
       {comment.replies.length > 0 && showReplies && (
-        <ul className="ml-12 mt-2 space-y-3 border-l border-gray-100 pl-3">
+        <ul className="ml-9 sm:ml-12 mt-2 space-y-3 border-l border-gray-100 pl-3">
           {comment.replies.map((r) => (
             <li key={r.id} className={r.id.startsWith("optimistic-") ? "opacity-70" : ""}>
               <div className="flex gap-3">

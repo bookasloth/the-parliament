@@ -84,43 +84,49 @@ export function PollCard({
     }
   }
 
+  const topVotes = Math.max(0, ...options.map((o) => o.votes))
   return (
-    <div>
-      <p className="text-sm font-medium text-gray-900 mb-3">{poll.question}</p>
+    <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5">
+      <p className="mb-3 text-sm font-semibold text-gray-900">{poll.question}</p>
       <div className="space-y-2">
         {options.map((opt) => {
           const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0
           const isMine = myOptionId === opt.id
+          const isTop = revealed && total > 0 && opt.votes === topVotes
           return (
             <button
               key={opt.id}
               onClick={() => vote(opt.id)}
-              disabled={poll.isClosed}
-              className={`relative w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-all overflow-hidden ${
-                isMine
-                  ? "border-brand bg-brand-50"
-                  : revealed
-                  ? "border-gray-200 opacity-80"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-              } ${poll.isClosed ? "cursor-default" : ""}`}
+              disabled={poll.isClosed || revealed}
+              className={`group relative flex h-11 w-full items-center overflow-hidden rounded-lg border px-3 text-left text-sm transition-all ${
+                isMine ? "border-brand" : "border-gray-200"
+              } ${!revealed && !poll.isClosed ? "hover:border-brand hover:bg-brand-50/40" : "cursor-default"}`}
             >
+              {/* Result fill */}
               <div
-                className="absolute inset-0 bg-brand-50/40 transition-all"
+                className={`absolute inset-y-0 left-0 transition-[width] duration-500 ease-out ${
+                  isMine ? "bg-brand-100" : isTop ? "bg-gray-200/70" : "bg-gray-100"
+                }`}
                 style={{ width: revealed ? `${pct}%` : "0%" }}
               />
-              <div className="relative flex items-center justify-between">
-                <span className={isMine ? "font-medium text-brand-700" : "text-gray-600"}>
+              <div className="relative flex w-full items-center justify-between gap-2">
+                <span className={`flex items-center gap-1.5 truncate ${isMine ? "font-semibold text-brand-700" : "font-medium text-gray-700"}`}>
+                  {isMine && (
+                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand">
+                      <svg viewBox="0 0 24 24" className="h-2.5 w-2.5"><path d="M5 13l4 4L19 7" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                  )}
                   {opt.label}
                 </span>
-                {revealed && <span className="text-xs font-medium text-gray-500">{pct}%</span>}
+                {revealed && <span className={`flex-shrink-0 text-xs font-bold tabular-nums ${isTop ? "text-gray-900" : "text-gray-500"}`}>{pct}%</span>}
               </div>
             </button>
           )
         })}
       </div>
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="mt-2.5 text-xs font-medium text-gray-400">
         {total} {total === 1 ? "vote" : "votes"}
-        {poll.isClosed ? " · closed" : revealed ? "" : " · tap an option to vote"}
+        {poll.isClosed ? " · Final results" : revealed ? " · You voted" : " · Tap an option to vote"}
       </p>
     </div>
   )
