@@ -7,6 +7,8 @@ import {
   HandHeart,
   Sparkles,
   CalendarHeart,
+  Eye,
+  Check,
 } from "lucide-react"
 import {
   Section,
@@ -73,6 +75,24 @@ const VALUES = [
   },
 ]
 
+const OBJECTIVES = [
+  "Build and maintain a verified, lifelong network of every JNV Nagpur alumnus.",
+  "Fund scholarships and campus support for current Navodaya students.",
+  "Enable mentorship, referrals and career guidance, alumni-to-alumni.",
+  "Organise reunions, chapter meets and community events across cities.",
+  "Champion alumni-run businesses, initiatives and ideas.",
+  "Run welfare and charitable drives in the true Navodaya spirit.",
+]
+
+// Alumni faces for the hero collage (Unsplash portraits, cropped square/portrait).
+const ALUMNI_COLLAGE = [
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=520&fit=crop&crop=faces",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=faces",
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=520&fit=crop&crop=faces",
+  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=faces",
+]
+
 export default function AboutPage() {
   return (
     <>
@@ -115,32 +135,35 @@ export default function AboutPage() {
             </Reveal>
           </div>
 
-          {/* Floating mockup cluster */}
+          {/* Alumni collage — the family, in faces */}
           <Reveal delay={0.2} className="relative hidden lg:block">
-            <GlassCard className="ml-auto max-w-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#1a1a1a]">New member joined</p>
-                  <p className="text-xs text-[#8a8a8a]">Batch of 2014 · Pune</p>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                {ALUMNI_COLLAGE.slice(0, 3).map((url, i) => (
+                  <div
+                    key={i}
+                    className="w-full overflow-hidden rounded-3xl bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
+                    style={{ backgroundImage: `url(${url})`, aspectRatio: i === 1 ? "3/4" : "1/1" }}
+                  />
+                ))}
               </div>
-            </GlassCard>
-            <GlassCard className="mt-5 mr-auto max-w-xs">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#8a8a8a]">
-                Scholarship funded
-              </p>
-              <p className="mt-1 font-heading text-2xl font-semibold text-[#1a1a1a]">
-                ₹25,000
-              </p>
-              <p className="text-xs text-[#8a8a8a]">for a Class XII student · this month</p>
-            </GlassCard>
-            <GlassCard className="mt-5 ml-auto max-w-[15rem]">
-              <div className="flex items-center gap-2">
-                <Heart className="h-4 w-4 text-[#e8503a]" />
-                <p className="text-sm font-medium text-[#1a1a1a]">Reunion 2026 — 240 going</p>
+              <div className="space-y-4 pt-10">
+                {ALUMNI_COLLAGE.slice(3).map((url, i) => (
+                  <div
+                    key={i}
+                    className="w-full overflow-hidden rounded-3xl bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
+                    style={{ backgroundImage: `url(${url})`, aspectRatio: i === 0 ? "3/4" : "1/1" }}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* One warm stat chip overlaid, not a stack of cards */}
+            <GlassCard className="absolute -bottom-5 left-1/2 w-max -translate-x-1/2 !px-5 !py-3">
+              <div className="flex items-center gap-2.5">
+                <Users className="h-4 w-4 text-brand" />
+                <p className="text-sm font-semibold text-[#1a1a1a]">
+                  1,200+ Navodayans, one family
+                </p>
               </div>
             </GlassCard>
           </Reveal>
@@ -161,11 +184,8 @@ export default function AboutPage() {
             return (
               <Reveal key={p.title} delay={i * 0.08}>
                 <div className="h-full rounded-2xl border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_12px_32px_-12px_rgba(26,26,26,0.18)]">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${ACCENT_HEX[i]}1a`, color: ACCENT_HEX[i] }}
-                  >
-                    <Icon className="h-6 w-6" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 ring-1 ring-brand/15 text-brand">
+                    <Icon className="h-7 w-7" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-5 font-heading text-xl font-semibold text-[#1a1a1a]">
                     {p.title}
@@ -175,6 +195,48 @@ export default function AboutPage() {
               </Reveal>
             )
           })}
+        </div>
+      </Section>
+
+      {/* ── Vision & Objectives ── */}
+      <Section width="6xl">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+          {/* Vision */}
+          <Reveal>
+            <div className="rounded-3xl bg-brand p-8 text-white sm:p-10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <Eye className="h-6 w-6" strokeWidth={1.75} />
+              </div>
+              <p className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                Our vision
+              </p>
+              <p className="mt-4 font-heading text-2xl font-semibold leading-snug tracking-[-0.02em] sm:text-[26px]">
+                A JNV Nagpur family no member ever ages out of — where every
+                Navodayan can find their people, give back to the school that
+                shaped them, and lift the batch that follows.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* Objectives */}
+          <Reveal delay={0.08}>
+            <div>
+              <Eyebrow accent={2}>Our objectives</Eyebrow>
+              <h2 className="mt-4 font-heading text-3xl font-semibold tracking-[-0.03em] text-[#1a1a1a] sm:text-4xl">
+                What we set out to do.
+              </h2>
+              <ul className="mt-8 space-y-4">
+                {OBJECTIVES.map((o, i) => (
+                  <li key={i} className="flex items-start gap-3.5">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    </span>
+                    <span className="text-[15px] leading-relaxed text-[#3f3f3f]">{o}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
         </div>
       </Section>
 
@@ -188,29 +250,21 @@ export default function AboutPage() {
             const Icon = s.icon
             return (
               <Reveal key={s.label} delay={i * 0.1}>
-                <div className="flex flex-col items-center">
-                  <div
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl border"
-                    style={{
-                      color: ACCENT_HEX[s.accent],
-                      borderColor: `${ACCENT_HEX[s.accent]}55`,
-                      backgroundColor: `${ACCENT_HEX[s.accent]}14`,
-                    }}
-                  >
-                    <Icon className="h-7 w-7" strokeWidth={1.75} />
-                  </div>
-                  <p
-                    className={`mt-5 font-heading text-5xl font-semibold lg:text-6xl ${ACCENT_TEXT[s.accent]}`}
-                  >
-                    <CountUp to={s.to} suffix={s.suffix} />
-                  </p>
-                  <span
-                    className="mt-3 block h-0.5 w-8 rounded-full"
-                    style={{ backgroundColor: ACCENT_HEX[s.accent] }}
-                  />
-                  <p className="mt-3 text-sm font-medium uppercase tracking-wide text-white/60">
+                <div className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 transition hover:bg-white/[0.05]">
+                  {/* Label first */}
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">
                     {s.label}
                   </p>
+                  {/* Value — the focal point */}
+                  <p className={`mt-3 font-heading text-5xl font-semibold lg:text-6xl ${ACCENT_TEXT[s.accent]}`}>
+                    <CountUp to={s.to} suffix={s.suffix} />
+                  </p>
+                  {/* Supporting icon — subtle accent below */}
+                  <Icon
+                    className="mt-4 h-5 w-5 opacity-50"
+                    strokeWidth={1.75}
+                    style={{ color: ACCENT_HEX[s.accent] }}
+                  />
                 </div>
               </Reveal>
             )

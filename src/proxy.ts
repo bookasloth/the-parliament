@@ -20,8 +20,11 @@ const PUBLIC_ROUTES = new Set([
   "/privacy",
   "/terms",
   "/governance",
+  "/moa",
+  "/rules",
   "/wall-of-honour",
   "/sponsorship",
+  "/gallery",
   "/newsroom",
   "/changelog",
 ])
