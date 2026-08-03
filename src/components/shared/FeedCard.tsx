@@ -17,12 +17,12 @@ import {
   Send,
   Share2,
   MessageCircle,
-  Check,
   UserPlus,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
+import { VerifiedTick } from "./VerifiedTick"
 import { ReactionBar } from "./feed-card/reaction-bar"
 import CommentsSection from "@/app/(main)/feed/[postId]/comments-section"
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
@@ -262,12 +262,8 @@ export function FeedCard({
                   </a>
                 </h6>
                 {!post.isSponsored && post.isVerified && <VerifiedBadge membership={post.membership} />}
-                {/* Sponsored verified — orange circle, white tick */}
-                {post.isSponsored && (
-                  <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-orange-500" title="Verified advertiser">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                  </span>
-                )}
+                {/* Sponsored verified — orange seal */}
+                {post.isSponsored && <VerifiedTick color="#f97316" size={18} />}
                 {!post.isSponsored && post.connectionDegree && (
                   <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
                 )}

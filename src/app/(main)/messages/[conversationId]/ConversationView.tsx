@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
   Palette, Check, Sparkles, Smile, ImagePlus, Pencil, X,
@@ -28,6 +29,7 @@ interface OtherUser {
   name: string
   username: string | null
   avatar: string | null
+  isVerified: boolean
 }
 
 interface Props {
@@ -316,7 +318,10 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
             className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
           />
           <div className="min-w-0">
-            <h6 className="truncate text-sm font-semibold text-gray-900">{otherUser.name}</h6>
+            <h6 className="flex items-center gap-1 truncate text-sm font-semibold text-gray-900">
+              <span className="truncate">{otherUser.name}</span>
+              {otherUser.isVerified && <VerifiedTick size={15} />}
+            </h6>
             <p className="truncate text-[11px] leading-tight">
               {otherTyping ? (
                 <span className="text-brand font-medium">typing…</span>

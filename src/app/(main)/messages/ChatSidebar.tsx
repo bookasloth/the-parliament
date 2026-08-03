@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { Search, SlidersHorizontal, PenSquare } from "lucide-react"
 import { colorAvatar } from "@/lib/avatar"
 import type { ConversationSummary } from "@/modules/messaging/types"
@@ -75,8 +76,9 @@ export function ChatSidebar({ conversations }: { conversations: ConversationSumm
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <h6 className={`truncate text-sm ${active ? "font-bold text-brand" : "font-semibold text-gray-900"}`}>
-                        {c.otherUser.name}
+                      <h6 className={`flex items-center gap-1 truncate text-sm ${active ? "font-bold text-brand" : "font-semibold text-gray-900"}`}>
+                        <span className="truncate">{c.otherUser.name}</span>
+                        {c.otherUser.isVerified && <VerifiedTick size={14} />}
                       </h6>
                       {c.unreadCount > 0 ? (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
