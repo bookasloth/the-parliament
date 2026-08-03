@@ -18,6 +18,7 @@ import {
   Share2,
   MessageCircle,
   Check,
+  UserPlus,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
@@ -249,13 +250,13 @@ export function FeedCard({
                 alt={post.name}
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-full object-cover ring-1 ring-gray-200"
+                className="h-9 w-9 rounded-full object-cover ring-1 ring-gray-200 sm:h-10 sm:w-10"
               />
             </a>
             {/* Info */}
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h6 className="text-[16px] font-semibold text-gray-900 mb-0">
+                <h6 className="mb-0 truncate text-[15px] font-semibold text-gray-900 sm:text-[16px]">
                   <a href={profileHref} className="hover:text-brand transition-colors">
                     {post.isSponsored ? post.sponsorName : post.name}
                   </a>
@@ -298,21 +299,21 @@ export function FeedCard({
                 className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-200 transition-colors whitespace-nowrap"
                 title="Advertise here"
               >
-                Sponsored
+                Ad
               </a>
             )}
             {!post.isSponsored && !isAuthor && (
               following ? (
                 <a
                   href="/messages"
-                  className="text-[13px] font-semibold text-brand hover:underline whitespace-nowrap"
+                  className="hidden text-[13px] font-semibold text-brand hover:underline whitespace-nowrap sm:inline"
                 >
                   Message
                 </a>
               ) : (
                 <button
                   onClick={handleFollow}
-                  className="text-[13px] font-semibold text-brand hover:underline whitespace-nowrap"
+                  className="hidden text-[13px] font-semibold text-brand hover:underline whitespace-nowrap sm:inline"
                 >
                   Follow
                 </button>
@@ -330,6 +331,16 @@ export function FeedCard({
             </button>
             {actionOpen && (
               <div className="absolute right-0 top-full z-40 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg">
+                {/* Follow — mobile only (desktop shows it in the header) */}
+                {!isAuthor && !following && (
+                  <button
+                    onClick={() => { handleFollow(); setActionOpen(false) }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-brand hover:bg-gray-50 sm:hidden"
+                  >
+                    <span className="w-4 flex-shrink-0"><UserPlus className="h-4 w-4" /></span>
+                    Follow
+                  </button>
+                )}
                 {actionItems.map((item, i) => (
                   <button
                     key={i}
@@ -384,31 +395,19 @@ export function FeedCard({
                 <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
               </a>
             )}
-            <div className="flex items-center justify-between gap-3 rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3">
+            <div className="flex flex-col gap-3 rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                {post.headline && <p className="truncate text-sm font-semibold text-gray-900">{post.headline}</p>}
-                {post.content && <p className="line-clamp-2 text-xs text-gray-500">{post.content}</p>}
+                {post.headline && <p className="text-sm font-semibold text-gray-900">{post.headline}</p>}
+                {post.content && <p className="mt-0.5 text-xs text-gray-500">{post.content}</p>}
               </div>
-              <div className="flex flex-shrink-0 items-center gap-2">
-                {post.sponsorCta2 && (
-                  <a
-                    href={post.sponsorUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    {post.sponsorCta2}
-                  </a>
-                )}
-                <a
-                  href={post.sponsorUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-md bg-brand px-3.5 py-2 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
-                >
-                  {post.sponsorCta ?? "Learn more"}
-                </a>
-              </div>
+              <a
+                href={post.sponsorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex-shrink-0 rounded-md bg-orange-500 px-4 py-2 text-center text-xs font-bold text-white hover:bg-orange-600 transition-colors sm:w-auto"
+              >
+                {post.sponsorCta ?? "Learn more"}
+              </a>
             </div>
           </div>
         )}
@@ -418,13 +417,13 @@ export function FeedCard({
         {post.quote && <QuoteBlock quote={post.quote} />}
 
         {post.question && (
-          <div className="relative rounded-lg overflow-hidden bg-gradient-to-br from-brand to-brand-700 min-h-[140px] flex items-center justify-center">
+          <div className="relative flex min-h-[150px] items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-brand to-brand-700 px-5 pb-6 pt-12">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.12),transparent_70%)]" />
-            <div className="absolute top-3 right-3 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm flex items-center gap-1">
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
               <HelpCircle className="h-3 w-3" />
               Question
             </div>
-            <h2 className="relative px-6 text-center text-lg md:text-xl font-bold leading-snug text-white">
+            <h2 className="relative text-center text-lg font-bold leading-snug text-white md:text-xl">
               {post.question}
             </h2>
           </div>

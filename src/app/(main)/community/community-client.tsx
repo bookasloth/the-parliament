@@ -5,10 +5,11 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import {
-  Search, Grid, List, MapPin, GraduationCap, Users, ShieldCheck,
+  Search, Grid, List, MapPin, GraduationCap, Users,
   Briefcase, X, Loader2,
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { colorAvatar } from "@/lib/avatar"
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/config/membership-colors"
@@ -144,7 +145,7 @@ export function CommunityClient({
         <div className="flex items-center justify-between gap-3 rounded border border-gray-200 bg-white px-4 py-2 sm:justify-start sm:gap-4">
           {[
             { label: "Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
-            { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <ShieldCheck className="h-4 w-4 text-blue-500" /> },
+            { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <VerifiedTick size={16} /> },
             { label: "Batches", value: `${stats.batches}`, icon: <GraduationCap className="h-4 w-4 text-amber-500" /> },
             { label: "Industries", value: `${stats.industries}`, icon: <Briefcase className="h-4 w-4 text-emerald-500" /> },
           ].map((s, i) => (
@@ -152,48 +153,51 @@ export function CommunityClient({
               {s.icon}
               <div className="leading-none">
                 <span className="text-base font-bold text-gray-900 tabular-nums">{s.value}</span>
-                <span className="ml-1 text-[11px] text-gray-500">{s.label}</span>
+                {/* Label hidden on mobile — icon + number only */}
+                <span className="ml-1 hidden text-[11px] text-gray-500 sm:inline">{s.label}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search alumni by name or username…"
-          className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
-        />
-      </form>
-
-      {/* One-line inline filters — always visible, compact selects. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <select className={sel} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
-          <option value="">All batches</option>
-          {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-        </select>
-        <select className={sel} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
-          <option value="">All houses</option>
-          {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-        </select>
-        <select className={sel} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
-          <option value="">All tiers</option>
-          {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        {facets.industries.length > 0 && (
-          <select className={sel} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })}>
+      {/* Search + 4 filters — inline on desktop, search over a 2×2 filter grid on mobile. */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search alumni by name or username…"
+            className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
+          />
+        </form>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:flex-none lg:items-center">
+          <select className={`${sel} w-full lg:w-auto`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+            <option value="">All batches</option>
+            {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+          </select>
+          <select className={`${sel} w-full lg:w-auto`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+            <option value="">All houses</option>
+            {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+          <select className={`${sel} w-full lg:w-auto`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+            <option value="">All tiers</option>
+            {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <select className={`${sel} w-full lg:w-auto`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
             <option value="">All industries</option>
             {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
           </select>
-        )}
+        </div>
+      </div>
+
+      {/* Verified toggle + view switch */}
+      <div className="flex flex-wrap items-center gap-2">
         <label className={`flex cursor-pointer items-center gap-1.5 rounded border px-2.5 py-1.5 text-sm transition-colors ${current.verified === "1" ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}>
           <input type="checkbox" checked={current.verified === "1"} onChange={(e) => go({ verified: e.target.checked ? "1" : undefined })} className="h-3.5 w-3.5 accent-brand" />
           Verified only
         </label>
-
         <div className="flex-1" />
         <div className="flex items-center gap-1 rounded border border-gray-200 bg-white p-1">
           <button aria-label="Grid view" onClick={() => setView("grid")} className={`rounded p-1.5 transition-colors ${view === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><Grid className="h-4 w-4" /></button>
@@ -255,7 +259,7 @@ export function CommunityClient({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <a href={`/${r.username}`} className="text-sm font-semibold text-gray-900 hover:text-brand">{r.displayName || r.legalName}</a>
-                  {r.isVerified && <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0" style={{ color: tierAccent(r.membershipStatus) }} aria-label="Verified" />}
+                  {r.isVerified && <VerifiedTick size={15} color={tierAccent(r.membershipStatus)} />}
                   {r.house && <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: r.house.colorHex, color: r.house.name === "Udaigiri" ? "#666" : "#fff" }}>{r.house.name}</span>}
                 </div>
                 {r.headline && <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{r.headline}</p>}

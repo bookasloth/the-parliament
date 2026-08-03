@@ -294,6 +294,29 @@ export function ReactionBar({
   return (
     <>
       <div className="flex items-center justify-between py-1 tabular-nums">
+        {/* Comment — detail link (commentHref) › inline expander (onCommentClick) › built-in composer */}
+        {commentHref ? (
+          <a
+            href={commentHref}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
+          >
+            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
+          </a>
+        ) : (
+          <button
+            onClick={onCommentClick ?? (() => setCommentOpen((o) => !o))}
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+              (onCommentClick ? commentsExpanded : commentOpen)
+                ? "text-blue-500 hover:bg-blue-50/30"
+                : "text-gray-500 hover:text-blue-500 hover:bg-blue-50/30"
+            }`}
+          >
+            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
+            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
+          </button>
+        )}
+
         {/* Upvote */}
         <button
           onClick={handleUpvote}
@@ -319,29 +342,6 @@ export function ReactionBar({
           <ThumbsDown className={`h-4 w-4 ${voteState === "down" ? "fill-red-500" : ""}`} strokeWidth={1.6} />
           <span className="text-[13px] font-medium"><span className="hidden sm:inline">Downvote </span>({downvotes})</span>
         </button>
-
-        {/* Comment — detail link (commentHref) › inline expander (onCommentClick) › built-in composer */}
-        {commentHref ? (
-          <a
-            href={commentHref}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
-          >
-            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
-            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
-          </a>
-        ) : (
-          <button
-            onClick={onCommentClick ?? (() => setCommentOpen((o) => !o))}
-            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
-              (onCommentClick ? commentsExpanded : commentOpen)
-                ? "text-blue-500 hover:bg-blue-50/30"
-                : "text-gray-500 hover:text-blue-500 hover:bg-blue-50/30"
-            }`}
-          >
-            <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
-            <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
-          </button>
-        )}
 
         {/* Share */}
         <ShareDropdown postId={postId} shares={shares} onShare={onShare} />

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { ShieldCheck } from "lucide-react"
+import { VerifiedTick } from "./VerifiedTick"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import Link from "next/link"
 import Image from "next/image"
@@ -76,9 +76,7 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
             {alumni.name}
           </Link>
           {verified && (
-            tierColoredVerified
-              ? <ShieldCheck className="h-4 w-4 flex-shrink-0" style={{ color: tier.accent }} aria-label="Verified" />
-              : <ShieldCheck className="h-4 w-4 flex-shrink-0 fill-blue-100 text-blue-500" aria-label="Verified" />
+            <VerifiedTick color={tierColoredVerified ? tier.accent : "#009ae4"} size={16} />
           )}
         </h3>
 
