@@ -17,6 +17,7 @@ import {
   Send,
   Share2,
   MessageCircle,
+  Check,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
@@ -260,15 +261,16 @@ export function FeedCard({
                   </a>
                 </h6>
                 {!post.isSponsored && post.isVerified && <VerifiedBadge membership={post.membership} />}
+                {/* Sponsored verified — orange circle, white tick */}
+                {post.isSponsored && (
+                  <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-orange-500" title="Verified advertiser">
+                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                  </span>
+                )}
                 {!post.isSponsored && post.connectionDegree && (
                   <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
                 )}
-                {post.isSponsored ? (
-                  <span className="text-xs text-[#6B7280] whitespace-nowrap">
-                    {post.timestamp}
-                    {post.isEdited && <span> · Edited</span>}
-                  </span>
-                ) : (
+                {!post.isSponsored && (
                   <a
                     href={postHref}
                     className="text-xs text-[#6B7280] whitespace-nowrap hover:underline"
@@ -278,9 +280,12 @@ export function FeedCard({
                   </a>
                 )}
               </div>
-              {/* Alumni graph context — "21st batch (2006 - 2013)" */}
+              {/* Subline — batch for alumni, tagline for sponsored */}
               {!post.isSponsored && post.batch && (
                 <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{post.batch}</div>
+              )}
+              {post.isSponsored && post.sponsorSubhead && (
+                <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{post.sponsorSubhead}</div>
               )}
             </div>
           </div>
@@ -313,7 +318,8 @@ export function FeedCard({
                 </button>
               )
             )}
-          {/* Overflow Menu */}
+          {/* Overflow Menu — hidden for sponsored ads */}
+          {!post.isSponsored && (
           <div className="relative" ref={actionRef}>
             <button
               onClick={() => setActionOpen(!actionOpen)}
@@ -339,6 +345,7 @@ export function FeedCard({
               </div>
             )}
           </div>
+          )}
           </div>
         </div>
       </div>
@@ -382,14 +389,26 @@ export function FeedCard({
                 {post.headline && <p className="truncate text-sm font-semibold text-gray-900">{post.headline}</p>}
                 {post.content && <p className="line-clamp-2 text-xs text-gray-500">{post.content}</p>}
               </div>
-              <a
-                href={post.sponsorUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                {post.sponsorCta ?? "Learn more"}
-              </a>
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {post.sponsorCta2 && (
+                  <a
+                    href={post.sponsorUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    {post.sponsorCta2}
+                  </a>
+                )}
+                <a
+                  href={post.sponsorUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-brand px-3.5 py-2 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
+                >
+                  {post.sponsorCta ?? "Learn more"}
+                </a>
+              </div>
             </div>
           </div>
         )}
