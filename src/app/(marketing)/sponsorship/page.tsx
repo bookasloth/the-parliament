@@ -73,36 +73,57 @@ export default function SponsorshipPage() {
   return (
     <>
       {/* ── Hero ── */}
-      <Section width="6xl" className="pt-32 lg:pt-40">
-        <div className="max-w-3xl">
-          <Reveal>
-            <Eyebrow accent={1}>Sponsorship</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-6xl lg:leading-[1.05]">
-              Back a community that gives back.
-            </h1>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mt-6 text-lg leading-relaxed text-[#5b5b5b]">
-              Partner with NNAWCA to reach an engaged network of JNV Nagpur alumni — while your
-              support funds scholarships and campus initiatives. Good for your brand, better for a
-              student's future.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <a
-              href="/contact"
-              className="mt-9 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
-            >
-              <Handshake className="h-4 w-4" /> Talk to the committee
-            </a>
+      <Section width="6xl" className="pt-32 pb-10 lg:pt-40 lg:pb-16">
+        <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <Reveal>
+              <Eyebrow accent={1}>Sponsorship</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-6xl lg:leading-[1.05]">
+                Back a community that gives back.
+              </h1>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#5b5b5b]">
+                Partner with NNAWCA to reach an engaged network of JNV Nagpur alumni — while your
+                support funds scholarships and campus initiatives. Good for your brand, better for a
+                student's future.
+              </p>
+            </Reveal>
+            <Reveal delay={0.15}>
+              <a
+                href="/contact"
+                className="mt-9 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+              >
+                <Handshake className="h-4 w-4" /> Talk to the committee
+              </a>
+            </Reveal>
+          </div>
+
+          {/* Sponsor spotlight — fills the space, previews the value */}
+          <Reveal delay={0.2} className="hidden lg:block">
+            <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-[0_20px_60px_-24px_rgba(26,26,26,0.25)]">
+              <div className="flex h-40 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-[#f4f1ea] text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Presented by</p>
+                <p className="mt-1.5 font-heading text-2xl font-semibold text-[#1a1a1a]">Your Brand</p>
+                <p className="mt-1 text-xs text-[#8a8a8a]">at NNAWCA Annual Reunion 2026</p>
+              </div>
+              <div className="mt-5 grid grid-cols-3 divide-x divide-black/5 text-center">
+                {[["1,200+", "alumni"], ["40+", "companies"], ["48", "events/yr"]].map(([n, l]) => (
+                  <div key={l} className="px-2">
+                    <p className="font-heading text-xl font-semibold text-[#1a1a1a]">{n}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-[#8a8a8a]">{l}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </Reveal>
         </div>
       </Section>
 
       {/* ── Reach stats ── */}
-      <Section dark width="6xl" className="text-center">
+      <Section dark width="6xl" className="relative rounded-t-[2.5rem] text-center lg:rounded-t-[3rem]">
         <Reveal>
           <Eyebrow accent={2}>Your reach</Eyebrow>
         </Reveal>

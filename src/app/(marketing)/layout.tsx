@@ -5,6 +5,7 @@ import { Footer } from "@/components/homepage/Footer"
 const NAV_LINKS = [
   { label: "About", href: "/about" },
   { label: "Committee", href: "/committee" },
+  { label: "Gallery", href: "/gallery" },
   { label: "Membership", href: "/join" },
   { label: "Donate", href: "/donate" },
   { label: "Contact", href: "/contact" },
@@ -28,6 +29,7 @@ const FOOTER_COLUMNS = [
       { label: "Membership", href: "/join" },
       { label: "Donate", href: "/donate" },
       { label: "Wall of Honour", href: "/wall-of-honour" },
+      { label: "Gallery", href: "/gallery" },
       { label: "Sponsorship", href: "/sponsorship" },
       { label: "Sign up", href: "/auth/signup" },
     ],
@@ -35,6 +37,8 @@ const FOOTER_COLUMNS = [
   {
     title: "Legal",
     links: [
+      { label: "Memorandum (MOA)", href: "/moa" },
+      { label: "Rules & Regulations", href: "/rules" },
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },
     ],

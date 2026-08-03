@@ -74,11 +74,11 @@ export default function GovernancePage() {
           </Reveal>
           <Reveal delay={0.15}>
             <div className="mt-7 flex flex-wrap gap-3 text-sm">
-              <a href="#moa" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
-                Memorandum
+              <a href="/moa" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
+                Read the Memorandum
               </a>
-              <a href="#rules" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
-                Rules & Regulations
+              <a href="/rules" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
+                Read the Rules
               </a>
             </div>
           </Reveal>
