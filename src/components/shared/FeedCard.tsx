@@ -23,6 +23,7 @@ import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
 import { VerifiedTick } from "./VerifiedTick"
+import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
 import CommentsSection from "@/app/(main)/feed/[postId]/comments-section"
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
@@ -49,7 +50,6 @@ export function FeedCard({
   onReport,
   onHide,
   onPollVote,
-  onFollow,
   commentsLoader,
   defaultCommentsOpen = false,
   disableCardNav = false,
@@ -67,8 +67,6 @@ export function FeedCard({
   onReport?: (reason: string) => void | Promise<unknown>
   onHide?: () => void | Promise<unknown>
   onPollVote?: (optionId: string) => void | Promise<unknown>
-  /** Header follow CTA. When omitted the button still shows but only updates local state. */
-  onFollow?: () => void | Promise<unknown>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
   /** Detail-page use: open the comment thread on mount instead of on click. */
@@ -79,7 +77,8 @@ export function FeedCard({
   const router = useRouter()
   const { open: actionOpen, setOpen: setActionOpen, ref: actionRef } = useDropdown()
   const [saved, setSaved] = useState(initialSaved)
-  const [following, setFollowing] = useState(post.isFollowing ?? false)
+  // Shared follow state — following an author updates every post by them.
+  const { following, toggle: handleFollow } = useFollow(post.authorId, post.isFollowing ?? false)
   const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen)
   const [commentsData, setCommentsData] = useState<InlineComments | null>(null)
   const [loadingComments, setLoadingComments] = useState(false)
@@ -154,11 +153,6 @@ export function FeedCard({
     if (!onDelete) return
     if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return
     void onDelete()
-  }
-
-  function handleFollow() {
-    setFollowing(true)
-    if (onFollow) Promise.resolve(onFollow()).catch(() => setFollowing(false))
   }
 
   function handleReport() {

@@ -24,7 +24,15 @@ export default async function PostDetailPage({
   await prisma.post.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } }).catch(() => {})
 
   const isAuthor = viewer?.id === post.author.id
-  const feedPost = mapRowToFeedPost({ ...post, viewerReaction })
+  const followingIds =
+    viewer?.id && !isAuthor
+      ? new Set(
+          (await prisma.follow.findMany({ where: { followerId: viewer.id, followingId: post.author.id }, select: { followingId: true } })).map(
+            (f) => f.followingId,
+          ),
+        )
+      : undefined
+  const feedPost = mapRowToFeedPost({ ...post, viewerReaction }, followingIds)
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6">

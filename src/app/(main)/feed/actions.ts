@@ -297,8 +297,15 @@ export async function loadMoreFeedAction(
     pageSize,
     followingOnly,
   })
+  const followingIds = viewer?.id
+    ? new Set(
+        (await prisma.follow.findMany({ where: { followerId: viewer.id }, select: { followingId: true } })).map(
+          (f) => f.followingId,
+        ),
+      )
+    : undefined
   return {
-    posts: rows.map(mapRowToFeedPost),
+    posts: rows.map((r) => mapRowToFeedPost(r, followingIds)),
     hasMore: rows.length === pageSize,
     nextPage: page + 1,
   }

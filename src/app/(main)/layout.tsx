@@ -1,5 +1,6 @@
 import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNavbar"
 import { MobileTabBar } from "@/components/shared/MobileTabBar"
+import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 
@@ -42,7 +43,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     }
   }
   return (
-    <>
+    <FollowStoreProvider>
       <PrivateNavbar viewer={viewer} />
       {/* Reserve space for the mobile tab bar (incl. safe-area) so fixed bottom
           nav never covers page content. Desktop has no bottom bar. */}
@@ -50,6 +51,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         {children}
       </div>
       <MobileTabBar />
-    </>
+    </FollowStoreProvider>
   )
 }

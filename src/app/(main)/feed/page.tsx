@@ -85,7 +85,16 @@ export default async function FeedPage({
       ]),
     ])
 
-    mappedReal = injectFeedAds(rows.map(mapRowToFeedPost))
+    // Which of the feed's authors the viewer already follows — so posts open in
+    // the correct follow state and stay in sync via the shared follow store.
+    const followingIds = viewer?.id
+      ? new Set(
+          (await prisma.follow.findMany({ where: { followerId: viewer.id }, select: { followingId: true } })).map(
+            (f) => f.followingId,
+          ),
+        )
+      : undefined
+    mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)))
     hasMore = rows.length === FIRST_PAGE_SIZE
     caughtUp = cu
 
