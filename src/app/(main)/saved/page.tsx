@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { optionalUser } from "@/modules/auth/session"
 import { listSavedPosts } from "@/modules/feed/query"
+import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost } from "../feed/map-row"
 import SavedFeed from "./saved-feed"
 
@@ -11,7 +12,12 @@ export default async function SavedPage() {
   if (!viewer?.id) redirect("/auth/signin?callbackUrl=/saved")
 
   const rows = await listSavedPosts(viewer.id, 50)
-  const posts = rows.map(mapRowToFeedPost)
+  const followingIds = new Set(
+    (await prisma.follow.findMany({ where: { followerId: viewer.id }, select: { followingId: true } })).map(
+      (f) => f.followingId,
+    ),
+  )
+  const posts = rows.map((r) => mapRowToFeedPost(r, followingIds))
 
   return (
     <div className="mx-auto max-w-[680px] px-4 sm:px-6 py-6">

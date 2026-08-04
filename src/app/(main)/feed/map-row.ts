@@ -93,7 +93,7 @@ export function relativeTime(date: Date): string {
   })
 }
 
-export function mapRowToFeedPost(row: FeedRow): FeedPost {
+export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): FeedPost {
   const author = row.author
   const anon = (row as { isAnonymous?: boolean }).isAnonymous ?? false
   const name = anon ? "Anonymous JNVian" : author.displayName || author.legalName
@@ -147,6 +147,7 @@ export function mapRowToFeedPost(row: FeedRow): FeedPost {
   return {
     id: row.id,
     authorId: author.id,
+    isFollowing: followingIds?.has(author.id) ?? false,
     username: anon ? undefined : author.username ?? undefined,
     savedByViewer: savedRows.length > 0,
     viewerReaction,

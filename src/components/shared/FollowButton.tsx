@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { UserPlus, UserCheck, UserMinus, Check } from "lucide-react"
-import { followAction, unfollowAction } from "@/app/(main)/connections/actions"
+import { useFollow } from "./follow-store"
 
 export function FollowButton({
   userId,
@@ -14,22 +13,7 @@ export function FollowButton({
   /** Square icon-only button (mobile/compact). */
   iconOnly?: boolean
 }) {
-  const [following, setFollowing] = useState(initialFollowing)
-  const [busy, setBusy] = useState(false)
-
-  async function toggle() {
-    if (busy) return
-    setBusy(true)
-    const next = !following
-    setFollowing(next) // optimistic
-    try {
-      await (next ? followAction(userId) : unfollowAction(userId))
-    } catch {
-      setFollowing(!next) // revert
-    } finally {
-      setBusy(false)
-    }
-  }
+  const { following, toggle, busy } = useFollow(userId, initialFollowing)
 
   if (iconOnly) {
     const label = following ? "Following — click to unfollow" : "Follow"
