@@ -136,6 +136,116 @@ export async function cancelRsvp(userId: string, eventId: string) {
   return prisma.eventRsvp.deleteMany({ where: { eventId, userId } })
 }
 
+// ── Attendance (host-facing check-in) ──
+
+export interface AttendeeRow {
+  userId: string
+  name: string
+  username: string | null
+  checkedIn: boolean
+}
+
+/** Attendees (users with a "going" RSVP) + their check-in state, for the host. */
+export async function listEventAttendees(eventId: string): Promise<AttendeeRow[]> {
+  const [rsvps, attendance] = await Promise.all([
+    prisma.eventRsvp.findMany({
+      where: { eventId, status: "going" },
+      select: {
+        userId: true,
+        rsvpAt: true,
+        user: { select: { legalName: true, displayName: true, username: true } },
+      },
+      orderBy: { rsvpAt: "asc" },
+    }),
+    prisma.eventAttendance.findMany({
+      where: { eventId, checkedInAt: { not: null } },
+      select: { userId: true },
+    }),
+  ])
+  const checked = new Set(attendance.map((a) => a.userId))
+  return rsvps.map((r) => ({
+    userId: r.userId,
+    name: r.user.displayName || r.user.legalName,
+    username: r.user.username,
+    checkedIn: checked.has(r.userId),
+  }))
+}
+
+/** Toggle a single attendee's check-in. Sets checkedInAt to now or clears it. */
+export async function setCheckIn(eventId: string, userId: string, checkedIn: boolean) {
+  return prisma.eventAttendance.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    create: { eventId, userId, checkedInAt: checkedIn ? new Date() : null },
+    update: { checkedInAt: checkedIn ? new Date() : null },
+  })
+}
+
+/** True if the user hosts this event (gate for the attendance panel). */
+export async function isEventHost(eventId: string, userId: string): Promise<boolean> {
+  const e = await prisma.event.findUnique({ where: { id: eventId }, select: { hostId: true } })
+  return !!e && e.hostId === userId
+}
+
+// ── Feedback (attendee-facing, post-event) ──
+
+/** Valid feedback rating: integer 1–5. */
+export function isValidRating(rating: number): boolean {
+  return Number.isInteger(rating) && rating >= 1 && rating <= 5
+}
+
+export interface FeedbackSummary {
+  count: number
+  average: number | null
+  recent: { rating: number; comment: string | null; name: string; at: string }[]
+}
+
+/** Whether a user is eligible to leave feedback: had a "going" RSVP. */
+export async function canLeaveFeedback(eventId: string, userId: string): Promise<boolean> {
+  const rsvp = await prisma.eventRsvp.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+    select: { status: true },
+  })
+  return rsvp?.status === "going"
+}
+
+export async function getMyFeedback(eventId: string, userId: string): Promise<{ rating: number; comment: string | null } | null> {
+  return prisma.eventFeedback.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+    select: { rating: true, comment: true },
+  })
+}
+
+export async function submitFeedback(eventId: string, userId: string, rating: number, comment: string | null) {
+  const c = comment?.trim() || null
+  return prisma.eventFeedback.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    create: { eventId, userId, rating, comment: c },
+    update: { rating, comment: c },
+  })
+}
+
+export async function getFeedbackSummary(eventId: string): Promise<FeedbackSummary> {
+  const [agg, recent] = await Promise.all([
+    prisma.eventFeedback.aggregate({ where: { eventId }, _avg: { rating: true }, _count: true }),
+    prisma.eventFeedback.findMany({
+      where: { eventId, comment: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { rating: true, comment: true, createdAt: true, user: { select: { legalName: true, displayName: true } } },
+    }),
+  ])
+  return {
+    count: agg._count,
+    average: agg._avg.rating,
+    recent: recent.map((r) => ({
+      rating: r.rating,
+      comment: r.comment,
+      name: r.user.displayName || r.user.legalName,
+      at: r.createdAt.toISOString(),
+    })),
+  }
+}
+
 /** Fetch a single event by id, with the current user's RSVP status. */
 export async function getEventById(id: string, userId: string | null) {
   const event = await prisma.event.findUnique({
