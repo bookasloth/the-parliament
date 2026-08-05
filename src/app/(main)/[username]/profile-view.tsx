@@ -253,7 +253,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
         href="/profile/edit"
         className={`${R_EL} flex items-center gap-1.5 border border-brand bg-brand px-[18px] py-2.5 text-[13px] font-semibold text-white hover:bg-brand-600 transition-colors`}
       >
-        <Pencil className="h-4 w-4" /> Edit profile
+        <Pencil className="h-4 w-4" /> Edit
       </Link>
       <button
         onClick={shareProfile}
@@ -373,14 +373,15 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           </div>
         </Card>
 
-        {/* About sidebar */}
-        <Card className="lg:sticky lg:top-4">
+        {/* About sidebar — spans both rows so the body flows directly under the
+            profile card instead of waiting for this taller column. */}
+        <Card className="lg:sticky lg:top-4 lg:row-span-2">
           <div className="flex items-center justify-between px-7 pt-5 pb-1">
             <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
           </div>
           <div className="px-7 pb-6 pt-2">
             {data.bio && <p className="text-[13.5px] leading-relaxed text-gray-700">{data.bio}</p>}
-            <ul className="mt-4 space-y-2.5 text-[13.5px] text-gray-700">
+            <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
               {data.dateOfBirth && (
                 <li className="flex items-center gap-2">
                   <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
@@ -473,12 +474,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           </div>
         </Card>
 
-        </div>
-
-        {/* ===== BODY ===== */}
-        <div className="mt-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
-
-          <div className="flex flex-col gap-[18px]">
+          {/* ===== BODY — left column, flows directly under the profile card ===== */}
+          <div className="flex min-w-0 flex-col gap-[18px]">
             {tab === "posts" && (
               <div className="flex flex-col gap-[18px]">
                 {/* Own profile: start-a-post entry above the timeline */}
