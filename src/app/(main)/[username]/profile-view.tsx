@@ -7,6 +7,8 @@ import { useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
+import type { FeedPost } from "@/components/shared/FeedCard"
+import PostCard from "../feed/[postId]/post-card"
 import { startConversationAction } from "../messages/actions"
 import {
   Briefcase, MapPin, Building2, MoreHorizontal,
@@ -108,6 +110,7 @@ export interface ProfileViewData {
   followersCount: number
   followingCount: number
   postsCount: number
+  posts: { post: FeedPost; isAuthor: boolean; initialSaved: boolean }[]
   userId: string
   viewerFollows: boolean
   higherEducation: string | null
@@ -228,6 +231,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
     </div>
   )
 
+  // ponytail: Copy link + native share work with no backend; Report/Block
+  // deferred until a profile-report action exists.
+  const moreMenu = <MoreMenu username={data.username} />
+
   const actions = isOwn ? (
     <>
       <Link
@@ -279,10 +286,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       {moreMenu}
     </>
   )
-
-  // ponytail: Copy link + native share work with no backend; Report/Block
-  // deferred until a profile-report action exists.
-  const moreMenu = <MoreMenu username={data.username} />
 
   const metaRow = metaBits.length > 0 && (
     <>
@@ -449,23 +452,37 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
         <div className="mt-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
 
           <div className="flex flex-col gap-[18px]">
-            {tab === "posts" && (
-              <Card>
-                <div className="px-7 py-10 text-center">
-                  <p className="text-sm text-gray-500">
-                    {isOwn ? "You haven't posted yet." : `${data.name.split(" ")[0]} hasn't posted yet.`}
-                  </p>
-                  {isOwn && (
-                    <Link
-                      href="/compose"
-                      className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600`}
-                    >
-                      Write your first post
-                    </Link>
-                  )}
+            {tab === "posts" &&
+              (data.posts.length > 0 ? (
+                <div className="flex flex-col gap-[18px]">
+                  {data.posts.map(({ post, isAuthor, initialSaved }) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      isAuthor={isAuthor}
+                      initialSaved={initialSaved}
+                      defaultCommentsOpen={false}
+                      disableCardNav={false}
+                    />
+                  ))}
                 </div>
-              </Card>
-            )}
+              ) : (
+                <Card>
+                  <div className="px-7 py-10 text-center">
+                    <p className="text-sm text-gray-500">
+                      {isOwn ? "You haven't posted yet." : `${data.name.split(" ")[0]} hasn't posted yet.`}
+                    </p>
+                    {isOwn && (
+                      <Link
+                        href="/compose"
+                        className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600`}
+                      >
+                        Write your first post
+                      </Link>
+                    )}
+                  </div>
+                </Card>
+              ))}
 
             {tab === "about" && (
               <>
