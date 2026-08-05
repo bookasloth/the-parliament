@@ -2,13 +2,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
-  ArrowLeft, Calendar, MapPin, Video, Users, Star, Ticket,
+  ArrowLeft, Calendar, MapPin, Video, Users, Star,
 } from "lucide-react"
 import { optionalUser } from "@/modules/auth/session"
 import {
   getEventById, listEventAttendees, getFeedbackSummary, getMyFeedback, canLeaveFeedback,
 } from "@/modules/events/service"
-import EventRsvpButtons from "./rsvp-buttons"
+import EventRegister from "./event-register"
 import AttendancePanel from "./attendance-panel"
 import FeedbackSection from "./feedback-section"
 
@@ -37,8 +37,10 @@ export default async function EventDetailPage({
 
   const result = await getEventById(slug, viewer?.id ?? null).catch(() => null)
   if (!result) notFound()
-  const { event, interested } = result
+  const { event, myStatus } = result
 
+  const registered = myStatus === "going"
+  const isInterested = myStatus === "maybe"
   const isHost = !!viewer && event.hostId === viewer.id
   // "Past" once it has ended (or started, if no end time).
   const isPast = (event.endsAt ?? event.startsAt) < new Date()
@@ -169,13 +171,14 @@ export default async function EventDetailPage({
 
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-xl p-5 lg:sticky lg:top-4">
-            <EventRsvpButtons eventId={event.id} initialInterested={interested} />
-            <Link
-              href={`/events/${event.id}/register`}
-              className="mt-2 flex items-center justify-center gap-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Ticket className="h-4 w-4" /> Registration form
-            </Link>
+            <EventRegister
+              eventId={event.id}
+              priceInPaise={event.priceInPaise}
+              registered={registered}
+              interested={isInterested}
+              isPast={isPast}
+              loggedIn={!!viewer}
+            />
           </div>
         </div>
       </div>

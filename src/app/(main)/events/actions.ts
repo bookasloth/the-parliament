@@ -8,7 +8,7 @@ import {
   cancelRsvp, getEventById, rsvpEvent, type EventItem,
   isEventHost, setCheckIn, canLeaveFeedback, submitFeedback, isValidRating,
 } from "@/modules/events/service"
-import { createEventSchema, type CreateEventInput } from "./create-schema"
+import { createEventSchema, rupeesToPaise, type CreateEventInput } from "./create-schema"
 
 /**
  * Member-created event. Uses only the columns the Event model already has
@@ -22,7 +22,7 @@ export async function createEventAction(
   const user = await requireUser()
   const parsed = createEventSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: "Please fill in the required fields." }
-  const { title, date, time, mode, venue, eventUrl } = parsed.data
+  const { title, date, time, mode, venue, eventUrl, priceRupees } = parsed.data
 
   const schoolId = await getDefaultSchoolId()
   if (!schoolId) return { ok: false, error: "No school configured." }
@@ -45,6 +45,7 @@ export async function createEventAction(
       mode: storedMode,
       venue: mode !== "virtual" ? venue || null : null,
       onlineUrl: url, // registration / landing link — optional on any mode
+      priceInPaise: rupeesToPaise(priceRupees),
       visibility: "school",
       status: "published",
     },
@@ -87,6 +88,36 @@ export async function rsvpAction(eventId: string) {
 
   revalidatePath("/events")
   return { interested: !existing?.interested }
+}
+
+/** Register for a FREE event (going). Paid events go through Razorpay instead. */
+export async function registerFreeAction(eventId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser()
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { priceInPaise: true, status: true } })
+  if (!event || event.status === "cancelled") return { ok: false, error: "Event not available" }
+  if (event.priceInPaise > 0) return { ok: false, error: "This event requires payment" }
+  await rsvpEvent(user.id, eventId, "going")
+  revalidatePath(`/events/${eventId}`)
+  return { ok: true }
+}
+
+/** Toggle the secondary "Interested" signal (maybe) — no payment, no registration. */
+export async function toggleInterestAction(eventId: string): Promise<{ interested: boolean }> {
+  const user = await requireUser()
+  const existing = await prisma.eventRsvp.findUnique({
+    where: { eventId_userId: { eventId, userId: user.id } },
+    select: { status: true },
+  })
+  if (existing?.status === "maybe") {
+    await cancelRsvp(user.id, eventId)
+    revalidatePath(`/events/${eventId}`)
+    return { interested: false }
+  }
+  // Don't clobber a paid "going" registration with a downgrade to interested.
+  if (existing?.status === "going") return { interested: false }
+  await rsvpEvent(user.id, eventId, "maybe")
+  revalidatePath(`/events/${eventId}`)
+  return { interested: true }
 }
 
 /** Host-only: toggle an attendee's check-in for an event. */
