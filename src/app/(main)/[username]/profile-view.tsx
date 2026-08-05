@@ -111,6 +111,17 @@ export interface ProfileViewData {
   followingCount: number
   postsCount: number
   posts: { post: FeedPost; isAuthor: boolean; initialSaved: boolean }[]
+  followers: {
+    userId: string
+    username: string | null
+    name: string
+    avatar: string
+    batchLabel: string
+    houseColor: string | null
+    isVerified: boolean
+    isSelf: boolean
+    viewerFollows: boolean
+  }[]
   userId: string
   viewerFollows: boolean
   higherEducation: string | null
@@ -609,23 +620,53 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             {tab === "followers" && (
               <Card>
                 <SectionTitle>Followers</SectionTitle>
-                <div className="px-7 py-10 text-center">
-                  <p className="text-sm text-gray-500">
-                    {data.followersCount === 0
-                      ? isOwn
-                        ? "You have no followers yet."
-                        : `${data.name.split(" ")[0]} has no followers yet.`
-                      : `${data.followersCount} follower${data.followersCount === 1 ? "" : "s"}. Detail view coming soon.`}
-                  </p>
-                  {isOwn && (
-                    <Link
-                      href="/connections"
-                      className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} border border-brand bg-white px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white`}
-                    >
-                      Manage your network
-                    </Link>
-                  )}
-                </div>
+                {data.followers.length === 0 ? (
+                  <div className="px-7 py-10 text-center">
+                    <p className="text-sm text-gray-500">
+                      {isOwn ? "You have no followers yet." : `${data.name.split(" ")[0]} has no followers yet.`}
+                    </p>
+                    {isOwn && (
+                      <Link
+                        href="/connections"
+                        className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} border border-brand bg-white px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white`}
+                      >
+                        Manage your network
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100 px-5 pb-3">
+                    {data.followers.map((f) => (
+                      <div key={f.userId} className="flex items-center gap-3 py-3">
+                        <Link href={`/${f.username ?? f.userId}`} className="flex-shrink-0">
+                          <Image
+                            src={f.avatar}
+                            alt={f.name}
+                            width={44}
+                            height={44}
+                            className="h-11 w-11 rounded-full object-cover"
+                            style={{ boxShadow: f.houseColor ? `0 0 0 2px ${f.houseColor}` : undefined }}
+                          />
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/${f.username ?? f.userId}`} className="flex items-center gap-1.5">
+                            <span className="truncate text-sm font-semibold text-gray-900 hover:text-brand">{f.name}</span>
+                            {f.isVerified && <VerifiedTick size={14} />}
+                          </Link>
+                          {f.batchLabel && <p className="text-xs text-gray-500">{f.batchLabel}</p>}
+                        </div>
+                        {!f.isSelf && (
+                          <FollowButton userId={f.userId} initialFollowing={f.viewerFollows} />
+                        )}
+                      </div>
+                    ))}
+                    {data.followersCount > data.followers.length && (
+                      <Link href="/connections" className="block py-3 text-center text-xs font-semibold text-brand hover:underline">
+                        View all {data.followersCount} followers
+                      </Link>
+                    )}
+                  </div>
+                )}
               </Card>
             )}
           </div>

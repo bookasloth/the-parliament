@@ -7,7 +7,8 @@ import type { PlanCode } from "@/config/membership"
 import { ProfileView, type ExperienceItem, type EducationItem, type ProfileViewData } from "./profile-view"
 import { formatDuration } from "@/modules/profile/history"
 import { getFeed } from "@/modules/feed/query"
-import { mapRowToFeedPost } from "../feed/map-row"
+import { mapRowToFeedPost, batchOrdinal } from "../feed/map-row"
+import { getFollowingIds } from "@/modules/connections/service"
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "Present"
@@ -146,6 +147,48 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     const post = mapRowToFeedPost(r)
     return { post, isAuthor: viewerId === post.authorId, initialSaved: post.savedByViewer ?? false }
   })
+  // Followers list (people who follow THIS profile) + the viewer's own follow
+  // set so each row's Follow button hydrates correctly.
+  const [followerRows, viewerFollowing] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followingId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+      select: {
+        follower: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            legalName: true,
+            isVerified: true,
+            profile: {
+              select: {
+                photoUrl: true,
+                house: { select: { name: true, colorHex: true } },
+                batch: { select: { label: true, startYear: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    viewerId ? getFollowingIds(viewerId) : Promise.resolve(new Set<string>()),
+  ])
+  const followers: ProfileViewData["followers"] = followerRows.map(({ follower: f }) => ({
+    userId: f.id,
+    username: f.username,
+    name: f.displayName || f.legalName,
+    avatar: f.profile?.photoUrl || colorAvatar(f.id),
+    batchLabel: batchOrdinal(f.profile?.batch?.startYear)
+      ? `${batchOrdinal(f.profile?.batch?.startYear)} Batch`
+      : (f.profile?.batch?.label ?? ""),
+    houseColor: f.profile?.house?.colorHex ?? null,
+    isVerified: f.isVerified,
+    isSelf: f.id === viewerId,
+    viewerFollows: viewerFollowing.has(f.id),
+  }))
+
   // Count from the same visible-post filter so badge, timeline and feed agree.
   const postsCount = await prisma.post.count({
     where: { authorId: user.id, deletedAt: null, status: "visible" },
@@ -208,6 +251,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     followingCount: user._count.following,
     postsCount,
     posts,
+    followers,
     userId: user.id,
     viewerFollows,
     higherEducation: p?.higherEducation ?? null,
