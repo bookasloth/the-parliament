@@ -121,6 +121,8 @@ export interface CreatePostInput {
   isAnonymous?: boolean
   textBg?: string
   visibilityScope?: string
+  /** Save as a draft (status "draft") — hidden from feeds/timelines, no mention pings. */
+  asDraft?: boolean
 }
 
 export async function createPost(input: CreatePostInput) {
@@ -129,21 +131,35 @@ export async function createPost(input: CreatePostInput) {
   })
   if (!category) throw new ForbiddenError("Unknown post category")
 
-  if ((input.format === "text" || input.format === "question" || input.format === "quote") && !input.body?.trim()) {
-    throw new ForbiddenError("This post needs a body")
-  }
-  if (input.format === "image" && (!input.media || input.media.length === 0)) {
-    throw new ForbiddenError("Image post needs at least one image")
-  }
-  if (input.format === "link" && !input.linkUrl) {
-    throw new ForbiddenError("Link post needs a URL")
-  }
+  // Drafts may be incomplete — skip the per-format "needs X" gates, but still
+  // reject a completely empty draft (nothing to save).
   let pollOptions: string[] = []
-  if (input.format === "poll") {
-    if (!input.poll?.question?.trim()) throw new ForbiddenError("Poll needs a question")
-    pollOptions = input.poll.options.map((o) => o.trim()).filter(Boolean)
-    if (pollOptions.length < 2) throw new ForbiddenError("Poll needs at least 2 options")
-    if (pollOptions.length > 6) throw new ForbiddenError("Poll allows at most 6 options")
+  if (input.asDraft) {
+    const empty =
+      !input.body?.trim() &&
+      (!input.media || input.media.length === 0) &&
+      !input.linkUrl?.trim() &&
+      !input.poll?.question?.trim()
+    if (empty) throw new ForbiddenError("Nothing to save as a draft")
+    if (input.format === "poll") {
+      pollOptions = (input.poll?.options ?? []).map((o) => o.trim()).filter(Boolean).slice(0, 6)
+    }
+  } else {
+    if ((input.format === "text" || input.format === "question" || input.format === "quote") && !input.body?.trim()) {
+      throw new ForbiddenError("This post needs a body")
+    }
+    if (input.format === "image" && (!input.media || input.media.length === 0)) {
+      throw new ForbiddenError("Image post needs at least one image")
+    }
+    if (input.format === "link" && !input.linkUrl) {
+      throw new ForbiddenError("Link post needs a URL")
+    }
+    if (input.format === "poll") {
+      if (!input.poll?.question?.trim()) throw new ForbiddenError("Poll needs a question")
+      pollOptions = input.poll.options.map((o) => o.trim()).filter(Boolean)
+      if (pollOptions.length < 2) throw new ForbiddenError("Poll needs at least 2 options")
+      if (pollOptions.length > 6) throw new ForbiddenError("Poll allows at most 6 options")
+    }
   }
 
   const post = await prisma.$transaction(async (tx) => {
@@ -161,6 +177,7 @@ export async function createPost(input: CreatePostInput) {
         isAnonymous: input.isAnonymous ?? false,
         textBg: input.textBg,
         visibilityScope: input.visibilityScope ?? "public",
+        status: input.asDraft ? "draft" : "visible",
       },
     })
     // Seed rankingScore from creation time so a brand-new post has a real
@@ -179,7 +196,7 @@ export async function createPost(input: CreatePostInput) {
         }),
       },
     })
-    if (input.format === "poll" && input.poll) {
+    if (input.format === "poll" && input.poll?.question?.trim()) {
       await tx.poll.create({
         data: {
           postId: created.id,
@@ -201,7 +218,8 @@ export async function createPost(input: CreatePostInput) {
     payload: { format: input.format, category: input.categoryKey },
   })
 
-  if (input.body) {
+  // Drafts aren't published — don't fire @mention notifications yet.
+  if (input.body && !input.asDraft) {
     const author = await prisma.user.findUnique({
       where: { id: input.authorId },
       select: { displayName: true, legalName: true },
@@ -219,6 +237,60 @@ export async function createPost(input: CreatePostInput) {
   }
 
   return post
+}
+
+/** The current user's draft posts, newest first. */
+export async function listDrafts(authorId: string) {
+  return prisma.post.findMany({
+    where: { authorId, status: "draft", deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      format: true,
+      body: true,
+      media: true,
+      linkUrl: true,
+      createdAt: true,
+    },
+  })
+}
+
+/** Publish a draft: flip it to visible, reseed its ranking, fire @mention pings. */
+export async function publishDraft(input: { postId: string; authorId: string }) {
+  const post = await prisma.post.findUnique({ where: { id: input.postId } })
+  if (!post || post.deletedAt || post.status !== "draft") throw new ForbiddenError("Draft not found")
+  if (post.authorId !== input.authorId) throw new ForbiddenError("Not the author")
+
+  const now = new Date()
+  await prisma.post.update({
+    where: { id: post.id },
+    data: {
+      status: "visible",
+      createdAt: now,
+      rankingScore: hotScore({
+        upvoteCount: 0, downvoteCount: 0, commentCount: 0, shareCount: 0,
+        qualityScore: 0, reportPenalty: 0, createdAt: now,
+      }),
+    },
+  })
+
+  if (post.body) {
+    const author = await prisma.user.findUnique({
+      where: { id: post.authorId },
+      select: { displayName: true, legalName: true },
+    })
+    const authorName = post.isAnonymous
+      ? "Someone"
+      : author?.displayName || author?.legalName || "Someone"
+    await notifyMentions({
+      body: post.body,
+      authorId: post.authorId,
+      authorName,
+      postId: post.id,
+      url: `${APP_BASE}/feed/${post.id}`,
+    })
+  }
+  return { id: post.id }
 }
 
 /** Cast a vote (or switch it) on a poll. Single-choice: one vote per user per poll. */

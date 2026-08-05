@@ -433,6 +433,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                 {/* Links */}
                 <ul className="py-1.5">
                   {[
+                    { icon: FileText, label: "Drafts", href: "/compose/drafts" },
                     { icon: Award, label: "Achievements", href: "/achievements" },
                     { icon: Star, label: "Karma Points", href: "/karma" },
                     { icon: UserPlus, label: "Refer an Alumni", href: "/refer" },
