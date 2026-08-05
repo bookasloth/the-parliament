@@ -296,18 +296,22 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
         <div className="flex-1" />
 
-        {/* Get Premium Membership — only for tiers below premium. Premium/Life
-            members are already at/above it and committee is honorary, so none
-            of them should be upsold. */}
-        {!["premium", "life", "committee"].includes(currentUser.membership) && (
-          <a
-            href="/membership"
-            className="hidden lg:flex items-center gap-1.5 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 transition-all flex-shrink-0"
-          >
-            <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-            Get Premium Membership
-          </a>
-        )}
+        {/* Upgrade CTA — shows the NEXT tier for the viewer (student→associate,
+            associate→premium, premium→life). Hidden for life/committee, whose
+            `next` is null (nothing above). Same flow as the dropdown button. */}
+        {(() => {
+          const next = MEMBERSHIP_META[currentUser.membership]?.next
+          if (!next) return null
+          return (
+            <a
+              href={`/upgrade/${next}`}
+              className="hidden lg:flex items-center gap-1.5 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 transition-all flex-shrink-0"
+            >
+              <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+              Upgrade to {MEMBERSHIP_META[next].label}
+            </a>
+          )
+        })()}
 
         {/* Right icon nav */}
         <ul className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
