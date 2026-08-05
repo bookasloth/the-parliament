@@ -58,15 +58,43 @@ export const FEED_ADS: FeedPost[] = [
   },
 ]
 
-// Splice ads into a feed page after every `everyN` posts. Returns a new array
-// (original untouched). If the page is shorter than `everyN`, still show one ad
-// at the end so a sparse feed isn't ad-free.
+// Ad frequency by membership tier:
+//   student   — capped feed of 5 items, positions 2 & 5 are ads (3 real posts)
+//   associate — an ad after every 5 posts
+//   premium   — an ad after every 10 posts
+//   life/committee — never any feed ads
+export type AdTier = "student" | "associate" | "premium" | "life" | "committee" | string
+
+function everyNFor(tier: AdTier): number | null {
+  if (tier === "life" || tier === "committee") return null // no ads
+  if (tier === "premium") return 10
+  if (tier === "associate") return 5
+  return 5 // student handled separately below; default = every 5
+}
+
+// Splice ads into a feed page according to the viewer's tier. Returns a new
+// array (original untouched).
 export function injectFeedAds(
   posts: FeedPost[],
+  tier: AdTier,
   ads: FeedPost[] = FEED_ADS,
-  everyN = 5,
 ): FeedPost[] {
   if (ads.length === 0 || posts.length === 0) return posts
+  if (tier === "life" || tier === "committee") return posts // ad-free
+
+  // Student: exactly 5 items — post, ad, post, post, ad (3 real posts max).
+  if (tier === "student") {
+    const real = posts.slice(0, 3)
+    const out: FeedPost[] = []
+    if (real[0]) out.push(real[0])
+    out.push(ads[0 % ads.length])
+    if (real[1]) out.push(real[1])
+    if (real[2]) out.push(real[2])
+    out.push(ads[1 % ads.length])
+    return out
+  }
+
+  const everyN = everyNFor(tier)!
   const out: FeedPost[] = []
   let adIdx = 0
   for (let i = 0; i < posts.length; i++) {

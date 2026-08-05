@@ -96,8 +96,10 @@ export default async function FeedPage({
           ),
         )
       : undefined
-    mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)))
-    hasMore = rows.length === FIRST_PAGE_SIZE
+    const tier = u?.membershipStatus ?? "student"
+    mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)), tier)
+    // Students get a capped 5-item feed — no "load more".
+    hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
     caughtUp = cu
 
     if (u) {
