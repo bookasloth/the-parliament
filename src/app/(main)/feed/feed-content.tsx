@@ -235,6 +235,7 @@ export type ViewerCard = {
   headline: string
   batch: string
   house: string
+  membership: string
 }
 
 function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCard | null }) {
@@ -660,19 +661,22 @@ export function FeedContent({
               </>
             )}
 
-            {/* Premium CTA */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-sm font-medium text-gray-700">
-                <Sparkles className="inline h-4 w-4 text-brand mr-1" />
-                Unlock more with Premium Membership
-              </p>
-              <a
-                href="/membership"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-600 transition-colors"
-              >
-                Learn more <ChevronRight className="h-3 w-3" />
-              </a>
-            </div>
+            {/* Premium CTA — only for tiers below premium (premium/life/committee
+                are already at/above it, so don't upsell them). */}
+            {!["premium", "life", "committee"].includes(viewer?.membership ?? "") && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+                <p className="text-sm font-medium text-gray-700">
+                  <Sparkles className="inline h-4 w-4 text-brand mr-1" />
+                  Unlock more with Premium Membership
+                </p>
+                <a
+                  href="/membership"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-600 transition-colors"
+                >
+                  Learn more <ChevronRight className="h-3 w-3" />
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar */}
