@@ -30,6 +30,29 @@ export const FEED_ADS: FeedPost[] = [
     comments: 0,
     shares: 0,
   },
+  {
+    id: "ad-hostinger",
+    name: "Hostinger",
+    headline: "Web hosting that just works",
+    membership: "premium",
+    timestamp: "",
+    isSponsored: true,
+    sponsorName: "Hostinger",
+    sponsorSubhead: "Hosting made easy",
+    // Referral backlink (REFERRALCODE=SND1995).
+    sponsorUrl: "https://www.hostinger.com/in/pricing?REFERRALCODE=SND1995",
+    sponsorTagline: "Launching a site or side project? Get hosting for less.",
+    content:
+      "Managed hosting with a free domain, SSL and 24/7 support — trusted by millions. Grab the current launch pricing.",
+    sponsorCta: "See Pricing",
+    // ponytail: no thumbnail yet — add a real Hostinger banner asset when available.
+    avatar: "https://ui-avatars.com/api/?name=Hostinger&background=673de6&color=fff&bold=true",
+    borderType: "darkBlue",
+    upvotes: 0,
+    downvotes: 0,
+    comments: 0,
+    shares: 0,
+  },
 ]
 
 // Splice ads into a feed page after every `everyN` posts. Returns a new array
