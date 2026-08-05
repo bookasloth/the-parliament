@@ -304,14 +304,13 @@ function SidebarFooter() {
         <a href="/help" className={link}>Help</a>
         <a href="/privacy" className={link}>Privacy</a>
         <a href="/terms" className={link}>Terms</a>
-        <a href="/rules" className={link}>Rules</a>
+        <a href="/guidelines" className={link}>Rules</a>
       </div>
       <p className="mt-2 text-gray-400">
-        {/* TODO: confirm the two profile usernames */}
         Powered by{" "}
-        <a href="/sndatarkar" className="font-medium text-gray-500 hover:text-brand">SN Datarkar</a>
+        <a href="/shubham" className="font-medium text-gray-500 hover:text-brand">SN Datarkar</a>
         {" "}and{" "}
-        <a href="/djlaxne" className="font-medium text-gray-500 hover:text-brand">DJ Laxne</a>
+        <a href="/durga-laxne" className="font-medium text-gray-500 hover:text-brand">DJ Laxne</a>
       </p>
     </div>
   )
