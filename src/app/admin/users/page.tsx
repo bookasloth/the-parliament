@@ -56,6 +56,8 @@ export default async function AdminUsersPage({
         lastLoginAt: true,
         profile: {
           select: {
+            houseId: true,
+            batchId: true,
             house: { select: { name: true, colorHex: true } },
             batch: { select: { label: true } },
           },
@@ -70,14 +72,23 @@ export default async function AdminUsersPage({
     prisma.user.count({ where: { deletedAt: null, status: "suspended" } }),
   ])
 
+  const [houseOpts, batchOpts] = await Promise.all([
+    prisma.house.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.batch.findMany({ orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
+  ])
+
   const mappedReal: AdminUser[] = rows.map((u) => ({
     id: u.id,
     name: u.displayName || u.legalName,
     email: u.email,
     username: u.username || "",
+    legalName: u.legalName,
+    displayName: u.displayName ?? "",
     batch: u.profile?.batch?.label ?? "—",
     house: u.profile?.house?.name ?? "—",
     houseColor: u.profile?.house?.colorHex ?? "#94a3b8",
+    houseId: u.profile?.houseId ?? "",
+    batchId: u.profile?.batchId ?? "",
     membership: u.membershipStatus,
     status:
       u.status === "suspended"
@@ -96,6 +107,8 @@ export default async function AdminUsersPage({
       stats={{ total, verified, pending, suspended }}
       query={{ page, q: q ?? "", house: house ?? "", status: status ?? "", plan: plan ?? "" }}
       pageInfo={{ page, pageCount: pageCount(filteredTotal), filteredTotal, pageSize: PAGE_SIZE }}
+      houseOptions={houseOpts}
+      batchOptions={batchOpts}
     />
   )
 }

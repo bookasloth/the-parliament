@@ -1,3 +1,4 @@
+import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { audit } from "@/lib/audit"
 import { createResetToken, resetUrl } from "@/lib/password-reset"
@@ -117,6 +118,82 @@ export async function actOnUser(
   })
 
   return { ok: true, action }
+}
+
+export const MEMBERSHIP_TIERS = [
+  "free", "student", "associate", "premium", "life", "committee", "inactive",
+] as const
+
+export const editUserSchema = z.object({
+  legalName: z.string().min(1).max(160).optional(),
+  displayName: z.string().max(160).nullable().optional(),
+  email: z.string().email().max(254).optional(),
+  membershipStatus: z.enum(MEMBERSHIP_TIERS).optional(),
+  houseId: z.string().uuid().nullable().optional(),
+  batchId: z.string().uuid().nullable().optional(),
+})
+
+export type EditUserInput = z.infer<typeof editUserSchema>
+
+/**
+ * Admin edit of a user's core fields + profile house/batch. Only provided keys
+ * change. Email is normalised + uniqueness-checked. Audits the changed keys.
+ */
+export async function editUser(
+  actorId: string,
+  targetId: string,
+  input: EditUserInput,
+  ip?: string,
+): Promise<{ ok: true }> {
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, deletedAt: true },
+  })
+  if (!target || target.deletedAt) throw new NotFoundError("User not found")
+
+  const userData: Record<string, unknown> = {}
+  if (input.legalName !== undefined) {
+    const v = input.legalName.trim()
+    if (!v) throw new BadActionError("legalName cannot be empty")
+    userData.legalName = v
+  }
+  if (input.displayName !== undefined) userData.displayName = input.displayName?.trim() || null
+  if (input.membershipStatus !== undefined) userData.membershipStatus = input.membershipStatus
+  if (input.email !== undefined) {
+    const email = input.email.trim().toLowerCase()
+    if (!email) throw new BadActionError("email cannot be empty")
+    const clash = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+    if (clash && clash.id !== targetId) throw new BadActionError("Email already registered")
+    userData.email = email
+  }
+
+  const profileData: Record<string, unknown> = {}
+  if (input.houseId !== undefined) profileData.houseId = input.houseId || null
+  if (input.batchId !== undefined) profileData.batchId = input.batchId || null
+
+  await prisma.$transaction(async (tx) => {
+    if (Object.keys(userData).length) {
+      await tx.user.update({ where: { id: targetId }, data: userData })
+    }
+    if (Object.keys(profileData).length) {
+      await tx.profile.upsert({
+        where: { userId: targetId },
+        update: profileData,
+        create: { userId: targetId, ...profileData },
+      })
+    }
+  })
+
+  await audit({
+    actorId,
+    action: "admin.user.edit",
+    entityType: "user",
+    entityId: targetId,
+    payload: { fields: [...Object.keys(userData), ...Object.keys(profileData)] },
+    ipInet: ip,
+  })
+
+  return { ok: true }
 }
 
 export class NotFoundError extends Error {}

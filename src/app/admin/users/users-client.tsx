@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   MagnifyingGlass, Funnel, DownloadSimple, UserPlus, DotsThreeVertical, Eye,
   ShieldCheck, Prohibit, Trash, EnvelopeSimple, CaretLeft, CaretRight,
-  Users, UserCheck, UserMinus, Clock, X, Key, Crown,
+  Users, UserCheck, UserMinus, Clock, X, Key, Crown, PencilSimple,
 } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
 
@@ -14,15 +14,21 @@ export interface AdminUser {
   name: string
   email: string
   username: string
+  legalName?: string
+  displayName?: string
   batch: string
   house: string
   houseColor: string
+  houseId?: string
+  batchId?: string
   membership: string
   status: string
   karma: number
   joined: string
   lastActive: string
 }
+
+export interface IdName { id: string; name?: string; label?: string }
 
 export const MOCK_USERS: AdminUser[] = [
   { id: "u1", name: "Neha Gupta", email: "neha.gupta@gmail.com", username: "neha-gupta", batch: "2008", house: "Udaigiri", houseColor: "#ffe135", membership: "premium", status: "active", karma: 1240, joined: "Jan 2025", lastActive: "2 min ago" },
@@ -49,11 +55,15 @@ export default function AdminUsersClient({
   stats,
   query,
   pageInfo,
+  houseOptions = [],
+  batchOptions = [],
 }: {
   users?: AdminUser[]
   stats?: { total: number; verified: number; pending: number; suspended: number }
   query?: UsersQuery
   pageInfo?: UsersPageInfo
+  houseOptions?: IdName[]
+  batchOptions?: IdName[]
 }) {
   const router = useRouter()
   const q0 = query ?? { page: 1, q: "", house: "", status: "", plan: "" }
@@ -92,6 +102,53 @@ export default function AdminUsersClient({
   const [inviteMsg, setInviteMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [edit, setEdit] = useState({ legalName: "", displayName: "", email: "", membership: "free", houseId: "", batchId: "" })
+  const [editBusy, setEditBusy] = useState(false)
+  const [editErr, setEditErr] = useState<string | null>(null)
+
+  function openEdit(u: AdminUser) {
+    setActiveMenu(null)
+    setEditErr(null)
+    setEditUser(u)
+    setEdit({
+      legalName: u.legalName ?? u.name,
+      displayName: u.displayName ?? "",
+      email: u.email,
+      membership: u.membership,
+      houseId: u.houseId ?? "",
+      batchId: u.batchId ?? "",
+    })
+  }
+
+  async function submitEdit() {
+    if (!editUser) return
+    setEditBusy(true)
+    setEditErr(null)
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          legalName: edit.legalName,
+          displayName: edit.displayName || null,
+          email: edit.email,
+          membershipStatus: edit.membership,
+          houseId: edit.houseId || null,
+          batchId: edit.batchId || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Save failed")
+      setToast(`Updated ${edit.legalName}`)
+      setEditUser(null)
+      router.refresh()
+    } catch (e) {
+      setEditErr(e instanceof Error ? e.message : "Save failed")
+    } finally {
+      setEditBusy(false)
+    }
+  }
 
   // Debounce search box → URL (avoid a navigation per keystroke).
   useEffect(() => {
@@ -333,6 +390,9 @@ export default function AdminUsersClient({
                         <a href={u.username ? `/profile/${u.username}` : "#"} target="_blank" rel="noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                           <Eye className="h-4 w-4" weight="duotone" /> View profile
                         </a>
+                        <button onClick={() => openEdit(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <PencilSimple className="h-4 w-4" weight="duotone" /> Edit user
+                        </button>
                         <button onClick={() => runAction(u.id, "verify")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                           <ShieldCheck className="h-4 w-4" weight="duotone" /> Verify account
                         </button>
@@ -398,6 +458,60 @@ export default function AdminUsersClient({
           )
         })()}
       </div>
+
+      {editUser && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditUser(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-lg border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100">Edit User</h3>
+              <button onClick={() => setEditUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+            </div>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-zinc-300">Legal name</span>
+                <input value={edit.legalName} onChange={(e) => setEdit(s => ({ ...s, legalName: e.target.value }))} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 focus:border-blue-500 focus:outline-none" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-zinc-300">Display name</span>
+                <input value={edit.displayName} onChange={(e) => setEdit(s => ({ ...s, displayName: e.target.value }))} placeholder="Optional" className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-zinc-300">Email</span>
+                <input type="email" value={edit.email} onChange={(e) => setEdit(s => ({ ...s, email: e.target.value }))} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 focus:border-blue-500 focus:outline-none" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-zinc-300">House</span>
+                  <select value={edit.houseId} onChange={(e) => setEdit(s => ({ ...s, houseId: e.target.value }))} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none">
+                    <option value="">— None —</option>
+                    {houseOptions.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-zinc-300">Batch</span>
+                  <select value={edit.batchId} onChange={(e) => setEdit(s => ({ ...s, batchId: e.target.value }))} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none">
+                    <option value="">— None —</option>
+                    {batchOptions.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-zinc-300">Membership</span>
+                <select value={edit.membership} onChange={(e) => setEdit(s => ({ ...s, membership: e.target.value }))} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 capitalize focus:border-blue-500 focus:outline-none">
+                  {["free", "student", "associate", "premium", "life", "committee", "inactive"].map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+            </div>
+            {editErr && <div className="mt-3 rounded-md bg-rose-950/40 border border-rose-900 px-3 py-2 text-xs text-rose-300">{editErr}</div>}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setEditUser(null)}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={submitEdit} disabled={editBusy || !edit.legalName || !edit.email}>
+                {editBusy ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {inviteOpen && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setInviteOpen(false)}>
