@@ -438,6 +438,29 @@ model AlumniVerification {
   @@map("alumni_verifications")
 }
 
+// Peer endorsements for a verification. An admin who can't personally vouch for a
+// candidate asks batch/house-mates to confirm they studied together. Advisory
+// signal only — the admin still makes the final approve call.
+// Plain FK-less fields + app-layer joins (same convention as Reaction/ContentReport).
+model Endorsement {
+  id             String    @id @default(uuid()) @db.Uuid
+  verificationId String    @map("verification_id") @db.Uuid
+  candidateId    String    @map("candidate_id") @db.Uuid // user being verified
+  endorserId     String    @map("endorser_id") @db.Uuid  // user asked to vouch
+  requestedBy    String    @map("requested_by") @db.Uuid // admin who sent the ask
+  status         String    @default("pending") @db.VarChar(16) // pending | endorsed | declined | expired
+  token          String    @unique @db.VarChar(64)
+  note           String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  respondedAt    DateTime? @map("responded_at") @db.Timestamptz
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+
+  @@unique([verificationId, endorserId])
+  @@index([verificationId])
+  @@index([endorserId, status])
+  @@map("endorsements")
+}
+
 // ─────────────────────────────────────────────
 // 4. Authorization
 // ─────────────────────────────────────────────

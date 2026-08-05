@@ -11,6 +11,8 @@ export type NotificationKind =
   | "contact_reveal_request"
   | "new_event_in_batch"
   | "reaction_milestone"
+  | "endorsement_request"
+  | "endorsement_received"
 
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",
@@ -22,6 +24,8 @@ const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   contact_reveal_request: "contact_reveal_request",
   new_event_in_batch: "new_event_in_batch",
   reaction_milestone: "reaction_milestone",
+  endorsement_request: "endorsement_request",
+  // endorsement_received is in-app only (no email template).
 }
 
 export interface NotificationInput<K extends NotificationKind> {

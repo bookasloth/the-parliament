@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import {
   ShieldCheck, Clock, CheckCircle, XCircle, FileText, Eye,
-  CaretDown, CaretUp, User, EnvelopeSimple, IdentificationCard, X,
+  CaretDown, CaretUp, User, EnvelopeSimple, IdentificationCard, X, UsersThree, PaperPlaneTilt,
 } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, Button } from "../admin-ui"
-import { approveVerificationAction, rejectVerificationAction } from "./actions"
+import {
+  approveVerificationAction, rejectVerificationAction,
+  listSuggestedEndorsersAction, requestEndorsementAction,
+} from "./actions"
 
 export interface VReq {
   id: string
@@ -18,6 +21,113 @@ export interface VReq {
   instituteEmail: string | null
   evidenceUrl: string | null
   submitted: string
+  endorsements: { asked: number; endorsed: number; declined: number }
+}
+
+interface Suggested {
+  userId: string
+  name: string
+  username: string | null
+  photoUrl: string | null
+  batchLabel: string | null
+  houseName: string | null
+  reason: string
+  alreadyAsked: boolean
+  endorsementStatus: string | null
+}
+
+function EndorseModal({ req, onClose }: { req: VReq; onClose: () => void }) {
+  const [list, setList] = useState<Suggested[] | null>(null)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [asked, setAsked] = useState<Set<string>>(new Set())
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [loading, startLoad] = useTransition()
+  const [, startAsk] = useTransition()
+
+  // Load suggestions once on mount.
+  useEffect(() => {
+    startLoad(async () => {
+      try {
+        const rows = (await listSuggestedEndorsersAction(req.id)) as Suggested[]
+        setList(rows)
+        setAsked(new Set(rows.filter((r) => r.alreadyAsked).map((r) => r.userId)))
+      } catch (e) {
+        setLoadErr(e instanceof Error ? e.message : "Failed to load suggestions")
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [req.id])
+
+  function ask(userId: string) {
+    setBusyId(userId)
+    startAsk(async () => {
+      try {
+        await requestEndorsementAction(req.id, userId)
+        setAsked((s) => new Set(s).add(userId))
+      } catch (e) {
+        setLoadErr(e instanceof Error ? e.message : "Failed to send request")
+      } finally {
+        setBusyId(null)
+      }
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-[#111113] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+          <div>
+            <h2 className="text-sm font-bold text-zinc-100">Ask peers to endorse</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">Batch & house-mates of {req.name}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="h-4.5 w-4.5" weight="duotone" /></button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
+          {loading && <p className="py-8 text-center text-xs text-zinc-500">Finding peers…</p>}
+          {loadErr && <p className="rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-xs text-rose-300">{loadErr}</p>}
+          {list && list.length === 0 && !loading && (
+            <p className="py-8 text-center text-xs text-zinc-500">No verified peers found for this candidate&apos;s batch or house.</p>
+          )}
+          {list?.map((s) => {
+            const isAsked = asked.has(s.userId)
+            const endorsed = s.endorsementStatus === "endorsed"
+            return (
+              <div key={s.userId} className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5">
+                {s.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+                    {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-zinc-200">{s.name}</p>
+                  <p className="truncate text-[11px] text-zinc-500">
+                    {[s.batchLabel, s.houseName].filter(Boolean).join(" · ")} · {s.reason}
+                  </p>
+                </div>
+                {endorsed ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400"><CheckCircle className="h-3.5 w-3.5" weight="duotone" /> Endorsed</span>
+                ) : isAsked ? (
+                  <span className="text-[11px] font-semibold text-zinc-500">Asked</span>
+                ) : (
+                  <button
+                    onClick={() => ask(s.userId)}
+                    disabled={busyId === s.userId}
+                    className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    <PaperPlaneTilt className="h-3 w-3" weight="duotone" /> {busyId === s.userId ? "Sending…" : "Ask"}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const methodLabel: Record<string, string> = {
@@ -34,6 +144,7 @@ export default function VerificationClient({
   const [rejectFor, setRejectFor] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [endorseFor, setEndorseFor] = useState<VReq | null>(null)
   const [pending, startTransition] = useTransition()
 
   const list = requests.filter((r) => !done[r.id])
@@ -165,7 +276,7 @@ export default function VerificationClient({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button onClick={() => approve(req.id)} disabled={pending}
                         className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
                         <CheckCircle className="h-3.5 w-3.5" weight="duotone" /> {pending ? "Working…" : "Approve & Verify"}
@@ -174,6 +285,15 @@ export default function VerificationClient({
                         className="flex items-center gap-1.5 rounded-lg border border-rose-800 bg-[#111113] px-4 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/40 disabled:opacity-50">
                         <XCircle className="h-3.5 w-3.5" weight="duotone" /> Reject
                       </button>
+                      <button onClick={() => setEndorseFor(req)} disabled={pending}
+                        className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-[#111113] px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 disabled:opacity-50">
+                        <UsersThree className="h-3.5 w-3.5" weight="duotone" /> Endorsements
+                      </button>
+                      {req.endorsements.asked > 0 && (
+                        <span className="text-[11px] font-semibold text-zinc-500">
+                          {req.endorsements.endorsed}/{req.endorsements.asked} endorsed
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -182,6 +302,8 @@ export default function VerificationClient({
           )
         })}
       </div>
+
+      {endorseFor && <EndorseModal req={endorseFor} onClose={() => setEndorseFor(null)} />}
     </div>
   )
 }

@@ -27,6 +27,7 @@ export type EmailTemplates = {
   birthday_wish: { firstName: string; profileUrl: string }
   upsell_unlock: { firstName: string; membershipUrl: string }
   upsell_upgrade: { firstName: string; planName: string; upgradeUrl: string }
+  endorsement_request: { endorserName: string; candidateName: string; endorseUrl: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -353,6 +354,23 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         unsubscribeUrl: MANAGE_URL,
       }),
   },
+  endorsement_request: {
+    subject: (d) => `Can you vouch for ${d.candidateName}?`,
+    text: (d) =>
+      `Hi ${d.endorserName},\n\n${d.candidateName} is verifying their JNV Nagpur alumni status and listed you as someone who studied around the same time.\n\nIf you remember them, endorse them here:\n${d.endorseUrl}\n\nYou'll need to sign in to NNAWCA. This link expires in 30 days.`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Endorsement",
+        eyebrow: "Verification · Peer endorsement",
+        heading: `Can you vouch for <em>${d.candidateName}</em>?`,
+        body:
+          p(`Hi ${d.endorserName}, ${d.candidateName} is verifying their JNV Nagpur alumni status. As someone who studied around the same time, your word helps us confirm they're the real deal.`) +
+          button("Review & endorse", d.endorseUrl, "blue") +
+          small("You'll be asked to sign in to NNAWCA first. Don't recognise them? You can decline on the same page. This link expires in 30 days."),
+        reason: "You're getting this because an admin asked you to help verify a fellow alumnus.",
+      }),
+  },
 }
 
 /** Render a template to its subject/text/html without sending. Pure — for tests + previews. */
@@ -388,6 +406,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   birthday_wish: "wish",
   upsell_unlock: "marketing",
   upsell_upgrade: "marketing",
+  endorsement_request: "transactional",
 }
 
 /**
