@@ -7,7 +7,9 @@ const d = (iso: string) => new Date(`${iso}T12:00:00`)
 describe("getActiveTheme — movable festivals (next 5 years)", () => {
   const cases: [string, string][] = [
     ["2026-11-08", "diwali"], ["2027-10-29", "diwali"], ["2031-11-14", "diwali"],
+    ["2033-10-22", "diwali"], ["2035-10-30", "diwali"],
     ["2026-03-04", "holi"], ["2027-03-22", "holi"], ["2029-03-01", "holi"],
+    ["2032-03-27", "holi"], ["2035-03-24", "holi"], ["2032-01-14", "eid"],
     ["2026-03-20", "eid"], ["2031-01-24", "eid"], // Eid al-Fitr
     ["2026-05-27", "eid"], ["2030-04-13", "eid"], // Eid al-Adha
   ]

@@ -149,6 +149,10 @@ export const FESTIVE_THEMES: ChatTheme[] = [
       { start: "2029-11-04", end: "2029-11-06" },
       { start: "2030-10-25", end: "2030-10-27" },
       { start: "2031-11-13", end: "2031-11-15" },
+      { start: "2032-11-01", end: "2032-11-03" },
+      { start: "2033-10-21", end: "2033-10-23" },
+      { start: "2034-11-09", end: "2034-11-11" },
+      { start: "2035-10-29", end: "2035-10-31" },
     ],
     enabled: true,
     swatch: ["#ffd119", "#d4a800", "#3a2410"],
@@ -203,6 +207,10 @@ export const FESTIVE_THEMES: ChatTheme[] = [
       { start: "2029-03-01", end: "2029-03-02" },
       { start: "2030-03-20", end: "2030-03-21" },
       { start: "2031-03-09", end: "2031-03-10" },
+      { start: "2032-03-26", end: "2032-03-27" },
+      { start: "2033-03-15", end: "2033-03-16" },
+      { start: "2034-03-04", end: "2034-03-05" },
+      { start: "2035-03-23", end: "2035-03-24" },
     ],
     enabled: true,
     swatch: ["#d6336c", "#7a4fe0", "#2d9e5b", "#ffd119"],
@@ -277,6 +285,7 @@ export const FESTIVE_THEMES: ChatTheme[] = [
       { start: "2029-02-14", end: "2029-02-15" },
       { start: "2030-02-04", end: "2030-02-05" },
       { start: "2031-01-24", end: "2031-01-25" },
+      { start: "2032-01-14", end: "2032-01-15" },
       // Eid al-Adha
       { start: "2026-05-27", end: "2026-05-28" },
       { start: "2027-05-16", end: "2027-05-17" },
@@ -284,6 +293,10 @@ export const FESTIVE_THEMES: ChatTheme[] = [
       { start: "2029-04-24", end: "2029-04-25" },
       { start: "2030-04-13", end: "2030-04-14" },
       { start: "2031-04-02", end: "2031-04-03" },
+      { start: "2032-03-22", end: "2032-03-23" },
+      // Eid windows run to 2032. 2033+ shift into two-per-Gregorian-year and
+      // depend on moon-sighting too far out to fix reliably — an admin adds
+      // them once each year's dates are confirmed.
     ],
     enabled: true,
     swatch: ["#1f7a4d", "#d4a800", "#08251a"],
