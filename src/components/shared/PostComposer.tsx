@@ -112,6 +112,8 @@ export interface ComposerSubmitData {
 
 export interface PostComposerProps {
   onSubmit: (data: ComposerSubmitData) => Promise<void>
+  /** Save the current draft. When provided, the "Save draft" button is active. */
+  onSaveDraft?: (data: ComposerSubmitData) => Promise<void>
   /** Edit mode locks post type, category, and poll — only body/background/photos change. */
   editing?: boolean
   title?: string
@@ -131,6 +133,7 @@ export interface PostComposerProps {
 
 export default function PostComposer({
   onSubmit,
+  onSaveDraft,
   editing = false,
   title = "Create a post",
   submitLabel = "Post",
@@ -258,6 +261,32 @@ export default function PostComposer({
     } catch (err) {
       console.error("Failed to submit post", err)
       setSubmitting(false)
+    }
+  }
+
+  const [savingDraft, setSavingDraft] = useState(false)
+  // A draft only needs *something* — not the full per-type validity.
+  const hasDraftContent =
+    text.trim().length > 0 || media.length > 0 || linkUrl.trim().length > 0
+  const handleSaveDraft = async () => {
+    if (!onSaveDraft || savingDraft || submitting || !hasDraftContent) return
+    setSavingDraft(true)
+    try {
+      await onSaveDraft({
+        body: text.trim(),
+        categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
+        format: FORMAT_FOR_TYPE[type],
+        linkUrl: type === "link" ? linkUrl.trim() : undefined,
+        media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
+        poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
+        textBg: type === "text" && bg !== "plain" ? bg : undefined,
+        quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
+        audience: audience.key,
+      })
+      // onSaveDraft redirects to the drafts page on success.
+    } catch (err) {
+      console.error("Failed to save draft", err)
+      setSavingDraft(false)
     }
   }
 
@@ -536,8 +565,14 @@ export default function PostComposer({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {!editing && (
-                <button className={`${R_EL} px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100`}>Save draft</button>
+              {!editing && onSaveDraft && (
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={savingDraft || submitting || !hasDraftContent}
+                  className={`${R_EL} px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent`}
+                >
+                  {savingDraft ? "Saving…" : "Save draft"}
+                </button>
               )}
               <button
                 onClick={handlePost}

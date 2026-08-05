@@ -10,6 +10,10 @@ export default function ComposePage() {
         await createPostAction(data)
         // createPostAction redirects to /feed on success.
       }}
+      onSaveDraft={async (data) => {
+        await createPostAction({ ...data, asDraft: true })
+        // Redirects to /compose/drafts on success.
+      }}
     />
   )
 }

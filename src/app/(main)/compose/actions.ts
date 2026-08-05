@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
-import { createPost, type PostFormat } from "@/modules/feed/posts"
+import { createPost, publishDraft, deletePost, type PostFormat } from "@/modules/feed/posts"
 import { getCurrent } from "@/modules/membership/service"
 import { publicUrlFor, validatePostMedia } from "@/lib/r2"
 
@@ -20,6 +20,8 @@ export async function createPostAction(input: {
   textBg?: string
   quoteSource?: string
   audience?: string
+  /** Save as a draft instead of publishing. */
+  asDraft?: boolean
 }) {
   const user = await requireUser()
   const schoolId = await getDefaultSchoolId()
@@ -67,8 +69,29 @@ export async function createPostAction(input: {
     quoteSource: input.quoteSource,
     isAnonymous: anonymous,
     visibilityScope,
+    asDraft: input.asDraft,
   })
 
+  if (input.asDraft) {
+    revalidatePath("/compose/drafts")
+    redirect("/compose/drafts")
+  }
   revalidatePath("/feed")
   redirect("/feed")
+}
+
+/** Publish a saved draft. */
+export async function publishDraftAction(postId: string) {
+  const user = await requireUser()
+  await publishDraft({ postId, authorId: user.id })
+  revalidatePath("/compose/drafts")
+  revalidatePath("/feed")
+  redirect("/feed")
+}
+
+/** Delete a saved draft (author-owned). */
+export async function deleteDraftAction(postId: string) {
+  const user = await requireUser()
+  await deletePost({ postId, userId: user.id })
+  revalidatePath("/compose/drafts")
 }
