@@ -3,10 +3,12 @@ import { getToken } from "next-auth/jwt"
 import { ONBOARDING_STEPS } from "@/lib/onboarding"
 
 const ONBOARDING_ROUTES = ONBOARDING_STEPS.map((s) => `/onboarding/${s}`)
+// Login/signup pages a signed-in user has no reason to see.
+const AUTH_ENTRY_ROUTES = new Set(["/auth/signin", "/auth/signup", "/terminal"])
 const PUBLIC_ROUTES = new Set([
   "/",
   "/auth/signin",
-  "/auth/admin",
+  "/terminal",
   "/auth/signup",
   "/auth/forgot",
   "/auth/reset",
@@ -54,6 +56,18 @@ export async function proxy(req: NextRequest) {
     secureCookie,
   })
   const isLoggedIn = !!token
+
+  // TEMP: admin console is unfinished — leave it ungated so it's reachable
+  // without login. Restore the isAdmin gate below once the console is built.
+  if (pathname.startsWith("/admin")) {
+    return NextResponse.next()
+  }
+
+  // Already signed in? Skip the login/signup pages — go straight to the feed
+  // (Facebook-style). Admins land on the console.
+  if (isLoggedIn && AUTH_ENTRY_ROUTES.has(pathname)) {
+    return NextResponse.redirect(new URL(token?.isAdmin ? "/admin" : "/feed", req.url))
+  }
 
   if (PUBLIC_ROUTES.has(pathname)) {
     return NextResponse.next()
