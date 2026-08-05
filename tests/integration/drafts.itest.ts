@@ -1,7 +1,9 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPost, listDrafts, publishDraft, deletePost } from "@/modules/feed/posts";
-import { ForbiddenError } from "@/modules/auth/session";
+// Import from the source module, not @/modules/auth/session — that pulls in
+// next-auth (→ next/server), which fails to resolve under vitest's node env.
+import { ForbiddenError } from "@/lib/errors";
 
 // Save-draft lifecycle: create hidden draft → list → publish (→ visible) or delete,
 // with author-only authorization on publish/delete.
