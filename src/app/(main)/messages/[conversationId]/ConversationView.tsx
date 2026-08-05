@@ -5,11 +5,11 @@ import Image from "next/image"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
-  Palette, Check, Sparkles, Smile, ImagePlus, Pencil, X,
+  Check, Sparkles, Smile, ImagePlus, Pencil, X,
 } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
-import { ALL_THEMES, getActiveTheme, type ChatTheme } from "@/config/chat-themes"
+import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import type { MessageView } from "@/modules/messaging/types"
 import {
@@ -38,14 +38,17 @@ interface Props {
   otherUser: OtherUser
   initialMessages: MessageView[]
   initialOtherLastReadAt: string | null
+  /** Either participant has a birthday yesterday/today/tomorrow. */
+  birthday: boolean
+  /** Viewer is an under-18 student — suppress the Valentine theme. */
+  suppressValentine: boolean
 }
 
-export default function ConversationView({ conversationId, viewerId, otherUser, initialMessages, initialOtherLastReadAt }: Props) {
+export default function ConversationView({ conversationId, viewerId, otherUser, initialMessages, initialOtherLastReadAt, birthday, suppressValentine }: Props) {
   const [messages, setMessages] = useState<MessageView[]>(initialMessages)
   const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(initialOtherLastReadAt)
   const [input, setInput] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
-  const [themeMenuOpen, setThemeMenuOpen] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -53,8 +56,6 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   const [msgMenuId, setMsgMenuId] = useState<string | null>(null)
   const [otherOnline, setOtherOnline] = useState(false)
   const [otherTyping, setOtherTyping] = useState(false)
-  // null = auto (date-based); otherwise an explicit preview override
-  const [themeOverride, setThemeOverride] = useState<ChatTheme | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -62,14 +63,13 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   const endRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const themeRef = useRef<HTMLDivElement>(null)
   const emojiRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const msgMenuRef = useRef<HTMLDivElement>(null)
 
-  // Active theme: explicit preview wins, else resolve from today's date
-  const autoTheme = getActiveTheme(new Date())
-  const theme = themeOverride ?? autoTheme
+  // Admin-controlled auto theme: resolved from date/time + this conversation's
+  // birthday / viewer-age context. Members can't override it.
+  const theme = getActiveTheme(new Date(), { birthday, suppressValentine })
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -78,7 +78,6 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-      if (themeRef.current && !themeRef.current.contains(e.target as Node)) setThemeMenuOpen(false)
       if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setEmojiOpen(false)
       if (msgMenuRef.current && !msgMenuRef.current.contains(e.target as Node)) setMsgMenuId(null)
     }
@@ -342,55 +341,10 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
             <Video className="h-4 w-4" />
           </button>
 
-          {/* Theme preview (mirrors what the admin schedule controls) */}
-          <div className="relative" ref={themeRef}>
-            <button
-              onClick={() => { setThemeMenuOpen(!themeMenuOpen); setMenuOpen(false) }}
-              title="Preview festive theme"
-              className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${theme.id !== "default" ? "bg-amber-100 text-amber-600" : "bg-brand/10 text-brand hover:bg-brand hover:text-white"}`}
-            >
-              <Palette className="h-4 w-4" />
-            </button>
-            {themeMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 w-60 max-h-[380px] overflow-y-auto rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl">
-                <div className="px-3 py-1.5 flex items-center gap-1.5 sticky top-0 bg-white">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Chat theme</p>
-                </div>
-                {/* Auto option */}
-                <button
-                  onClick={() => { setThemeOverride(null); setThemeMenuOpen(false) }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-700">
-                    {themeOverride === null && <Check className="h-3 w-3 text-white" />}
-                  </span>
-                  <span className="flex-1 text-left text-gray-700">Auto (by date)</span>
-                  <span className="text-[10px] text-gray-400">{autoTheme.name}</span>
-                </button>
-                {ALL_THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => { setThemeOverride(t); setThemeMenuOpen(false) }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50"
-                  >
-                    <span className="flex gap-0.5">
-                      {t.swatch.slice(0, 3).map((c, i) => (
-                        <span key={i} className="h-3.5 w-3.5 rounded-full border border-gray-200" style={{ background: c }} />
-                      ))}
-                    </span>
-                    <span className="flex-1 text-left text-gray-700">{t.name}</span>
-                    {themeOverride?.id === t.id && <Check className="h-3.5 w-3.5 text-brand" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Conversation actions */}
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => { setMenuOpen(!menuOpen); setThemeMenuOpen(false) }}
+              onClick={() => setMenuOpen(!menuOpen)}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
             >
               <MoreVertical className="h-4 w-4" />
@@ -414,7 +368,6 @@ export default function ConversationView({ conversationId, viewerId, otherUser, 
         <div className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium" style={{ background: `${theme.dividerColor}14`, color: theme.dividerColor }}>
           <Sparkles className="h-3 w-3" />
           {theme.name} theme active
-          {themeOverride && <span className="opacity-70">(preview)</span>}
         </div>
       )}
 
