@@ -4,23 +4,12 @@ import { getFeed } from "@/modules/feed/query"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { mapRowToFeedPost, relativeTime } from "./map-row"
+import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
 
 export const dynamic = "force-dynamic"
 
 const FIRST_PAGE_SIZE = 15
-
-// JNV Nagpur's 1st batch entered 1986; ordinal = startYear − 1985 → 2006 = "21st".
-function ordinalBatch(startYear?: number | null): string | null {
-  if (!startYear) return null
-  const n = startYear - 1985
-  if (n < 1) return null
-  const rem100 = n % 100
-  const suffix =
-    rem100 >= 11 && rem100 <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th"
-  return `${n}${suffix}`
-}
 
 export default async function FeedPage({
   searchParams,
@@ -119,7 +108,7 @@ export default async function FeedPage({
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         coverUrl: u.profile?.coverUrl ?? null,
         headline: u.profile?.headline ?? "",
-        batch: ordinalBatch(u.profile?.batch?.startYear) ?? u.profile?.batch?.label ?? "—",
+        batch: batchOrdinal(u.profile?.batch?.startYear) ?? u.profile?.batch?.label ?? "—",
         house: u.profile?.house?.name ?? "—",
       }
     }

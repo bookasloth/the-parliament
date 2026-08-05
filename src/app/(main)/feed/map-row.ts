@@ -66,13 +66,22 @@ function ordinalSuffix(n: number): string {
   }
 }
 
+// Batch ordinal for JNV Nagpur: 1st batch entered 1986, so 1986→"1st",
+// 2006→"21st". THE single source of truth for batch numbering site-wide.
+export function batchOrdinal(startYear?: number | null): string | null {
+  if (startYear == null) return null
+  const n = startYear - 1985
+  if (n < 1) return null
+  return `${n}${ordinalSuffix(n)}`
+}
+
 export function formatBatch(
   batch: { label: string; startYear?: number; endYear?: number } | null | undefined,
 ): string | undefined {
   if (!batch) return undefined
   if (batch.startYear == null || batch.endYear == null) return batch.label
-  const ordinal = batch.startYear - 1985
-  const prefix = ordinal >= 1 ? `${ordinal}${ordinalSuffix(ordinal)} batch ` : ""
+  const ord = batchOrdinal(batch.startYear)
+  const prefix = ord ? `${ord} batch ` : ""
   return `${prefix}(${batch.startYear} - ${batch.endYear})`
 }
 
