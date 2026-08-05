@@ -6,6 +6,7 @@ import {
   MagnifyingGlass, Funnel, DownloadSimple, UserPlus, DotsThreeVertical, Eye,
   ShieldCheck, Prohibit, Trash, EnvelopeSimple, CaretLeft, CaretRight,
   Users, UserCheck, UserMinus, Clock, X, Key, Crown, PencilSimple,
+  Sparkle, Medal, ClockCounterClockwise, UploadSimple,
 } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
 
@@ -24,11 +25,13 @@ export interface AdminUser {
   membership: string
   status: string
   karma: number
+  badgeIds?: string[]
   joined: string
   lastActive: string
 }
 
 export interface IdName { id: string; name?: string; label?: string }
+interface KarmaHistoryRow { id: string; actionType: string; applied: number; reason: string | null; at: string }
 
 export const MOCK_USERS: AdminUser[] = [
   { id: "u1", name: "Neha Gupta", email: "neha.gupta@gmail.com", username: "neha-gupta", batch: "2008", house: "Udaigiri", houseColor: "#ffe135", membership: "premium", status: "active", karma: 1240, joined: "Jan 2025", lastActive: "2 min ago" },
@@ -57,6 +60,7 @@ export default function AdminUsersClient({
   pageInfo,
   houseOptions = [],
   batchOptions = [],
+  badgeOptions = [],
 }: {
   users?: AdminUser[]
   stats?: { total: number; verified: number; pending: number; suspended: number }
@@ -64,6 +68,7 @@ export default function AdminUsersClient({
   pageInfo?: UsersPageInfo
   houseOptions?: IdName[]
   batchOptions?: IdName[]
+  badgeOptions?: IdName[]
 }) {
   const router = useRouter()
   const q0 = query ?? { page: 1, q: "", house: "", status: "", plan: "" }
@@ -148,6 +153,92 @@ export default function AdminUsersClient({
     } finally {
       setEditBusy(false)
     }
+  }
+
+  // Manual karma adjust
+  const [karmaUser, setKarmaUser] = useState<AdminUser | null>(null)
+  const [karmaDelta, setKarmaDelta] = useState("")
+  const [karmaReason, setKarmaReason] = useState("")
+  const [karmaErr, setKarmaErr] = useState<string | null>(null)
+
+  async function submitKarma() {
+    if (!karmaUser) return
+    const delta = parseInt(karmaDelta, 10)
+    if (!delta || Number.isNaN(delta)) { setKarmaErr("Enter a non-zero whole number"); return }
+    setBusy(true); setKarmaErr(null)
+    try {
+      const res = await fetch(`/api/admin/users/${karmaUser.id}/karma`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta, reason: karmaReason }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Adjust failed")
+      setToast(`Karma ${delta > 0 ? "+" : ""}${delta} → ${json.balance}`)
+      setKarmaUser(null); setKarmaDelta(""); setKarmaReason(""); router.refresh()
+    } catch (e) {
+      setKarmaErr(e instanceof Error ? e.message : "Adjust failed")
+    } finally { setBusy(false) }
+  }
+
+  // Karma history
+  const [historyUser, setHistoryUser] = useState<AdminUser | null>(null)
+  const [history, setHistory] = useState<KarmaHistoryRow[] | null>(null)
+
+  async function openHistory(u: AdminUser) {
+    setActiveMenu(null); setHistoryUser(u); setHistory(null)
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}/karma`)
+      const json = await res.json()
+      setHistory(res.ok ? json.history : [])
+    } catch { setHistory([]) }
+  }
+
+  // Badges
+  const [badgeUser, setBadgeUser] = useState<AdminUser | null>(null)
+  const [badgeSet, setBadgeSet] = useState<Set<string>>(new Set())
+
+  function openBadges(u: AdminUser) {
+    setActiveMenu(null); setBadgeUser(u); setBadgeSet(new Set(u.badgeIds ?? []))
+  }
+
+  async function toggleBadge(badgeId: string) {
+    if (!badgeUser) return
+    const add = !badgeSet.has(badgeId)
+    setBadgeSet(s => { const n = new Set(s); add ? n.add(badgeId) : n.delete(badgeId); return n })
+    try {
+      const res = await fetch(`/api/admin/users/${badgeUser.id}/badges`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ badgeId, action: add ? "add" : "remove" }),
+      })
+      if (!res.ok) throw new Error()
+      router.refresh()
+    } catch {
+      // Revert optimistic toggle on failure.
+      setBadgeSet(s => { const n = new Set(s); add ? n.delete(badgeId) : n.add(badgeId); return n })
+      setToast("Badge update failed")
+    }
+  }
+
+  // CSV import
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState("")
+  const [importBusy, setImportBusy] = useState(false)
+  const [importResult, setImportResult] = useState<string | null>(null)
+
+  async function submitImport() {
+    setImportBusy(true); setImportResult(null)
+    try {
+      const res = await fetch("/api/admin/users/import", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv: importText }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Import failed")
+      setImportResult(`Created ${json.created}, skipped ${json.skipped}, failed ${json.failed}`)
+      router.refresh()
+    } catch (e) {
+      setImportResult(e instanceof Error ? e.message : "Import failed")
+    } finally { setImportBusy(false) }
   }
 
   // Debounce search box → URL (avoid a navigation per keystroke).
@@ -242,6 +333,9 @@ export default function AdminUsersClient({
         description="Manage all members of the alumni network"
         actions={
           <>
+            <Button variant="ghost" size="sm" onClick={() => { setImportOpen(true); setImportResult(null) }}>
+              <UploadSimple className="h-3.5 w-3.5" weight="duotone" /> Import CSV
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = "/api/admin/users/export" }}>
               <DownloadSimple className="h-3.5 w-3.5" weight="duotone" /> Export CSV
             </Button>
@@ -399,6 +493,15 @@ export default function AdminUsersClient({
                         <button onClick={() => runAction(u.id, "reset-password")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                           <Key className="h-4 w-4" weight="duotone" /> Reset password
                         </button>
+                        <button onClick={() => { setActiveMenu(null); setKarmaUser(u); setKarmaDelta(""); setKarmaReason(""); setKarmaErr(null) }} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <Sparkle className="h-4 w-4" weight="duotone" /> Adjust karma
+                        </button>
+                        <button onClick={() => openHistory(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <ClockCounterClockwise className="h-4 w-4" weight="duotone" /> Karma history
+                        </button>
+                        <button onClick={() => openBadges(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <Medal className="h-4 w-4" weight="duotone" /> Manage badges
+                        </button>
                         <a href={`mailto:${u.email}`} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
                           <EnvelopeSimple className="h-4 w-4" weight="duotone" /> Send email
                         </a>
@@ -458,6 +561,103 @@ export default function AdminUsersClient({
           )
         })()}
       </div>
+
+      {karmaUser && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setKarmaUser(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-lg border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100">Adjust Karma</h3>
+              <button onClick={() => setKarmaUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+            </div>
+            <p className="mb-4 text-xs text-zinc-500">{karmaUser.name} · current {karmaUser.karma.toLocaleString()}. Admin override — bypasses daily caps.</p>
+            <label className="mb-3 block">
+              <span className="mb-1 block text-xs font-semibold text-zinc-300">Delta (+ or −)</span>
+              <input value={karmaDelta} onChange={(e) => setKarmaDelta(e.target.value)} inputMode="numeric" placeholder="e.g. 50 or -20" className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+            </label>
+            <label className="mb-3 block">
+              <span className="mb-1 block text-xs font-semibold text-zinc-300">Reason</span>
+              <input value={karmaReason} onChange={(e) => setKarmaReason(e.target.value)} placeholder="Why this adjustment?" className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+            </label>
+            {karmaErr && <div className="mb-3 rounded-md bg-rose-950/40 border border-rose-900 px-3 py-2 text-xs text-rose-300">{karmaErr}</div>}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setKarmaUser(null)}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={submitKarma} disabled={busy || !karmaDelta || !karmaReason}>{busy ? "Saving…" : "Apply"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyUser && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistoryUser(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-lg border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100">Karma History · {historyUser.name}</h3>
+              <button onClick={() => setHistoryUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {history === null && <p className="py-8 text-center text-xs text-zinc-500">Loading…</p>}
+              {history?.length === 0 && <p className="py-8 text-center text-xs text-zinc-500">No karma transactions</p>}
+              {history && history.length > 0 && (
+                <table className="w-full text-left text-xs">
+                  <thead><tr className="text-[11px] uppercase text-zinc-500"><th className="py-2">When</th><th className="py-2">Action</th><th className="py-2 text-right">Δ</th><th className="py-2">Reason</th></tr></thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.id} className="border-t border-zinc-900">
+                        <td className="py-2 text-zinc-400 whitespace-nowrap">{new Date(h.at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2"><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{h.actionType}</span></td>
+                        <td className={`py-2 text-right font-bold tabular-nums ${h.applied < 0 ? "text-rose-400" : "text-emerald-400"}`}>{h.applied > 0 ? "+" : ""}{h.applied}</td>
+                        <td className="py-2 text-zinc-500">{h.reason ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {badgeUser && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBadgeUser(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-lg border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100">Badges · {badgeUser.name}</h3>
+              <button onClick={() => setBadgeUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+            </div>
+            {badgeOptions.length === 0 && <p className="py-6 text-center text-xs text-zinc-500">No badges defined yet</p>}
+            <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+              {badgeOptions.map((b) => (
+                <label key={b.id} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-zinc-800 cursor-pointer">
+                  <input type="checkbox" checked={badgeSet.has(b.id)} onChange={() => toggleBadge(b.id)} className="h-3.5 w-3.5 accent-blue-600" />
+                  <span className="text-xs text-zinc-200">{b.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setBadgeUser(null)}>Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importOpen && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setImportOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-lg border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100">Import Users (CSV)</h3>
+              <button onClick={() => setImportOpen(false)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+            </div>
+            <p className="mb-3 text-xs text-zinc-500">One row per user: <code className="text-zinc-400">Name,email</code>. Each gets an activation email. Existing emails are skipped. Max 500 rows.</p>
+            <input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then(setImportText) }} className="mb-2 block w-full text-xs text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-xs file:text-zinc-200" />
+            <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6} placeholder={"Neha Gupta,neha@example.com\nAmit Verma,amit@example.com"} className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-xs font-mono text-zinc-200 placeholder-zinc-600 focus:border-blue-500 focus:outline-none" />
+            {importResult && <div className="mt-3 rounded-md bg-zinc-900 px-3 py-2 text-xs text-zinc-300">{importResult}</div>}
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setImportOpen(false)}>Close</Button>
+              <Button variant="primary" size="sm" onClick={submitImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Importing…" : "Import"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editUser && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditUser(null)}>

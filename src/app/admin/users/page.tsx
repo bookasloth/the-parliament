@@ -63,6 +63,7 @@ export default async function AdminUsersPage({
           },
         },
         userKarma: { select: { karmaBalance: true } },
+        userBadges: { select: { badgeId: true } },
       },
     }),
     prisma.user.count({ where }),
@@ -72,9 +73,10 @@ export default async function AdminUsersPage({
     prisma.user.count({ where: { deletedAt: null, status: "suspended" } }),
   ])
 
-  const [houseOpts, batchOpts] = await Promise.all([
+  const [houseOpts, batchOpts, badgeOpts] = await Promise.all([
     prisma.house.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.batch.findMany({ orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
+    prisma.badge.findMany({ orderBy: { label: "asc" }, select: { id: true, label: true } }),
   ])
 
   const mappedReal: AdminUser[] = rows.map((u) => ({
@@ -97,6 +99,7 @@ export default async function AdminUsersPage({
           ? "pending"
           : "active",
     karma: Number(u.userKarma?.karmaBalance ?? 0),
+    badgeIds: u.userBadges.map((b) => b.badgeId),
     joined: u.createdAt.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
     lastActive: u.lastLoginAt ? u.lastLoginAt.toLocaleDateString() : "—",
   }))
@@ -109,6 +112,7 @@ export default async function AdminUsersPage({
       pageInfo={{ page, pageCount: pageCount(filteredTotal), filteredTotal, pageSize: PAGE_SIZE }}
       houseOptions={houseOpts}
       batchOptions={batchOpts}
+      badgeOptions={badgeOpts.map((b) => ({ id: b.id, label: b.label }))}
     />
   )
 }
