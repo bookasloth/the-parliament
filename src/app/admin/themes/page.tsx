@@ -62,7 +62,7 @@ export default function AdminThemesPage() {
   const [themes, setThemes] = useState<ChatTheme[]>(FESTIVE_THEMES)
   const [saved, setSaved] = useState(false)
 
-  const activeToday = getActiveTheme(new Date(), themes)
+  const activeToday = getActiveTheme(new Date(), { themes })
 
   function update(id: string, patch: Partial<ChatTheme>) {
     setThemes((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -198,11 +198,39 @@ export default function AdminThemesPage() {
                         Recurs every year · <span className="font-medium text-zinc-300">{formatSchedule(theme.schedule)}</span>
                       </p>
                     </>
+                  ) : theme.windows?.length ? (
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2.5">
+                      <p className="text-[11px] text-zinc-400">
+                        <span className="font-semibold text-zinc-300">Movable festival.</span> Auto-activates on real
+                        per-year dates · next <span className="font-medium text-zinc-300">{formatSchedule(theme)}</span>
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {theme.windows.map((w) => (
+                          <span key={w.start} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                            {w.start === w.end ? w.start : `${w.start} → ${w.end}`}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : theme.hours ? (
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2.5">
+                      <p className="text-[11px] text-zinc-400">
+                        <span className="font-semibold text-zinc-300">Time of day.</span> Auto-activates late night ·
+                        <span className="font-medium text-zinc-300"> {formatSchedule(theme)}</span>
+                      </p>
+                    </div>
+                  ) : theme.id === "birthday" ? (
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2.5">
+                      <p className="text-[11px] text-zinc-400">
+                        <span className="font-semibold text-zinc-300">Automatic.</span> Shows when either person in a
+                        chat has a birthday yesterday, today, or tomorrow.
+                      </p>
+                    </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-900 px-3 py-2.5">
                       <p className="text-[11px] text-zinc-400">
-                        <span className="font-semibold text-zinc-300">On-demand theme.</span> No automatic window —
-                        members can pick it manually from the chat theme menu.
+                        <span className="font-semibold text-zinc-300">On-demand.</span> Admins can enable it here; it has
+                        no automatic window.
                       </p>
                     </div>
                   )}
