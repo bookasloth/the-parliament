@@ -508,12 +508,13 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
     setText("")
     setImage(null)
     setFocused(false)
-    const action: OptimisticAction = { type: "top", comment: makeView(body, viewer, img) }
+    const draft = makeView(body, viewer, img)
     startTransition(async () => {
-      applyOptimistic(action)
+      applyOptimistic({ type: "top", comment: draft })
       try {
-        await commentOnPost(postId, body, undefined, img ?? undefined)
-        setBase((s) => applyCommentAction(s, action)) // commit on success
+        const { id } = await commentOnPost(postId, body, undefined, img ?? undefined)
+        // Commit with the REAL id so isOptimistic clears (no more "Posting…").
+        setBase((s) => applyCommentAction(s, { type: "top", comment: { ...draft, id } }))
       } catch {
         setError("Failed to post comment. Please try again.")
       }
@@ -522,12 +523,12 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
 
   function handleReply(parentId: string, body: string) {
     if (!viewer) return
-    const action: OptimisticAction = { type: "reply", parentId, comment: makeView(body, viewer) }
+    const draft = makeView(body, viewer)
     startTransition(async () => {
-      applyOptimistic(action)
+      applyOptimistic({ type: "reply", parentId, comment: draft })
       try {
-        await commentOnPost(postId, body, parentId)
-        setBase((s) => applyCommentAction(s, action)) // commit on success
+        const { id } = await commentOnPost(postId, body, parentId)
+        setBase((s) => applyCommentAction(s, { type: "reply", parentId, comment: { ...draft, id } }))
       } catch {
         setError("Failed to post reply. Please try again.")
       }
