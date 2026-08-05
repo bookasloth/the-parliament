@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { Client } from "pg";
+import { seedTestUser } from "./seed-user";
 
 // Ensures the local *_test DB exists and is migrated before the E2E dev server
 // boots. Idempotent (no drop) — fast on reuse. Guards against ever pointing at
@@ -32,4 +33,7 @@ export default async function globalSetup() {
     stdio: "inherit",
     env: { ...process.env, DATABASE_URL: TEST_URL, DIRECT_URL: TEST_URL },
   });
+
+  // Seed the authed-smoke user (verified + onboarding complete).
+  await seedTestUser(TEST_URL);
 }
