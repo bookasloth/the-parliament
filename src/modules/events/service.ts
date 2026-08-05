@@ -104,8 +104,10 @@ export async function rsvpEvent(
   })
   // Confirmation only on a fresh "going" RSVP — not on status re-toggles.
   if (!existing && status === "going") {
+    // Pass ids as separate args, never interpolated into the format string
+    // (user-controlled eventId → tainted-format-string / log-injection).
     await sendRsvpConfirmation(userId, eventId).catch((e) =>
-      console.error(`rsvp confirmation email failed for ${userId}/${eventId}`, e),
+      console.error("rsvp confirmation email failed", { userId, eventId }, e),
     )
   }
   return row
