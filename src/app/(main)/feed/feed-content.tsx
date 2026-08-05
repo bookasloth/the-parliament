@@ -304,7 +304,7 @@ function SidebarFooter() {
         <a href="/help" className={link}>Help</a>
         <a href="/privacy" className={link}>Privacy</a>
         <a href="/terms" className={link}>Terms</a>
-        <a href="/guidelines" className={link}>Rules</a>
+        <a href="/rules" className={link}>Rules</a>
       </div>
       <p className="mt-2 text-gray-400">
         Powered by{" "}
