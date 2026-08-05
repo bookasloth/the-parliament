@@ -20,6 +20,7 @@ type Facets = {
   batches: { id: string; label: string }[]
   houses: { id: string; name: string; colorHex: string }[]
   industries: { name: string; count: number }[]
+  cities?: string[]
 }
 type Params = Record<string, string | undefined>
 
@@ -28,6 +29,12 @@ const TIERS = [
   { value: "associate", label: "Associate" },
   { value: "premium", label: "Premium" },
   { value: "life", label: "Life" },
+]
+
+const SORTS = [
+  { value: "active", label: "Recently active" },
+  { value: "newest", label: "Newest members" },
+  { value: "name", label: "Name (A–Z)" },
 ]
 
 function tierAccent(status: string): string {
@@ -86,6 +93,15 @@ export function CommunityClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsKey])
 
+  // Debounced live search — pushes after typing settles (Enter still works).
+  useEffect(() => {
+    const term = q.trim()
+    if (term === (current.q ?? "")) return
+    const id = setTimeout(() => go({ q: term || undefined }), 400)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q])
+
   const hasMore = items.length < total
 
   const loadMore = useCallback(async () => {
@@ -129,6 +145,7 @@ export function CommunityClient({
     houseName && { key: "house", label: houseName },
     tierLabel && { key: "membership", label: tierLabel },
     current.industry && { key: "industry", label: current.industry },
+    current.city && { key: "city", label: current.city },
     current.verified === "1" && { key: "verified", label: "Verified" },
   ].filter(Boolean) as { key: string; label: string }[]
 
@@ -172,23 +189,27 @@ export function CommunityClient({
             className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
           />
         </form>
-        {/* Filters: 2×2 on mobile; on desktop share the other 50% (≈12.5% each). */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:w-1/2 lg:items-center">
-          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+        {/* Filters: 2-col on mobile, wrap on desktop. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:w-1/2 lg:flex-wrap lg:items-center">
+          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
             <option value="">All batches</option>
             {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
             <option value="">All houses</option>
             {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
             <option value="">All tiers</option>
             {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
+          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
             <option value="">All industries</option>
             {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
+          </select>
+          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
+            <option value="">All locations</option>
+            {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>
@@ -198,6 +219,12 @@ export function CommunityClient({
         <label className={`flex cursor-pointer items-center gap-1.5 rounded border px-2.5 py-1.5 text-sm transition-colors ${current.verified === "1" ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}>
           <input type="checkbox" checked={current.verified === "1"} onChange={(e) => go({ verified: e.target.checked ? "1" : undefined })} className="h-3.5 w-3.5 accent-brand" />
           Verified only
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-gray-500">
+          Sort
+          <select className={sel} value={current.sort ?? "active"} onChange={(e) => go({ sort: e.target.value === "active" ? undefined : e.target.value })}>
+            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
         </label>
         <div className="flex-1" />
         <div className="flex items-center gap-1 rounded border border-gray-200 bg-white p-1">
