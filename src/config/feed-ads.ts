@@ -45,7 +45,8 @@ export const FEED_ADS: FeedPost[] = [
     content:
       "Managed hosting with a free domain, SSL and 24/7 support — trusted by millions. Grab the current launch pricing.",
     sponsorCta: "See Pricing",
-    // ponytail: no thumbnail yet — add a real Hostinger banner asset when available.
+    // Self-contained SVG banner (shapes/colours, no photo) in /public.
+    image: "/hostinger-ad.svg",
     avatar: "https://ui-avatars.com/api/?name=Hostinger&background=673de6&color=fff&bold=true",
     borderType: "darkBlue",
     upvotes: 0,

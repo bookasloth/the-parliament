@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" font-family="Poppins, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c4dff"/>
+      <stop offset="0.55" stop-color="#5b34d1"/>
+      <stop offset="1" stop-color="#2f1c6a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.28" r="0.6">
+      <stop offset="0" stop-color="#a17bff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#a17bff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd33d"/>
+      <stop offset="1" stop-color="#ff9f1c"/>
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="2.4" fill="#ffffff" fill-opacity="0.18"/>
+    </pattern>
+  </defs>
+
+  <!-- Base -->
+  <rect width="1200" height="500" fill="url(#bg)"/>
+  <rect width="1200" height="500" fill="url(#glow)"/>
+
+  <!-- Decorative geometry (no people) -->
+  <rect x="760" y="30" width="180" height="180" fill="url(#dots)" transform="rotate(0)"/>
+  <circle cx="150" cy="430" r="120" fill="#ffffff" fill-opacity="0.05"/>
+  <circle cx="1090" cy="90" r="70" fill="#ffffff" fill-opacity="0.06"/>
+  <rect x="60" y="60" width="46" height="46" rx="12" fill="#ffffff" fill-opacity="0.10" transform="rotate(18 83 83)"/>
+  <circle cx="1140" cy="420" r="34" fill="#ffd33d" fill-opacity="0.85"/>
+  <path d="M40 250 q40 -30 80 0 t80 0" stroke="#ffffff" stroke-opacity="0.16" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- Brand mark -->
+  <g transform="translate(70 70)">
+    <rect x="0" y="-26" width="34" height="34" rx="9" fill="#ffffff"/>
+    <path d="M8 -22 v26 M26 -22 v26 M8 -9 h18" stroke="#5b34d1" stroke-width="4.5" stroke-linecap="round"/>
+    <text x="48" y="1" fill="#ffffff" font-size="26" font-weight="700" letter-spacing="3">HOSTINGER</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="70" y="215" fill="#ffffff" font-size="66" font-weight="800">Web hosting</text>
+  <text x="70" y="285" fill="#ffffff" font-size="66" font-weight="800">that just works</text>
+
+  <!-- Feature line -->
+  <text x="72" y="335" fill="#e7ddff" font-size="24" font-weight="500">Free domain · Free SSL · 24/7 support</text>
+
+  <!-- Price pill -->
+  <g transform="translate(72 372)">
+    <rect x="0" y="0" width="250" height="58" rx="29" fill="url(#pill)"/>
+    <text x="24" y="38" fill="#2f1c6a" font-size="26" font-weight="800">From ₹149</text>
+    <text x="182" y="38" fill="#2f1c6a" font-size="18" font-weight="600">/mo</text>
+  </g>
+
+  <!-- Faux CTA -->
+  <g transform="translate(346 372)">
+    <rect x="0" y="0" width="196" height="58" rx="12" fill="#ffffff"/>
+    <text x="30" y="37" fill="#5b34d1" font-size="22" font-weight="800">See Pricing</text>
+    <path d="M158 29 h14 M166 22 l8 7 -8 7" stroke="#5b34d1" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Stylized website/browser card (the "hosting" motif, all shapes) -->
+  <g transform="translate(770 120)">
+    <rect x="0" y="0" width="360" height="250" rx="22" fill="#ffffff" fill-opacity="0.97"/>
+    <rect x="0" y="0" width="360" height="52" rx="22" fill="#efe9ff"/>
+    <rect x="0" y="30" width="360" height="22" fill="#efe9ff"/>
+    <circle cx="26" cy="26" r="6" fill="#ff6b6b"/>
+    <circle cx="48" cy="26" r="6" fill="#ffd33d"/>
+    <circle cx="70" cy="26" r="6" fill="#43d9ad"/>
+    <rect x="120" y="18" width="210" height="16" rx="8" fill="#ffffff"/>
+    <!-- page content bars -->
+    <rect x="28" y="78" width="150" height="90" rx="12" fill="#7c4dff"/>
+    <path d="M60 138 l22 -26 18 18 26 -34 26 42 z" fill="#ffffff" fill-opacity="0.85"/>
+    <circle cx="72" cy="104" r="9" fill="#ffd33d"/>
+    <rect x="196" y="80" width="136" height="14" rx="7" fill="#c9bdf2"/>
+    <rect x="196" y="104" width="110" height="14" rx="7" fill="#ded6f6"/>
+    <rect x="196" y="128" width="130" height="14" rx="7" fill="#ded6f6"/>
+    <rect x="196" y="152" width="84" height="16" rx="8" fill="#43d9ad"/>
+    <rect x="28" y="186" width="304" height="12" rx="6" fill="#efeafc"/>
+    <rect x="28" y="208" width="240" height="12" rx="6" fill="#efeafc"/>
+  </g>
+
+  <!-- Little orbiting accents around the card -->
+  <circle cx="742" cy="150" r="12" fill="#ffd33d"/>
+  <rect x="1140" y="150" width="26" height="26" rx="8" fill="#43d9ad" transform="rotate(20 1153 163)"/>
+</svg>
