@@ -45,7 +45,7 @@ function toCard(u: AlumniUser): AlumniCard {
   }
 }
 
-const HOUSE_FILTER = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Indira", "Laxmi"]
+const HOUSE_FILTER = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Jawahar", "Tilak", "Subhash", "Rajiv", "Indira", "Laxmi"]
 
 interface ConnectionsClientProps {
   following?: AlumniUser[]

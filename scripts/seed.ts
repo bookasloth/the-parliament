@@ -10,14 +10,10 @@ const pool = new pg.Pool({
 
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-const HOUSES = [
-  { name: "Aravali", colorName: "blue", colorHex: "#1e3a8a" },
-  { name: "Nilgiri", colorName: "green", colorHex: "#15803d" },
-  { name: "Shiwalik", colorName: "red", colorHex: "#b91c1c" },
-  { name: "Udaigiri", colorName: "yellow", colorHex: "#ca8a04" },
-  { name: "Indira", colorName: "orange", colorHex: "#ea580c" },
-  { name: "Laxmi", colorName: "pink", colorHex: "#db2777", isGirlsOnly: true },
-];
+import { HOUSE_CATALOG } from "../src/config/houses";
+
+// Full house roster (ANSU + pre-2002 boys/girls) from the single catalog.
+const HOUSES = HOUSE_CATALOG;
 
 const POST_CATEGORIES = [
   { key: "career_update", label: "Career Update" },
@@ -88,8 +84,8 @@ async function main() {
   for (const h of HOUSES) {
     await prisma.house.upsert({
       where: { schoolId_name: { schoolId: school.id, name: h.name } },
-      update: { colorName: h.colorName, colorHex: h.colorHex },
-      create: { schoolId: school.id, ...h },
+      update: { colorName: h.colorName, colorHex: h.colorHex, system: h.system, gender: h.gender, isGirlsOnly: h.isGirlsOnly },
+      create: { schoolId: school.id, name: h.name, colorName: h.colorName, colorHex: h.colorHex, system: h.system, gender: h.gender, isGirlsOnly: h.isGirlsOnly },
     });
   }
 
