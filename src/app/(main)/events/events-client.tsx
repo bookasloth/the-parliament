@@ -7,7 +7,7 @@ import {
   X, Search, Video, MapPin, Globe,
 } from "lucide-react"
 import type { EventItem } from "@/modules/events/service"
-import { rsvpAction } from "./actions"
+import { rsvpAction, createEventAction } from "./actions"
 
 export const MOCK_EVENTS: EventItem[] = [
   { id: "1", slug: "alumni-reunion-2026", title: "JNV Nagpur Alumni Reunion 2026", date: "Mon, Oct 15, 2026", time: "10:00 AM", mode: "in-person", cover: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop", isFree: false, price: 500, interested: true, category: "Reunion" },
@@ -119,6 +119,45 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
   const [createOpen, setCreateOpen] = useState(false)
   const [, startTransition] = useTransition()
 
+  // Create-event form state.
+  const [form, setForm] = useState<{
+    title: string; date: string; time: string; mode: EventItem["mode"]; venue: string; eventUrl: string
+  }>({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "" })
+  const [creating, setCreating] = useState(false)
+  const [createErr, setCreateErr] = useState<string | null>(null)
+
+  function resetForm() {
+    setForm({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "" })
+    setCreateErr(null)
+  }
+
+  function submitCreate() {
+    setCreateErr(null)
+    if (!form.title.trim() || !form.date || !form.time) {
+      setCreateErr("Title, date and time are required.")
+      return
+    }
+    setCreating(true)
+    startTransition(async () => {
+      const res = await createEventAction({
+        title: form.title,
+        date: form.date,
+        time: form.time,
+        mode: form.mode,
+        venue: form.venue || undefined,
+        eventUrl: form.eventUrl || undefined,
+      })
+      setCreating(false)
+      if (!res.ok) {
+        setCreateErr(res.error)
+        return
+      }
+      setEvents((prev) => [res.event, ...prev])
+      setCreateOpen(false)
+      resetForm()
+    })
+  }
+
   useEffect(() => { setEvents(initialEvents) }, [initialEvents])
 
   function toggleInterested(id: string) {
@@ -218,7 +257,7 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
         </div>
       </div>
 
-      {/* Create event modal (placeholder) */}
+      {/* Create event modal */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div role="presentation" className="absolute inset-0 bg-black/50" onClick={() => setCreateOpen(false)} />
@@ -230,32 +269,90 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
             <div className="px-5 py-4 space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Event title</label>
-                <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10" placeholder="e.g. Batch 2015 Meetup" />
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  placeholder="e.g. Batch 2015 Meetup"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
-                  <input type="date" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" />
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Time</label>
-                  <input type="time" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" />
+                  <input
+                    type="time"
+                    value={form.time}
+                    onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Mode</label>
                 <div className="flex gap-2">
-                  {(["in-person", "virtual", "hybrid"] as const).map(m => (
-                    <button key={m} className="flex-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:border-brand hover:text-brand transition-colors capitalize">
-                      {MODE_LABEL[m]}
-                    </button>
-                  ))}
+                  {(["in-person", "virtual", "hybrid"] as const).map((m) => {
+                    const active = form.mode === m
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, mode: m }))}
+                        className={`flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-colors ${
+                          active
+                            ? "border-brand bg-brand text-white"
+                            : "border-gray-200 text-gray-600 hover:border-brand hover:text-brand"
+                        }`}
+                      >
+                        {MODE_LABEL[m]}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
+              {form.mode !== "virtual" && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Address / Venue</label>
+                  <input
+                    value={form.venue}
+                    onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    placeholder="e.g. JNV Nagpur campus, Navegaon Khairi"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  {form.mode === "in-person" ? "Landing / registration URL" : "Event / registration URL"}
+                  <span className="font-normal text-gray-400"> (optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.eventUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, eventUrl: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  placeholder="https://…"
+                />
+              </div>
+              {createErr && <p className="text-xs font-medium text-rose-600">{createErr}</p>}
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">
               <button onClick={() => setCreateOpen(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button onClick={() => setCreateOpen(false)} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600">Create</button>
+              <button
+                onClick={submitCreate}
+                disabled={creating}
+                className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60"
+              >
+                {creating ? "Creating…" : "Create"}
+              </button>
             </div>
           </div>
         </div>
