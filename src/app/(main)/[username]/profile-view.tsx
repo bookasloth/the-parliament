@@ -255,9 +255,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       >
         <MessageSquare className="h-5 w-5" />
       </button>
-      <button aria-label="More" title="More" className={`${R_EL} flex h-11 w-11 items-center justify-center border border-gray-200 text-gray-600 hover:bg-gray-50`}>
-        <MoreHorizontal className="h-5 w-5" />
-      </button>
+      {moreMenu}
     </>
   )
 
@@ -278,11 +276,13 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       <button onClick={openConversation} disabled={messagingLoading} aria-label="Message" title="Message" className={`${ICON_BTN} disabled:opacity-50 disabled:cursor-not-allowed`}>
         <MessageSquare className="h-5 w-5" />
       </button>
-      <button aria-label="More" title="More" className={ICON_BTN}>
-        <MoreHorizontal className="h-5 w-5" />
-      </button>
+      {moreMenu}
     </>
   )
+
+  // ponytail: Copy link + native share work with no backend; Report/Block
+  // deferred until a profile-report action exists.
+  const moreMenu = <MoreMenu username={data.username} />
 
   const metaRow = metaBits.length > 0 && (
     <>
@@ -614,6 +614,53 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Profile "More" dropdown — Copy link + native Share (no backend needed).
+function MoreMenu({ username }: { username: string }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const url = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`
+
+  function copyLink() {
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+    setOpen(false)
+  }
+  function share() {
+    if (typeof navigator !== "undefined" && navigator.share) navigator.share({ url }).catch(() => {})
+    else copyLink()
+    setOpen(false)
+  }
+
+  const item = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="More"
+        title="More"
+        className={`${R_EL} flex h-11 w-11 items-center justify-center border border-gray-200 text-gray-600 hover:bg-gray-50`}
+      >
+        <MoreHorizontal className="h-5 w-5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className={`absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden border border-gray-200 bg-white shadow-xl ${R_EL}`}>
+            <button onClick={copyLink} className={item}>
+              <LinkIcon className="h-4 w-4" /> {copied ? "Copied!" : "Copy profile link"}
+            </button>
+            <button onClick={share} className={item}>
+              <Share2 className="h-4 w-4" /> Share profile
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
