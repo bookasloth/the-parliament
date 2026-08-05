@@ -57,6 +57,7 @@ export default async function CommunityPage({
       city: sp.city || undefined,
       industry: sp.industry || undefined,
       verifiedOnly: sp.verified === "1",
+      sort: (sp.sort as DirectoryFilters["sort"]) || undefined,
     }),
     getFacetsCached(schoolId),
     getCountsCached(schoolId),

@@ -13,6 +13,7 @@ export interface DirectoryFilters {
   membershipStatus?: string
   verifiedOnly?: boolean
   schoolId?: string
+  sort?: "active" | "newest" | "name"
 }
 
 export interface DirectoryPage {
@@ -73,10 +74,18 @@ export async function searchDirectory(
     where.userDivisions = { some: { divisionId: filters.divisionId } }
   }
 
+  const orderBy: Prisma.UserOrderByWithRelationInput[] =
+    filters.sort === "newest"
+      ? [{ createdAt: "desc" }]
+      : filters.sort === "name"
+        ? [{ legalName: "asc" }]
+        : // "active" (default): verified first, then most recently seen.
+          [{ isVerified: "desc" }, { lastLoginAt: "desc" }, { createdAt: "desc" }]
+
   const [rows, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      orderBy: [{ isVerified: "desc" }, { lastLoginAt: "desc" }, { createdAt: "desc" }],
+      orderBy,
       skip: (page.page - 1) * page.pageSize,
       take: page.pageSize,
       select: {

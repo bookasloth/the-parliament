@@ -29,6 +29,7 @@ export async function GET(req: Request) {
         city: sp.get("city") || undefined,
         industry: sp.get("industry") || undefined,
         verifiedOnly: sp.get("verified") === "1",
+        sort: (sp.get("sort") as "active" | "newest" | "name" | null) || undefined,
       },
       { page, pageSize: PAGE_SIZE },
     )
