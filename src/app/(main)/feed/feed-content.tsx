@@ -500,7 +500,12 @@ export function FeedContent({
               </div>
             )}
             {/* Standard compose trigger */}
-            <ComposeTrigger />
+            <ComposeTrigger
+              avatar={
+                viewer?.photoUrl ??
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(viewer?.name ?? userName)}`
+              }
+            />
 
             {caughtUp && (
               <div className="flex items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
