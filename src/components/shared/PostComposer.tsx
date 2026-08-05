@@ -446,7 +446,9 @@ export default function PostComposer({
                         {m.type === "video" ? (
                           <video src={m.url} className="h-full w-full object-cover" muted />
                         ) : (
-                          <Image src={m.url} alt="" fill sizes="(max-width: 768px) 33vw, 150px" className="object-cover" />
+                          // Local blob: URL — plain <img>, next/image can't optimize blobs.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.url} alt="" className="h-full w-full object-cover" />
                         )}
                         <button
                           onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
