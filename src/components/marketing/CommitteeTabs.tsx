@@ -1,106 +1,78 @@
 "use client"
 
 import { useState } from "react"
-import { MemberCard } from "@/components/marketing/MemberCard"
+import { Users } from "lucide-react"
 import { ACCENT_HEX } from "@/components/marketing/primitives"
-import type { Member, SubCommittee } from "@/lib/committee"
+import { isPlaceholder } from "@/components/marketing/MemberCard"
+import type { Member } from "@/lib/committee"
 
-type TabKey = "executive" | "sub" | "advisory" | "district"
+type TabKey = "executive" | "advisory"
 
 export function CommitteeTabs({
-  executive, subCommittees,
+  executive, advisory,
 }: {
   executive: Member[]
-  subCommittees: SubCommittee[]
+  advisory: Member[]
 }) {
   const [tab, setTab] = useState<TabKey>("executive")
 
-  const subMemberCount = subCommittees.reduce((n, sc) => n + sc.members.length, 0)
-  const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "executive", label: "Executive Committee", count: executive.length },
-    { key: "sub", label: "Sub-committees", count: subMemberCount },
-    { key: "advisory", label: "Advisory Board", count: 0 },
-    { key: "district", label: "District Representatives", count: 0 },
+  const tabs: { key: TabKey; label: string; members: Member[] }[] = [
+    { key: "executive", label: "Executive Committee", members: executive },
+    { key: "advisory", label: "Advisory Committee", members: advisory },
   ]
+  const active = tabs.find((t) => t.key === tab)!
 
   return (
     <div>
       {/* Tab bar */}
       <div className="flex flex-wrap gap-2 border-b border-black/10">
         {tabs.map((t) => {
-          const active = tab === t.key
+          const on = tab === t.key
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`relative -mb-px flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
-                active ? "text-brand" : "text-[#8a8a8a] hover:text-[#1a1a1a]"
+                on ? "text-brand" : "text-[#8a8a8a] hover:text-[#1a1a1a]"
               }`}
             >
               {t.label}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                  active ? "bg-brand-50 text-brand" : "bg-black/5 text-[#a3a3a3]"
-                }`}
-              >
-                {t.count}
+              <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${on ? "bg-brand-50 text-brand" : "bg-black/5 text-[#a3a3a3]"}`}>
+                {t.members.length}
               </span>
-              {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
+              {on && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
             </button>
           )
         })}
       </div>
 
-      {/* Panel — keyed so it remounts + fades/slides on every tab switch. */}
-      <div key={tab} className="mt-8" style={{ animation: "fade-in-up .28s ease" }}>
-        {tab === "executive" && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {executive.map((m, i) => (
-              <MemberCard key={m.position + i} member={m} accent={(i % 4) as 0 | 1 | 2 | 3} />
-            ))}
-          </div>
-        )}
-
-        {tab === "sub" && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {subCommittees.map((sc) => (
-              <div key={sc.name} className="h-full rounded-3xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: ACCENT_HEX[sc.accent] }} />
-                  <h3 className="font-heading text-lg font-semibold text-[#1a1a1a]">{sc.name}</h3>
-                  <span className="ml-auto text-xs font-medium uppercase tracking-wide text-[#a3a3a3]">
-                    {sc.members.length} members
-                  </span>
-                </div>
-                <div className="mt-5 space-y-3">
-                  {sc.members.map((m, j) => (
-                    <MemberCard key={m.position + j} member={m} accent={sc.accent} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "advisory" && <ComingSoon
-          title="Advisory Board — coming soon"
-          body="Senior alumni advisors who guide NNAWCA on strategy and long-term direction. The roster will be published here shortly."
-        />}
-
-        {tab === "district" && <ComingSoon
-          title="District Representatives — coming soon"
-          body="Alumni who represent NNAWCA across districts, coordinating local chapters and events. Representatives will be listed here soon."
-        />}
+      {/* 6-per-row grid of photo · name · role */}
+      <div key={tab} className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" style={{ animation: "fade-in-up .28s ease" }}>
+        {active.members.map((m, i) => (
+          <MemberTile key={m.name + i} member={m} accent={(i % 4) as 0 | 1 | 2 | 3} />
+        ))}
       </div>
     </div>
   )
 }
 
-function ComingSoon({ title, body }: { title: string; body: string }) {
+function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 }) {
+  const placeholder = isPlaceholder(member.name)
+  const initial = placeholder ? null : member.name.replace(/^(Shri\.|Smt\.|Dr\.)\s*/i, "").charAt(0)
   return (
-    <div className="rounded-3xl border border-dashed border-black/15 bg-white/60 px-6 py-16 text-center">
-      <p className="font-heading text-lg font-semibold text-[#1a1a1a]">{title}</p>
-      <p className="mx-auto mt-2 max-w-md text-[15px] text-[#8a8a8a]">{body}</p>
+    <div className="flex flex-col items-center rounded-2xl border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-full font-heading text-2xl font-semibold text-white"
+        style={{ backgroundColor: ACCENT_HEX[accent] }}
+      >
+        {initial ?? <Users className="h-6 w-6" />}
+      </div>
+      <p className="mt-3 line-clamp-2 text-sm font-semibold leading-tight text-[#1a1a1a]">
+        {placeholder ? member.position : member.name}
+      </p>
+      <p className="mt-0.5 line-clamp-2 text-xs text-[#8a8a8a]">
+        {placeholder ? "Committee member" : member.position}
+      </p>
     </div>
   )
 }
