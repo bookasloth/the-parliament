@@ -5,8 +5,12 @@ import {
   ArrowLeft, Calendar, MapPin, Video, Users, Star, Ticket,
 } from "lucide-react"
 import { optionalUser } from "@/modules/auth/session"
-import { getEventById } from "@/modules/events/service"
+import {
+  getEventById, listEventAttendees, getFeedbackSummary, getMyFeedback, canLeaveFeedback,
+} from "@/modules/events/service"
 import EventRsvpButtons from "./rsvp-buttons"
+import AttendancePanel from "./attendance-panel"
+import FeedbackSection from "./feedback-section"
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +38,17 @@ export default async function EventDetailPage({
   const result = await getEventById(slug, viewer?.id ?? null).catch(() => null)
   if (!result) notFound()
   const { event, interested } = result
+
+  const isHost = !!viewer && event.hostId === viewer.id
+  // "Past" once it has ended (or started, if no end time).
+  const isPast = (event.endsAt ?? event.startsAt) < new Date()
+
+  const [attendees, feedback, myFeedback, feedbackEligible] = await Promise.all([
+    isHost ? listEventAttendees(event.id) : Promise.resolve([]),
+    isPast ? getFeedbackSummary(event.id) : Promise.resolve(null),
+    isPast && viewer ? getMyFeedback(event.id, viewer.id) : Promise.resolve(null),
+    isPast && viewer ? canLeaveFeedback(event.id, viewer.id) : Promise.resolve(false),
+  ])
 
   const hostName = event.host.displayName || event.host.legalName
   const mode = event.mode === "online" ? "Virtual" : event.mode === "hybrid" ? "Hybrid" : "In-person"
@@ -138,6 +153,17 @@ export default async function EventDetailPage({
                 {event.description}
               </p>
             </div>
+          )}
+
+          {isHost && <AttendancePanel eventId={event.id} attendees={attendees} />}
+
+          {isPast && feedback && (
+            <FeedbackSection
+              eventId={event.id}
+              summary={feedback}
+              mine={myFeedback}
+              eligible={feedbackEligible}
+            />
           )}
         </div>
 

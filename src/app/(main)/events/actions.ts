@@ -4,7 +4,10 @@ import { revalidatePath, updateTag } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { prisma } from "@/lib/prisma"
-import { cancelRsvp, getEventById, rsvpEvent, type EventItem } from "@/modules/events/service"
+import {
+  cancelRsvp, getEventById, rsvpEvent, type EventItem,
+  isEventHost, setCheckIn, canLeaveFeedback, submitFeedback, isValidRating,
+} from "@/modules/events/service"
 import { createEventSchema, type CreateEventInput } from "./create-schema"
 
 /**
@@ -84,4 +87,31 @@ export async function rsvpAction(eventId: string) {
 
   revalidatePath("/events")
   return { interested: !existing?.interested }
+}
+
+/** Host-only: toggle an attendee's check-in for an event. */
+export async function checkInAction(
+  eventId: string,
+  attendeeId: string,
+  checkedIn: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (!(await isEventHost(eventId, user.id))) return { ok: false, error: "Only the host can check attendees in." }
+  await setCheckIn(eventId, attendeeId, checkedIn)
+  revalidatePath(`/events/${eventId}`)
+  return { ok: true }
+}
+
+/** Attendee feedback (rating 1–5 + optional comment) on a past event. */
+export async function submitFeedbackAction(
+  eventId: string,
+  rating: number,
+  comment: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (!isValidRating(rating)) return { ok: false, error: "Pick a rating from 1 to 5." }
+  if (!(await canLeaveFeedback(eventId, user.id))) return { ok: false, error: "Only attendees can leave feedback." }
+  await submitFeedback(eventId, user.id, rating, comment)
+  revalidatePath(`/events/${eventId}`)
+  return { ok: true }
 }
