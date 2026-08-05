@@ -96,8 +96,8 @@ const ALUMNI_COLLAGE = [
 export default function AboutPage() {
   return (
     <>
-      {/* ── Hero (compact — fits above the fold) ── */}
-      <Section width="7xl" className="pt-24 pb-8 lg:min-h-[100svh] lg:flex lg:flex-col lg:justify-center lg:pt-28 lg:pb-10">
+      {/* ── Hero (compact) ── */}
+      <Section width="7xl" className="pt-24 pb-10 lg:pt-28">
         <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
           <div>
             <Reveal>
