@@ -42,6 +42,7 @@ export default async function FeedPage({
             select: {
               displayName: true,
               legalName: true,
+              membershipStatus: true,
               profile: {
                 select: {
                   photoUrl: true,
@@ -107,6 +108,7 @@ export default async function FeedPage({
           u.profile?.photoUrl ??
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         coverUrl: u.profile?.coverUrl ?? null,
+        membership: u.membershipStatus,
         headline: u.profile?.headline ?? "",
         batch: batchOrdinal(u.profile?.batch?.startYear) ?? u.profile?.batch?.label ?? "—",
         house: u.profile?.house?.name ?? "—",
