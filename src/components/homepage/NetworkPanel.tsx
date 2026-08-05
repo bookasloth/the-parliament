@@ -21,7 +21,7 @@ export function NetworkPanel({
   className?: string;
 }) {
   return (
-    <div className={`relative flex min-h-[42vh] flex-col overflow-hidden bg-[#0b1020] px-8 py-10 lg:px-14 ${className}`}>
+    <div className={`relative hidden min-h-[42vh] flex-col overflow-hidden bg-[#0b1020] px-8 py-10 lg:flex lg:px-14 ${className}`}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_45%,rgba(91,157,255,0.12),transparent_60%)]" />
       <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-[#5b9dff]/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-10 top-10 h-64 w-64 rounded-full bg-[#ff5a5a]/10 blur-3xl" />
