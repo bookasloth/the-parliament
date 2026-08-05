@@ -57,6 +57,8 @@ export interface FeedPost {
   sponsorCta?: string
   /** Optional secondary CTA (rendered as an outline button before the primary). */
   sponsorCta2?: string
+  /** Brand accent (hex) for the CTA button + verified tick. Defaults to orange. */
+  sponsorAccent?: string
   upvotes: number
   downvotes: number
   comments: number

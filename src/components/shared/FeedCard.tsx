@@ -256,8 +256,8 @@ export function FeedCard({
                   </a>
                 </h6>
                 {!post.isSponsored && post.isVerified && <VerifiedBadge membership={post.membership} />}
-                {/* Sponsored verified — orange seal */}
-                {post.isSponsored && <VerifiedTick color="#f97316" size={18} />}
+                {/* Sponsored verified — brand accent seal (defaults orange) */}
+                {post.isSponsored && <VerifiedTick color={post.sponsorAccent ?? "#f97316"} size={18} />}
                 {!post.isSponsored && post.connectionDegree && (
                   <span className="text-xs text-[#6B7280]">· {post.connectionDegree}</span>
                 )}
@@ -394,7 +394,8 @@ export function FeedCard({
                 href={post.sponsorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex-shrink-0 rounded-md bg-orange-500 px-4 py-2 text-center text-xs font-bold text-white hover:bg-orange-600 transition-colors sm:w-auto"
+                style={post.sponsorAccent ? { backgroundColor: post.sponsorAccent } : undefined}
+                className={`w-full flex-shrink-0 rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90 sm:w-auto${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
               >
                 {post.sponsorCta ?? "Learn more"}
               </a>

@@ -45,9 +45,11 @@ export const FEED_ADS: FeedPost[] = [
     content:
       "Managed hosting with a free domain, SSL and 24/7 support — trusted by millions. Grab the current launch pricing.",
     sponsorCta: "See Pricing",
+    // Hostinger brand purple for the CTA + verified tick.
+    sponsorAccent: "#673de6",
     // Self-contained SVG banner (shapes/colours, no photo) in /public.
     image: "/hostinger-ad.svg",
-    avatar: "https://ui-avatars.com/api/?name=Hostinger&background=673de6&color=fff&bold=true",
+    avatar: "/hostinger-icon.png",
     borderType: "darkBlue",
     upvotes: 0,
     downvotes: 0,
