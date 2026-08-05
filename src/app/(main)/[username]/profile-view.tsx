@@ -308,7 +308,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
   return (
     <div className="min-h-screen bg-[#eef0f4] px-4 py-6 font-body">
-      <div className="mx-auto max-w-[1200px]">
+      <div className="mx-auto max-w-[1400px]">
 
         {/* ===== HEADER + ABOUT SIDEBAR ===== */}
         <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
@@ -334,16 +334,18 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               )}
             </div>
 
-            {/* DESKTOP: name·tick·actions on one line beside the avatar */}
+            {/* DESKTOP: avatar · (name over headline) · actions */}
             <div className="hidden lg:block">
               <div className="flex items-end gap-4">
                 <div className="-mt-[62px] shrink-0">{avatarInner}</div>
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-2 pb-2">
-                  {nameTick}
+                <div className="flex min-w-0 flex-1 items-end justify-between gap-2 pb-2">
+                  <div className="min-w-0">
+                    {nameTick}
+                    {data.headline && <p className="mt-1 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
+                  </div>
                   <div className="flex shrink-0 items-center gap-2">{actions}</div>
                 </div>
               </div>
-              {data.headline && <p className="mt-3 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
               {metaRow && (
                 <div className="mt-3 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">{metaRow}</div>
               )}
