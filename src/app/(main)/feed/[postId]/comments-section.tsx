@@ -55,6 +55,9 @@ export interface CommentView {
     batch: string | null
   }
   replies: CommentView[]
+  /** Stable client-side key that survives the optimistic→committed id swap, so
+   *  the replayed optimistic overlay doesn't double-add the comment. */
+  clientKey?: string
 }
 
 interface Viewer {
@@ -83,10 +86,14 @@ type OptimisticAction =
 // come from revalidatePath here: comments are client-loaded, so we hold the
 // source of truth locally instead of letting the optimistic value snap back.)
 function applyCommentAction(state: CommentView[], action: OptimisticAction): CommentView[] {
-  if (action.type === "top") return [...state, action.comment]
+  const already = (list: CommentView[], k?: string) => !!k && list.some((c) => c.clientKey === k)
+  if (action.type === "top")
+    return already(state, action.comment.clientKey) ? state : [...state, action.comment]
   if (action.type === "reply")
     return state.map((c) =>
-      c.id === action.parentId ? { ...c, replies: [...c.replies, action.comment] } : c,
+      c.id === action.parentId && !already(c.replies, action.comment.clientKey)
+        ? { ...c, replies: [...c.replies, action.comment] }
+        : c,
     )
   if (action.type === "remove")
     return state
@@ -113,8 +120,10 @@ function relativeTime(iso: string): string {
 }
 
 function makeView(body: string, viewer: Viewer, imageUrl: string | null = null): CommentView {
+  const key = `optimistic-${Date.now()}-${Math.round(performance.now())}`
   return {
-    id: `optimistic-${Date.now()}-${Math.round(performance.now())}`,
+    id: key,
+    clientKey: key,
     body,
     imageUrl,
     createdAt: new Date().toISOString(),
