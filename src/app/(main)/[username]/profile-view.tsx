@@ -561,7 +561,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <Card>
                     <SectionTitle>Membership perks</SectionTitle>
                     <div className="space-y-3 px-7 pb-6 pt-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-800">List your business</p>
                           <p className="text-xs text-gray-500">Feature your business in the alumni directory.</p>
@@ -572,7 +572,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                           <UpgradePrompt currentPlan={data.owner.planCode} feature="Listing your business" compact />
                         )}
                       </div>
-                      <div className="flex items-center gap-3 border-t border-gray-50 pt-3">
+                      <div className="flex flex-col items-start gap-2 border-t border-gray-50 pt-3 sm:flex-row sm:items-center sm:gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-800">Apply as a mentor</p>
                           <p className="text-xs text-gray-500">Offer mentorship to students and alumni.</p>
