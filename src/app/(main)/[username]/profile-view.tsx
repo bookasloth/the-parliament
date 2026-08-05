@@ -9,6 +9,7 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import PostCard from "../feed/[postId]/post-card"
+import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
 import { startConversationAction } from "../messages/actions"
 import {
   Briefcase, MapPin, Building2, MoreHorizontal,
@@ -308,7 +309,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
   return (
     <div className="min-h-screen bg-[#eef0f4] px-4 py-6 font-body">
-      <div className="mx-auto max-w-[1400px]">
+      <div className="mx-auto max-w-[1300px]">
 
         {/* ===== HEADER + ABOUT SIDEBAR ===== */}
         <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
@@ -382,16 +383,16 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             <ul className="mt-4 space-y-2.5 text-[13.5px] text-gray-700">
               {data.dateOfBirth && (
                 <li className="flex items-center gap-2">
-                  <Cake className="h-4 w-4 text-brand" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
+                  <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
                 </li>
               )}
               {data.bloodGroup && (
                 <li className="flex items-center gap-2">
-                  <Droplet className="h-4 w-4 text-brand" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
+                  <Droplet className="h-4 w-4 text-rose-500" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
                 </li>
               )}
               <li className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-brand" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
+                <Award className="h-4 w-4 text-amber-500" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
               </li>
               {data.house && (
                 <li className="flex items-center gap-2">
@@ -400,17 +401,17 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               )}
               {data.batchLabel && (
                 <li className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-brand" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
+                  <Users className="h-4 w-4 text-indigo-500" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
                 </li>
               )}
               {data.currentStatus && (
                 <li className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-brand" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
+                  <Briefcase className="h-4 w-4 text-emerald-500" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
                 </li>
               )}
               {data.homeTown && (
                 <li className="flex items-center gap-2">
-                  <Home className="h-4 w-4 text-brand" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
+                  <Home className="h-4 w-4 text-teal-500" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
                 </li>
               )}
             </ul>
@@ -451,18 +452,18 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               return (
                 <div className="mt-5 border-t border-gray-100 pt-4">
                   <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Connect with me</h4>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div className="flex flex-wrap gap-2.5">
                     {links.map(({ key, href, label, Icon }) => (
                       <a
                         key={key}
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={label}
                         title={label}
-                        className="group flex items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-brand hover:bg-brand-50"
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:border-brand hover:bg-brand hover:text-white"
                       >
-                        <Icon className="h-4 w-4 flex-shrink-0 text-gray-500 group-hover:text-brand" />
-                        <span className="truncate">{label}</span>
+                        <Icon className="h-4 w-4" />
                       </a>
                     ))}
                   </div>
@@ -478,10 +479,12 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
         <div className="mt-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
 
           <div className="flex flex-col gap-[18px]">
-            {tab === "posts" &&
-              (data.posts.length > 0 ? (
-                <div className="flex flex-col gap-[18px]">
-                  {data.posts.map(({ post, isAuthor, initialSaved }) => (
+            {tab === "posts" && (
+              <div className="flex flex-col gap-[18px]">
+                {/* Own profile: start-a-post entry above the timeline */}
+                {isOwn && <ComposeTrigger avatar={data.photoUrl ?? undefined} />}
+                {data.posts.length > 0 ? (
+                  data.posts.map(({ post, isAuthor, initialSaved }) => (
                     <PostCard
                       key={post.id}
                       post={post}
@@ -490,25 +493,26 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                       defaultCommentsOpen={false}
                       disableCardNav={false}
                     />
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <div className="px-7 py-10 text-center">
-                    <p className="text-sm text-gray-500">
-                      {isOwn ? "You haven't posted yet." : `${data.name.split(" ")[0]} hasn't posted yet.`}
-                    </p>
-                    {isOwn && (
-                      <Link
-                        href="/compose"
-                        className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600`}
-                      >
-                        Write your first post
-                      </Link>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                  ))
+                ) : (
+                  <Card>
+                    <div className="px-7 py-10 text-center">
+                      <p className="text-sm text-gray-500">
+                        {isOwn ? "You haven't posted yet." : `${data.name.split(" ")[0]} hasn't posted yet.`}
+                      </p>
+                      {isOwn && (
+                        <Link
+                          href="/compose"
+                          className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600`}
+                        >
+                          Write your first post
+                        </Link>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
 
             {tab === "about" && (
               <>
