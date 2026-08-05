@@ -5,12 +5,7 @@ import { MemberCard } from "@/components/marketing/MemberCard"
 import { ACCENT_HEX } from "@/components/marketing/primitives"
 import type { Member, SubCommittee } from "@/lib/committee"
 
-type TabKey = "executive" | "sub" | "advisory"
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "executive", label: "Executive Committee" },
-  { key: "sub", label: "Sub-committees" },
-  { key: "advisory", label: "Advisory Board" },
-]
+type TabKey = "executive" | "sub" | "advisory" | "district"
 
 export function CommitteeTabs({
   executive, subCommittees,
@@ -20,28 +15,44 @@ export function CommitteeTabs({
 }) {
   const [tab, setTab] = useState<TabKey>("executive")
 
+  const subMemberCount = subCommittees.reduce((n, sc) => n + sc.members.length, 0)
+  const tabs: { key: TabKey; label: string; count: number }[] = [
+    { key: "executive", label: "Executive Committee", count: executive.length },
+    { key: "sub", label: "Sub-committees", count: subMemberCount },
+    { key: "advisory", label: "Advisory Board", count: 0 },
+    { key: "district", label: "District Representatives", count: 0 },
+  ]
+
   return (
     <div>
       {/* Tab bar */}
       <div className="flex flex-wrap gap-2 border-b border-black/10">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const active = tab === t.key
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`relative -mb-px rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+              className={`relative -mb-px flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
                 active ? "text-brand" : "text-[#8a8a8a] hover:text-[#1a1a1a]"
               }`}
             >
               {t.label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                  active ? "bg-brand-50 text-brand" : "bg-black/5 text-[#a3a3a3]"
+                }`}
+              >
+                {t.count}
+              </span>
               {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
             </button>
           )
         })}
       </div>
 
-      <div className="mt-8">
+      {/* Panel — keyed so it remounts + fades/slides on every tab switch. */}
+      <div key={tab} className="mt-8" style={{ animation: "fade-in-up .28s ease" }}>
         {tab === "executive" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {executive.map((m, i) => (
@@ -71,16 +82,25 @@ export function CommitteeTabs({
           </div>
         )}
 
-        {tab === "advisory" && (
-          <div className="rounded-3xl border border-dashed border-black/15 bg-white/60 px-6 py-16 text-center">
-            <p className="font-heading text-lg font-semibold text-[#1a1a1a]">Advisory Board — coming soon</p>
-            <p className="mx-auto mt-2 max-w-md text-[15px] text-[#8a8a8a]">
-              Senior alumni advisors who guide NNAWCA on strategy and long-term direction. The roster
-              will be published here shortly.
-            </p>
-          </div>
-        )}
+        {tab === "advisory" && <ComingSoon
+          title="Advisory Board — coming soon"
+          body="Senior alumni advisors who guide NNAWCA on strategy and long-term direction. The roster will be published here shortly."
+        />}
+
+        {tab === "district" && <ComingSoon
+          title="District Representatives — coming soon"
+          body="Alumni who represent NNAWCA across districts, coordinating local chapters and events. Representatives will be listed here soon."
+        />}
       </div>
+    </div>
+  )
+}
+
+function ComingSoon({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-black/15 bg-white/60 px-6 py-16 text-center">
+      <p className="font-heading text-lg font-semibold text-[#1a1a1a]">{title}</p>
+      <p className="mx-auto mt-2 max-w-md text-[15px] text-[#8a8a8a]">{body}</p>
     </div>
   )
 }

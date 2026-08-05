@@ -23,7 +23,7 @@ import {
   ACCENT_HEX,
 } from "@/components/marketing/primitives"
 import { EXECUTIVE, SUB_COMMITTEES } from "@/lib/committee"
-import { MemberCard } from "@/components/marketing/MemberCard"
+import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 export const metadata: Metadata = {
   title: "About NNAWCA — the JNV Nagpur alumni family",
@@ -281,51 +281,9 @@ export default function AboutPage() {
           sub="An 11-member Executive Committee, backed by four focused sub-committees — alumni who give their time so the network keeps working for everyone else."
         />
 
-        {/* Executive */}
+        {/* Tab-based committee browser (Executive / Sub / Advisory / District) */}
         <div className="mt-14">
-          <div className="flex items-center gap-3">
-            <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">
-              Executive Committee
-            </h3>
-            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand">
-              11 members
-            </span>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {EXECUTIVE.map((m, i) => (
-              <Reveal key={m.position + i} delay={(i % 3) * 0.06}>
-                <MemberCard member={m} accent={(i % 4) as 0 | 1 | 2 | 3} />
-              </Reveal>
-            ))}
-          </div>
-        </div>
-
-        {/* Sub-committees 2×2 */}
-        <div className="mt-16">
-          <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">Sub-committees</h3>
-          <p className="mt-1 text-[15px] text-[#8a8a8a]">Three members each, led by a Head.</p>
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {SUB_COMMITTEES.map((sc, i) => (
-              <Reveal key={sc.name} delay={(i % 2) * 0.08}>
-                <div className="h-full rounded-3xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: ACCENT_HEX[sc.accent] }}
-                    />
-                    <h4 className="font-heading text-lg font-semibold text-[#1a1a1a]">
-                      {sc.name}
-                    </h4>
-                  </div>
-                  <div className="mt-5 space-y-3">
-                    {sc.members.map((m, j) => (
-                      <MemberCard key={m.position + j} member={m} accent={sc.accent} />
-                    ))}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          <CommitteeTabs executive={EXECUTIVE} subCommittees={SUB_COMMITTEES} />
         </div>
 
         <Reveal delay={0.2}>
