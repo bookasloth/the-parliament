@@ -52,8 +52,8 @@ export async function listEventsShared(schoolId: string): Promise<EventItem[]> {
     time: formatTime(e.startsAt),
     mode: mapMode(e.mode),
     cover: e.bannerUrl ?? "",
-    isFree: true,
-    price: undefined,
+    isFree: e.priceInPaise <= 0,
+    price: e.priceInPaise > 0 ? e.priceInPaise / 100 : undefined,
     interested: false,
     category: e.mode || "General",
     isPast: e.startsAt < now,
@@ -104,8 +104,10 @@ export async function rsvpEvent(
   })
   // Confirmation only on a fresh "going" RSVP — not on status re-toggles.
   if (!existing && status === "going") {
+    // Pass ids as separate args, never interpolated into the format string
+    // (user-controlled eventId → tainted-format-string / log-injection).
     await sendRsvpConfirmation(userId, eventId).catch((e) =>
-      console.error(`rsvp confirmation email failed for ${userId}/${eventId}`, e),
+      console.error("rsvp confirmation email failed", { userId, eventId }, e),
     )
   }
   return row
@@ -134,6 +136,70 @@ async function sendRsvpConfirmation(userId: string, eventId: string): Promise<vo
 /** Remove a user's RSVP for an event. */
 export async function cancelRsvp(userId: string, eventId: string) {
   return prisma.eventRsvp.deleteMany({ where: { eventId, userId } })
+}
+
+// ── Admin reporting ──
+
+export interface EventReportRow {
+  id: string
+  title: string
+  startsAt: string
+  isPast: boolean
+  priceInPaise: number
+  going: number
+  interested: number
+  checkedIn: number
+  revenuePaise: number
+  feedbackCount: number
+  feedbackAvg: number | null
+}
+
+/**
+ * Per-event attendance + feedback + revenue rollup for the admin console.
+ * Revenue = sum of PAID event orders (free events contribute 0).
+ */
+export async function getEventReports(schoolId: string): Promise<EventReportRow[]> {
+  const events = await prisma.event.findMany({
+    where: { schoolId },
+    orderBy: { startsAt: "desc" },
+    select: { id: true, title: true, startsAt: true, priceInPaise: true },
+  })
+  if (events.length === 0) return []
+  const ids = events.map((e) => e.id)
+  const now = new Date()
+
+  const [going, checkedIn, revenue, fbCount, fbAvg] = await Promise.all([
+    prisma.eventRsvp.groupBy({ by: ["eventId", "status"], where: { eventId: { in: ids } }, _count: true }),
+    prisma.eventAttendance.groupBy({ by: ["eventId"], where: { eventId: { in: ids }, checkedInAt: { not: null } }, _count: true }),
+    prisma.eventOrder.groupBy({ by: ["eventId"], where: { eventId: { in: ids }, status: "paid" }, _sum: { amountPaise: true } }),
+    prisma.eventFeedback.groupBy({ by: ["eventId"], where: { eventId: { in: ids } }, _count: true }),
+    prisma.eventFeedback.groupBy({ by: ["eventId"], where: { eventId: { in: ids } }, _avg: { rating: true } }),
+  ])
+
+  const goingMap = new Map<string, number>()
+  const interestedMap = new Map<string, number>()
+  for (const g of going) {
+    if (g.status === "going") goingMap.set(g.eventId, g._count)
+    else if (g.status === "maybe") interestedMap.set(g.eventId, g._count)
+  }
+  const checkedMap = new Map(checkedIn.map((c) => [c.eventId, c._count]))
+  const revMap = new Map(revenue.map((r) => [r.eventId, r._sum.amountPaise ?? 0]))
+  const fbCountMap = new Map(fbCount.map((f) => [f.eventId, f._count]))
+  const fbAvgMap = new Map(fbAvg.map((f) => [f.eventId, f._avg.rating]))
+
+  return events.map((e) => ({
+    id: e.id,
+    title: e.title,
+    startsAt: e.startsAt.toISOString(),
+    isPast: e.startsAt < now,
+    priceInPaise: e.priceInPaise,
+    going: goingMap.get(e.id) ?? 0,
+    interested: interestedMap.get(e.id) ?? 0,
+    checkedIn: checkedMap.get(e.id) ?? 0,
+    revenuePaise: revMap.get(e.id) ?? 0,
+    feedbackCount: fbCountMap.get(e.id) ?? 0,
+    feedbackAvg: fbAvgMap.get(e.id) ?? null,
+  }))
 }
 
 // ── Attendance (host-facing check-in) ──
@@ -261,9 +327,8 @@ export async function getEventById(id: string, userId: string | null) {
   if (!event) return null
 
   const myRsvps = (event as { rsvps?: { status: string }[] }).rsvps ?? []
-  const interested = myRsvps.some(
-    (r) => r.status === "going" || r.status === "interested",
-  )
+  const myStatus = myRsvps[0]?.status ?? null
+  const interested = myStatus === "going" || myStatus === "maybe"
 
-  return { event, interested }
+  return { event, interested, myStatus }
 }

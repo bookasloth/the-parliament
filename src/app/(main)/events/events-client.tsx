@@ -121,13 +121,13 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
 
   // Create-event form state.
   const [form, setForm] = useState<{
-    title: string; date: string; time: string; mode: EventItem["mode"]; venue: string; eventUrl: string
-  }>({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "" })
+    title: string; date: string; time: string; mode: EventItem["mode"]; venue: string; eventUrl: string; priceRupees: string
+  }>({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "", priceRupees: "" })
   const [creating, setCreating] = useState(false)
   const [createErr, setCreateErr] = useState<string | null>(null)
 
   function resetForm() {
-    setForm({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "" })
+    setForm({ title: "", date: "", time: "", mode: "in-person", venue: "", eventUrl: "", priceRupees: "" })
     setCreateErr(null)
   }
 
@@ -146,6 +146,7 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
         mode: form.mode,
         venue: form.venue || undefined,
         eventUrl: form.eventUrl || undefined,
+        priceRupees: form.priceRupees ? Math.max(0, parseInt(form.priceRupees, 10) || 0) : undefined,
       })
       setCreating(false)
       if (!res.ok) {
@@ -340,6 +341,20 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
                   onChange={(e) => setForm((f) => ({ ...f, eventUrl: e.target.value }))}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                   placeholder="https://…"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Ticket price (₹)
+                  <span className="font-normal text-gray-400"> — leave blank / 0 for free</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.priceRupees}
+                  onChange={(e) => setForm((f) => ({ ...f, priceRupees: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  placeholder="0"
                 />
               </div>
               {createErr && <p className="text-xs font-medium text-rose-600">{createErr}</p>}
