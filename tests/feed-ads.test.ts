@@ -16,42 +16,42 @@ const post = (id: string): FeedPost => ({
   borderType: "blue",
 })
 const ad = (id: string): FeedPost => ({ ...post(id), isSponsored: true })
+const posts = (n: number) => Array.from({ length: n }, (_, i) => post(`p${i}`))
+const isAd = (p: FeedPost) => !!p.isSponsored
 
-describe("injectFeedAds", () => {
-  it("returns the input untouched when there are no ads", () => {
-    const posts = [post("a"), post("b")]
-    expect(injectFeedAds(posts, [])).toBe(posts)
+describe("injectFeedAds tiering", () => {
+  it("returns input untouched when there are no ads / no posts", () => {
+    const ps = posts(2)
+    expect(injectFeedAds(ps, "associate", [])).toBe(ps)
+    expect(injectFeedAds([], "associate", [ad("x")])).toEqual([])
   })
 
-  it("returns the input untouched when there are no posts", () => {
-    const ads = [ad("x")]
-    expect(injectFeedAds([], ads)).toEqual([])
+  it("life & committee never see feed ads", () => {
+    expect(injectFeedAds(posts(20), "life", [ad("x"), ad("y")]).some(isAd)).toBe(false)
+    expect(injectFeedAds(posts(20), "committee", [ad("x")]).some(isAd)).toBe(false)
   })
 
-  it("inserts an ad after every N posts", () => {
-    const posts = Array.from({ length: 12 }, (_, i) => post(`p${i}`))
-    const out = injectFeedAds(posts, [ad("x"), ad("y")], 5)
-    // ad after index 4 and after index 9 (accounting for the first insert)
+  it("student: capped 5-item feed with ads at positions 2 & 5", () => {
+    const out = injectFeedAds(posts(20), "student", [ad("x"), ad("y")])
+    expect(out).toHaveLength(5)
+    expect(out.map(isAd)).toEqual([false, true, false, false, true])
+  })
+
+  it("associate: an ad after every 5 posts", () => {
+    const out = injectFeedAds(posts(12), "associate", [ad("x"), ad("y")])
     expect(out[5].id).toBe("x")
     expect(out[11].id).toBe("y")
-    expect(out.filter((p) => p.isSponsored)).toHaveLength(2)
   })
 
-  it("stops once ads run out", () => {
-    const posts = Array.from({ length: 20 }, (_, i) => post(`p${i}`))
-    const out = injectFeedAds(posts, [ad("x")], 5)
-    expect(out.filter((p) => p.isSponsored)).toHaveLength(1)
-  })
-
-  it("still shows one ad when the page is shorter than everyN", () => {
-    const out = injectFeedAds([post("a"), post("b")], [ad("x")], 5)
-    expect(out).toHaveLength(3)
-    expect(out[2].id).toBe("x")
+  it("premium: an ad after every 10 posts, none at 5", () => {
+    const out = injectFeedAds(posts(10), "premium", [ad("x")])
+    expect(isAd(out[5])).toBe(false)
+    expect(isAd(out[10])).toBe(true)
   })
 
   it("does not mutate the original array", () => {
-    const posts = [post("a"), post("b")]
-    injectFeedAds(posts, [ad("x")], 1)
-    expect(posts).toHaveLength(2)
+    const ps = posts(2)
+    injectFeedAds(ps, "associate", [ad("x")])
+    expect(ps).toHaveLength(2)
   })
 })
