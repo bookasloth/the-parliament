@@ -22,7 +22,7 @@ import {
   ACCENT_TEXT,
   ACCENT_HEX,
 } from "@/components/marketing/primitives"
-import { EXECUTIVE, SUB_COMMITTEES } from "@/lib/committee"
+import { EXECUTIVE, ADVISORY } from "@/lib/committee"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 export const metadata: Metadata = {
@@ -272,30 +272,19 @@ export default function AboutPage() {
         </div>
       </Section>
 
-      {/* ── Committee: Executive (11) + 4 sub-committees (2×2) ── */}
+      {/* ── Committee: Executive + Advisory (tabbed) ── */}
       <Section width="7xl">
         <SectionHeading
           eyebrow="The people behind it"
           accent={3}
           title="A committee that runs on volunteered evenings."
-          sub="An 11-member Executive Committee, backed by four focused sub-committees — alumni who give their time so the network keeps working for everyone else."
+          sub="An elected Executive Committee, guided by an Advisory Committee of past office-bearers — alumni who give their time so the network keeps working for everyone else."
         />
 
-        {/* Tab-based committee browser (Executive / Sub / Advisory / District) */}
+        {/* Tab-based committee browser (Executive / Advisory) */}
         <div className="mt-14">
-          <CommitteeTabs executive={EXECUTIVE} subCommittees={SUB_COMMITTEES} />
+          <CommitteeTabs executive={EXECUTIVE} advisory={ADVISORY} />
         </div>
-
-        <Reveal delay={0.2}>
-          <div className="mt-12 text-center">
-            <a
-              href="/committee"
-              className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
-            >
-              See the full committee
-            </a>
-          </div>
-        </Reveal>
       </Section>
 
       {/* ── Values ── */}

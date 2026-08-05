@@ -6,7 +6,7 @@ import {
   Reveal,
   CtaBand,
 } from "@/components/marketing/primitives"
-import { EXECUTIVE, SUB_COMMITTEES } from "@/lib/committee"
+import { EXECUTIVE, ADVISORY } from "@/lib/committee"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 const HERO_IMG =
@@ -15,7 +15,7 @@ const HERO_IMG =
 export const metadata: Metadata = {
   title: "Committee — the alumni who run NNAWCA",
   description:
-    "The NNAWCA Executive Committee and its four sub-committees — Tech & Media, Culture, Alumni Relations and Election — and how to reach them.",
+    "The NNAWCA Executive Committee and Advisory Committee — the alumni who run the network.",
 }
 
 export default function CommitteePage() {
@@ -35,9 +35,9 @@ export default function CommitteePage() {
             </Reveal>
             <Reveal delay={0.1}>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#5b5b5b]">
-                An 11-member Executive Committee, elected by members, steers NNAWCA — backed
-                by four sub-committees that carry the day-to-day work. Every one of them is a
-                JNV Nagpur alumnus giving their own time. Reach any of them directly below.
+                An elected Executive Committee steers NNAWCA, guided by an Advisory Committee
+                of past office-bearers. Every one of them is a JNV Nagpur alumnus giving their
+                own time.
               </p>
             </Reveal>
             <Reveal delay={0.15}>
@@ -56,8 +56,8 @@ export default function CommitteePage() {
                 style={{ backgroundImage: `url(${HERO_IMG})` }}
               />
               <div className="absolute -bottom-5 left-6 rounded-2xl border border-black/5 bg-white px-5 py-3 shadow-lg">
-                <p className="font-heading text-2xl font-semibold text-brand">11 + 12</p>
-                <p className="text-xs text-[#8a8a8a]">Executive & sub-committee members</p>
+                <p className="font-heading text-2xl font-semibold text-brand">11 + 11</p>
+                <p className="text-xs text-[#8a8a8a]">Executive & advisory members</p>
               </div>
             </div>
           </Reveal>
@@ -66,7 +66,7 @@ export default function CommitteePage() {
 
       {/* ── Committee groups (tabbed) ── */}
       <Section width="7xl" className="pt-4">
-        <CommitteeTabs executive={EXECUTIVE} subCommittees={SUB_COMMITTEES} />
+        <CommitteeTabs executive={EXECUTIVE} advisory={ADVISORY} />
       </Section>
 
       {/* ── CTA ── */}

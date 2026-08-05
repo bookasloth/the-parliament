@@ -32,6 +32,21 @@ export const EXECUTIVE: Member[] = [
   { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
 ]
 
+// Advisory Committee — past office-bearers ("Ex" roles).
+export const ADVISORY: Member[] = [
+  { name: "Shri. Chandrashekhar Gotmare", position: "Ex President" },
+  { name: "Shri. Pushpaketan Chouragade", position: "Ex Vice President" },
+  { name: "Shri. Mahendra Shende", position: "Ex General Secretary" },
+  { name: "Shri. Prashant Bodkhe", position: "Ex Joint Secretary" },
+  { name: "Shri. Prakash Nare", position: "Ex Treasurer" },
+  { name: "Shri. Pandurang Gavkhare", position: "Ex Member" },
+  { name: "Shri. Pravin Dongare", position: "Ex Member" },
+  { name: "Smt. Megha Amrute", position: "Ex Member" },
+  { name: "Shri. Ratnapal Bhandare", position: "Ex Member" },
+  { name: "Smt. Shilpa Borkar", position: "Ex Member" },
+  { name: "Shri. Shubham Bansod", position: "Ex Member" },
+]
+
 export const SUB_COMMITTEES: SubCommittee[] = [
   {
     name: "Tech & Media",
