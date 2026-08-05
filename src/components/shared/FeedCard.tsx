@@ -12,11 +12,7 @@ import {
   EyeOff,
   Ban,
   Trash2,
-  Copy,
   Edit3,
-  Send,
-  Share2,
-  MessageCircle,
   UserPlus,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
@@ -122,32 +118,6 @@ export function FeedCard({
     }
   }
 
-  function handleCopy() {
-    setActionOpen(false)
-    if (typeof window !== "undefined" && navigator?.clipboard) {
-      const url = `${window.location.origin}/feed/${post.id}`
-      navigator.clipboard.writeText(url).catch(() => {})
-    }
-  }
-
-  function shareUrl(): string {
-    return typeof window !== "undefined" ? `${window.location.origin}/feed/${post.id}` : ""
-  }
-  function openShare(intent: "twitter" | "linkedin" | "whatsapp") {
-    setActionOpen(false)
-    if (typeof window === "undefined") return
-    const url = encodeURIComponent(shareUrl())
-    const text = encodeURIComponent(`${post.name} on NNAWCA Alumni Feed`)
-    const target =
-      intent === "twitter"
-        ? `https://twitter.com/intent/tweet?url=${url}&text=${text}`
-        : intent === "linkedin"
-        ? `https://www.linkedin.com/sharing/share-offsite/?url=${url}`
-        : `https://wa.me/?text=${text}%20${url}`
-    window.open(target, "_blank", "noopener,noreferrer")
-    onShare?.()
-  }
-
   function handleDelete() {
     setActionOpen(false)
     if (!onDelete) return
@@ -184,12 +154,8 @@ export function FeedCard({
   const postHref = `/feed/${post.id}`
 
   type ActionItem = { icon: React.ReactNode; label: string; onClick?: () => void; danger?: boolean }
-  const shareItems: ActionItem[] = [
-    { icon: <Share2 className="h-4 w-4" />, label: "Share to X", onClick: () => openShare("twitter") },
-    { icon: <Send className="h-4 w-4" />, label: "Share to LinkedIn", onClick: () => openShare("linkedin") },
-    { icon: <MessageCircle className="h-4 w-4" />, label: "Share to WhatsApp", onClick: () => openShare("whatsapp") },
-    { icon: <Copy className="h-4 w-4" />, label: "Copy link", onClick: handleCopy },
-  ]
+  // Sharing lives on the reaction bar's Share button — the 3-dot menu is only
+  // utility/moderation actions (bookmark, hide, block, report, edit, delete).
   const actionItems: ActionItem[] = post.isSponsored
     ? [{ icon: <Flag className="h-4 w-4" />, label: "Report Ad", onClick: handleReport }]
     : isAuthor
@@ -199,7 +165,6 @@ export function FeedCard({
           label: saved ? "Saved" : "Bookmark It",
           onClick: handleSave,
         },
-        ...shareItems,
         {
           icon: <Edit3 className="h-4 w-4" />,
           label: "Edit post",
@@ -221,7 +186,6 @@ export function FeedCard({
           label: "Hide It",
           onClick: onHide ? () => { setActionOpen(false); void onHide() } : undefined,
         },
-        ...shareItems,
         { icon: <Ban className="h-4 w-4" />, label: "Block Them" },
         { icon: <Flag className="h-4 w-4" />, label: "Report It", onClick: handleReport, danger: true },
       ]

@@ -6,9 +6,7 @@ import {
   ThumbsDown,
   MessageCircle,
   Award,
-  Bookmark,
   X,
-  Mail,
   Link as LinkIcon,
   Send,
   Share2,
@@ -150,13 +148,9 @@ function ShareDropdown({
     }).catch(() => {})
   }
 
-  function extShare(target: "dm" | "native") {
+  function extShare() {
     if (typeof window === "undefined") return
     setOpen(false)
-    if (target === "dm") {
-      window.location.href = `/messages?share=${encodeURIComponent(postUrl)}`
-      return
-    }
     if (navigator.share) {
       navigator.share({ title: shareText, url: postUrl }).catch(() => {})
     } else {
@@ -176,35 +170,23 @@ function ShareDropdown({
       {open && (
         <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           <button
-            onClick={() => extShare("dm")}
+            onClick={extShare}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            <Mail className="h-4 w-4 text-gray-500" /> Send via Direct Message
-          </button>
-          <button
-            onClick={reshare}
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <Bookmark className="h-4 w-4 text-gray-500" /> Bookmark
+            <Share2 className="h-4 w-4 text-blue-500" /> Share post via …
           </button>
           <button
             onClick={copyLink}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            <LinkIcon className="h-4 w-4 text-gray-500" /> {copied ? "Copied!" : "Copy link to post"}
-          </button>
-          <button
-            onClick={() => extShare("native")}
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <Share2 className="h-4 w-4 text-gray-500" /> Share post via …
+            <LinkIcon className="h-4 w-4 text-emerald-500" /> {copied ? "Copied!" : "Copy link"}
           </button>
           <div className="my-1 border-t border-gray-100" />
           <button
             onClick={reshare}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            <Newspaper className="h-4 w-4 text-brand" /> Share to News Feed
+            <Newspaper className="h-4 w-4 text-brand" /> Share to Feed <span className="ml-auto text-[11px] font-normal text-gray-400">instant</span>
           </button>
         </div>
       )}
