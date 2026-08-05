@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { ForbiddenError } from "@/modules/auth/session"
+import { ForbiddenError } from "@/lib/errors"
 import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
