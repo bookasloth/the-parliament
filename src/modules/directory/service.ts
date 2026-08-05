@@ -141,8 +141,10 @@ export async function getDirectoryFacets(schoolId?: string) {
   const where = schoolId ? { schoolId } : {}
   const activeUserWhere = { status: "active" as const, deletedAt: null, ...(schoolId ? { schoolId } : {}) }
   const [batches, houses, divisions, industryGroups, cityGroups] = await Promise.all([
-    prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true } }),
-    prisma.house.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true, colorHex: true } }),
+    prisma.batch.findMany({ where, orderBy: { startYear: "desc" }, select: { id: true, label: true, startYear: true } }),
+    // system + gender let the profile-edit house picker scope options to the
+    // member's batch era + gender (see @/config/houses).
+    prisma.house.findMany({ where, orderBy: [{ system: "asc" }, { name: "asc" }], select: { id: true, name: true, colorHex: true, system: true, gender: true } }),
     prisma.division.findMany({ where, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     // Distinct industries among active, non-deleted members (for the industry filter + stat).
     prisma.profile.groupBy({

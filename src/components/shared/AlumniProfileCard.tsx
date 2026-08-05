@@ -6,10 +6,17 @@ import Image from "next/image"
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
 
 const houseColors: Record<string, string> = {
+  // Post-2002 ANSU
   Aravali: "#5a9bd5",
   Nilgiri: "#70ad47",
   Shiwalik: "#e8503a",
   Udaigiri: "#ffe135",
+  // Pre-2002 boys (distinct identities — same colours as ANSU, different houses)
+  Jawahar: "#5a9bd5",
+  Tilak: "#70ad47",
+  Subhash: "#e8503a",
+  Rajiv: "#ffe135",
+  // Pre-2002 girls
   Indira: "#ff9933",
   Laxmi: "#e75480",
 }

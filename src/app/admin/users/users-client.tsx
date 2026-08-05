@@ -36,7 +36,7 @@ export const MOCK_USERS: AdminUser[] = [
   { id: "u10", name: "Kavya Reddy", email: "kavya.r@gmail.com", username: "kavya-reddy", batch: "2013", house: "Udaigiri", houseColor: "#ffe135", membership: "student", status: "active", karma: 230, joined: "Apr 2025", lastActive: "5 hrs ago" },
 ]
 
-const HOUSES = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Indira", "Laxmi"]
+const HOUSES = ["All Houses", "Aravali", "Nilgiri", "Shiwalik", "Udaigiri", "Jawahar", "Tilak", "Subhash", "Rajiv", "Indira", "Laxmi"]
 const STATUSES = ["All Statuses", "active", "pending", "suspended"]
 const MEMBERSHIPS = ["All Plans", "student", "associate", "premium", "life"]
 

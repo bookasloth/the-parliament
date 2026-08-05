@@ -52,10 +52,17 @@
   --color-brand-900: #001f30;
   --color-brand: #009ae4;
 
+  /* Post-2002 ANSU houses */
   --color-house-aravali: #5a9bd5;
   --color-house-nilgiri: #70ad47;
   --color-house-shiwalik: #e8503a;
   --color-house-udaigiri: #ffe135;
+  /* Pre-2002 boys houses (distinct identities; share colours with ANSU) */
+  --color-house-jawahar: #5a9bd5;
+  --color-house-tilak: #70ad47;
+  --color-house-subhash: #e8503a;
+  --color-house-rajiv: #ffe135;
+  /* Pre-2002 girls houses */
   --color-house-indira: #ff9933;
   --color-house-laxmi: #e75480;
 

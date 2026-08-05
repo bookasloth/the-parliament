@@ -46,6 +46,11 @@ model House {
   colorHex    String   @map("color_hex") @db.Char(7)
   slogan      String?  @db.VarChar(200)
   isGirlsOnly Boolean  @default(false) @map("is_girls_only")
+  // House system: "pre2002" (old boys/girls houses) or "ansu" (post-2002,
+  // everyone). Distinct identities even when they share a colour.
+  system      String   @default("ansu") @db.VarChar(20)
+  // null = open to any gender (ANSU); "male"/"female" = restricted (pre-2002).
+  gender      String?  @db.VarChar(10)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)

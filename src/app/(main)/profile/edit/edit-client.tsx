@@ -13,6 +13,7 @@ import {
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import { computeStrength, type StrengthTab } from "@/lib/profile-strength"
+import { housesForContext } from "@/config/houses"
 import {
   saveAccount, saveContact, saveProfessional, saveSocial, closeAccount,
   saveExperience, deleteExperience, saveEducation, deleteEducation,
@@ -41,8 +42,8 @@ export interface EditInitial {
   membershipStatus: string
 }
 type Facets = {
-  batches: { id: string; label: string }[]
-  houses: { id: string; name: string; colorHex: string }[]
+  batches: { id: string; label: string; startYear?: number }[]
+  houses: { id: string; name: string; colorHex: string; system: string; gender: string | null }[]
   industries?: { name: string; count: number }[]
   cities?: string[]
 }
@@ -133,6 +134,21 @@ export function EditProfileClient({ initial, facets, experiences, educations }: 
   const set = (patch: Partial<EditInitial>) => setF((prev) => ({ ...prev, ...patch }))
   const houseLocked = initial.houseId !== ""
   const batchLocked = initial.batchId !== ""
+
+  // House options depend on the selected batch's era + the member's gender:
+  // pre-2002 boys/girls houses vs post-2002 ANSU houses (see @/config/houses).
+  const selectedStartYear = facets.batches.find((b) => b.id === f.batchId)?.startYear ?? null
+  const visibleHouses = useMemo(
+    () => (houseLocked ? facets.houses : housesForContext(facets.houses, selectedStartYear, f.gender)),
+    [houseLocked, facets.houses, selectedStartYear, f.gender],
+  )
+  // If a change to batch/gender makes the picked (unlocked) house invalid, clear it.
+  useEffect(() => {
+    if (!houseLocked && f.houseId && !visibleHouses.some((h) => h.id === f.houseId)) {
+      set({ houseId: "" })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleHouses])
 
   // Dirty guard — warn before leaving with unsaved edits.
   const dirty = useMemo(() => JSON.stringify(f) !== JSON.stringify(initial), [f, initial])
@@ -334,11 +350,18 @@ export function EditProfileClient({ initial, facets, experiences, educations }: 
                 <span className="flex items-center gap-1 text-[11px] text-gray-400"><Lock className="h-3 w-3" /> Locked</span>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {facets.houses.map((h) => (
-                  <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-[4px] px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
-                ))}
-              </div>
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {visibleHouses.map((h) => (
+                    <button key={h.id} onClick={() => set({ houseId: f.houseId === h.id ? "" : h.id })} className={`rounded-[4px] px-3 py-1.5 text-xs font-semibold text-white transition-transform ${f.houseId === h.id ? "scale-105 ring-2 ring-gray-400 ring-offset-1" : "opacity-80 hover:opacity-100"}`} style={{ backgroundColor: h.colorHex }}>{h.name}</button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  {!f.batchId
+                    ? "Pick your batch first — house options depend on your batch."
+                    : "Options match your batch era and gender."}
+                </p>
+              </>
             )}
           </Field>
           <Field label="Batch">

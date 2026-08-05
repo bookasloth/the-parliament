@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/modules/auth/session"
 import { monthYearToDate } from "@/modules/profile/history"
 import { validateUsernameFormat } from "@/lib/username-check"
+import { isHouseAllowed } from "@/lib/houses"
 
 async function revalidateOwnProfile(userId: string) {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
@@ -45,6 +46,18 @@ export async function saveAccount(input: {
   })
   const houseId = existing?.houseId ?? (input.houseId || null)
   const batchId = existing?.batchId ?? (input.batchId || null)
+
+  // Validate a NEWLY-chosen house against the member's batch era + gender.
+  // (Existing/locked houses are never re-validated — alumni data is preserved.)
+  if (!existing?.houseId && houseId) {
+    let startYear: number | null = null
+    if (batchId) {
+      const b = await prisma.batch.findUnique({ where: { id: batchId }, select: { startYear: true } })
+      startYear = b?.startYear ?? null
+    }
+    const ok = await isHouseAllowed(houseId, startYear, input.gender ?? null)
+    if (!ok) throw new Error("That house isn't available for your batch and gender.")
+  }
 
   await prisma.user.update({
     where: { id: user.id },
