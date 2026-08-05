@@ -257,7 +257,8 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
         )}
         <div className="px-4 pt-0 pb-4">
           <div className="text-center">
-            <div className="-mt-9 mb-2 flex justify-center">
+            {/* relative z-10 so the avatar paints ABOVE the absolutely-positioned cover image */}
+            <div className="relative z-10 -mt-9 mb-2 flex justify-center">
               <Image
                 className="h-16 w-16 rounded-full border-[3px] border-white object-cover shadow-sm"
                 src={photo}
@@ -285,8 +286,6 @@ function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCar
         </div>
         <div className="border-t border-gray-100 py-2.5 text-center">
           <a href="/profile/edit" className="text-xs font-semibold text-brand hover:text-brand-600 transition-colors">Edit Profile</a>
-          <span className="mx-2 text-gray-300">·</span>
-          <a href="/saved" className="text-xs font-semibold text-brand hover:text-brand-600 transition-colors">Saved</a>
         </div>
       </div>
 
@@ -301,17 +300,18 @@ function SidebarFooter() {
   return (
     <div className="px-2 pb-2 text-center text-[11px] leading-relaxed text-gray-400">
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-        <a href="/about" className={link}>About NNAWCA</a>
-        <a href="/settings" className={link}>Settings</a>
+        <a href="/about" className={link}>About</a>
         <a href="/help" className={link}>Help</a>
-      </div>
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-        <a href="https://www.nnawca.com" target="_blank" rel="noopener noreferrer" className={link}>nnawca.com</a>
-        <a href="/privacy" className={link}>Privacy Policy</a>
-        <a href="/terms" className={link}>Terms &amp; Conditions</a>
+        <a href="/privacy" className={link}>Privacy</a>
+        <a href="/terms" className={link}>Terms</a>
+        <a href="/rules" className={link}>Rules</a>
       </div>
       <p className="mt-2 text-gray-400">
-        © 2022–{new Date().getFullYear()} NNAWCA · JNV Nagpur Alumni
+        {/* TODO: confirm the two profile usernames */}
+        Powered by{" "}
+        <a href="/sndatarkar" className="font-medium text-gray-500 hover:text-brand">SN Datarkar</a>
+        {" "}and{" "}
+        <a href="/djlaxne" className="font-medium text-gray-500 hover:text-brand">DJ Laxne</a>
       </p>
     </div>
   )
