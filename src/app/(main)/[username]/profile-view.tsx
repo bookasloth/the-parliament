@@ -421,6 +421,16 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 seen.add(k)
                 links.push({ key, href, label, Icon })
               }
+              // Nice display label per platform key.
+              const labelFor = (p: string): string => {
+                const k = p.toLowerCase()
+                const map: Record<string, string> = {
+                  linkedin: "LinkedIn", twitter: "Twitter", x: "Twitter", instagram: "Instagram",
+                  facebook: "Facebook", youtube: "YouTube", github: "GitHub",
+                  website: "Website", web: "Website", site: "Website",
+                }
+                return map[k] ?? p.charAt(0).toUpperCase() + p.slice(1)
+              }
               if (data.linkedinUrl) add("linkedin", data.linkedinUrl, "LinkedIn", LinkedinIcon)
               for (const [platform, url] of Object.entries(data.socialLinks)) {
                 const p = platform.toLowerCase()
@@ -433,24 +443,27 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   p === "github" ? GithubIcon :
                   p === "website" || p === "web" || p === "site" ? (Globe as unknown as Brand) :
                   (LinkIcon as unknown as Brand)
-                add(platform, url, platform, Icon)
+                add(platform, url, labelFor(platform), Icon)
               }
               if (links.length === 0) return null
               return (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {links.map(({ key, href, label, Icon }) => (
-                    <a
-                      key={key}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={label}
-                      title={label}
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-brand hover:bg-brand hover:text-white transition-colors"
-                    >
-                      <Icon className="h-4 w-4" />
-                    </a>
-                  ))}
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Connect with me</h4>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {links.map(({ key, href, label, Icon }) => (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={label}
+                        className="group flex items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-brand hover:bg-brand-50"
+                      >
+                        <Icon className="h-4 w-4 flex-shrink-0 text-gray-500 group-hover:text-brand" />
+                        <span className="truncate">{label}</span>
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )
             })()}
