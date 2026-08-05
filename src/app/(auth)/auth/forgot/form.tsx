@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useState } from "react"
+import { Mail } from "lucide-react"
 import { Field, SubmitButton, FormSuccess } from "../ui"
 
 export function ForgotForm() {
@@ -35,7 +36,7 @@ export function ForgotForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
+      <Field label="Email" id="email" name="email" type="email" required autoComplete="email" icon={<Mail size={18} />} />
       <SubmitButton loading={loading} idleLabel="Send reset link" />
       <a href="/auth/signin" className="block text-center text-xs text-gray-500 hover:text-brand hover:underline">
         Back to sign in

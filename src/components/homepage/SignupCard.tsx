@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { User, Mail, Lock, ChevronDown, Eye, EyeOff, Mountain, Sun, Flower2, LucideIcon } from "lucide-react";
 
 // 1986–1993 through 2025–2032.
 const batchOptions = Array.from({ length: 40 }, (_, i) => {
@@ -12,17 +13,22 @@ const batchOptions = Array.from({ length: 40 }, (_, i) => {
 
 // House buttons show the house name, and its patron on hover. Backgrounds
 // darkened so text clears WCAG AA in every state.
-const houseButtons = [
-  { id: "aravali", name: "Aravali", hoverText: "Jawahar", defaultBg: "#2e6da4", hoverBg: "#255a87", activeBg: "#1e4a70", textColor: "#ffffff" },
-  { id: "nilgiri", name: "Nilgiri", hoverText: "Tilak", defaultBg: "#3a6b23", hoverBg: "#30591d", activeBg: "#274a18", textColor: "#ffffff" },
-  { id: "shiwalik", name: "Shiwalik", hoverText: "Subhash", defaultBg: "#a53422", hoverBg: "#8f2c1d", activeBg: "#7a2518", textColor: "#ffffff" },
-  { id: "udaigiri", name: "Udaigiri", hoverText: "Rajiv", defaultBg: "#ffe135", hoverBg: "#ffda03", activeBg: "#edc001", textColor: "#000000" },
-  { id: "indira", name: "Indira", hoverText: "Indira", defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#000000" },
-  { id: "laxmi", name: "Laxmi", hoverText: "Laxmi", defaultBg: "#b82055", hoverBg: "#a01c49", activeBg: "#87173d", textColor: "#ffffff" },
+const houseButtons: {
+  id: string; name: string; hoverText: string; Icon: LucideIcon;
+  defaultBg: string; hoverBg: string; activeBg: string; textColor: string;
+}[] = [
+  { id: "aravali", name: "Aravali", hoverText: "Jawahar", Icon: Mountain, defaultBg: "#2e6da4", hoverBg: "#255a87", activeBg: "#1e4a70", textColor: "#ffffff" },
+  { id: "nilgiri", name: "Nilgiri", hoverText: "Tilak", Icon: Mountain, defaultBg: "#3a6b23", hoverBg: "#30591d", activeBg: "#274a18", textColor: "#ffffff" },
+  { id: "shiwalik", name: "Shiwalik", hoverText: "Subhash", Icon: Mountain, defaultBg: "#a53422", hoverBg: "#8f2c1d", activeBg: "#7a2518", textColor: "#ffffff" },
+  { id: "udaigiri", name: "Udaigiri", hoverText: "Rajiv", Icon: Sun, defaultBg: "#ffe135", hoverBg: "#ffda03", activeBg: "#edc001", textColor: "#000000" },
+  { id: "indira", name: "Indira", hoverText: "Indira", Icon: Flower2, defaultBg: "#ff9933", hoverBg: "#e67e22", activeBg: "#cc7000", textColor: "#000000" },
+  { id: "laxmi", name: "Laxmi", hoverText: "Laxmi", Icon: Flower2, defaultBg: "#b82055", hoverBg: "#a01c49", activeBg: "#87173d", textColor: "#ffffff" },
 ];
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10";
+  "w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 pr-11 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10";
+
+const iconCls = "pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400";
 
 export function SignupCard() {
   const router = useRouter();
@@ -30,8 +36,10 @@ export function SignupCard() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [batch, setBatch] = useState("");
   const [house, setHouse] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,7 +51,13 @@ export function SignupCard() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email: email.trim(), password }),
+      body: JSON.stringify({
+        name,
+        email: email.trim(),
+        password,
+        ...(house ? { house } : {}),
+        ...(batch ? { batchValue: batch } : {}),
+      }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -64,29 +78,47 @@ export function SignupCard() {
 
       <div className="mt-8 grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Name</label>
-          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" className={inputCls} />
+          <label className="mb-1.5 block text-sm font-bold text-charcoal-800">First Name</label>
+          <div className="relative">
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" className={inputCls} />
+            <User size={18} className={iconCls} />
+          </div>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Last Name</label>
-          <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" className={inputCls} />
+          <div className="relative">
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" className={inputCls} />
+            <User size={18} className={iconCls} />
+          </div>
         </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Email Address</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputCls} />
+          <div className="relative">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputCls} />
+            <Mail size={18} className={iconCls} />
+          </div>
         </div>
         <div>
           <label htmlFor="signup-batch" className="mb-1.5 block text-sm font-bold text-charcoal-800">Batch (7 Years)</label>
-          <select id="signup-batch" aria-label="Batch" defaultValue="" className={`${inputCls} appearance-none`}>
-            <option value="" disabled>Select your batch</option>
-            {batchOptions.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-          </select>
+          <div className="relative">
+            <select id="signup-batch" aria-label="Batch" value={batch} onChange={(e) => setBatch(e.target.value)} className={`${inputCls} appearance-none ${batch ? "" : "text-gray-400"}`}>
+              <option value="" disabled>Select your batch</option>
+              {batchOptions.map((b) => <option key={b.value} value={b.value} className="text-charcoal-800">{b.label}</option>)}
+            </select>
+            <ChevronDown size={18} className={iconCls} />
+          </div>
         </div>
 
         <div className="sm:col-span-2">
           <label className="mb-1.5 block text-sm font-bold text-charcoal-800">Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password (min 8 characters)" minLength={8} required autoComplete="new-password" className={inputCls} />
+          <div className="relative">
+            <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password (min 8 characters)" minLength={8} required autoComplete="new-password" className={`${inputCls} pr-16`} />
+            <Lock size={18} className="pointer-events-none absolute right-10 top-1/2 -translate-y-1/2 text-gray-400" />
+            <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </div>
 
         <div className="sm:col-span-2">
@@ -103,14 +135,15 @@ export function SignupCard() {
                   onMouseEnter={() => setHovered(h.id)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => setHouse(active ? null : h.id)}
-                  className="w-full truncate rounded-xl px-3 py-3 text-sm font-semibold outline-none transition-all"
+                  className="flex w-full items-center justify-center gap-2 truncate rounded-xl px-3 py-3 text-sm font-semibold outline-none transition-all"
                   style={{
                     backgroundColor: bg,
                     color: h.textColor,
                     boxShadow: active ? "inset 0 0 0 2px rgba(0,0,0,0.35)" : "none",
                   }}
                 >
-                  {hov ? h.hoverText : h.name}
+                  <h.Icon size={16} className="shrink-0" />
+                  <span className="truncate">{hov ? h.hoverText : h.name}</span>
                 </button>
               );
             })}
