@@ -356,7 +356,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-[320px] sm:w-[360px] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 z-50 w-[320px] max-w-[calc(100vw-1rem)] sm:w-[360px] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h6 className="text-sm font-semibold text-gray-900">Your Notifications</h6>
                   {notifCount > 0 && (
