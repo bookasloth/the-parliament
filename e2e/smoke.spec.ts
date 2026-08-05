@@ -29,13 +29,21 @@ test("sign-up page renders", async ({ page }) => {
   await expect(page.locator("form").first()).toBeVisible();
 });
 
-test("a public marketing page renders", async ({ page }) => {
-  const res = await page.goto("/about");
-  expect(res?.status()).toBeLessThan(400);
-  await expect(page.locator("body")).toContainText(/NNAWCA|alumni|about/i);
-});
+for (const path of ["/about", "/wall-of-honour", "/committee", "/join"]) {
+  test(`public marketing page renders: ${path}`, async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (e) => pageErrors.push(e.message));
+    const res = await page.goto(path);
+    expect(res?.status(), `status ${path}`).toBeLessThan(400);
+    expect(pageErrors, `client errors on ${path}:\n${pageErrors.join("\n")}`).toHaveLength(0);
+  });
+}
 
-test("gated route redirects logged-out user to sign-in", async ({ page }) => {
-  await page.goto("/feed");
-  await expect(page).toHaveURL(/\/auth\/signin/);
-});
+// The auth gate must protect the whole app surface — a regression here would
+// leak gated pages. Each should bounce a logged-out user to sign-in.
+for (const path of ["/feed", "/community", "/events", "/messages", "/compose", "/membership", "/settings", "/profile/edit"]) {
+  test(`gated route redirects logged-out user: ${path}`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/auth\/signin/);
+  });
+}

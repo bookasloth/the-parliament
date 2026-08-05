@@ -19,7 +19,23 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    // Logs in once and saves the session for the authed project.
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // Logged-out public smoke (no stored session).
+    {
+      name: "public",
+      testMatch: /smoke\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Authed smoke — reuses the saved session, runs after setup.
+    {
+      name: "authed",
+      testMatch: /authed\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], storageState: "e2e/.auth/user.json" },
+      dependencies: ["setup"],
+    },
+  ],
   webServer: {
     command: `npm run dev -- --port ${PORT}`,
     url: `http://localhost:${PORT}`,
