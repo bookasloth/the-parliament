@@ -135,7 +135,7 @@ export function SignupCard() {
                   onMouseEnter={() => setHovered(h.id)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => setHouse(active ? null : h.id)}
-                  className="flex w-full items-center justify-center gap-2 truncate rounded-xl px-3 py-3 text-sm font-semibold outline-none transition-all"
+                  className="flex w-full items-center justify-center gap-2 truncate rounded-xl px-3 py-2.5 text-sm font-semibold outline-none transition-all sm:py-3"
                   style={{
                     backgroundColor: bg,
                     color: h.textColor,

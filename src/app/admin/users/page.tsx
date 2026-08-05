@@ -1,14 +1,48 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@/generated/prisma/client"
+import { parsePage, pageCount, firstParam, PAGE_SIZE } from "@/modules/admin/pagination"
 import AdminUsersClient, { type AdminUser } from "./users-client"
 
 export const dynamic = "force-dynamic"
 
-export default async function AdminUsersPage() {
-  const [rows, total, verified, pending, suspended] = await Promise.all([
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
+  const { page, skip, take } = parsePage(sp.page)
+  const q = firstParam(sp.q)
+  const house = firstParam(sp.house)
+  const status = firstParam(sp.status) // active | pending | suspended
+  const plan = firstParam(sp.plan)
+
+  const where: Prisma.UserWhereInput = { deletedAt: null }
+  if (q) {
+    where.OR = [
+      { legalName: { contains: q, mode: "insensitive" } },
+      { displayName: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+      { username: { contains: q, mode: "insensitive" } },
+    ]
+  }
+  if (house) where.profile = { house: { name: house } }
+  if (plan) where.membershipStatus = plan
+  // Derived status: "pending" = awaiting verification, "suspended" = suspended
+  // account, "active" = everything else.
+  if (status === "suspended") where.status = "suspended"
+  else if (status === "pending") where.verificationStatus = "pending"
+  else if (status === "active") {
+    where.status = { not: "suspended" }
+    where.verificationStatus = { not: "pending" }
+  }
+
+  const [rows, filteredTotal, total, verified, pending, suspended] = await Promise.all([
     prisma.user.findMany({
-      where: { deletedAt: null },
+      where,
       orderBy: { createdAt: "desc" },
-      take: 100,
+      skip,
+      take,
       select: {
         id: true,
         username: true,
@@ -29,6 +63,7 @@ export default async function AdminUsersPage() {
         userKarma: { select: { karmaBalance: true } },
       },
     }),
+    prisma.user.count({ where }),
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { deletedAt: null, isVerified: true } }),
     prisma.user.count({ where: { deletedAt: null, verificationStatus: "pending" } }),
@@ -59,6 +94,8 @@ export default async function AdminUsersPage() {
     <AdminUsersClient
       users={mappedReal}
       stats={{ total, verified, pending, suspended }}
+      query={{ page, q: q ?? "", house: house ?? "", status: status ?? "", plan: plan ?? "" }}
+      pageInfo={{ page, pageCount: pageCount(filteredTotal), filteredTotal, pageSize: PAGE_SIZE }}
     />
   )
 }
