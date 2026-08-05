@@ -22,10 +22,15 @@ export default function PostCard({
   post,
   isAuthor,
   initialSaved,
+  defaultCommentsOpen = true,
+  disableCardNav = true,
 }: {
   post: FeedPost
   isAuthor: boolean
   initialSaved: boolean
+  /** Detail page opens comments + disables nav; a list (profile timeline) wants neither. */
+  defaultCommentsOpen?: boolean
+  disableCardNav?: boolean
 }) {
   const router = useRouter()
   return (
@@ -34,8 +39,8 @@ export default function PostCard({
       isAuthor={isAuthor}
       initialSaved={initialSaved}
       commentsLoader={loadPostCommentsAction}
-      defaultCommentsOpen
-      disableCardNav
+      defaultCommentsOpen={defaultCommentsOpen}
+      disableCardNav={disableCardNav}
       onUpvote={() => void reactToPost(post.id, "upvote")}
       onDownvote={() => void reactToPost(post.id, "downvote")}
       onComment={(body) => void commentOnPost(post.id, body)}

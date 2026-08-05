@@ -6,6 +6,8 @@ import { colorAvatar } from "@/lib/avatar"
 import type { PlanCode } from "@/config/membership"
 import { ProfileView, type ExperienceItem, type EducationItem, type ProfileViewData } from "./profile-view"
 import { formatDuration } from "@/modules/profile/history"
+import { getFeed } from "@/modules/feed/query"
+import { mapRowToFeedPost } from "../feed/map-row"
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "Present"
@@ -53,6 +55,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     where: UUID_RE.test(handle) ? { OR: [{ username: handle }, { id: handle }] } : { username: handle },
     select: {
       id: true,
+      schoolId: true,
       legalName: true,
       displayName: true,
       username: true,
@@ -128,6 +131,26 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     endYear: e.endYear,
   }))
 
+  // Timeline posts (visible only), rendered with the same FeedCard as the feed.
+  const viewerId = session?.user?.id
+  const feed = user.schoolId
+    ? await getFeed({
+        schoolId: user.schoolId,
+        authorId: user.id,
+        viewerId,
+        pageSize: 20,
+        rankerName: "recency",
+      })
+    : { rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"] }
+  const posts: ProfileViewData["posts"] = feed.rows.map((r) => {
+    const post = mapRowToFeedPost(r)
+    return { post, isAuthor: viewerId === post.authorId, initialSaved: post.savedByViewer ?? false }
+  })
+  // Count from the same visible-post filter so badge, timeline and feed agree.
+  const postsCount = await prisma.post.count({
+    where: { authorId: user.id, deletedAt: null, status: "visible" },
+  })
+
   const p = user.profile
   const batch = p?.batch
   const membership = resolveMembership(user.membershipStatus)
@@ -183,7 +206,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     profileCompletion: user.profileCompletion,
     followersCount: user._count.followers,
     followingCount: user._count.following,
-    postsCount: user._count.posts,
+    postsCount,
+    posts,
     userId: user.id,
     viewerFollows,
     higherEducation: p?.higherEducation ?? null,
