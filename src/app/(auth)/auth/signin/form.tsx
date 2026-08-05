@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FormEvent, useState, Suspense } from "react"
+import { Mail } from "lucide-react"
 import { Field, SubmitButton, FormError, FormSuccess } from "../ui"
 
 function SignInFormInner() {
@@ -42,7 +43,7 @@ function SignInFormInner() {
       {justVerified && <FormSuccess>Email verified — sign in to finish setting up your account.</FormSuccess>}
       {error && <FormError>{error}</FormError>}
 
-      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" defaultValue={prefillEmail} />
+      <Field label="Email Address" id="email" name="email" type="email" placeholder="Email address" required autoComplete="email" defaultValue={prefillEmail} icon={<Mail size={18} />} />
       <Field label="Password" id="password" name="password" type="password" placeholder="Password" required autoComplete="current-password" />
 
       <div className="flex items-center justify-between">

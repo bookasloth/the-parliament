@@ -1,4 +1,7 @@
-import { InputHTMLAttributes } from "react"
+"use client"
+
+import { InputHTMLAttributes, ReactNode, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 
 // Shared form primitives for every auth flow (signin/signup/forgot/reset).
 // Light aesthetic, matching the homepage signup screen — grey inputs, NNAWCA
@@ -7,14 +10,18 @@ import { InputHTMLAttributes } from "react"
 export const ACCENT = "#009ae4" // matches --color-brand
 
 export const fieldClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm " +
+  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-11 text-sm " +
   "text-charcoal-800 placeholder:text-gray-400 outline-none transition " +
   "focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
 
 export function Field({
   label,
+  icon,
   ...props
-}: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+}: { label: string; icon?: ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
+  const [show, setShow] = useState(false)
+  const isPassword = props.type === "password"
+  const type = isPassword && show ? "text" : props.type
   return (
     <div>
       <label
@@ -23,7 +30,23 @@ export function Field({
       >
         {label}
       </label>
-      <input {...props} className={fieldClass} />
+      <div className="relative">
+        <input {...props} type={type} className={fieldClass} />
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            aria-label={show ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+          >
+            {show ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        ) : icon ? (
+          <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+            {icon}
+          </span>
+        ) : null}
+      </div>
     </div>
   )
 }

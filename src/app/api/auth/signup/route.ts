@@ -6,12 +6,17 @@ import { colorAvatar } from "@/lib/avatar";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createEmailCode } from "@/lib/email-code";
 import { sendEmail } from "@/lib/email";
+import { getDefaultSchoolId } from "@/lib/school";
+import { parseBatchValue } from "@/lib/houses";
 import { revalidateTag } from "next/cache";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
+  // Optional JNV identity collected on the signup card.
+  house: z.string().trim().max(40).optional(),
+  batchValue: z.string().trim().regex(/^\d{4}-\d{4}$/, "Invalid batch").optional(),
 });
 
 function clientIp(req: NextRequest): string {
@@ -74,7 +79,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const { name, email, password } = parsed.data;
+    const { name, email, password, house, batchValue } = parsed.data;
 
     const normalizedEmail = email;
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -104,11 +109,42 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Resolve the optional JNV house + batch picked on the signup card.
+    // ponytail: no gender/era validation here — signup collects neither, so we
+    // store the pick as-is; profile edit enforces era rules if it's changed.
+    let houseId: string | null = null;
+    let batchId: string | null = null;
+    const schoolId = await getDefaultSchoolId();
+    if (schoolId) {
+      const years = batchValue ? parseBatchValue(batchValue) : null;
+      if (years) {
+        const b = await prisma.batch.upsert({
+          where: { schoolId_startYear: { schoolId, startYear: years.startYear } },
+          update: {},
+          create: {
+            schoolId,
+            startYear: years.startYear,
+            endYear: years.endYear,
+            label: `${years.startYear}-${years.endYear}`,
+          },
+          select: { id: true },
+        });
+        batchId = b.id;
+      }
+      if (house) {
+        const h = await prisma.house.findFirst({
+          where: { schoolId, name: { equals: house, mode: "insensitive" } },
+          select: { id: true },
+        });
+        houseId = h?.id ?? null;
+      }
+    }
+
     // Give new members a default colour avatar (shown until they upload a photo).
     await prisma.profile.upsert({
       where: { userId: user.id },
       update: {},
-      create: { userId: user.id, photoUrl: colorAvatar(user.id) },
+      create: { userId: user.id, photoUrl: colorAvatar(user.id), houseId, batchId },
     });
 
     // New active member belongs in the community directory (cached under the
