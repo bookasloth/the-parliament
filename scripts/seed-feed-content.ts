@@ -41,6 +41,76 @@ const OWNER_EMAIL = "sndatarkar@gmail.com";
 // ---------------------------------------------------------------------------
 type Bip = { pr: number; at: string; cat: string; body: string };
 
+// A "should we build this?" prompt posted BEFORE a build-in-public post, so the
+// feed reads like the network asked before it shipped. Keyed by PR number; a PR
+// without an entry just ships without a preceding ask. Posted at the build's
+// time minus a spread-out offset (askOffsetHours), so the ask always precedes
+// its ship and the asks don't all cluster.
+type Ask =
+  | { kind: "poll"; question: string; options: string[]; cat?: string }
+  | { kind: "question"; body: string; cat?: string };
+
+const ASKS: Record<number, Ask> = {
+  1: { kind: "question", cat: "school_memory",
+    body: "Serious question for the JNV Navegaon Khairi family: if there were one place online where all of us could actually find each other again, would you use it? Thinking of building it." },
+  16: { kind: "poll", cat: "event",
+    question: "Would you actually turn up to an NNAWCA event if we ran one?",
+    options: ["Yes, count me in", "Depends on the city", "Online only for me", "Not really"] },
+  17: { kind: "poll", cat: "event",
+    question: "Should this network have a paid membership tier to keep it running?",
+    options: ["Yes, happy to chip in", "Only if there are perks", "Keep it fully free", "Not sure yet"] },
+  18: { kind: "question", cat: "achievement",
+    body: "About to build the sign-up flow. What's the one thing that's made you abandon a signup halfway? Tell me so I don't do it." },
+  21: { kind: "poll", cat: "achievement",
+    question: "What do you most want to be able to post in the feed?",
+    options: ["Photos & videos", "Polls", "Long updates", "Just text is fine"] },
+  33: { kind: "question", cat: "school_memory",
+    body: "Writing the public pages that tell the world what NNAWCA is. In one line — how would YOU describe what this network is for?" },
+  44: { kind: "poll", cat: "achievement",
+    question: "Should we add private 1:1 messaging, or keep everything in the open feed?",
+    options: ["Yes, private DMs", "Only between connections", "Prefer group chats", "Don't need it"] },
+  77: { kind: "poll", cat: "achievement",
+    question: "How often should the network email you?",
+    options: ["Only important stuff", "A weekly digest", "Tell me everything", "Never, please"] },
+  90: { kind: "poll", cat: "event",
+    question: "Should the network wish members a happy birthday?",
+    options: ["Yes, love that", "Only if I opt in", "No thanks"] },
+  92: { kind: "question", cat: "event",
+    body: "When we open the doors wider — who should we invite first? Your batch, your house, or just everyone at once?" },
+  128: { kind: "poll", cat: "achievement",
+    question: "Would you want to see stats on how your posts do — views, reactions, reach?",
+    options: ["Yes, show me", "A little is fine", "No, keep it simple"] },
+  133: { kind: "poll", cat: "achievement",
+    question: "Should helpful, active members earn visible reputation on the network?",
+    options: ["Yes, reward good contributors", "Keep it subtle", "No, treat everyone equal"] },
+  167: { kind: "question", cat: "event",
+    body: "Thinking about letting any member create events, not just admins. What's the first meetup you'd organise for your batch or house?" },
+  168: { kind: "poll", cat: "achievement",
+    question: "Want a Save Draft button so half-written posts aren't lost?",
+    options: ["Yes please", "Doesn't matter to me"] },
+  170: { kind: "question", cat: "school_memory",
+    body: "Building a Wall of Honour for JNV Navegaon Khairi. Who — teacher, senior, batchmate — deserves a place on it? Drop names." },
+  176: { kind: "poll", cat: "achievement",
+    question: "What's the most useful way to find fellow alumni?",
+    options: ["By city", "By batch", "By profession", "By house"] },
+  180: { kind: "poll", cat: "achievement",
+    question: "On profiles, should followers be public?",
+    options: ["Yes, show who follows whom", "Only show counts", "Keep it private"] },
+  191: { kind: "question", cat: "school_memory",
+    body: "Drafting the community rules before this grows. What's the one line of conduct you'd insist an alumni network holds to?" },
+  196: { kind: "poll", cat: "school_memory",
+    question: "Should we bring back the original pre-2002 houses alongside the ANSU ones?",
+    options: ["Yes — Jawahar, Tilak, Subhash, Rajiv", "Just keep the current four", "Show both, by era"] },
+  198: { kind: "question", cat: "achievement",
+    body: "How should we prove someone's really one of us? Trying to design verification that's tight but not a pain. What would you trust?" },
+};
+
+function askDate(buildAtISO: string, pr: number): Date {
+  // 14–37h before the ship, spread by pr so asks don't clump on one instant.
+  const offsetH = 14 + (pr % 24);
+  return new Date(new Date(buildAtISO).getTime() - offsetH * 3_600_000);
+}
+
 const BUILD_IN_PUBLIC: Bip[] = [
   { pr: 1, at: "2026-06-15T02:47:55Z", cat: "school_memory", body:
     "Day one. Started building a place for our JNV Navegaon Khairi family to actually find each other again. No idea yet how far this goes — but it's begun. Watch this space." },
@@ -283,15 +353,44 @@ async function main() {
   function rank(createdAt: string): number {
     return hotScore({ upvoteCount: 0, downvoteCount: 0, commentCount: 0, shareCount: 0, qualityScore: 0, reportPenalty: 0, createdAt });
   }
+  // Create one poll/question post. Shared by the pre-ship "asks" and the
+  // standalone engagement prompts.
+  async function postAsk(a: Ask, sentinel: string, at: Date): Promise<void> {
+    const atISO = at.toISOString();
+    if (a.kind === "question") {
+      console.log(`ask?  ${atISO}  ${a.body.slice(0, 55)}…`);
+      if (!DRY) await prisma.post.create({ data: {
+        ...base, categoryId: catId(a.cat ?? "school_memory"), format: "question", body: a.body,
+        quoteSource: sentinel, createdAt: at, rankingScore: rank(atISO),
+      } });
+    } else {
+      console.log(`ask?  ${atISO}  poll: ${a.question.slice(0, 45)}…`);
+      if (!DRY) await prisma.post.create({ data: {
+        ...base, categoryId: catId(a.cat ?? "event"), format: "poll", body: null,
+        quoteSource: sentinel, createdAt: at, rankingScore: rank(atISO),
+        poll: { create: {
+          question: a.question,
+          options: { create: a.options.map((label, sortOrder) => ({ label, sortOrder })) },
+        } },
+      } });
+    }
+  }
 
   let created = 0, skipped = 0;
 
-  // 1. Build-in-public
+  // 1. Build-in-public — each PR that has an ASKS entry gets its "should we
+  //    build this?" poll/question posted first, dated before the ship.
   if (SECTIONS.includes("bip")) {
     for (const p of BUILD_IN_PUBLIC) {
+      const ask = ASKS[p.pr];
+      if (ask) {
+        const askSentinel = `seed:ask:${p.pr}`;
+        if (await seen(askSentinel)) { skipped++; }
+        else { await postAsk(ask, askSentinel, askDate(p.at, p.pr)); created++; }
+      }
       const sentinel = `seed:bip:${p.pr}`;
       if (await seen(sentinel)) { skipped++; continue; }
-      console.log(`bip  #${p.pr}  ${p.at}  ${p.body.slice(0, 60)}…`);
+      console.log(`bip   #${p.pr}  ${p.at}  ${p.body.slice(0, 60)}…`);
       if (!DRY) await prisma.post.create({ data: {
         ...base, categoryId: catId(p.cat), format: "text", body: p.body,
         quoteSource: sentinel, createdAt: new Date(p.at), rankingScore: rank(p.at),
@@ -323,29 +422,16 @@ async function main() {
     }
   }
 
-  // 3. Engagement — polls + questions, posted now.
+  // 3. Engagement — standalone polls + questions, posted now.
   if (SECTIONS.includes("engagement")) {
+    const now = new Date();
     for (const e of ENGAGEMENT) {
       const sentinel = `seed:${e.sentinel}`;
       if (await seen(sentinel)) { skipped++; continue; }
-      const now = new Date();
-      if (e.kind === "question") {
-        console.log(`ques ${e.body.slice(0, 60)}…`);
-        if (!DRY) await prisma.post.create({ data: {
-          ...base, categoryId: catId(e.cat), format: "question", body: e.body,
-          quoteSource: sentinel, createdAt: now, rankingScore: rank(now.toISOString()),
-        } });
-      } else {
-        console.log(`poll ${e.question}`);
-        if (!DRY) await prisma.post.create({ data: {
-          ...base, categoryId: catId(e.cat), format: "poll", body: e.body ?? null,
-          quoteSource: sentinel, createdAt: now, rankingScore: rank(now.toISOString()),
-          poll: { create: {
-            question: e.question,
-            options: { create: e.options.map((label, sortOrder) => ({ label, sortOrder })) },
-          } },
-        } });
-      }
+      const ask: Ask = e.kind === "poll"
+        ? { kind: "poll", question: e.question, options: e.options, cat: e.cat }
+        : { kind: "question", body: e.body, cat: e.cat };
+      await postAsk(ask, sentinel, now);
       created++;
     }
   }
