@@ -26,7 +26,7 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 const DRY = process.argv.includes("--dry");
-const SECTIONS = (process.env.SECTIONS ?? "bip,welcome,engagement")
+const SECTIONS = (process.env.SECTIONS ?? "bip,welcome,engagement,memories,votes")
   .split(",")
   .map((s) => s.trim());
 
@@ -103,7 +103,61 @@ const ASKS: Record<number, Ask> = {
     options: ["Yes — Jawahar, Tilak, Subhash, Rajiv", "Just keep the current four", "Show both, by era"] },
   198: { kind: "question", cat: "achievement",
     body: "How should we prove someone's really one of us? Trying to design verification that's tight but not a pain. What would you trust?" },
+  3: { kind: "question", cat: "achievement",
+    body: "The feed's about to fill with real people and real posts. What would actually make you open it every day?" },
+  5: { kind: "poll", cat: "achievement",
+    question: "What matters most on an alumni profile?",
+    options: ["Where you studied", "Your career", "How to reach you", "Photos"] },
+  23: { kind: "question", cat: "achievement",
+    body: "Adding proper comments to the feed. What makes a comment section worth reading instead of a mess you scroll past?" },
+  26: { kind: "poll", cat: "achievement",
+    question: "Should posts support video, not just photos?",
+    options: ["Yes", "Photos are enough", "Only short clips"] },
+  46: { kind: "question", cat: "achievement",
+    body: "Messages are getting instant, real-time delivery. Who's the one batchmate you'd message the second this goes live?" },
+  52: { kind: "poll", cat: "achievement",
+    question: "Should the feed favour quality contributions over just-posted?",
+    options: ["Yes, quality first", "Keep it chronological", "A mix of both"] },
+  96: { kind: "poll", cat: "achievement",
+    question: "Should comments let you drop an image or a meme?",
+    options: ["Yes", "Text is fine"] },
+  137: { kind: "question", cat: "school_memory",
+    body: "Building the tools to run this network properly — moderation, verification, the lot. What would make you trust how it's run?" },
+  138: { kind: "poll", cat: "achievement",
+    question: "Should I build this in public — share every change as it ships?",
+    options: ["Yes, love the transparency", "Only the big updates", "Don't mind either way"] },
+  140: { kind: "question", cat: "achievement",
+    body: "Redoing the profile editor. What's the single most annoying thing about editing your profile on any site?" },
+  148: { kind: "poll", cat: "achievement",
+    question: "How many signup steps before it feels like too much?",
+    options: ["2-3, max", "Up to 5", "However many, if it saves as I go"] },
+  151: { kind: "question", cat: "school_memory",
+    body: "Making the name official: NNAWCA. Does that land for you? Be honest — the name matters and I'd rather hear it now." },
+  157: { kind: "poll", cat: "achievement",
+    question: "How should a verified alumnus be marked?",
+    options: ["A tick", "A seal", "A badge by the name", "Doesn't matter"] },
 };
+
+// Every build without a hand-crafted ask still gets one, from this pool (picked
+// by PR number). Genuine "pulse" prompts — they read as the owner checking in
+// before shipping, not a fake poll bolted onto a one-line fix.
+const FALLBACK_ASKS: Ask[] = [
+  { kind: "question", cat: "achievement", body: "Quick one before I ship the next thing: what's the most annoying part of the site right now? Tell me straight." },
+  { kind: "question", cat: "school_memory", body: "What's one feature that would make you actually recommend this network to a batchmate?" },
+  { kind: "poll", cat: "achievement", question: "What should I put the next few days into?", options: ["Feed & posts", "Profiles", "Events", "Messaging"] },
+  { kind: "question", cat: "achievement", body: "If you could fix one thing about how this looks or feels, what would it be?" },
+  { kind: "poll", cat: "school_memory", question: "Where do you use this most?", options: ["On my phone", "On a laptop", "Both about equally"] },
+  { kind: "question", cat: "achievement", body: "Building this mostly solo, so your word steers it — what should I not waste time on?" },
+  { kind: "poll", cat: "achievement", question: "How's the network feeling so far?", options: ["Getting good", "Rough but promising", "Needs a lot", "Not sure yet"] },
+  { kind: "question", cat: "school_memory", body: "What would bring you back here every week, not just once?" },
+  { kind: "question", cat: "achievement", body: "Anything on the site feel broken or confusing? Point me at it and I'll fix it next." },
+  { kind: "poll", cat: "achievement", question: "Which matters more to you right now?", options: ["Finding old batchmates", "Posting & talking", "Events & meetups", "Just browsing"] },
+  { kind: "question", cat: "school_memory", body: "One thing from our JNV days you wish this network captured — what is it?" },
+  { kind: "poll", cat: "achievement", question: "Speed vs features — what should I prioritise?", options: ["Make it faster", "Add more features", "Polish what's here"] },
+];
+function fallbackAsk(pr: number): Ask {
+  return FALLBACK_ASKS[pr % FALLBACK_ASKS.length];
+}
 
 function askDate(buildAtISO: string, pr: number): Date {
   // 14–37h before the ship, spread by pr so asks don't clump on one instant.
@@ -329,6 +383,87 @@ const ENGAGEMENT: Engagement[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Memories: owner-authored nostalgia + community prompts, scattered across the
+// whole timeline (not all "now") so the feed has texture between the ships.
+// ---------------------------------------------------------------------------
+type Memory =
+  | { sentinel: string; at: string; cat: string; kind: "text"; body: string }
+  | { sentinel: string; at: string; cat: string; kind: "question"; body: string }
+  | { sentinel: string; at: string; cat: string; kind: "poll"; question: string; options: string[] };
+
+const MEMORIES: Memory[] = [
+  { sentinel: "mem-nights", at: "2026-06-20T17:30:00Z", cat: "school_memory", kind: "text",
+    body: "Building this at night after work. Every JNV kid knows the drill — you make time for the things that matter." },
+  { sentinel: "mem-first", at: "2026-06-25T15:00:00Z", cat: "school_memory", kind: "question",
+    body: "First memory that comes to mind when you think of JNV Navegaon Khairi. Go." },
+  { sentinel: "mem-best", at: "2026-07-01T16:00:00Z", cat: "school_memory", kind: "poll",
+    question: "Best thing about JNV life?", options: ["The friends", "The mess chaos", "Sports & house games", "The teachers"] },
+  { sentinel: "mem-mess", at: "2026-07-03T14:20:00Z", cat: "school_memory", kind: "question",
+    body: "Which mess dish do you still crave — or still have nightmares about?" },
+  { sentinel: "mem-lost", at: "2026-07-06T18:00:00Z", cat: "school_memory", kind: "text",
+    body: "Somewhere out there is the batchmate you lost touch with years ago. The whole point of this is to fix that." },
+  { sentinel: "mem-migration", at: "2026-07-08T15:30:00Z", cat: "school_memory", kind: "question",
+    body: "Migration year — who else got sent to a JNV in another state? Where did you land?" },
+  { sentinel: "mem-pt", at: "2026-07-10T13:00:00Z", cat: "school_memory", kind: "poll",
+    question: "Morning PT — loved it or survived it?", options: ["Loved it", "Survived it", "Skipped whenever I could", "What's PT"] },
+  { sentinel: "mem-teacher", at: "2026-07-12T17:00:00Z", cat: "school_memory", kind: "question",
+    body: "The one teacher whose class you never bunked. Name them." },
+  { sentinel: "mem-houses", at: "2026-07-14T16:30:00Z", cat: "school_memory", kind: "text",
+    body: "Houses were never just colours. Tell me I'm wrong." },
+  { sentinel: "mem-housepoll", at: "2026-07-16T15:00:00Z", cat: "school_memory", kind: "poll",
+    question: "House pride check — which were you?", options: ["Aravali", "Nilgiri", "Shiwalik", "Udaigiri"] },
+  { sentinel: "mem-dorm", at: "2026-07-18T18:30:00Z", cat: "school_memory", kind: "question",
+    body: "Dorm lights-out stories. Keep them PG. Mostly." },
+  { sentinel: "mem-early", at: "2026-07-20T14:00:00Z", cat: "school_memory", kind: "text",
+    body: "If you're reading this, you're early. Tell one batchmate. A network is worth exactly who's on it." },
+  { sentinel: "mem-board", at: "2026-07-22T17:30:00Z", cat: "school_memory", kind: "question",
+    body: "Board exam night — what were you actually doing instead of studying?" },
+  { sentinel: "mem-sports", at: "2026-07-24T15:30:00Z", cat: "school_memory", kind: "poll",
+    question: "Sports Day — your event?", options: ["Track", "Field", "Kabaddi", "Cheering from the stands"] },
+  { sentinel: "mem-nickname", at: "2026-07-26T16:00:00Z", cat: "school_memory", kind: "question",
+    body: "The nickname you had at JNV that you'll admit to here." },
+  { sentinel: "mem-tenk", at: "2026-07-28T14:30:00Z", cat: "school_memory", kind: "text",
+    body: "Thousands of us passed through those gates. Imagine all of us in one place. That's the whole idea." },
+  { sentinel: "mem-brag", at: "2026-07-30T17:00:00Z", cat: "achievement", kind: "question",
+    body: "Who's the batchmate who ended up somewhere none of us expected? Brag on their behalf." },
+  { sentinel: "mem-reunion", at: "2026-08-01T15:00:00Z", cat: "event", kind: "poll",
+    question: "Reunion dream location?", options: ["Back at campus", "A hill station", "Wherever most of us are", "Online first"] },
+  { sentinel: "mem-firstfriend", at: "2026-08-02T16:30:00Z", cat: "school_memory", kind: "question",
+    body: "First friend you made at JNV. Still in touch?" },
+  { sentinel: "mem-why", at: "2026-08-03T14:00:00Z", cat: "school_memory", kind: "text",
+    body: "Every feature here started as a memory of something we didn't have back then — a way to stay in touch after we scattered." },
+  { sentinel: "mem-miss", at: "2026-08-04T15:30:00Z", cat: "school_memory", kind: "question",
+    body: "Hostel food aside — what do you actually miss about that place?" },
+  { sentinel: "mem-distance", at: "2026-08-04T17:00:00Z", cat: "school_memory", kind: "poll",
+    question: "How far are you now from where you grew up?", options: ["Same state", "Elsewhere in India", "Abroad", "Moved around a lot"] },
+  { sentinel: "mem-batchcall", at: "2026-08-05T08:00:00Z", cat: "school_memory", kind: "question",
+    body: "Drop your batch year below. Let's see which years are already here." },
+  { sentinel: "mem-home", at: "2026-08-05T16:00:00Z", cat: "school_memory", kind: "text",
+    body: "This network is only as alive as the people on it. You showing up is the whole thing. Welcome home." },
+];
+
+// --- deterministic RNG, so reruns pick the same voters and stay idempotent ---
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function sample<T>(pool: T[], k: number, rnd: () => number): T[] {
+  const a = pool.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, Math.max(0, Math.min(k, a.length)));
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   const school = await prisma.school.findUnique({ where: { slug: SCHOOL_SLUG } });
@@ -382,8 +517,8 @@ async function main() {
   //    build this?" poll/question posted first, dated before the ship.
   if (SECTIONS.includes("bip")) {
     for (const p of BUILD_IN_PUBLIC) {
-      const ask = ASKS[p.pr];
-      if (ask) {
+      const ask = ASKS[p.pr] ?? fallbackAsk(p.pr); // every ship gets a preceding ask
+      {
         const askSentinel = `seed:ask:${p.pr}`;
         if (await seen(askSentinel)) { skipped++; }
         else { await postAsk(ask, askSentinel, askDate(p.at, p.pr)); created++; }
@@ -434,6 +569,83 @@ async function main() {
       await postAsk(ask, sentinel, now);
       created++;
     }
+  }
+
+  // 4. Memories — nostalgia + prompts scattered across the timeline.
+  if (SECTIONS.includes("memories")) {
+    for (const m of MEMORIES) {
+      const sentinel = `seed:${m.sentinel}`;
+      if (await seen(sentinel)) { skipped++; continue; }
+      if (m.kind === "text") {
+        console.log(`mem  ${m.at}  ${m.body.slice(0, 55)}…`);
+        if (!DRY) await prisma.post.create({ data: {
+          ...base, categoryId: catId(m.cat), format: "text", body: m.body,
+          quoteSource: sentinel, createdAt: new Date(m.at), rankingScore: rank(m.at),
+        } });
+      } else {
+        const ask: Ask = m.kind === "poll"
+          ? { kind: "poll", question: m.question, options: m.options, cat: m.cat }
+          : { kind: "question", body: m.body, cat: m.cat };
+        await postAsk(ask, sentinel, new Date(m.at));
+      }
+      created++;
+    }
+  }
+
+  // 5. Votes — reactions + poll votes from random members on every seeded post,
+  //    so nothing lands empty. Deterministic per post (seeded RNG), so reruns
+  //    reproduce the same voters and add nothing new. Reactions auto-update the
+  //    post's upvote/downvote counts via DB trigger; poll counts are bumped here
+  //    (no trigger for those), guarded so a rerun never double-counts.
+  if (SECTIONS.includes("votes")) {
+    const members = await prisma.user.findMany({
+      where: { schoolId: school.id, deletedAt: null, status: "active" },
+      select: { id: true }, orderBy: { id: "asc" }, // stable order = stable sampling
+    });
+    const memberIds = members.map((x) => x.id);
+    const posts = await prisma.post.findMany({
+      where: { schoolId: school.id, quoteSource: { startsWith: "seed:" } },
+      select: { id: true, authorId: true, poll: { select: { id: true, options: { select: { id: true } } } } },
+    });
+    console.log(`votes: ${posts.length} seeded posts, ${memberIds.length} members`);
+    let reactions = 0, pollVotes = 0;
+    for (const post of posts) {
+      const rnd = mulberry32(hashStr(post.id));
+      const pool = memberIds.filter((id) => id !== post.authorId); // not the author
+      // Reactions: 3..(3+span) reactors, mostly upvotes.
+      const span = post.poll ? 22 : 14;
+      const reactors = sample(pool, 3 + Math.floor(rnd() * span), rnd);
+      for (const uid of reactors) {
+        const r = rnd();
+        const type = r < 0.8 ? "upvote" : r < 0.92 ? "like" : "downvote";
+        if (!DRY) await prisma.reaction.upsert({
+          where: { userId_entityType_entityId: { userId: uid, entityType: "post", entityId: post.id } },
+          update: {},
+          create: { userId: uid, entityType: "post", entityId: post.id, type },
+        });
+        reactions++;
+      }
+      // Poll votes: only where there's a poll, spread across its options.
+      const poll = post.poll;
+      if (poll && poll.options.length) {
+        const optIds = poll.options.map((o) => o.id);
+        const voters = sample(pool, 5 + Math.floor(rnd() * 24), rnd);
+        for (const uid of voters) {
+          const existing = await prisma.pollVote.findUnique({
+            where: { userId_pollId: { userId: uid, pollId: poll.id } },
+          });
+          if (existing) continue;
+          const optionId = optIds[Math.floor(rnd() * optIds.length)];
+          if (!DRY) await prisma.$transaction([
+            prisma.pollVote.create({ data: { userId: uid, pollId: poll.id, optionId } }),
+            prisma.pollOption.update({ where: { id: optionId }, data: { voteCount: { increment: 1 } } }),
+            prisma.poll.update({ where: { id: poll.id }, data: { totalVotes: { increment: 1 } } }),
+          ]);
+          pollVotes++;
+        }
+      }
+    }
+    console.log(`votes: +${reactions} reactions, +${pollVotes} poll votes`);
   }
 
   console.log(`\n${DRY ? "[dry] " : ""}done. created=${created} skipped=${skipped}`);
