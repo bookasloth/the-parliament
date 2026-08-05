@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   MagnifyingGlass, Funnel, DownloadSimple, UserPlus, DotsThreeVertical, Eye,
   ShieldCheck, Prohibit, Trash, EnvelopeSimple, CaretLeft, CaretRight,
@@ -60,6 +61,52 @@ export default function AdminUsersClient({
   const [inviteName, setInviteName] = useState("")
   const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const router = useRouter()
+
+  async function runAction(id: string, action: string, confirmMsg?: string) {
+    if (confirmMsg && !window.confirm(confirmMsg)) return
+    setActiveMenu(null)
+    setBusy(true)
+    setToast(null)
+    try {
+      const res = await fetch(`/api/admin/users/${id}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Action failed")
+      setToast(`Done: ${action}`)
+      router.refresh()
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Action failed")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function runBulk(action: string) {
+    setBusy(true)
+    setToast(null)
+    try {
+      const res = await fetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], action }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Bulk action failed")
+      setToast(`${action}: ${json.done}/${json.requested} updated`)
+      setSelected(new Set())
+      router.refresh()
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Bulk action failed")
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function submitInvite() {
     setInviteBusy(true)
@@ -107,7 +154,7 @@ export default function AdminUsersClient({
         description="Manage all members of the alumni network"
         actions={
           <>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = "/api/admin/users/export" }}>
               <DownloadSimple className="h-3.5 w-3.5" weight="duotone" /> Export CSV
             </Button>
             <Button variant="primary" size="sm" onClick={() => { setInviteOpen(true); setInviteMsg(null) }}>
@@ -116,6 +163,13 @@ export default function AdminUsersClient({
           </>
         }
       />
+
+      {toast && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-xs text-zinc-300">
+          <span>{toast}</span>
+          <button onClick={() => setToast(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-4 w-4" weight="duotone" /></button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -174,13 +228,13 @@ export default function AdminUsersClient({
           <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-950/30 border-b border-blue-900">
             <span className="text-xs font-semibold text-blue-300">{selected.size} selected</span>
             <div className="flex gap-1.5 ml-2">
-              <button className="flex items-center gap-1 rounded-md bg-[#111113] border border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-300 hover:bg-blue-950/50">
+              <button disabled={busy} onClick={() => runBulk("verify")} className="flex items-center gap-1 rounded-md bg-[#111113] border border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-300 hover:bg-blue-950/50 disabled:opacity-50">
                 <ShieldCheck className="h-3 w-3" weight="duotone" /> Verify
               </button>
-              <button className="flex items-center gap-1 rounded-md bg-[#111113] border border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-300 hover:bg-blue-950/50">
-                <EnvelopeSimple className="h-3 w-3" weight="duotone" /> Email
+              <button disabled={busy} onClick={() => runBulk("activate")} className="flex items-center gap-1 rounded-md bg-[#111113] border border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-950/50 disabled:opacity-50">
+                <UserCheck className="h-3 w-3" weight="duotone" /> Activate
               </button>
-              <button className="flex items-center gap-1 rounded-md bg-[#111113] border border-rose-800 px-2.5 py-1 text-[11px] font-semibold text-rose-400 hover:bg-rose-950/50">
+              <button disabled={busy} onClick={() => runBulk("suspend")} className="flex items-center gap-1 rounded-md bg-[#111113] border border-rose-800 px-2.5 py-1 text-[11px] font-semibold text-rose-400 hover:bg-rose-950/50 disabled:opacity-50">
                 <Prohibit className="h-3 w-3" weight="duotone" /> Suspend
               </button>
             </div>
@@ -245,21 +299,23 @@ export default function AdminUsersClient({
                     </button>
                     {activeMenu === u.id && (
                       <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
-                        {[
-                          { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View profile" },
-                          { icon: <ShieldCheck className="h-4 w-4" weight="duotone" />, label: "Verify account" },
-                          { icon: <Key className="h-4 w-4" weight="duotone" />, label: "Reset password" },
-                          { icon: <EnvelopeSimple className="h-4 w-4" weight="duotone" />, label: "Send email" },
-                        ].map((item, i) => (
-                          <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
-                            {item.icon}{item.label}
-                          </button>
-                        ))}
+                        <a href={u.username ? `/profile/${u.username}` : "#"} target="_blank" rel="noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <Eye className="h-4 w-4" weight="duotone" /> View profile
+                        </a>
+                        <button onClick={() => runAction(u.id, "verify")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <ShieldCheck className="h-4 w-4" weight="duotone" /> Verify account
+                        </button>
+                        <button onClick={() => runAction(u.id, "reset-password")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <Key className="h-4 w-4" weight="duotone" /> Reset password
+                        </button>
+                        <a href={`mailto:${u.email}`} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                          <EnvelopeSimple className="h-4 w-4" weight="duotone" /> Send email
+                        </a>
                         <div className="my-1 border-t border-zinc-800" />
-                        <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40">
+                        <button onClick={() => runAction(u.id, u.status === "suspended" ? "activate" : "suspend")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40">
                           <Prohibit className="h-4 w-4" weight="duotone" /> {u.status === "suspended" ? "Unsuspend" : "Suspend"}
                         </button>
-                        <button onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40">
+                        <button onClick={() => runAction(u.id, "delete", `Delete ${u.name}? This soft-deletes the account.`)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40">
                           <Trash className="h-4 w-4" weight="duotone" /> Delete account
                         </button>
                       </div>
