@@ -96,29 +96,29 @@ const ALUMNI_COLLAGE = [
 export default function AboutPage() {
   return (
     <>
-      {/* ── Hero ── */}
-      <Section width="7xl" className="pt-32 lg:pt-40">
-        <div className="grid items-center gap-14 lg:grid-cols-[1.1fr_0.9fr]">
+      {/* ── Hero (compact — fits above the fold) ── */}
+      <Section width="7xl" className="pt-24 pb-8 lg:min-h-[100svh] lg:flex lg:flex-col lg:justify-center lg:pt-28 lg:pb-10">
+        <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
           <div>
             <Reveal>
               <Eyebrow>About NNAWCA</Eyebrow>
             </Reveal>
             <Reveal delay={0.05}>
-              <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-6xl lg:leading-[1.04]">
+              <h1 className="mt-4 font-heading text-3xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-4xl lg:text-5xl lg:leading-[1.05]">
                 Built by alumni who'd rather{" "}
                 <Typewriter words={["give back", "stay close", "lift others", "build together"]} />
                 <br className="hidden sm:block" /> than lose touch.
               </h1>
             </Reveal>
             <Reveal delay={0.1}>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#5b5b5b]">
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-[#5b5b5b]">
                 The Nagpur Navodaya Alumni Welfare and Charitable Association is the
                 home for every JNV Nagpur alumnus — a place to reconnect, give back,
                 and open doors for the students who come after us.
               </p>
             </Reveal>
             <Reveal delay={0.15}>
-              <div className="mt-9 flex flex-wrap gap-4">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <a
                   href="/join"
                   className="rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
