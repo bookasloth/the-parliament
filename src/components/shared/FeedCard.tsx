@@ -350,16 +350,16 @@ export function FeedCard({
               </a>
             )}
             <div className="flex flex-col gap-3 rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                {post.headline && <p className="text-sm font-semibold text-gray-900">{post.headline}</p>}
-                {post.content && <p className="mt-0.5 text-xs text-gray-500">{post.content}</p>}
+              <div className="min-w-0 flex-1">
+                {post.headline && <p className="text-sm font-semibold text-gray-900 break-words">{post.headline}</p>}
+                {post.content && <p className="mt-0.5 text-xs text-gray-500 break-words">{post.content}</p>}
               </div>
               <a
                 href={post.sponsorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={post.sponsorAccent ? { backgroundColor: post.sponsorAccent } : undefined}
-                className={`w-full flex-shrink-0 rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90 sm:w-auto${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
+                className={`w-full flex-shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90 sm:w-auto${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
               >
                 {post.sponsorCta ?? "Learn more"}
               </a>
