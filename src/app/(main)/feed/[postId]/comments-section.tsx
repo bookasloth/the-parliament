@@ -8,6 +8,7 @@ import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction
 import { VerifiedBadge } from "@/components/shared/feed-card/blocks"
 import type { FeedMembership } from "@/components/shared/feed-card/types"
 import EmojiPicker from "@/components/shared/EmojiPicker"
+import { useFollow } from "@/components/shared/follow-store"
 import MentionInput from "./mention-input"
 
 function ComposerTools({
@@ -53,6 +54,7 @@ export interface CommentView {
     avatarUrl: string
     headline: string | null
     batch: string | null
+    isFollowedByViewer: boolean
   }
   replies: CommentView[]
   /** Stable client-side key that survives the optimistic→committed id swap, so
@@ -139,6 +141,7 @@ function makeView(body: string, viewer: Viewer, imageUrl: string | null = null):
       avatarUrl: viewer.avatarUrl,
       headline: null,
       batch: null,
+      isFollowedByViewer: false, // own comment — never shows a follow CTA
     },
     replies: [],
   }
@@ -187,17 +190,19 @@ function Avatar({ c }: { c: CommentView }) {
   )
 }
 
-// Local Follow/Message CTA — mirrors the FeedCard header (optimistic, wire later).
-function CommentFollow() {
-  const [following, setFollowing] = useState(false)
+// Follow/Message CTA wired to the app-wide follow store, so an author the viewer
+// already follows shows "Message" (not "Follow") and staying in sync everywhere.
+function CommentFollow({ authorId, initialFollowing }: { authorId: string; initialFollowing: boolean }) {
+  const { following, toggle, busy } = useFollow(authorId, initialFollowing)
   return following ? (
     <a href="/messages" className="hidden text-xs font-semibold text-brand hover:underline whitespace-nowrap sm:inline">
       Message
     </a>
   ) : (
     <button
-      onClick={() => setFollowing(true)}
-      className="hidden text-xs font-semibold text-brand hover:underline whitespace-nowrap sm:inline"
+      onClick={toggle}
+      disabled={busy}
+      className="hidden text-xs font-semibold text-brand hover:underline whitespace-nowrap disabled:opacity-60 sm:inline"
     >
       Follow
     </button>
@@ -231,7 +236,7 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
               <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{c.author.batch}</div>
             )}
           </div>
-          {canFollow && <CommentFollow />}
+          {canFollow && <CommentFollow authorId={c.author.id} initialFollowing={c.author.isFollowedByViewer} />}
         </div>
         {c.body && (
           <div className="mt-1">

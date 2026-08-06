@@ -9,6 +9,7 @@ type CommentRow = Awaited<ReturnType<typeof listPostComments>>[number]
 function toView(
   r: CommentRow | CommentRow["replies"][number],
   postAuthorId: string,
+  followingIds: Set<string>,
 ): Omit<CommentView, "replies"> {
   const name = r.author.displayName || r.author.legalName
   return {
@@ -30,6 +31,7 @@ function toView(
         `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
       headline: r.author.profile?.headline ?? null,
       batch: formatBatch(r.author.profile?.batch) ?? null,
+      isFollowedByViewer: followingIds.has(r.author.id),
     },
   }
 }
@@ -37,9 +39,10 @@ function toView(
 export function buildCommentViews(
   rows: CommentRow[],
   postAuthorId: string,
+  followingIds: Set<string> = new Set(),
 ): CommentView[] {
   return rows.map((r) => ({
-    ...toView(r, postAuthorId),
-    replies: r.replies.map((rep) => ({ ...toView(rep, postAuthorId), replies: [] })),
+    ...toView(r, postAuthorId, followingIds),
+    replies: r.replies.map((rep) => ({ ...toView(rep, postAuthorId, followingIds), replies: [] })),
   }))
 }

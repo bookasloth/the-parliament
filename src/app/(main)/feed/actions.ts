@@ -93,7 +93,20 @@ export async function loadPostCommentsAction(postId: string): Promise<InlineComm
   if (!post || post.deletedAt) return { comments: [], count: 0, viewer: null }
 
   const rows = await listPostComments(postId, 100, viewer?.id)
-  const comments = buildCommentViews(rows, post.authorId)
+
+  // Which comment authors the viewer already follows → seeds the per-comment CTA
+  // so it shows "Message" instead of "Follow" for people already followed.
+  let followingIds = new Set<string>()
+  if (viewer?.id) {
+    const authorIds = [...new Set(rows.flatMap((r) => [r.author.id, ...r.replies.map((rep) => rep.author.id)]))]
+    const follows = await prisma.follow.findMany({
+      where: { followerId: viewer.id, followingId: { in: authorIds } },
+      select: { followingId: true },
+    })
+    followingIds = new Set(follows.map((f) => f.followingId))
+  }
+
+  const comments = buildCommentViews(rows, post.authorId, followingIds)
 
   let viewerObj: InlineComments["viewer"] = null
   if (viewer?.id) {

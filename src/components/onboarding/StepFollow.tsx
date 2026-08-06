@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Image from "next/image"
 import { Check, UserPlus } from "lucide-react"
 import type { FollowData } from "@/lib/onboarding"
@@ -16,17 +15,15 @@ export function StepFollow({
   onNext: () => void
   onSkip: () => void
 }) {
-  const [busy, setBusy] = useState<string | null>(null)
   const followed = new Set(data.followedIds)
 
   async function toggle(id: string) {
-    if (followed.has(id) || busy) return
-    setBusy(id)
+    if (followed.has(id)) return
+    set({ followedIds: [...data.followedIds, id] }) // optimistic
     try {
       await followPerson(id)
-      set({ followedIds: [...data.followedIds, id] })
-    } finally {
-      setBusy(null)
+    } catch {
+      set({ followedIds: data.followedIds.filter((x) => x !== id) }) // revert on failure
     }
   }
 
@@ -55,7 +52,7 @@ export function StepFollow({
               </div>
               <button
                 onClick={() => toggle(s.id)}
-                disabled={isFollowed || busy === s.id}
+                disabled={isFollowed}
                 className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
                   isFollowed ? "bg-green-50 text-green-700" : "bg-brand text-white hover:bg-brand-600"
                 }`}
