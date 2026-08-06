@@ -6,6 +6,7 @@ import Image from "next/image"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction, declineCallAction } from "@/app/(main)/messages/actions"
+import { isCallActive } from "@/modules/messaging/call-active"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
@@ -281,6 +282,8 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
       channel.on("broadcast", { event: "call_ring" }, ({ payload }) => {
         const c = payload as IncomingCall
         if (pathnameRef.current === `/messages/${c.conversationId}`) return
+        // Already on a call — don't pop a second ring over it.
+        if (isCallActive()) return
         setIncomingCall(c)
       })
       // Caller hung up before we answered — dismiss the ring.

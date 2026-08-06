@@ -16,6 +16,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { useVideoCall, CallOverlay, type CallSignal } from "./VideoCall"
 import type { CallData, MessageView } from "@/modules/messaging/types"
 import { callLabel } from "@/modules/messaging/call-log"
+import { setCallActive } from "@/modules/messaging/call-active"
 import { applyReaction, groupReactions } from "@/modules/messaging/reactions"
 import {
   sendMessageAction, markReadAction, realtimeTokenAction,
@@ -198,6 +199,25 @@ export default function ConversationView({
       }
     }
   }, [call.state, otherUser.id, conversationId])
+
+  // Tell the navbar we're in a call (any non-idle state) so it can suppress a
+  // second incoming-call ring while we're busy.
+  useEffect(() => {
+    setCallActive(call.state !== "idle")
+    return () => setCallActive(false)
+  }, [call.state])
+
+  // Caller-side ring timeout: if the callee never picks up, stop ringing after
+  // 45s — the lifecycle effect above then finalises the call-log as "missed"
+  // and clears the peer's global ring. Keyed on state only (ref for end) so an
+  // unrelated re-render can't reset the timer.
+  const callEndRef = useRef(call.end)
+  callEndRef.current = call.end
+  useEffect(() => {
+    if (call.state !== "calling") return
+    const t = setTimeout(() => callEndRef.current(), 45_000)
+    return () => clearTimeout(t)
+  }, [call.state])
 
   // "Join" on an incoming call card. If the caller's offer already reached us
   // (overlay is ringing) just accept it; otherwise announce ourselves so the
