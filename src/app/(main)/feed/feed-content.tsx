@@ -6,6 +6,7 @@ import { ChevronRight, Sparkles } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
 import { ProfileSidebarView } from "@/components/shared/ProfileSidebarView"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 import {
   reactToPost,
   commentOnPost,
@@ -425,7 +426,7 @@ export function FeedContent({
           {/* Left Sidebar - desktop only */}
           <div className="hidden lg:block w-full lg:w-[280px] flex-shrink-0">
             <div className="sticky top-20">
-              <ProfileSidebarView viewer={viewer} />
+              <ProfileSidebarView viewer={viewer} nav={SIDEBAR_NAV.feed} />
             </div>
           </div>
 

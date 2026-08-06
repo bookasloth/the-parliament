@@ -16,6 +16,7 @@ import { MEMBERSHIP_TIERS, type MembershipTier } from "@/config/membership-color
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
 type Facets = {
   batches: { id: string; label: string }[]
@@ -156,7 +157,7 @@ export function CommunityClient({
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4">
-      <RailColumns sidebarViewer={sidebarViewer}>
+      <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.community}>
       <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

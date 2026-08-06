@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Type, Gamepad2, Trophy } from "lucide-react";
 import { LeftRailShell } from "@/components/shared/ProfileSidebar";
+import { SIDEBAR_NAV } from "@/config/sidebar-nav";
 
 export const metadata = { title: "Games · The Parliament" };
 
 export default function GamesLandingPage() {
   return (
-    <LeftRailShell>
+    <LeftRailShell nav={SIDEBAR_NAV.games}>
     <div className="space-y-6">
       <header>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Games</h1>

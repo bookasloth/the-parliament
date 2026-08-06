@@ -1,5 +1,13 @@
-import { GridPage } from "@/components/shared/skeletons"
+import { PageHeaderSkeleton, CardGridSkeleton } from "@/components/shared/skeletons"
+import { RailSkeletonShell } from "@/components/shared/ProfileSidebarView"
 
 export default function Loading() {
-  return <GridPage count={12} />
+  return (
+    <RailSkeletonShell>
+      <PageHeaderSkeleton />
+      <div className="mt-4">
+        <CardGridSkeleton count={12} />
+      </div>
+    </RailSkeletonShell>
+  )
 }
