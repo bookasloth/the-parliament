@@ -63,7 +63,7 @@ export default function AlfazyPlayPage() {
       setStatus(won ? "won" : "lost");
       if (won) {
         setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+        setTimeout(() => setShowConfetti(false), 4000);
       }
     } catch {
       setError("Could not save your game. Try again.");
@@ -148,9 +148,9 @@ export default function AlfazyPlayPage() {
             <Trophy className="h-7 w-7 text-emerald-500" />
           </div>
           <p className="text-lg font-bold text-gray-900">You&apos;ve already played today</p>
-          <p className="mt-1 text-[14px] text-gray-500">A new word unlocks tomorrow. See where you stand:</p>
-          <Link href="/games/alfazy/leaderboard/individual/daily" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
-            View Leaderboard
+          <p className="mt-1 text-[14px] text-gray-500">A new word unlocks tomorrow. See how you did:</p>
+          <Link href="/games/alfazy/results" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+            View your result
           </Link>
         </div>
       ) : (
@@ -213,10 +213,10 @@ export default function AlfazyPlayPage() {
                 You scored <span className="font-bold">{result.score}</span> points.
               </p>
               <Link
-                href="/games/alfazy/leaderboard/individual/daily"
+                href="/games/alfazy/results"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105"
               >
-                <Trophy className="h-4 w-4" /> See the leaderboard
+                <Trophy className="h-4 w-4" /> See full results
               </Link>
             </div>
           )}

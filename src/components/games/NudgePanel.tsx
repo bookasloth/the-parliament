@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Search, Hand, Check, Loader2 } from "lucide-react";
+import { Search, Hand, Check } from "lucide-react";
 import { nudgePlayerAction } from "@/app/(main)/games/alfazy/actions";
 
 export interface NudgeTarget {
@@ -11,8 +11,6 @@ export interface NudgeTarget {
   avatar: string;
   headline?: string;
 }
-
-type RowState = "idle" | "sending" | "done" | "error";
 
 export default function NudgePanel({
   connections,
@@ -24,8 +22,7 @@ export default function NudgePanel({
   subtitle?: string;
 }) {
   const [query, setQuery] = useState("");
-  const [state, setState] = useState<Record<string, RowState>>({});
-  const [, startTransition] = useTransition();
+  const [nudged, setNudged] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,18 +30,13 @@ export default function NudgePanel({
     return connections.filter((c) => c.name.toLowerCase().includes(q));
   }, [connections, query]);
 
+  // Optimistic + irreversible: a nudge can't be recalled, so flip the button to
+  // "Nudged" instantly and fire the action without waiting. rate_limited/errors
+  // change nothing the user could act on, so we don't surface them.
   function nudge(userId: string) {
-    if (state[userId] === "sending" || state[userId] === "done") return;
-    setState((s) => ({ ...s, [userId]: "sending" }));
-    startTransition(async () => {
-      try {
-        const res = await nudgePlayerAction(userId);
-        // rate_limited already counts as "reached them today" → show done, not error.
-        setState((s) => ({ ...s, [userId]: res.ok || res.reason === "rate_limited" ? "done" : "error" }));
-      } catch {
-        setState((s) => ({ ...s, [userId]: "error" }));
-      }
-    });
+    if (nudged.has(userId)) return;
+    setNudged((prev) => new Set(prev).add(userId));
+    nudgePlayerAction(userId).catch(() => {});
   }
 
   if (connections.length === 0) {
@@ -79,8 +71,7 @@ export default function NudgePanel({
           <li className="py-6 text-center text-[13.5px] text-gray-400">No connections match “{query}”.</li>
         ) : (
           filtered.map((c) => {
-            const st = state[c.userId] ?? "idle";
-            const done = st === "done";
+            const done = nudged.has(c.userId);
             return (
               <li key={c.userId} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-gray-50">
                 <Image
@@ -96,23 +87,17 @@ export default function NudgePanel({
                 </div>
                 <button
                   onClick={() => nudge(c.userId)}
-                  disabled={st === "sending" || done}
+                  disabled={done}
                   className={`flex h-9 min-w-[92px] items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition-colors ${
                     done
                       ? "bg-emerald-50 text-emerald-600"
-                      : st === "error"
-                        ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
-                        : "border border-gray-300 text-gray-700 hover:border-brand hover:bg-brand-50 hover:text-brand"
+                      : "border border-gray-300 text-gray-700 hover:border-brand hover:bg-brand-50 hover:text-brand"
                   }`}
                 >
-                  {st === "sending" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : done ? (
+                  {done ? (
                     <>
                       <Check className="h-4 w-4" /> Nudged
                     </>
-                  ) : st === "error" ? (
-                    "Retry"
                   ) : (
                     <>
                       <Hand className="h-4 w-4" /> Nudge
