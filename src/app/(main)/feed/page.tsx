@@ -3,6 +3,7 @@ import type { FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
+import { loadViewer } from "@/lib/viewer"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
@@ -36,33 +37,7 @@ export default async function FeedPage({
     // awaits. The egg overlay below depends on `users`, so it stays a second hop.
     const [{ rows, caughtUp: cu }, u, [users, pinned]] = await Promise.all([
       getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
-      viewer?.id
-        ? prisma.user.findUnique({
-            where: { id: viewer.id },
-            select: {
-              username: true,
-              displayName: true,
-              legalName: true,
-              membershipStatus: true,
-              profile: {
-                select: {
-                  photoUrl: true,
-                  coverUrl: true,
-                  headline: true,
-                  batch: { select: { label: true, startYear: true } },
-                  house: { select: { name: true } },
-                },
-              },
-              _count: {
-                select: {
-                  posts: true,
-                  followers: true,
-                  following: true,
-                },
-              },
-            },
-          })
-        : Promise.resolve(null),
+      viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
       Promise.all([
         prisma.user.findMany({
           where: {

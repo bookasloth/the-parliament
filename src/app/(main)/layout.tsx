@@ -2,7 +2,7 @@ import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNav
 import { MobileTabBar } from "@/components/shared/MobileTabBar"
 import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
-import { prisma } from "@/lib/prisma"
+import { loadViewer } from "@/lib/viewer"
 
 const TIERS = ["student", "associate", "premium", "life", "inactive", "committee"] as const
 type Tier = (typeof TIERS)[number]
@@ -11,21 +11,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const session = await optionalUser()
   let viewer: NavbarViewer | null = null
   if (session?.id) {
-    const u = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: {
-        displayName: true,
-        legalName: true,
-        username: true,
-        membershipStatus: true,
-        profile: {
-          select: {
-            photoUrl: true,
-            batch: { select: { label: true } },
-          },
-        },
-      },
-    })
+    const u = await loadViewer(session.id)
     if (u) {
       const name = u.displayName || u.legalName
       const tier = (TIERS as readonly string[]).includes(u.membershipStatus)

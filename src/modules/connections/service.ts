@@ -85,16 +85,28 @@ export async function getFollowData(userId: string): Promise<{
   followers: AlumniUser[]
   suggestions: AlumniUser[]
 }> {
-  const [followingRows, followerRows] = await Promise.all([
+  // Bound the joined display lists (each row pulls full profile/house/batch
+  // joins) — an unbounded query on a hub user materializes hundreds of rows and
+  // ships them all to the client. `allFollowingIds` is a separate join-free
+  // query so the suggestion exclusion below still sees EVERY followed id, not
+  // just the first page (bounding the joined list would leak already-followed
+  // users into suggestions).
+  const [followingRows, followerRows, allFollowingIds] = await Promise.all([
     prisma.follow.findMany({
       where: { followerId: userId },
       include: { following: { select: userSelect } },
       orderBy: { createdAt: "desc" },
+      take: 100,
     }),
     prisma.follow.findMany({
       where: { followingId: userId },
       include: { follower: { select: userSelect } },
       orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
     }),
   ])
 
@@ -106,7 +118,7 @@ export async function getFollowData(userId: string): Promise<{
   )
 
   // Suggestions: active users I don't already follow.
-  const followedIds = new Set<string>([userId, ...followingRows.map((f) => f.followingId)])
+  const followedIds = new Set<string>([userId, ...allFollowingIds.map((f) => f.followingId)])
   const suggestionRows = await prisma.user.findMany({
     where: { status: "active", deletedAt: null, id: { notIn: Array.from(followedIds) } },
     select: userSelect,

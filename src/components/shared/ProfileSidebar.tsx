@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { optionalUser } from "@/modules/auth/session"
-import { prisma } from "@/lib/prisma"
+import { loadViewer } from "@/lib/viewer"
 import { ProfileSidebarView, type SidebarViewer } from "./ProfileSidebarView"
 import type { SidebarNav } from "@/config/sidebar-nav"
 
@@ -9,16 +9,7 @@ export type { SidebarViewer } from "./ProfileSidebarView"
 export async function getSidebarViewer(): Promise<SidebarViewer | null> {
   const session = await optionalUser()
   if (!session?.id) return null
-  const u = await prisma.user.findUnique({
-    where: { id: session.id },
-    select: {
-      username: true,
-      displayName: true,
-      legalName: true,
-      profile: { select: { photoUrl: true, coverUrl: true, headline: true } },
-      _count: { select: { posts: true, followers: true, following: true } },
-    },
-  })
+  const u = await loadViewer(session.id)
   if (!u) return null
   const name = u.displayName || u.legalName
   return {

@@ -96,7 +96,6 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         select: {
           followers: true,
           following: true,
-          posts: true,
         },
       },
       userBadges: {
@@ -108,10 +107,61 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
 
   if (!user) notFound()
 
-  const experiences = await prisma.experience.findMany({
-    where: { userId: user.id },
-    orderBy: [{ sortOrder: "asc" }, { startDate: "desc" }],
-  })
+  // Everything below depends only on the now-known user row, so fetch it all in
+  // one round-trip batch instead of ~6 sequential hops (was ~300ms of serial
+  // pooler latency on a top-traffic page).
+  const viewerId = session?.user?.id
+  const isOwnProfile = viewerId === user.id
+  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current] =
+    await Promise.all([
+      prisma.experience.findMany({
+        where: { userId: user.id },
+        orderBy: [{ sortOrder: "asc" }, { startDate: "desc" }],
+      }),
+      prisma.education.findMany({
+        where: { userId: user.id },
+        orderBy: [{ sortOrder: "asc" }, { endYear: "desc" }],
+      }),
+      user.schoolId
+        ? getFeed({ schoolId: user.schoolId, authorId: user.id, viewerId, pageSize: 20, rankerName: "recency" })
+        : Promise.resolve({ rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"] }),
+      Promise.all([
+        prisma.follow.findMany({
+          where: { followingId: user.id },
+          orderBy: { createdAt: "desc" },
+          take: 60,
+          select: {
+            follower: {
+              select: {
+                id: true,
+                username: true,
+                displayName: true,
+                legalName: true,
+                isVerified: true,
+                profile: {
+                  select: {
+                    photoUrl: true,
+                    house: { select: { name: true, colorHex: true } },
+                    batch: { select: { label: true, startYear: true } },
+                  },
+                },
+              },
+            },
+          },
+        }),
+        viewerId ? getFollowingIds(viewerId) : Promise.resolve(new Set<string>()),
+      ]),
+      prisma.post.count({ where: { authorId: user.id, deletedAt: null, status: "visible" } }),
+      getBalance(user.id),
+      !isOwnProfile && viewerId
+        ? prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: viewerId, followingId: user.id } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      isOwnProfile ? getCurrent(user.id) : Promise.resolve(null),
+    ])
+
   const experienceItems: ExperienceItem[] = experiences.map((e) => ({
     title: e.title,
     company: e.company,
@@ -125,10 +175,6 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     skills: Array.isArray(e.skills) ? (e.skills as string[]) : [],
   }))
 
-  const educations = await prisma.education.findMany({
-    where: { userId: user.id },
-    orderBy: [{ sortOrder: "asc" }, { endYear: "desc" }],
-  })
   const educationItems: EducationItem[] = educations.map((e) => ({
     school: e.school,
     degree: e.degree,
@@ -138,48 +184,12 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   }))
 
   // Timeline posts (visible only), rendered with the same FeedCard as the feed.
-  const viewerId = session?.user?.id
-  const feed = user.schoolId
-    ? await getFeed({
-        schoolId: user.schoolId,
-        authorId: user.id,
-        viewerId,
-        pageSize: 20,
-        rankerName: "recency",
-      })
-    : { rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"] }
   const posts: ProfileViewData["posts"] = feed.rows.map((r) => {
     const post = mapRowToFeedPost(r)
     return { post, isAuthor: viewerId === post.authorId, initialSaved: post.savedByViewer ?? false }
   })
   // Followers list (people who follow THIS profile) + the viewer's own follow
   // set so each row's Follow button hydrates correctly.
-  const [followerRows, viewerFollowing] = await Promise.all([
-    prisma.follow.findMany({
-      where: { followingId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 60,
-      select: {
-        follower: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            legalName: true,
-            isVerified: true,
-            profile: {
-              select: {
-                photoUrl: true,
-                house: { select: { name: true, colorHex: true } },
-                batch: { select: { label: true, startYear: true } },
-              },
-            },
-          },
-        },
-      },
-    }),
-    viewerId ? getFollowingIds(viewerId) : Promise.resolve(new Set<string>()),
-  ])
   const followers: ProfileViewData["followers"] = followerRows.map(({ follower: f }) => ({
     userId: f.id,
     username: f.username,
@@ -194,13 +204,6 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     viewerFollows: viewerFollowing.has(f.id),
   }))
 
-  // Count from the same visible-post filter so badge, timeline and feed agree.
-  const postsCount = await prisma.post.count({
-    where: { authorId: user.id, deletedAt: null, status: "visible" },
-  })
-
-  const karma = await getBalance(user.id)
-
   const p = user.profile
   const batch = p?.batch
   const membership = resolveMembership(user.membershipStatus)
@@ -208,23 +211,14 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   const yearsSince = gradYear ? new Date().getFullYear() - gradYear : null
   const social = (p?.socialLinks ?? {}) as Record<string, string>
 
-  const isOwnProfile = session?.user?.id === user.id
-  const viewerFollows =
-    !isOwnProfile && session?.user?.id
-      ? (await prisma.follow.findUnique({
-          where: { followerId_followingId: { followerId: session.user.id, followingId: user.id } },
-          select: { id: true },
-        })) !== null
-      : false
-  let owner: ProfileViewData["owner"] = null
-  if (isOwnProfile) {
-    const current = await getCurrent(user.id)
-    owner = {
-      planCode: current.planCode as PlanCode,
-      canListBusiness: current.benefits.businessListing,
-      canApplyMentor: current.benefits.mentorApply,
-    }
-  }
+  const viewerFollows = viewerFollowsRow !== null
+  const owner: ProfileViewData["owner"] = current
+    ? {
+        planCode: current.planCode as PlanCode,
+        canListBusiness: current.benefits.businessListing,
+        canApplyMentor: current.benefits.mentorApply,
+      }
+    : null
 
   const data: ProfileViewData = {
     username: user.username ?? username,
