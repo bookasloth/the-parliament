@@ -65,24 +65,37 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true } },
     },
   })
-  return Promise.all(rows.map(async (c) => {
-    const me = c.participants.find((p) => p.userId === viewerId)!
+  // Unread badges for ALL conversations in one query instead of one
+  // message.count() per row (the old N+1). Each conversation's cutoff differs
+  // (participant.lastReadAt), which groupBy can't express, so this joins the
+  // viewer's participant row for the per-conversation cutoff. Backed by the
+  // messages(conversation_id, created_at) index.
+  const convIds = rows.map((c) => c.id)
+  const unreadRows = convIds.length
+    ? await prisma.$queryRaw<{ conversation_id: string; unread: number }[]>`
+        SELECT m.conversation_id, count(*)::int AS unread
+        FROM messages m
+        JOIN conversation_participants cp
+          ON cp.conversation_id = m.conversation_id AND cp.user_id = ${viewerId}::uuid
+        WHERE m.conversation_id = ANY(${convIds}::uuid[])
+          AND m.deleted_at IS NULL
+          AND m.sender_id <> ${viewerId}::uuid
+          AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+        GROUP BY m.conversation_id`
+    : []
+  const unreadByConv = new Map(unreadRows.map((r) => [r.conversation_id, Number(r.unread)]))
+
+  return rows.map((c) => {
     const other = c.participants.find((p) => p.userId !== viewerId)!.user
-    const unreadCount = await prisma.message.count({
-      where: {
-        conversationId: c.id, deletedAt: null, senderId: { not: viewerId },
-        ...(me.lastReadAt ? { createdAt: { gt: me.lastReadAt } } : {}),
-      },
-    })
     const last = c.messages[0]
     return {
       id: c.id,
       otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
       lastMessagePreview: last ? (last.body || ((last.media as string[]).length ? "📷 Photo" : "")) : "",
       lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
-      unreadCount,
+      unreadCount: unreadByConv.get(c.id) ?? 0,
     }
-  }))
+  })
 }
 
 export async function getConversationMeta(
