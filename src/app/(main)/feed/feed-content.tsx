@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ChevronRight, Sparkles } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
+import { ProfileSidebarView } from "@/components/shared/ProfileSidebarView"
 import {
   reactToPost,
   commentOnPost,
@@ -230,90 +231,16 @@ const newsItems = [
 // --- Left Sidebar ---
 export type ViewerCard = {
   name: string
+  username: string | null
   photoUrl: string
   coverUrl: string | null
   headline: string
   batch: string
   house: string
   membership: string
-}
-
-function LeftSidebar({ userName, viewer }: { userName: string; viewer: ViewerCard | null }) {
-  const name = viewer?.name ?? userName
-  const photo =
-    viewer?.photoUrl ??
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
-  return (
-    <div className="space-y-3">
-      {/* Profile Card */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        {/* Cover */}
-        {viewer?.coverUrl ? (
-          <div className="relative h-[68px]">
-            <Image src={viewer.coverUrl} alt="" fill sizes="320px" className="object-cover" />
-          </div>
-        ) : (
-          <div className="h-[68px] bg-gradient-to-r from-brand to-brand-700" />
-        )}
-        <div className="px-4 pt-0 pb-4">
-          <div className="text-center">
-            {/* relative z-10 so the avatar paints ABOVE the absolutely-positioned cover image */}
-            <div className="relative z-10 -mt-9 mb-2 flex justify-center">
-              <Image
-                className="h-16 w-16 rounded-full border-[3px] border-white object-cover shadow-sm"
-                src={photo}
-                alt=""
-                width={64}
-                height={64}
-              />
-            </div>
-            <h6 className="mb-0 text-sm font-semibold text-gray-900">
-              <a href="/profile/edit" className="hover:text-brand transition-colors">{name}</a>
-            </h6>
-            <small className="text-xs text-gray-500">{viewer?.headline || "—"}</small>
-            <div className="mt-3 flex items-center justify-center gap-4">
-              <div className="text-center">
-                <h6 className="mb-0 text-sm font-semibold text-gray-900">{viewer?.batch ?? "—"}</h6>
-                <small className="text-[10px] text-gray-500">Batch</small>
-              </div>
-              <div className="h-8 w-px bg-gray-200" />
-              <div className="text-center">
-                <h6 className="mb-0 text-sm font-semibold text-gray-900">{viewer?.house ?? "—"}</h6>
-                <small className="text-[10px] text-gray-500">House</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-100 py-2.5 text-center">
-          <a href="/profile/edit" className="text-xs font-semibold text-brand hover:text-brand-600 transition-colors">Edit Profile</a>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <SidebarFooter />
-    </div>
-  )
-}
-
-function SidebarFooter() {
-  const link = "hover:text-gray-700 transition-colors"
-  return (
-    <div className="px-2 pb-2 text-center text-[11px] leading-relaxed text-gray-400">
-      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-        <a href="/about" className={link}>About</a>
-        <a href="/help" className={link}>Help</a>
-        <a href="/privacy" className={link}>Privacy</a>
-        <a href="/terms" className={link}>Terms</a>
-        <a href="/rules" className={link}>Rules</a>
-      </div>
-      <p className="mt-2 text-gray-400">
-        Powered by{" "}
-        <a href="/shubham" className="font-medium text-gray-500 hover:text-brand">SN Datarkar</a>
-        {" "}and{" "}
-        <a href="/durga-laxne" className="font-medium text-gray-500 hover:text-brand">DJ Laxne</a>
-      </p>
-    </div>
-  )
+  posts: number
+  followers: number
+  following: number
 }
 
 // --- FeedContent ---
@@ -498,7 +425,7 @@ export function FeedContent({
           {/* Left Sidebar - desktop only */}
           <div className="hidden lg:block w-full lg:w-[280px] flex-shrink-0">
             <div className="sticky top-20">
-              <LeftSidebar userName={userName} viewer={viewer} />
+              <ProfileSidebarView viewer={viewer} />
             </div>
           </div>
 
