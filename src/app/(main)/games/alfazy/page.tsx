@@ -3,7 +3,7 @@ import { Type, Trophy, Flame, Play, CheckCircle2, ChevronRight } from "lucide-re
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getDailyPuzzle } from "@/modules/games/alfazy";
-import { leaderboard, alfazyGameId } from "@/modules/games/leaderboard";
+import { leaderboardCached, alfazyGameId } from "@/modules/games/leaderboard";
 import { trophiesForUser } from "@/modules/games/champions";
 import CountUp from "@/components/games/CountUp";
 
@@ -26,7 +26,7 @@ export default async function AlfazyHubPage() {
       select: { score: true, solved: true, levelReached: true },
     }),
     prisma.gameScore.count({ where: { gameId, userId: user.id } }),
-    leaderboard("individual", "daily"),
+    leaderboardCached("individual", "daily"),
     trophiesForUser(user.id),
   ]);
 
@@ -75,7 +75,7 @@ export default async function AlfazyHubPage() {
             </>
           )}
           <Link
-            href="/games/alfazy/leaderboard"
+            href="/games/alfazy/leaderboard/individual/daily"
             className="mt-3 flex items-center gap-2 text-[13px] font-semibold text-white/90 hover:text-white"
           >
             <Trophy className="h-4 w-4" /> Leaderboards &amp; champions
@@ -106,7 +106,7 @@ export default async function AlfazyHubPage() {
               ))}
             </ol>
           )}
-          <Link href="/games/alfazy/leaderboard" className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
+          <Link href="/games/alfazy/leaderboard/individual/daily" className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
             Full leaderboard →
           </Link>
         </section>

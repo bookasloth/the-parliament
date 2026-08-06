@@ -53,7 +53,7 @@ export default async function ChampionsPage({
             {winner ? "Titles won" : "Every Alfazy period winner"}{scopeFilter ? ` · ${SCOPE_LABEL[scopeFilter]} only` : ""}
           </p>
         </div>
-        <Link href="/games/alfazy/leaderboard" className="flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
+        <Link href="/games/alfazy/leaderboard/individual/daily" className="flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
           <ArrowLeft className="h-4 w-4" /> Back to leaderboard
         </Link>
       </header>

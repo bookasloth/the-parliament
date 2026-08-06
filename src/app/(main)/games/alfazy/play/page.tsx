@@ -135,7 +135,7 @@ export default function AlfazyPlayPage() {
       {showConfetti && <Confetti />}
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-brand">Alfazy</h1>
-        <Link href="/games/alfazy/leaderboard" className="flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
+        <Link href="/games/alfazy/leaderboard/individual/daily" className="flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
           <Trophy className="h-4 w-4" /> Leaderboard
         </Link>
       </div>
@@ -149,7 +149,7 @@ export default function AlfazyPlayPage() {
           </div>
           <p className="text-lg font-bold text-gray-900">You&apos;ve already played today</p>
           <p className="mt-1 text-[14px] text-gray-500">A new word unlocks tomorrow. See where you stand:</p>
-          <Link href="/games/alfazy/leaderboard" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+          <Link href="/games/alfazy/leaderboard/individual/daily" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
             View Leaderboard
           </Link>
         </div>
@@ -213,7 +213,7 @@ export default function AlfazyPlayPage() {
                 You scored <span className="font-bold">{result.score}</span> points.
               </p>
               <Link
-                href="/games/alfazy/leaderboard"
+                href="/games/alfazy/leaderboard/individual/daily"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105"
               >
                 <Trophy className="h-4 w-4" /> See the leaderboard

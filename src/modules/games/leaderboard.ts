@@ -4,11 +4,15 @@
  * from the Prisma fetch so the grouping logic needs no DB.
  */
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Period, windowFor, anchorFor, priorAnchor } from "./periods";
 import { type Scope, SCOPES } from "./format";
 
 export { type Scope, SCOPES }; // re-export for existing importers
+
+/** Cache tag for all Alfazy leaderboard data; busted when a new play is saved. */
+export const ALFAZY_CACHE_TAG = "alfazy-leaderboard";
 
 /** A single play, flattened with the player's house/batch identity. */
 export interface ScoreRow {
@@ -216,4 +220,45 @@ export async function leaderboardWithMovement(
   if (!prevA) return { ...cur, movement: new Map() };
   const prev = await leaderboard(scope, period, prevA, now);
   return { ...cur, entries: cur.entries, movement: movementMap(cur.entries, prev.entries) };
+}
+
+// ── Cached variants ──────────────────────────────────────────────────────────
+// The heavy work (window scan + aggregate) is memoized in Next's Data Cache,
+// keyed by (scope, period, resolvedAnchor) with a 60s revalidate and a shared
+// tag busted on each new play. A warm leaderboard page issues ZERO DB queries,
+// so route-to-route nav (with <Link> prefetch) feels instant. Anchor is resolved
+// to a string BEFORE caching so keys are stable and inputs stay serializable
+// (LeaderEntry is all primitives — no Date crosses the cache boundary).
+
+const cachedEntries = unstable_cache(
+  async (scope: Scope, period: Period, anchor: string): Promise<LeaderEntry[]> => {
+    const { entries } = await leaderboard(scope, period, anchor);
+    return entries;
+  },
+  ["alfazy-leaderboard-entries"],
+  { revalidate: 60, tags: [ALFAZY_CACHE_TAG] },
+);
+
+/** Cached leaderboard for a resolved-or-current window. */
+export async function leaderboardCached(
+  scope: Scope,
+  period: Period,
+  anchor?: string,
+): Promise<{ anchor: string; entries: LeaderEntry[] }> {
+  const resolved = anchor ?? anchorFor(period, new Date());
+  return { anchor: resolved, entries: await cachedEntries(scope, period, resolved) };
+}
+
+/** Cached leaderboard + movement (two cached reads, no DB when warm). */
+export async function leaderboardWithMovementCached(
+  scope: Scope,
+  period: Period,
+  anchor?: string,
+): Promise<{ anchor: string; entries: LeaderEntry[]; movement: Map<string, Movement> }> {
+  const cur = await leaderboardCached(scope, period, anchor);
+  if (period === "all") return { ...cur, movement: new Map() };
+  const prevA = priorAnchor(period, cur.anchor);
+  if (!prevA) return { ...cur, movement: new Map() };
+  const prev = await leaderboardCached(scope, period, prevA);
+  return { ...cur, movement: movementMap(cur.entries, prev.entries) };
 }

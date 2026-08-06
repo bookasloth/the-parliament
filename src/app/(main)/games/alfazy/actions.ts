@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getDailyPuzzle, checkGuess, gradeGame, isSolved, WORD_LEN, MAX_GUESSES, type Tile } from "@/modules/games/alfazy";
-import { alfazyGameId } from "@/modules/games/leaderboard";
+import { alfazyGameId, ALFAZY_CACHE_TAG } from "@/modules/games/leaderboard";
 import { trophiesForUser, type Trophy } from "@/modules/games/champions";
 import { isValidGuess } from "@/lib/games/valid-guesses";
 
@@ -90,7 +90,7 @@ export async function submitResultAction(
     throw e;
   }
 
+  revalidateTag(ALFAZY_CACHE_TAG, "max"); // refresh cached leaderboards with your new score
   revalidatePath("/games/alfazy");
-  revalidatePath("/games/alfazy/leaderboard");
   return { ...result, alreadyPlayed: false };
 }
