@@ -3,6 +3,7 @@ import {
   FeedListSkeleton,
   RailCardSkeleton,
 } from "@/components/shared/feed-skeletons"
+import { ProfileSidebarSkeleton } from "@/components/shared/ProfileSidebarView"
 
 export default function FeedLoading() {
   return (
@@ -11,7 +12,7 @@ export default function FeedLoading() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left rail */}
           <aside className="hidden lg:block w-[280px] flex-shrink-0">
-            <RailCardSkeleton lines={3} />
+            <ProfileSidebarSkeleton navRows={4} />
           </aside>
 
           {/* Feed column */}

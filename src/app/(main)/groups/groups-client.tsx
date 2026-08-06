@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { joinGroupAction, leaveGroupAction } from "./actions"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
 interface Group {
   id: string
@@ -101,7 +102,7 @@ export default function GroupsClient({
       </header>
 
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5">
-        <RailColumns sidebarViewer={sidebarViewer}>
+        <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.groups}>
         <div className="space-y-4">
         {/* Search */}
         <div className="relative">
