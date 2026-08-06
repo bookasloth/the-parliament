@@ -1,13 +1,21 @@
 import Link from "next/link";
-import { Type, Gamepad2, Trophy } from "lucide-react";
-import { LeftRailShell } from "@/components/shared/ProfileSidebar";
-import { SIDEBAR_NAV } from "@/config/sidebar-nav";
+import { Type, Gamepad2, Trophy, Flame } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { alfazyGameId } from "@/modules/games/leaderboard";
 
 export const metadata = { title: "Games · The Parliament" };
+export const dynamic = "force-dynamic";
 
-export default function GamesLandingPage() {
+function todayUtc(): Date {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+}
+
+export default async function GamesLandingPage() {
+  const gameId = await alfazyGameId();
+  const playedToday = await prisma.gameScore.count({ where: { gameId, puzzleDate: todayUtc() } });
+
   return (
-    <LeftRailShell nav={SIDEBAR_NAV.games}>
     <div className="space-y-6">
       <header>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Games</h1>
@@ -31,8 +39,15 @@ export default function GamesLandingPage() {
           <p className="mt-1 text-[13.5px] text-gray-600">
             A new 5-letter word every day. Six guesses. Daily, weekly, monthly &amp; yearly champions.
           </p>
-          <div className="mt-4 flex items-center gap-1.5 text-[13px] font-semibold text-brand">
-            <Trophy className="h-4 w-4" /> Play &amp; compete →
+          <div className="mt-4 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold text-brand">
+              <Trophy className="h-4 w-4" /> Play &amp; compete →
+            </span>
+            {playedToday > 0 && (
+              <span className="flex items-center gap-1 text-[12px] font-semibold text-gray-500">
+                <Flame className="h-3.5 w-3.5 text-orange-500" /> {playedToday} played today
+              </span>
+            )}
           </div>
         </Link>
 
@@ -49,6 +64,5 @@ export default function GamesLandingPage() {
         )}
       </div>
     </div>
-    </LeftRailShell>
   );
 }

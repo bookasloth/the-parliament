@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Crown, ArrowLeft } from "lucide-react";
+import { Crown, ArrowLeft, Medal } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/modules/auth/session";
 import { alfazyGameId, SCOPES, type Scope } from "@/modules/games/leaderboard";
+import { trophiesForUser } from "@/modules/games/champions";
 import { formatAnchor, PERIOD_LABEL, SCOPE_LABEL } from "@/modules/games/format";
 import type { Period } from "@/modules/games/periods";
 
@@ -18,6 +20,9 @@ export default async function ChampionsPage({
   const sp = await searchParams;
   const scopeFilter = SCOPES.includes(sp.scope as Scope) ? (sp.scope as Scope) : null;
   const winner = sp.winner ?? null;
+
+  const user = await requireUser();
+  const myTrophies = await trophiesForUser(user.id);
 
   const gameId = await alfazyGameId();
   const rows = await prisma.gameChampion.findMany({
@@ -57,6 +62,35 @@ export default async function ChampionsPage({
           <ArrowLeft className="h-4 w-4" /> Back to leaderboard
         </Link>
       </header>
+
+      {/* Your trophy case */}
+      {myTrophies.length > 0 && (
+        <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5">
+          <h2 className="flex items-center gap-2 font-heading text-[15px] font-bold text-amber-800">
+            <Medal className="h-4 w-4 text-amber-500" /> Your titles · {myTrophies.length}
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {myTrophies.slice(0, 12).map((t) => (
+              <span
+                key={`${t.scope}:${t.period}:${t.anchor}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-800 ring-1 ring-amber-200"
+                title={`${SCOPE_LABEL[t.scope]} champion`}
+              >
+                <Crown className="h-3.5 w-3.5 text-amber-500" />
+                {SCOPE_LABEL[t.scope]} · {formatAnchor(t.period, t.anchor)}
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                  {PERIOD_LABEL[t.period]}
+                </span>
+              </span>
+            ))}
+            {myTrophies.length > 12 && (
+              <span className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-500 ring-1 ring-gray-200">
+                +{myTrophies.length - 12} more
+              </span>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Scope filter chips */}
       <div className="flex flex-wrap gap-1.5">

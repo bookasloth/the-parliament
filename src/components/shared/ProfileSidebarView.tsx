@@ -29,15 +29,18 @@ export function compactNum(n: number): string {
 export function ProfileSidebarView({
   viewer,
   nav = DEFAULT_SIDEBAR_NAV,
+  stats,
 }: {
   viewer: SidebarViewer | null
   nav?: SidebarNav
+  /** Override the identity stat trio (e.g. games-oriented on /games). */
+  stats?: { label: string; value: number }[]
 }) {
   const name = viewer?.name ?? "Guest"
   const photo =
     viewer?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
   const profileHref = viewer?.username ? `/${viewer.username}` : "/profile/edit"
-  const stats = [
+  const statTrio = stats ?? [
     { label: "Post", value: viewer?.posts ?? 0 },
     { label: "Followers", value: viewer?.followers ?? 0 },
     { label: "Following", value: viewer?.following ?? 0 },
@@ -75,7 +78,7 @@ export function ProfileSidebarView({
 
             {/* Stats: Post · Followers · Following */}
             <div className="mt-3 flex items-stretch">
-              {stats.map((s, i) => (
+              {statTrio.map((s, i) => (
                 <div key={s.label} className={`flex-1 ${i > 0 ? "border-l border-gray-100" : ""}`}>
                   <h6 className="mb-0 text-sm font-semibold text-gray-900 tabular-nums">
                     {compactNum(s.value)}
