@@ -220,18 +220,6 @@ export default function ConversationView({
     return () => clearTimeout(t)
   }, [call.state])
 
-  // "Join" on an incoming call card. If the caller's offer already reached us
-  // (overlay is ringing) just accept it; otherwise announce ourselves so the
-  // caller re-offers and auto-answer that (same path as the global-ring accept).
-  const joinCall = useCallback(() => {
-    if (call.state === "ringing") {
-      call.accept()
-    } else if (call.state === "idle") {
-      call.armAutoAccept()
-      channelRef.current?.send({ type: "broadcast", event: "call_hello", payload: { from: viewerId } })
-    }
-  }, [call, viewerId])
-
   useEffect(() => {
     let cancelled = false
     let refreshTimer: ReturnType<typeof setTimeout>
@@ -608,7 +596,7 @@ export default function ConversationView({
                 <CallLogRow
                   key={msg.id} call={msg.call} mine={isMe}
                   createdAtMs={new Date(msg.createdAt).getTime()}
-                  time={formatTime(msg.createdAt)} onJoin={joinCall}
+                  time={formatTime(msg.createdAt)}
                 />
               )
             }
@@ -789,23 +777,24 @@ export default function ConversationView({
 
 // ── helpers ──────────────────────────────────────────────
 
-/** Centered system-message card for a call: "Calling…" / "Video call · 3:12" /
- *  "Missed call", with a Join button while an incoming call is still ringing. */
+/** Centered system-message card logging a call: "Calling…" / "Incoming call" /
+ *  "Video call · 3:12" / "Missed call". Log only — a live incoming call is
+ *  answered via the fullscreen ring overlay (in-thread) or the navbar ring
+ *  popup (elsewhere), both of which require a caller that's actually live. A
+ *  card button can't know that, so there isn't one. */
 function CallLogRow({
-  call, mine, createdAtMs, time, onJoin,
+  call, mine, createdAtMs, time,
 }: {
   call: CallData
   mine: boolean
   createdAtMs: number
   time: string
-  onJoin: () => void
 }) {
   // A stale ringing card reads as missed (see callDisplayStatus) so an orphaned
-  // "Calling…" doesn't hang forever and Join can't fire into a dead call.
+  // "Calling…" doesn't hang forever.
   const status = callDisplayStatus(call, createdAtMs, Date.now())
   const missedToMe = status === "missed" && !mine
   const Icon = status === "missed" ? PhoneMissed : call.audioOnly ? PhoneCall : Video
-  const canJoin = status === "ringing" && !mine
   return (
     <div className="my-2 flex justify-center">
       <div
@@ -816,14 +805,6 @@ function CallLogRow({
         <Icon className="h-3.5 w-3.5 flex-shrink-0" />
         <span className="font-medium">{callLabel({ ...call, status }, mine)}</span>
         <span className="text-[10px] text-gray-400">{time}</span>
-        {canJoin && (
-          <button
-            onClick={onJoin}
-            className="ml-1 rounded-full bg-green-500 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-green-600"
-          >
-            Join
-          </button>
-        )}
       </div>
     </div>
   )
