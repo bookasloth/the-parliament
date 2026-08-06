@@ -33,7 +33,12 @@ export function conversationTopic(conversationId: string): string {
   return `conversation:${conversationId}`
 }
 
-async function postBroadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
+/** Per-user private channel — used for the realtime notification bell. */
+export function userTopic(userId: string): string {
+  return `user:${userId}`
+}
+
+async function postToTopic(topic: string, event: string, payload: unknown): Promise<void> {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return
@@ -42,7 +47,7 @@ async function postBroadcast(conversationId: string, event: string, payload: unk
       method: "POST",
       headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        messages: [{ topic: conversationTopic(conversationId), event, payload, private: true }],
+        messages: [{ topic, event, payload, private: true }],
       }),
     })
   } catch {
@@ -61,9 +66,21 @@ async function postBroadcast(conversationId: string, event: string, payload: unk
  */
 export async function broadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
   try {
-    after(() => postBroadcast(conversationId, event, payload))
+    after(() => postToTopic(conversationTopic(conversationId), event, payload))
   } catch {
     // outside a request scope (scripts, tests) — just send inline
-    await postBroadcast(conversationId, event, payload)
+    await postToTopic(conversationTopic(conversationId), event, payload)
+  }
+}
+
+/**
+ * Push an event to a user's private channel — used to nudge the notification
+ * bell to refetch. Same best-effort/after() semantics as broadcast().
+ */
+export async function broadcastToUser(userId: string, event: string, payload: unknown): Promise<void> {
+  try {
+    after(() => postToTopic(userTopic(userId), event, payload))
+  } catch {
+    await postToTopic(userTopic(userId), event, payload)
   }
 }
