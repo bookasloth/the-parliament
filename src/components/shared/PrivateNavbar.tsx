@@ -1,8 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
+import type { RealtimeChannel } from "@supabase/supabase-js"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
+import { realtimeTokenAction } from "@/app/(main)/messages/actions"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
@@ -206,28 +209,46 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
 
-  useEffect(() => {
-    let active = true
-    const load = async () => {
-      try {
-        const r = await fetch("/api/notifications/summary")
-        if (!r.ok) return
-        const d = await r.json()
-        if (active) {
-          setNotifCount(d.count ?? 0)
-          setNotifItems(d.items ?? [])
-        }
-      } catch {
-        /* ignore — retried next tick */
-      }
-    }
-    load()
-    const id = setInterval(load, 60_000)
-    return () => {
-      active = false
-      clearInterval(id)
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/notifications/summary")
+      if (!r.ok) return
+      const d = await r.json()
+      setNotifCount(d.count ?? 0)
+      setNotifItems(d.items ?? [])
+    } catch {
+      /* ignore — retried next tick */
     }
   }, [])
+
+  // Initial load + a slow safety-net poll (5 min). Instant updates come from the
+  // realtime subscription below; this only backstops a dropped channel.
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 5 * 60_000)
+    return () => clearInterval(id)
+  }, [load])
+
+  // Realtime bell: subscribe to this user's private channel and refetch the
+  // summary the moment a notification is broadcast — no 60s lag. Reuses the
+  // messaging realtime infra (token → setAuth → private user:{id} channel).
+  useEffect(() => {
+    const supabase = getSupabaseBrowser()
+    let cancelled = false
+    let channel: RealtimeChannel | null = null
+    ;(async () => {
+      const auth = await realtimeTokenAction()
+      if (!auth || cancelled) return
+      await supabase.realtime.setAuth(auth.token)
+      channel = supabase.channel(`user:${auth.userId}`, { config: { private: true } })
+      channel.on("broadcast", { event: "notification" }, () => load())
+      channel.subscribe()
+    })()
+    return () => {
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [load])
 
   function markOne(id: string, wasRead: boolean) {
     if (wasRead) return
