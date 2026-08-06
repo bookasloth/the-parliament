@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
@@ -12,7 +13,7 @@ import { audit } from "@/lib/audit";
 // the login-timing user-enumeration channel.
 const DUMMY_HASH = bcrypt.hashSync("no-such-user-placeholder", 12);
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   // Required when running behind a reverse proxy / managed host (Railway, a VPS
   // with Caddy/Nginx, etc.) — Auth.js otherwise rejects the forwarded host.
@@ -119,3 +120,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+// Request-scoped dedupe. Auth.js v5 runs the jwt callback (a prisma.user
+// .findUnique) on EVERY auth() call, and the layout+page+API each call it, so a
+// single page render fired 3-5 identical user lookups. React cache() collapses
+// repeat auth() calls within one request/render to one execution. Request-scoped
+// — no cross-request leak, correctness unchanged. All call sites use bare auth().
+export const auth = cache(baseAuth);
