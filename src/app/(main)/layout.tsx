@@ -33,7 +33,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       <PrivateNavbar viewer={viewer} />
       {/* Reserve space for the mobile tab bar (incl. safe-area) so fixed bottom
           nav never covers page content. Desktop has no bottom bar. */}
-      <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+      {/* overflow-x-clip: kill any stray wide child (the black right-edge bar) without
+          creating a scroll container — position:sticky in page rails still works. */}
+      <div className="overflow-x-clip pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
         {children}
       </div>
       <MobileTabBar />

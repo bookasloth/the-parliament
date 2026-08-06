@@ -164,14 +164,14 @@ export function CommunityClient({
           <h1 className="font-heading text-xl font-bold text-gray-900 sm:text-2xl">Community</h1>
           <p className="text-xs text-gray-500 sm:text-sm">Search and filter the alumni network.</p>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded border border-gray-200 bg-white px-4 py-2 sm:justify-start sm:gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded border border-gray-200 bg-white px-4 py-2 sm:justify-start">
           {[
             { label: "Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
             { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <VerifiedTick size={16} /> },
             { label: "Batches", value: `${stats.batches}`, icon: <GraduationCap className="h-4 w-4 text-amber-500" /> },
             { label: "Industries", value: `${stats.industries}`, icon: <Briefcase className="h-4 w-4 text-emerald-500" /> },
           ].map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5 sm:gap-2">
+            <div key={i} className={`flex items-center gap-1.5 sm:gap-2 ${i > 0 ? "sm:border-l sm:border-gray-100 sm:pl-4" : ""}`}>
               {s.icon}
               <div className="leading-none">
                 <span className="text-base font-bold text-gray-900 tabular-nums">{s.value}</span>
@@ -183,9 +183,9 @@ export function CommunityClient({
         </div>
       </div>
 
-      {/* Search + 4 filters — inline on desktop, search over a 2×2 filter grid on mobile. */}
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:w-1/2">
+      {/* Search over an even filter row: 2 cols mobile, 3 tablet, all 5 in one row from lg. */}
+      <div className="space-y-2">
+        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             value={q}
@@ -194,25 +194,25 @@ export function CommunityClient({
             className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
           />
         </form>
-        {/* Filters: 2-col on mobile, wrap on desktop. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:w-1/2 lg:flex-wrap lg:items-center">
-          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+        {/* 5 filters, equal columns — grid-cols-5 on lg fills the row with no ragged gap. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <select className={`${sel} w-full min-w-0`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
             <option value="">All batches</option>
             {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
             <option value="">All houses</option>
             {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+          <select className={`${sel} w-full min-w-0`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
             <option value="">All tiers</option>
             {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
+          <select className={`${sel} w-full min-w-0`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
             <option value="">All industries</option>
             {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
           </select>
-          <select className={`${sel} w-full min-w-0 lg:flex-1 lg:basis-[30%]`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
+          <select className={`${sel} w-full min-w-0`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
             <option value="">All locations</option>
             {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
