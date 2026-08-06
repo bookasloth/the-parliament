@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { computeIsAdmin } from "@/modules/auth/admin";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
+import { shouldRefreshToken } from "@/lib/session-refresh";
 
 // Precomputed once at module load. Compared against for unknown emails so an
 // existing account and a nonexistent one take the same ~bcrypt time — closes
@@ -66,41 +67,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token }) {
-      if (token.sub) {
-        try {
-          const user = await prisma.user.findUnique({
-            where: { id: token.sub },
-            select: {
-              email: true,
-              legalName: true,
-              displayName: true,
-              onboardingStep: true,
-              onboardingCompleted: true,
-              membershipStatus: true,
-              username: true,
-              isSuperAdmin: true,
-              userRoles: { select: { role: true } },
-            },
+    async jwt({ token, trigger }) {
+      if (!token.sub) return token;
+      // The JWT strategy is meant to be DB-free, but this callback used to run a
+      // prisma.user.findUnique on EVERY request. Gate it: sign-in / explicit
+      // session.update() always refresh; a fresh token missing its enriched
+      // fields refreshes; otherwise reuse the token until it's older than the
+      // TTL. Steady-state navigation now makes NO user query. Role/membership
+      // changes propagate within REFRESH_TTL_SEC (60s) — the membership
+      // activation flow doesn't call session.update(), so keep this short so a
+      // paid upgrade shows in the navbar within a minute.
+      const now = Math.floor(Date.now() / 1000);
+      const mustRefresh = shouldRefreshToken({
+        trigger,
+        membershipStatus: token.membershipStatus,
+        onboardingCompleted: token.onboardingCompleted,
+        refreshedAt: token.refreshedAt,
+        now,
+      });
+      if (!mustRefresh) return token;
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: {
+            email: true,
+            legalName: true,
+            displayName: true,
+            onboardingStep: true,
+            onboardingCompleted: true,
+            membershipStatus: true,
+            username: true,
+            isSuperAdmin: true,
+            userRoles: { select: { role: true } },
+          },
+        });
+        if (user) {
+          token.name = user.displayName || user.legalName;
+          token.onboardingStep = user.onboardingStep;
+          token.onboardingCompleted = user.onboardingCompleted;
+          token.membershipStatus = user.membershipStatus;
+          token.username = user.username ?? undefined;
+          token.roles = user.userRoles.map((r) => r.role);
+          token.isAdmin = computeIsAdmin({
+            email: user.email,
+            isSuperAdmin: user.isSuperAdmin,
+            roles: token.roles,
           });
-          if (user) {
-            token.name = user.displayName || user.legalName;
-            token.onboardingStep = user.onboardingStep;
-            token.onboardingCompleted = user.onboardingCompleted;
-            token.membershipStatus = user.membershipStatus;
-            token.username = user.username ?? undefined;
-            token.roles = user.userRoles.map((r) => r.role);
-            token.isAdmin = computeIsAdmin({
-              email: user.email,
-              isSuperAdmin: user.isSuperAdmin,
-              roles: token.roles,
-            });
-          }
-        } catch (err) {
-          // A transient DB blip must NOT drop the session — throwing here logs
-          // the user out. Keep the existing token; it refreshes next request.
-          console.error("jwt callback: user refresh failed, keeping token", err);
+          token.refreshedAt = now;
         }
+      } catch (err) {
+        // A transient DB blip must NOT drop the session — throwing here logs
+        // the user out. Keep the existing token; it refreshes next request.
+        console.error("jwt callback: user refresh failed, keeping token", err);
       }
       return token;
     },

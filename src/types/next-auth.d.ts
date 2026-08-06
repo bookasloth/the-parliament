@@ -26,5 +26,7 @@ declare module "next-auth/jwt" {
     membershipStatus?: string
     isAdmin?: boolean
     roles?: string[]
+    /** Unix seconds of the last DB refresh — gates how often the jwt callback re-queries the user. */
+    refreshedAt?: number
   }
 }
