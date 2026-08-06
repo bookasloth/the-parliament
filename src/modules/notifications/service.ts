@@ -1,5 +1,11 @@
+import { after } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, type EmailTemplates } from "@/lib/email"
+
+// A burst of the same kind on the same entity (e.g. many reactions on one post)
+// coalesces into a single unread row within this window instead of spamming the
+// bell — the row bubbles back to the top and its email is suppressed.
+const COALESCE_WINDOW_MS = 6 * 60 * 60 * 1000
 
 export type NotificationKind =
   | "verification_approved"
@@ -45,34 +51,69 @@ export interface NotificationInput<K extends NotificationKind> {
 export async function sendNotification<K extends NotificationKind>(
   input: NotificationInput<K>,
 ): Promise<void> {
-  await prisma.notification.create({
-    data: {
-      userId: input.userId,
-      type: input.kind,
-      title: input.title,
-      body: input.body,
-      entityType: input.entityType,
-      entityId: input.entityId,
-      imageUrl: input.imageUrl,
-    },
-  })
+  // Coalesce: if an unread notification of the same kind for the same entity is
+  // still fresh, refresh it (bubble to top) instead of adding another row.
+  let coalesced = false
+  if (input.entityType && input.entityId) {
+    const recent = await prisma.notification.findFirst({
+      where: {
+        userId: input.userId,
+        type: input.kind,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        isRead: false,
+        createdAt: { gt: new Date(Date.now() - COALESCE_WINDOW_MS) },
+      },
+      select: { id: true },
+    })
+    if (recent) {
+      await prisma.notification.update({
+        where: { id: recent.id },
+        data: { title: input.title, body: input.body, imageUrl: input.imageUrl, createdAt: new Date() },
+      })
+      coalesced = true
+    }
+  }
 
-  const wantEmail = input.sendEmail ?? true
-  if (!wantEmail) return
+  if (!coalesced) {
+    await prisma.notification.create({
+      data: {
+        userId: input.userId,
+        type: input.kind,
+        title: input.title,
+        body: input.body,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        imageUrl: input.imageUrl,
+      },
+    })
+  }
 
+  // Email is best-effort and must not add latency to the triggering action
+  // (follow/comment/reaction). Defer it past the response with after(); suppress
+  // it on a coalesced burst so one post's reaction storm doesn't email N times.
+  const wantEmail = (input.sendEmail ?? true) && !coalesced
   const tpl = EMAIL_FOR_KIND[input.kind]
-  if (!tpl || !input.email) return
+  if (!wantEmail || !tpl || !input.email) return
 
-  const user = await prisma.user.findUnique({
-    where: { id: input.userId },
-    select: { email: true },
-  })
-  if (!user?.email) return
-
+  const deliver = async () => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true },
+      })
+      if (!user?.email) return
+      await sendEmail(tpl, user.email, input.email as never, input.userId)
+    } catch (e) {
+      console.error("Notification email failed:", e)
+    }
+  }
+  // Defer past the response in a request scope; fall back to fire-and-forget for
+  // any non-request caller (cron) where after() isn't available.
   try {
-    await sendEmail(tpl, user.email, input.email as never, input.userId)
-  } catch (e) {
-    console.error("Notification email failed:", e)
+    after(deliver)
+  } catch {
+    void deliver()
   }
 }
 
