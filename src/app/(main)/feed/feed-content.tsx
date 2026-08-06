@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { memo, useCallback, useEffect, useRef, useState, useTransition, type Dispatch, type SetStateAction } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronRight, Sparkles } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
@@ -56,14 +56,6 @@ const connections: Connection[] = [
   { name: "Carolyn Ortiz", role: "News Anchor · Pune", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face" },
 ]
 
-const newsItems = [
-  { title: "Alumni Reunion 2026 — Save the Date: October 15th", time: "2h" },
-  { title: "Featured Alumni: Dr. Amit Verma's Journey in Medicine", time: "3h" },
-  { title: "Exclusive Job Postings for Alumni — View Openings", time: "4h" },
-  { title: "Mentorship Program: Help Current Students as an Alumni Mentor", time: "6h" },
-  { title: "Campus Updates: See What's New at Your Alma Mater", time: "1d" },
-]
-
 // --- Left Sidebar ---
 export type ViewerCard = {
   name: string
@@ -78,6 +70,74 @@ export type ViewerCard = {
   followers: number
   following: number
 }
+
+// One feed post, memoized so a parent re-render (new-post poll tick, load-more
+// append, egg toggle) doesn't re-render every visible card — only rows whose
+// `post` object identity actually changed. All callbacks live here, closing over
+// the stable `post` and `setRemovedIds`, so they never leak instability upward.
+// (Unchanged posts keep their object identity across localPosts updates, which
+// are init/reset or append-only — so the shallow prop compare holds.)
+const FeedRow = memo(function FeedRow({
+  post,
+  isAuthor,
+  setRemovedIds,
+}: {
+  post: FeedPost
+  isAuthor: boolean
+  setRemovedIds: Dispatch<SetStateAction<Set<string>>>
+}) {
+  const optimisticRemove = () => setRemovedIds((s) => new Set(s).add(post.id))
+  const restore = () =>
+    setRemovedIds((s) => {
+      const next = new Set(s)
+      next.delete(post.id)
+      return next
+    })
+  return (
+    <div data-post-id={post.id}>
+      <FeedCard
+        post={post}
+        isAuthor={isAuthor}
+        initialSaved={post.savedByViewer}
+        commentsLoader={loadPostCommentsAction}
+        onUpvote={() => void reactToPost(post.id, "upvote")}
+        onDownvote={() => void reactToPost(post.id, "downvote")}
+        onComment={(body) => void commentOnPost(post.id, body)}
+        onShare={() => sharePostAction(post.id)}
+        onSave={() => toggleSavePostAction(post.id)}
+        onAward={(key) => awardPostAction(post.id, key as never)}
+        onPollVote={
+          post.poll?.id ? (optionId) => votePollAction(post.id, post.poll!.id!, optionId) : undefined
+        }
+        onDelete={
+          isAuthor
+            ? () => {
+                optimisticRemove()
+                void deletePostAction(post.id).catch(restore)
+              }
+            : undefined
+        }
+        onReport={
+          !isAuthor
+            ? (reason) => {
+                // Hide immediately for the reporter — small dopamine hit.
+                optimisticRemove()
+                void reportPostAction(post.id, reason).catch(restore)
+              }
+            : undefined
+        }
+        onHide={
+          !isAuthor
+            ? () => {
+                optimisticRemove()
+                void hidePostAction(post.id).catch(restore)
+              }
+            : undefined
+        }
+      />
+    </div>
+  )
+})
 
 // --- FeedContent ---
 export function FeedContent({
@@ -333,73 +393,8 @@ export function FeedContent({
                 return <FeedCard key={post.id} post={post} />
               }
 
-              function optimisticRemove() {
-                setRemovedIds((s) => new Set(s).add(post.id))
-              }
-
               return (
-                <div key={post.id} data-post-id={post.id}>
-                <FeedCard
-                  post={post}
-                  isAuthor={isAuthor}
-                  initialSaved={post.savedByViewer}
-                  commentsLoader={loadPostCommentsAction}
-                  onUpvote={() => void reactToPost(post.id, "upvote")}
-                  onDownvote={() => void reactToPost(post.id, "downvote")}
-                  onComment={(body) => void commentOnPost(post.id, body)}
-                  onShare={() => sharePostAction(post.id)}
-                  onSave={() => toggleSavePostAction(post.id)}
-                  onAward={(key) => awardPostAction(post.id, key as never)}
-                  onPollVote={
-                    post.poll?.id
-                      ? (optionId) => votePollAction(post.id, post.poll!.id!, optionId)
-                      : undefined
-                  }
-                  onDelete={
-                    isAuthor
-                      ? () => {
-                          optimisticRemove()
-                          void deletePostAction(post.id).catch(() =>
-                            setRemovedIds((s) => {
-                              const next = new Set(s)
-                              next.delete(post.id)
-                              return next
-                            }),
-                          )
-                        }
-                      : undefined
-                  }
-                  onReport={
-                    !isAuthor
-                      ? (reason) => {
-                          // Hide immediately for the reporter — small dopamine hit.
-                          optimisticRemove()
-                          void reportPostAction(post.id, reason).catch(() =>
-                            setRemovedIds((s) => {
-                              const next = new Set(s)
-                              next.delete(post.id)
-                              return next
-                            }),
-                          )
-                        }
-                      : undefined
-                  }
-                  onHide={
-                    !isAuthor
-                      ? () => {
-                          optimisticRemove()
-                          void hidePostAction(post.id).catch(() =>
-                            setRemovedIds((s) => {
-                              const next = new Set(s)
-                              next.delete(post.id)
-                              return next
-                            }),
-                          )
-                        }
-                      : undefined
-                  }
-                />
-                </div>
+                <FeedRow key={post.id} post={post} isAuthor={isAuthor} setRemovedIds={setRemovedIds} />
               )
             })}
 
