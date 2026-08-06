@@ -16,6 +16,7 @@ export type EmailTemplates = {
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
   new_follower: { fromName: string; profileUrl: string }
+  new_message: { fromName: string; messagesUrl: string }
   comment_on_post: { fromName: string; postUrl: string }
   reaction_on_post: { fromName: string; postUrl: string }
   mention: { fromName: string; postUrl: string }
@@ -157,6 +158,23 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         heading: `<em>${d.fromName}</em> started following you`,
         body: p(`${d.fromName} just followed you on NNAWCA. Take a look at their profile and follow back if you'd like.`) + button("View their profile", d.profileUrl, "blue"),
         reason: "You're getting this because you allow network emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  new_message: {
+    // Deliberately shows only WHO messaged — never the message content — so the
+    // reader has to come back to the site to read it (LinkedIn/Instagram style).
+    subject: (d) => `${d.fromName} sent you a message`,
+    text: (d) => `${d.fromName} sent you a message on NNAWCA.\n\nRead & reply: ${d.messagesUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Messages",
+        eyebrow: "Messages · New message",
+        heading: `<em>${d.fromName}</em> sent you a message`,
+        body: p(`${d.fromName} sent you a message on NNAWCA. Open your inbox to read it and reply.`) + button("Read message", d.messagesUrl, "blue"),
+        reason: "You're getting this because someone sent you a direct message.",
         manageUrl: MANAGE_URL,
         unsubscribeUrl: MANAGE_URL,
       }),
@@ -395,6 +413,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   verification_approved: "transactional",
   verification_rejected: "transactional",
   new_follower: "engagement",
+  new_message: "engagement",
   comment_on_post: "engagement",
   reaction_on_post: "engagement",
   mention: "engagement",

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { broadcast } from "@/lib/supabase-realtime"
-import { sendNotification } from "@/modules/notifications/service"
+import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
 
@@ -256,39 +256,53 @@ export async function sendMessage(
     reactions: [], replyTo: replyStub,
   }
   await broadcast(conversationId, "new_message", view)
-  void notifyRecipients(conversationId, viewerId, body, media.length > 0)
+  // No notification-bell row for DMs — messages surface in the messages inbox
+  // (its own unread badge + realtime sidebar). Instead, a LinkedIn/Instagram-
+  // style "you have a message" email brings the recipient back to the site.
+  void emailNewMessage(conversationId, viewerId)
   return view
 }
 
-/** Fire-and-forget: notify the other (un-muted) participants of a new DM. */
-async function notifyRecipients(conversationId: string, senderId: string, body: string, hasMedia: boolean) {
+/**
+ * LinkedIn/Instagram-style DM email — shows only WHO messaged (no content), so
+ * the recipient must return to the site to read it. Throttled to the FIRST
+ * unread message of a streak (one email per "you have unread messages", not per
+ * message): if the recipient already had unread messages here, we've already
+ * emailed them, so we skip. Best-effort; never blocks the send.
+ */
+async function emailNewMessage(conversationId: string, senderId: string) {
   try {
     const [sender, participants] = await Promise.all([
-      prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } }),
+      prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true, legalName: true } }),
       prisma.conversationParticipant.findMany({
         where: { conversationId, userId: { not: senderId }, muted: false },
-        select: { userId: true },
+        select: { userId: true, lastReadAt: true, user: { select: { email: true } } },
       }),
     ])
-    if (!sender || participants.length === 0) return
-    const name = sender.displayName || sender.legalName
-    const preview = body ? (body.length > 120 ? `${body.slice(0, 120)}…` : body) : hasMedia ? "📷 Photo" : ""
+    if (!sender) return
+    const fromName = sender.displayName || sender.legalName
+    const base = process.env.AUTH_URL || "https://nnawca.org"
+    const messagesUrl = `${base}/messages/${conversationId}`
     await Promise.all(
-      participants.map((p) =>
-        sendNotification({
-          userId: p.userId,
-          kind: "new_message",
-          title: `New message from ${name}`,
-          body: preview,
-          entityType: "conversation",
-          entityId: conversationId,
-          imageUrl: sender.profile?.photoUrl ?? undefined,
-          sendEmail: false,
-        }),
-      ),
+      participants.map(async (p) => {
+        if (!p.user.email) return
+        // Count this recipient's unread messages (incl. the one just sent). If
+        // it's exactly 1, this is the first unread → email. More than 1 means
+        // they were already unread (already emailed) → stay quiet.
+        const unread = await prisma.message.count({
+          where: {
+            conversationId,
+            senderId: { not: p.userId },
+            deletedAt: null,
+            ...(p.lastReadAt ? { createdAt: { gt: p.lastReadAt } } : {}),
+          },
+        })
+        if (unread > 1) return
+        await sendEmail("new_message", p.user.email, { fromName, messagesUrl }, p.userId)
+      }),
     )
   } catch (e) {
-    console.error("DM notification failed:", e)
+    console.error("new message email failed:", e)
   }
 }
 

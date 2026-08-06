@@ -2,27 +2,25 @@ import { NextRequest } from "next/server"
 import { handleError, ok } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
 import { unreadCount, listNotifications, markAllRead, markRead } from "@/modules/notifications/service"
-
-function hrefFor(entityType: string | null, entityId: string | null): string {
-  if (entityType === "post" && entityId) return `/feed/${entityId}`
-  return "/notifications"
-}
+import { resolveNotifLinks } from "@/modules/notifications/links"
 
 // GET → unread count + recent notifications for the navbar bell.
 export async function GET() {
   try {
     const user = await requireUser()
     const [count, rows] = await Promise.all([unreadCount(user.id), listNotifications(user.id, 8)])
+    const links = await resolveNotifLinks(rows)
     return ok({
       count,
-      items: rows.map((n) => ({
+      items: rows.map((n, i) => ({
         id: n.id,
         title: n.title,
         body: n.body,
         imageUrl: n.imageUrl,
         isRead: n.isRead,
         createdAt: n.createdAt.toISOString(),
-        href: hrefFor(n.entityType, n.entityId),
+        href: links[i].href,
+        ctas: links[i].ctas,
       })),
     })
   } catch (e) {

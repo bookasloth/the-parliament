@@ -201,6 +201,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
     isRead: boolean
     createdAt: string
     href: string
+    ctas?: { label: string; href: string; primary?: boolean }[]
   }
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
@@ -377,18 +378,38 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                   ) : (
                     notifItems.map(n => (
                       <li key={n.id}>
-                        <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className={`flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-gray-50 ${n.isRead ? "" : "bg-brand-50/40"}`}>
-                          {n.imageUrl ? (
-                            <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
+                        <div className={`rounded-lg p-2.5 transition-colors ${n.isRead ? "" : "bg-brand-50/40"}`}>
+                          <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className="flex items-start gap-3 rounded-md hover:opacity-90">
+                            {n.imageUrl ? (
+                              <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-800 leading-snug">{n.title}</p>
+                              {n.body && <p className="text-[11px] text-gray-500 leading-snug line-clamp-2">{n.body}</p>}
+                            </div>
+                            <span className="text-[10px] text-gray-400 flex-shrink-0">{notifTime(n.createdAt)}</span>
+                          </a>
+                          {n.ctas && n.ctas.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5 pl-12">
+                              {n.ctas.map((c) => (
+                                <a
+                                  key={c.label + c.href}
+                                  href={c.href}
+                                  onClick={() => markOne(n.id, n.isRead)}
+                                  className={
+                                    c.primary
+                                      ? "rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-600"
+                                      : "rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
+                                  }
+                                >
+                                  {c.label}
+                                </a>
+                              ))}
+                            </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-800 leading-snug">{n.title}</p>
-                            {n.body && <p className="text-[11px] text-gray-500 leading-snug line-clamp-2">{n.body}</p>}
-                          </div>
-                          <span className="text-[10px] text-gray-400 flex-shrink-0">{notifTime(n.createdAt)}</span>
-                        </a>
+                        </div>
                       </li>
                     ))
                   )}
