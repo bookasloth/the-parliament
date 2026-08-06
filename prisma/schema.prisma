@@ -2049,3 +2049,17 @@ enum EmailStatus {
   bounced
   delivered
 }
+
+// Web Push subscriptions (browser Push API). Plain userId (no FK relation — same
+// app-layer-join style as Reaction/ContentReport). One row per browser/device.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { broadcast, broadcastToUser } from "@/lib/supabase-realtime"
+import { sendPush } from "@/lib/web-push"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
@@ -429,12 +430,21 @@ export async function ringCall(
     select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
   })
   if (!caller) return
+  const name = caller.displayName || caller.legalName
   await broadcastToUser(otherId, "call_ring", {
     conversationId,
     callerId,
-    callerName: caller.displayName || caller.legalName,
+    callerName: name,
     callerAvatar: caller.profile?.photoUrl ?? null,
     audioOnly,
+  })
+  // Also push to the device so a closed-tab / locked-phone callee still gets it.
+  void sendPush(otherId, {
+    title: `${name} is calling…`,
+    body: audioOnly ? "Incoming audio call" : "Incoming video call",
+    url: `/messages/${conversationId}?call=${callerId}`,
+    icon: caller.profile?.photoUrl ?? undefined,
+    tag: `call:${conversationId}`,
   })
 }
 

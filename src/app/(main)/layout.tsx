@@ -1,5 +1,6 @@
 import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNavbar"
 import { MobileTabBar } from "@/components/shared/MobileTabBar"
+import { PushRegistrar } from "@/components/shared/PushRegistrar"
 import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
@@ -30,6 +31,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   }
   return (
     <FollowStoreProvider>
+      {session?.id && <PushRegistrar />}
       <PrivateNavbar viewer={viewer} />
       {/* Reserve space for the mobile tab bar (incl. safe-area) so fixed bottom
           nav never covers page content. Desktop has no bottom bar. */}

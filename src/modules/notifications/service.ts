@@ -2,6 +2,13 @@ import { after } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, type EmailTemplates } from "@/lib/email"
 import { broadcastToUser } from "@/lib/supabase-realtime"
+import { sendPush } from "@/lib/web-push"
+
+export function pushUrlFor(entityType?: string, entityId?: string): string {
+  if (entityType === "post" && entityId) return `/feed/${entityId}`
+  if (entityType === "conversation" && entityId) return `/messages/${entityId}`
+  return "/notifications"
+}
 
 // A burst of the same kind on the same entity (e.g. many reactions on one post)
 // coalesces into a single unread row within this window instead of spamming the
@@ -93,6 +100,18 @@ export async function sendNotification<K extends NotificationKind>(
   // Nudge the recipient's notification bell to refetch instantly (realtime),
   // instead of waiting out its poll. Best-effort; the poll is the fallback.
   void broadcastToUser(input.userId, "notification", { at: Date.now() })
+
+  // Web push to the device (works when the tab is closed). Skip on a coalesced
+  // burst so one post's reaction storm doesn't buzz the phone repeatedly.
+  if (!coalesced) {
+    void sendPush(input.userId, {
+      title: input.title,
+      body: input.body,
+      url: pushUrlFor(input.entityType, input.entityId),
+      icon: input.imageUrl,
+      tag: input.entityType && input.entityId ? `${input.entityType}:${input.entityId}` : undefined,
+    })
+  }
 
   // Email is best-effort and must not add latency to the triggering action
   // (follow/comment/reaction). Defer it past the response with after(); suppress
