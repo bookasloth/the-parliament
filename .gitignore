@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Playwright auth state
 /e2e/.auth/
+
+# Local MCP server config (per-developer)
+.mcp.json
