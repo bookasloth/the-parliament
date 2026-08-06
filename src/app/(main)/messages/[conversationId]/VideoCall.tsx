@@ -54,6 +54,10 @@ export interface VideoCallApi {
   remoteStream: MediaStream | null
   /** Called by ConversationView from the shared channel's broadcast handlers. */
   onSignal: (event: CallSignal, payload: unknown) => void
+  /** Callee just joined the thread — caller re-sends its offer. */
+  peerJoined: () => void
+  /** Next incoming offer auto-answers (callee accepted from the global ring). */
+  armAutoAccept: () => void
 }
 
 export function useVideoCall(opts: {
@@ -74,6 +78,8 @@ export function useVideoCall(opts: {
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
   const remoteReadyRef = useRef(false)
+  const lastOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
+  const autoAcceptRef = useRef(false)
 
   const sig = useCallback(
     (event: CallSignal, payload: Record<string, unknown> = {}) => {
@@ -154,6 +160,7 @@ export function useVideoCall(opts: {
         const pc = await buildPeer(video)
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
+        lastOfferRef.current = offer
         sig("call_offer", { sdp: offer, audioOnly: !video })
       } catch (e) {
         alert("Could not access camera/microphone.")
@@ -164,26 +171,48 @@ export function useVideoCall(opts: {
     [state, buildPeer, sig, end],
   )
 
-  const accept = useCallback(async () => {
+  // Answer a stored offer. `ao` (audio-only) comes straight from the offer so we
+  // never depend on state that may not have flushed yet (auto-accept path).
+  const doAnswer = useCallback(
+    async (offer: RTCSessionDescriptionInit, ao: boolean) => {
+      try {
+        const wantVideo = !ao
+        setCamOn(wantVideo)
+        const pc = await buildPeer(wantVideo)
+        await pc.setRemoteDescription(offer)
+        remoteReadyRef.current = true
+        await flushIce()
+        const answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        sig("call_answer", { sdp: answer })
+        setState("connected")
+      } catch (e) {
+        alert("Could not access camera/microphone.")
+        console.error(e)
+        end()
+      }
+    },
+    [buildPeer, flushIce, sig, end],
+  )
+
+  const accept = useCallback(() => {
     const offer = pendingOfferRef.current
-    if (!offer) return
-    try {
-      const wantVideo = !audioOnly
-      setCamOn(wantVideo)
-      const pc = await buildPeer(wantVideo)
-      await pc.setRemoteDescription(offer)
-      remoteReadyRef.current = true
-      await flushIce()
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
-      sig("call_answer", { sdp: answer })
-      setState("connected")
-    } catch (e) {
-      alert("Could not access camera/microphone.")
-      console.error(e)
-      end()
+    if (offer) doAnswer(offer, audioOnly)
+  }, [doAnswer, audioOnly])
+
+  // Callee announces it has landed in the chat (via the global-ring flow); the
+  // caller re-sends its offer so a late joiner doesn't miss it.
+  const peerJoined = useCallback(() => {
+    if (state === "calling" && lastOfferRef.current) {
+      sig("call_offer", { sdp: lastOfferRef.current, audioOnly })
     }
-  }, [audioOnly, buildPeer, flushIce, sig, end])
+  }, [state, audioOnly, sig])
+
+  // Arm auto-accept: the next incoming offer answers itself (callee already said
+  // "accept" on the global ring, we just navigated them into the thread).
+  const armAutoAccept = useCallback(() => {
+    autoAcceptRef.current = true
+  }, [])
 
   const onSignal = useCallback(
     (event: CallSignal, payload: unknown) => {
@@ -199,7 +228,13 @@ export function useVideoCall(opts: {
         pendingOfferRef.current = p.sdp ?? null
         setIsCaller(false)
         setAudioOnly(!!p.audioOnly)
-        setState("ringing")
+        // Came in through the global ring (already accepted) → answer immediately.
+        if (autoAcceptRef.current && p.sdp) {
+          autoAcceptRef.current = false
+          doAnswer(p.sdp, !!p.audioOnly)
+        } else {
+          setState("ringing")
+        }
       } else if (event === "call_answer") {
         if (pcRef.current && p.sdp) {
           pcRef.current.setRemoteDescription(p.sdp).then(() => {
@@ -219,7 +254,7 @@ export function useVideoCall(opts: {
         cleanup()
       }
     },
-    [viewerId, state, channelRef, flushIce, cleanup],
+    [viewerId, state, channelRef, flushIce, cleanup, doAnswer],
   )
 
   const toggleMic = useCallback(() => {
@@ -242,7 +277,7 @@ export function useVideoCall(opts: {
   return {
     state, isCaller, audioOnly, micOn, camOn,
     start, accept, end, toggleMic, toggleCam,
-    localStream, remoteStream, onSignal,
+    localStream, remoteStream, onSignal, peerJoined, armAutoAccept,
   }
 }
 

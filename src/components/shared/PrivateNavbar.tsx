@@ -1,16 +1,16 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Image from "next/image"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
-import { realtimeTokenAction } from "@/app/(main)/messages/actions"
+import { realtimeTokenAction, declineCallAction } from "@/app/(main)/messages/actions"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
   FileText, UsersRound, Building2, Clock, TrendingUp, ChevronRight,
-  ArrowUpRight,
+  ArrowUpRight, Phone, PhoneOff, Video as VideoIcon,
 } from "lucide-react"
 
 /* ---------------- Membership system ----------------
@@ -190,6 +190,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   const currentUser = viewer ?? FALLBACK_VIEWER
   const profileHref = currentUser.username ? `/${currentUser.username}` : "/profile/edit"
   const pathname = usePathname()
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -209,6 +210,9 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
   const [msgCount, setMsgCount] = useState(0)
+
+  type IncomingCall = { conversationId: string; callerId: string; callerName: string; callerAvatar: string | null; audioOnly: boolean }
+  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -272,6 +276,15 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
       await supabase.realtime.setAuth(auth.token)
       channel = supabase.channel(`user:${auth.userId}`, { config: { private: true } })
       channel.on("broadcast", { event: "notification" }, () => { load(); loadMsg() })
+      // Global incoming call — someone is ringing this user from any page. Skip
+      // if they're already viewing that chat (ConversationView rings in-thread).
+      channel.on("broadcast", { event: "call_ring" }, ({ payload }) => {
+        const c = payload as IncomingCall
+        if (pathnameRef.current === `/messages/${c.conversationId}`) return
+        setIncomingCall(c)
+      })
+      // Caller hung up before we answered — dismiss the ring.
+      channel.on("broadcast", { event: "call_cancel" }, () => setIncomingCall(null))
       channel.subscribe()
     })()
     return () => {
@@ -279,6 +292,26 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
       if (channel) supabase.removeChannel(channel)
     }
   }, [load, loadMsg])
+
+  // Auto-dismiss an unanswered incoming call after 45s.
+  useEffect(() => {
+    if (!incomingCall) return
+    const t = setTimeout(() => setIncomingCall(null), 45_000)
+    return () => clearTimeout(t)
+  }, [incomingCall])
+
+  function acceptIncomingCall() {
+    if (!incomingCall) return
+    const { conversationId, callerId } = incomingCall
+    setIncomingCall(null)
+    router.push(`/messages/${conversationId}?call=${callerId}`)
+  }
+
+  function declineIncomingCall() {
+    if (!incomingCall) return
+    void declineCallAction(incomingCall.conversationId)
+    setIncomingCall(null)
+  }
 
   function markOne(id: string, wasRead: boolean) {
     if (wasRead) return
@@ -315,6 +348,9 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {incomingCall && (
+        <IncomingCallModal call={incomingCall} onAccept={acceptIncomingCall} onDecline={declineIncomingCall} />
+      )}
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
 
         {/* Logo */}
@@ -574,5 +610,51 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
         </div>
       )}
     </header>
+  )
+}
+
+/* ---------------- Global incoming-call ring ---------------- */
+function IncomingCallModal({
+  call,
+  onAccept,
+  onDecline,
+}: {
+  call: { callerName: string; callerAvatar: string | null; audioOnly: boolean }
+  onAccept: () => void
+  onDecline: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <Image
+          src={call.callerAvatar ?? "/default-avatar.png"}
+          alt={call.callerName}
+          width={88}
+          height={88}
+          className="mx-auto h-22 w-22 rounded-full object-cover ring-4 ring-brand/20"
+        />
+        <p className="mt-4 text-lg font-bold text-gray-900">{call.callerName}</p>
+        <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-gray-500">
+          {call.audioOnly ? <Phone className="h-4 w-4" /> : <VideoIcon className="h-4 w-4" />}
+          Incoming {call.audioOnly ? "audio" : "video"} call…
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-6">
+          <button
+            onClick={onDecline}
+            title="Decline"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+          >
+            <PhoneOff className="h-6 w-6" />
+          </button>
+          <button
+            onClick={onAccept}
+            title="Accept"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+          >
+            <Phone className="h-6 w-6" />
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

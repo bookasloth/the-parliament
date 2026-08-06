@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
@@ -20,6 +20,7 @@ import {
   editMessageAction, deleteMessageAction, refreshMessagesAction,
   toggleReactionAction, setMutedAction, clearConversationAction,
   blockUserAction, reportUserAction,
+  ringCallAction, cancelRingAction,
 } from "../actions"
 
 const EMOJIS = [
@@ -64,6 +65,7 @@ export default function ConversationView({
   initialMuted, initialBlocked, birthday, suppressValentine,
 }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<MessageView[]>(initialMessages)
   const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(initialOtherLastReadAt)
   const [input, setInput] = useState("")
@@ -87,6 +89,12 @@ export default function ConversationView({
   // signals through a ref so they always hit the current handler, never a stale one.
   const onCallSignalRef = useRef(call.onSignal)
   onCallSignalRef.current = call.onSignal
+  const onPeerJoinedRef = useRef(call.peerJoined)
+  onPeerJoinedRef.current = call.peerJoined
+  // We landed here from a global incoming-call ring (?call=<callerId>): announce
+  // ourselves on the channel so the caller re-offers, and auto-answer that offer.
+  const wantCallRef = useRef(false)
+  const ringingRef = useRef(false)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
@@ -122,6 +130,36 @@ export default function ConversationView({
   useEffect(() => {
     markReadAction(conversationId)
   }, [conversationId, lastIncomingId])
+
+  // Accepted an incoming call from the global ring: arm auto-answer, then strip
+  // ?call from the URL so a refresh doesn't try to re-join a finished call.
+  useEffect(() => {
+    if (!searchParams.get("call")) return
+    wantCallRef.current = true
+    call.armAutoAccept()
+    router.replace(`/messages/${conversationId}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
+
+  // Start an outgoing call: ring the peer on their personal channel (so it
+  // reaches them anywhere) AND begin the WebRTC offer on this channel.
+  const startCall = useCallback(
+    (video: boolean) => {
+      ringingRef.current = true
+      call.start(video)
+      ringCallAction(otherUser.id, conversationId, !video)
+    },
+    [call, otherUser.id, conversationId],
+  )
+
+  // If we hang up before the callee answers, clear their global ring.
+  useEffect(() => {
+    if (call.state === "connected" || call.state === "ringing") ringingRef.current = false
+    else if (call.state === "idle" && ringingRef.current) {
+      ringingRef.current = false
+      cancelRingAction(otherUser.id, conversationId)
+    }
+  }, [call.state, otherUser.id, conversationId])
 
   useEffect(() => {
     let cancelled = false
@@ -180,9 +218,12 @@ export default function ConversationView({
         .on("broadcast", { event: "call_answer" }, ({ payload }) => onCallSignalRef.current("call_answer" as CallSignal, payload))
         .on("broadcast", { event: "call_ice" }, ({ payload }) => onCallSignalRef.current("call_ice" as CallSignal, payload))
         .on("broadcast", { event: "call_end" }, ({ payload }) => onCallSignalRef.current("call_end" as CallSignal, payload))
+        .on("broadcast", { event: "call_hello" }, () => onPeerJoinedRef.current())
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             channel.track({ online_at: Date.now() })
+            // Arrived via a global ring accept → tell the caller we're here.
+            if (wantCallRef.current) channel.send({ type: "broadcast", event: "call_hello", payload: { from: viewerId } })
             refreshMessagesAction(conversationId).then((fresh) => {
               if (cancelled || fresh.length === 0) return
               setMessages((prev) => {
@@ -432,10 +473,10 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button onClick={() => call.start(false)} disabled={blocked || call.state !== "idle"} title="Audio call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
+          <button onClick={() => startCall(false)} disabled={blocked || call.state !== "idle"} title="Audio call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
             <Phone className="h-4 w-4" />
           </button>
-          <button onClick={() => call.start(true)} disabled={blocked || call.state !== "idle"} title="Video call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
+          <button onClick={() => startCall(true)} disabled={blocked || call.state !== "idle"} title="Video call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
             <Video className="h-4 w-4" />
           </button>
 

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
-import { broadcast } from "@/lib/supabase-realtime"
+import { broadcast, broadcastToUser } from "@/lib/supabase-realtime"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
@@ -412,6 +412,43 @@ export async function reportUser(viewerId: string, otherId: string, reason: stri
     create: { reporterId: viewerId, entityType: "user", entityId: otherId, reason: trimmed },
     update: { reason: trimmed },
   })
+}
+
+/** Ring the other user on their personal channel so an incoming call reaches
+ *  them on ANY page, not only inside the open chat. The WebRTC offer/answer/ice
+ *  still flow over the conversation channel once they land in the thread. */
+export async function ringCall(
+  callerId: string,
+  otherId: string,
+  conversationId: string,
+  audioOnly: boolean,
+): Promise<void> {
+  await assertParticipant(callerId, conversationId)
+  const caller = await prisma.user.findUnique({
+    where: { id: callerId },
+    select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
+  })
+  if (!caller) return
+  await broadcastToUser(otherId, "call_ring", {
+    conversationId,
+    callerId,
+    callerName: caller.displayName || caller.legalName,
+    callerAvatar: caller.profile?.photoUrl ?? null,
+    audioOnly,
+  })
+}
+
+/** Callee declined from the global ring (before joining the chat) — tell the
+ *  caller (who is on the conversation channel) to stop ringing. */
+export async function declineCall(viewerId: string, conversationId: string): Promise<void> {
+  await assertParticipant(viewerId, conversationId)
+  await broadcast(conversationId, "call_end", { from: viewerId })
+}
+
+/** Caller hung up before the callee answered — clear the callee's global ring. */
+export async function cancelRing(viewerId: string, otherId: string, conversationId: string): Promise<void> {
+  await assertParticipant(viewerId, conversationId)
+  await broadcastToUser(otherId, "call_cancel", { conversationId })
 }
 
 export async function markRead(viewerId: string, conversationId: string): Promise<void> {
