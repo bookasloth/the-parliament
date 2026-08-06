@@ -228,14 +228,22 @@ h1, h2 {
 }
 .alfazy-bounce { animation: alfazy-bounce 0.55s ease; }
 
-/* Confetti piece fall (reuses the edit-confetti keyframe timing). */
+/* Confetti flutter: zig-zag sway + tumble as it falls (per-piece --sway/--spin). */
+@keyframes alfazy-confetti-fall {
+  0%   { transform: translateY(-16px) translateX(0) rotate(0deg); opacity: 1; }
+  25%  { transform: translateY(25vh) translateX(var(--sway, 14px)) rotate(180deg); }
+  50%  { transform: translateY(50vh) translateX(calc(var(--sway, 14px) * -1)) rotate(360deg); }
+  75%  { transform: translateY(75vh) translateX(var(--sway, 14px)) rotate(540deg); }
+  100% { transform: translateY(108vh) translateX(0) rotate(var(--spin, 720deg)); opacity: 0; }
+}
 .alfazy-confetti-piece {
   position: absolute;
-  top: -12px;
-  width: 9px;
+  top: 0;
+  width: 8px;
   height: 14px;
   border-radius: 2px;
-  animation: edit-confetti-fall linear forwards;
+  will-change: transform, opacity;
+  animation: alfazy-confetti-fall cubic-bezier(0.45, 0, 0.55, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
