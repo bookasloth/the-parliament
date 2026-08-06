@@ -3,6 +3,8 @@ import EventsClient from "./events-client"
 import { listEventsShared, myInterestedEventIds } from "@/modules/events/service"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
+import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
+import type { SidebarViewer } from "@/components/shared/ProfileSidebarView"
 
 export const dynamic = "force-dynamic"
 
@@ -16,8 +18,14 @@ const getEventsCached = unstable_cache(
 
 export default async function EventsPage() {
   let events: Awaited<ReturnType<typeof listEventsShared>> = []
+  let sidebarViewer: SidebarViewer | null = null
   try {
-    const [schoolId, user] = await Promise.all([getDefaultSchoolId(), optionalUser()])
+    const [schoolId, user, sv] = await Promise.all([
+      getDefaultSchoolId(),
+      optionalUser(),
+      getSidebarViewer(),
+    ])
+    sidebarViewer = sv
     if (schoolId) {
       const shared = await getEventsCached(schoolId)
       if (user?.id) {
@@ -31,5 +39,5 @@ export default async function EventsPage() {
     events = []
   }
 
-  return <EventsClient events={events} />
+  return <EventsClient events={events} sidebarViewer={sidebarViewer} />
 }

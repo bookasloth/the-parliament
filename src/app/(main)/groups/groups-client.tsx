@@ -8,6 +8,7 @@ import {
   Briefcase, Dumbbell, Music, Cpu, FlaskConical,
 } from "lucide-react"
 import { joinGroupAction, leaveGroupAction } from "./actions"
+import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 
 interface Group {
   id: string
@@ -44,7 +45,13 @@ export const MOCK_GROUPS: Group[] = [
   { id: "8", slug: "music-art-culture", name: "Music, Art & Culture", description: "For the creative souls — music lovers, artists, writers, and performers.", members: 134, privacy: "public", category: "Interest", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=200&fit=crop", icon: "🎵", isJoined: false, lastActivity: "1w ago", postsThisWeek: 2 },
 ]
 
-export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[] }) {
+export default function GroupsClient({
+  groups = MOCK_GROUPS,
+  sidebarViewer = null,
+}: {
+  groups?: Group[]
+  sidebarViewer?: SidebarViewer | null
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All")
@@ -93,7 +100,9 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5">
+        <RailColumns sidebarViewer={sidebarViewer}>
+        <div className="space-y-4">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -219,6 +228,8 @@ export default function GroupsClient({ groups = MOCK_GROUPS }: { groups?: Group[
             )}
           </div>
         )}
+        </div>
+        </RailColumns>
       </div>
 
     </div>

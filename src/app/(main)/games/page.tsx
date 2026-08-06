@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Type, Gamepad2, Trophy } from "lucide-react";
+import { LeftRailShell } from "@/components/shared/ProfileSidebar";
 
 export const metadata = { title: "Games · The Parliament" };
 
 export default function GamesLandingPage() {
   return (
+    <LeftRailShell>
     <div className="space-y-6">
       <header>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Games</h1>
@@ -46,5 +48,6 @@ export default function GamesLandingPage() {
         )}
       </div>
     </div>
+    </LeftRailShell>
   );
 }

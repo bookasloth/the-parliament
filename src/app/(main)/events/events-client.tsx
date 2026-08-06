@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import type { EventItem } from "@/modules/events/service"
 import { rsvpAction, createEventAction } from "./actions"
+import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 
 export const MOCK_EVENTS: EventItem[] = [
   { id: "1", slug: "alumni-reunion-2026", title: "JNV Nagpur Alumni Reunion 2026", date: "Mon, Oct 15, 2026", time: "10:00 AM", mode: "in-person", cover: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop", isFree: false, price: 500, interested: true, category: "Reunion" },
@@ -111,7 +112,13 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
   )
 }
 
-export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { events?: EventItem[] }) {
+export default function EventsClient({
+  events: initialEvents = MOCK_EVENTS,
+  sidebarViewer = null,
+}: {
+  events?: EventItem[]
+  sidebarViewer?: SidebarViewer | null
+}) {
   const [events, setEvents] = useState(initialEvents)
   const [tab, setTab] = useState<Tab>("upcoming")
   const [search, setSearch] = useState("")
@@ -191,7 +198,9 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 sm:py-6">
+        <RailColumns sidebarViewer={sidebarViewer}>
+        <div className="space-y-4">
 
         {/* Upcoming event alert */}
         {alertOpen && (
@@ -256,6 +265,8 @@ export default function EventsClient({ events: initialEvents = MOCK_EVENTS }: { 
             )}
           </div>
         </div>
+        </div>
+        </RailColumns>
       </div>
 
       {/* Create event modal */}

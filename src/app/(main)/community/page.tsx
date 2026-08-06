@@ -5,6 +5,7 @@ import { optionalUser } from "@/modules/auth/session"
 import { searchDirectory, getDirectoryFacets, type DirectoryFilters } from "@/modules/directory/service"
 import { getFollowingIds } from "@/modules/connections/service"
 import { CommunityClient } from "./community-client"
+import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
 
 export const dynamic = "force-dynamic"
 
@@ -63,7 +64,10 @@ export default async function CommunityPage({
     getCountsCached(schoolId),
   ])
 
-  const followingIds = me ? Array.from(await getFollowingIds(me.id)) : []
+  const [followingIds, sidebarViewer] = await Promise.all([
+    me ? getFollowingIds(me.id).then((s) => Array.from(s)) : Promise.resolve([]),
+    getSidebarViewer(),
+  ])
 
   return (
     <CommunityClient
@@ -74,6 +78,7 @@ export default async function CommunityPage({
       meId={me?.id ?? null}
       stats={{ totalActive, verifiedCount, batches: facets.batches.length, industries: facets.industries.length }}
       followingIds={followingIds}
+      sidebarViewer={sidebarViewer}
     />
   )
 }

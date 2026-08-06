@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache"
 import { optionalUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { listGroupsShared, myGroupIds } from "@/modules/groups/service"
+import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
 import GroupsClient from "./groups-client"
 
 export const dynamic = "force-dynamic"
@@ -15,7 +16,11 @@ const getGroupsCached = unstable_cache(
 )
 
 export default async function GroupsPage() {
-  const [user, schoolId] = await Promise.all([optionalUser(), getDefaultSchoolId()])
+  const [user, schoolId, sidebarViewer] = await Promise.all([
+    optionalUser(),
+    getDefaultSchoolId(),
+    getSidebarViewer(),
+  ])
 
   const shared = schoolId ? await getGroupsCached(schoolId) : []
   let groups = shared
@@ -24,5 +29,5 @@ export default async function GroupsPage() {
     groups = shared.map((g) => (joined.has(g.id) ? { ...g, isJoined: true } : g))
   }
 
-  return <GroupsClient groups={groups} />
+  return <GroupsClient groups={groups} sidebarViewer={sidebarViewer} />
 }

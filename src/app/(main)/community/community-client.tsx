@@ -15,6 +15,7 @@ import { colorAvatar } from "@/lib/avatar"
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/config/membership-colors"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
+import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 
 type Facets = {
   batches: { id: string; label: string }[]
@@ -65,7 +66,7 @@ function toQuery(current: Params, extra: Params = {}): string {
 }
 
 export function CommunityClient({
-  rows, total, facets, current, meId, stats, followingIds = [],
+  rows, total, facets, current, meId, stats, followingIds = [], sidebarViewer = null,
 }: {
   rows: DirectoryRow[]
   total: number
@@ -75,6 +76,7 @@ export function CommunityClient({
   stats: { totalActive: number; verifiedCount: number; batches: number; industries: number }
   // ponytail: covers first page only; lazily-loaded rows default to not-following (self-corrects on click).
   followingIds?: string[]
+  sidebarViewer?: SidebarViewer | null
 }) {
   const followingSet = new Set(followingIds)
   const router = useRouter()
@@ -153,7 +155,9 @@ export function CommunityClient({
   const sel = "rounded border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-brand hover:border-gray-300"
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 space-y-3">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4">
+      <RailColumns sidebarViewer={sidebarViewer}>
+      <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-xl font-bold text-gray-900 sm:text-2xl">Community</h1>
@@ -313,6 +317,8 @@ export function CommunityClient({
       {!hasMore && items.length > 0 && (
         <p className="py-6 text-center text-xs text-gray-400">You&rsquo;ve reached the end · {total.toLocaleString()} alumni</p>
       )}
+      </div>
+      </RailColumns>
     </div>
   )
 }

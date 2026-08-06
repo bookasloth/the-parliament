@@ -40,6 +40,7 @@ export default async function FeedPage({
         ? prisma.user.findUnique({
             where: { id: viewer.id },
             select: {
+              username: true,
               displayName: true,
               legalName: true,
               membershipStatus: true,
@@ -50,6 +51,13 @@ export default async function FeedPage({
                   headline: true,
                   batch: { select: { label: true, startYear: true } },
                   house: { select: { name: true } },
+                },
+              },
+              _count: {
+                select: {
+                  posts: true,
+                  followers: true,
+                  following: true,
                 },
               },
             },
@@ -106,6 +114,7 @@ export default async function FeedPage({
       const name = u.displayName || u.legalName
       viewerCard = {
         name,
+        username: u.username ?? null,
         photoUrl:
           u.profile?.photoUrl ??
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
@@ -114,6 +123,9 @@ export default async function FeedPage({
         headline: u.profile?.headline ?? "",
         batch: batchOrdinal(u.profile?.batch?.startYear) ?? u.profile?.batch?.label ?? "—",
         house: u.profile?.house?.name ?? "—",
+        posts: u._count.posts,
+        followers: u._count.followers,
+        following: u._count.following,
       }
     }
 
