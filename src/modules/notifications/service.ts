@@ -126,7 +126,9 @@ export async function markRead(userId: string, notificationId: string) {
 
 export async function unreadCount(userId: string): Promise<number> {
   return prisma.notification.count({
-    where: { userId, isRead: false },
+    // DMs surface in the messages inbox (own unread + realtime), so they never
+    // count toward the notification bell.
+    where: { userId, isRead: false, type: { not: "new_message" } },
   })
 }
 
@@ -147,7 +149,8 @@ export async function listNotifications(
   limit = 50,
 ): Promise<NotificationRow[]> {
   return prisma.notification.findMany({
-    where: { userId },
+    // DMs live in the messages inbox, never the notification bell/list.
+    where: { userId, type: { not: "new_message" } },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {

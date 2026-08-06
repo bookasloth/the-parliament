@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { broadcast } from "@/lib/supabase-realtime"
-import { sendNotification } from "@/modules/notifications/service"
 import { nextReaction } from "./reactions"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
 
@@ -256,40 +255,9 @@ export async function sendMessage(
     reactions: [], replyTo: replyStub,
   }
   await broadcast(conversationId, "new_message", view)
-  void notifyRecipients(conversationId, viewerId, body, media.length > 0)
+  // No notification-bell row for DMs — messages surface in the messages inbox
+  // (its own unread badge + realtime sidebar), so a bell entry would double up.
   return view
-}
-
-/** Fire-and-forget: notify the other (un-muted) participants of a new DM. */
-async function notifyRecipients(conversationId: string, senderId: string, body: string, hasMedia: boolean) {
-  try {
-    const [sender, participants] = await Promise.all([
-      prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } }),
-      prisma.conversationParticipant.findMany({
-        where: { conversationId, userId: { not: senderId }, muted: false },
-        select: { userId: true },
-      }),
-    ])
-    if (!sender || participants.length === 0) return
-    const name = sender.displayName || sender.legalName
-    const preview = body ? (body.length > 120 ? `${body.slice(0, 120)}…` : body) : hasMedia ? "📷 Photo" : ""
-    await Promise.all(
-      participants.map((p) =>
-        sendNotification({
-          userId: p.userId,
-          kind: "new_message",
-          title: `New message from ${name}`,
-          body: preview,
-          entityType: "conversation",
-          entityId: conversationId,
-          imageUrl: sender.profile?.photoUrl ?? undefined,
-          sendEmail: false,
-        }),
-      ),
-    )
-  } catch (e) {
-    console.error("DM notification failed:", e)
-  }
 }
 
 async function assertAuthor(viewerId: string, messageId: string): Promise<{ conversationId: string }> {
