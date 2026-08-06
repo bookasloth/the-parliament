@@ -187,6 +187,7 @@ model User {
   activityEvents           ActivityEvent[]
   userBadges               UserBadge[]
   karmaRedemptions         KarmaRedemption[]
+  groupRequests            GroupRequest[]
   sentMessages             Message[]                 @relation("message_sender")
   savedPosts               SavedPost[]
   hiddenPosts              HiddenPost[]
@@ -1460,9 +1461,10 @@ model Group {
   school  School        @relation(fields: [schoolId], references: [id])
   batch   Batch?        @relation(fields: [refBatchId], references: [id])
   house   House?        @relation(fields: [refHouseId], references: [id])
-  members GroupMember[]
-  posts   Post[]
-  events  Event[]
+  members  GroupMember[]
+  posts    Post[]
+  events   Event[]
+  requests GroupRequest[]
 
   @@unique([schoolId, refBatchId])
   @@unique([schoolId, refHouseId])
@@ -1484,6 +1486,23 @@ model GroupMember {
   @@id([groupId, userId])
   @@index([userId, status])
   @@map("group_members")
+}
+
+model GroupRequest {
+  id        String               @id @default(uuid()) @db.Uuid
+  groupId   String               @map("group_id") @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  category  GroupRequestCategory
+  body      String
+  status    GroupRequestStatus   @default(open)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, status])
+  @@index([userId, createdAt])
+  @@map("group_requests")
 }
 
 // ─────────────────────────────────────────────
@@ -1956,6 +1975,21 @@ enum GroupMemberStatus {
   invited
   banned
   removed
+}
+
+enum GroupRequestCategory {
+  emergency
+  travel
+  access
+  career
+  mentor
+}
+
+enum GroupRequestStatus {
+  open
+  accepted
+  resolved
+  closed
 }
 
 // ── Enums batch 4: admin roles + email status ──

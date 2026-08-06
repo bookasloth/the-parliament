@@ -58,6 +58,35 @@ export async function createAdminEventAction(input: CreateEventInput) {
   return { id: event.id, isPaid: parsed.isPaid }
 }
 
+/** Toggle homepage-featured flag on an event. Returns the new state. */
+export async function toggleEventFeaturedAction(
+  eventId: string,
+): Promise<{ ok: boolean; featured?: boolean; error?: string }> {
+  await requireAdmin()
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { isFeatured: true } })
+  if (!event) return { ok: false, error: "Event not found" }
+  const featured = !event.isFeatured
+  await prisma.event.update({ where: { id: eventId }, data: { isFeatured: featured } })
+  updateTag("events")
+  revalidatePath("/admin/events")
+  revalidatePath("/events")
+  return { ok: true, featured }
+}
+
+/** Cancel an event (soft — sets status, keeps the record). */
+export async function cancelEventAction(
+  eventId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin()
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } })
+  if (!event) return { ok: false, error: "Event not found" }
+  await prisma.event.update({ where: { id: eventId }, data: { status: "cancelled" } })
+  updateTag("events")
+  revalidatePath("/admin/events")
+  revalidatePath("/events")
+  return { ok: true }
+}
+
 /**
  * Schedule the staggered "Invite All" waves for an event — Life/Committee now,
  * Premium +2h, Associate +4h, Student +6h. The cron sends them; this returns
