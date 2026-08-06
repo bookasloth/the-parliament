@@ -5,6 +5,7 @@ import { broadcast, broadcastToUser } from "@/lib/supabase-realtime"
 import { sendPush } from "@/lib/web-push"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
+import { RING_STALE_MS } from "./call-log"
 import type { CallData, ConversationSummary, MessageView, ReplyStub } from "./types"
 
 const MAX_MESSAGE_LEN = 5000
@@ -200,6 +201,11 @@ export async function getMessages(
   opts: { limit?: number; before?: string } = {},
 ): Promise<MessageView[]> {
   await assertParticipant(viewerId, conversationId)
+  // Server-authoritative expiry: a call left "ringing" (caller reloaded / closed
+  // the tab) durably becomes "missed" here, so orphans don't linger in the DB or
+  // for the other participant. Live view only (not pagination) — the query is
+  // indexed and usually returns 0 rows.
+  if (!opts.before) await expireStaleRingingCalls(conversationId)
   const me = await prisma.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId, userId: viewerId } },
     select: { clearedAt: true },
@@ -467,6 +473,27 @@ export async function cancelRing(viewerId: string, otherId: string, conversation
   await broadcastToUser(otherId, "call_cancel", { conversationId })
 }
 
+/** Mark one ringing call-log "missed" (ended now, no duration) and broadcast the
+ *  update so both sides' cards flip. The server-authoritative way a ringing call
+ *  dies — used by the start-of-call sweep and the on-read expiry sweep. */
+async function resolveCallMissed(conversationId: string, id: string, prev: CallData): Promise<void> {
+  const next: CallData = { ...prev, status: "missed", endedAt: new Date().toISOString(), durationSec: null }
+  await prisma.message.update({ where: { id }, data: { callData: next as object } })
+  await broadcast(conversationId, "call_update", { id, call: next })
+}
+
+/** Flip this conversation's ringing call-logs older than the stale window to
+ *  "missed" — durable, server-authoritative orphan cleanup (caller reloaded /
+ *  closed the tab so it never finalised). Called on the live message read. */
+async function expireStaleRingingCalls(conversationId: string): Promise<void> {
+  const cutoff = new Date(Date.now() - RING_STALE_MS)
+  const stale = await prisma.message.findMany({
+    where: { conversationId, type: "call", createdAt: { lt: cutoff }, callData: { path: ["status"], equals: "ringing" } },
+    select: { id: true, callData: true },
+  })
+  for (const s of stale) await resolveCallMissed(conversationId, s.id, s.callData as unknown as CallData)
+}
+
 /** Insert a call-log message the moment a call starts. The SENDER is the caller;
  *  it shows as "Calling…" (outgoing) / "Incoming call" (the callee). The caller
  *  later finalises it via endCallLog. Returns the view so the caller can render
@@ -484,12 +511,7 @@ export async function startCallLog(
     where: { conversationId, senderId: callerId, type: "call", callData: { path: ["status"], equals: "ringing" } },
     select: { id: true, callData: true },
   })
-  for (const o of orphans) {
-    const prev = o.callData as unknown as CallData
-    const next: CallData = { ...prev, status: "missed", endedAt: new Date().toISOString(), durationSec: null }
-    await prisma.message.update({ where: { id: o.id }, data: { callData: next as object } })
-    await broadcast(conversationId, "call_update", { id: o.id, call: next })
-  }
+  for (const o of orphans) await resolveCallMissed(conversationId, o.id, o.callData as unknown as CallData)
   const call: CallData = { status: "ringing", audioOnly, endedAt: null, durationSec: null }
   const row = await prisma.message.create({
     data: { conversationId, senderId: callerId, body: "", type: "call", callData: call as object },

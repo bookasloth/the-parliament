@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Phone } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { decideOnSignal, type SignalPayload } from "@/modules/messaging/call-signaling"
 
 // 1:1 WebRTC video/audio calling. Signaling rides the SAME private Realtime
 // channel the conversation already uses (conversation:{id}) — no extra channel,
@@ -224,44 +225,51 @@ export function useVideoCall(opts: {
     autoAcceptRef.current = true
   }, [])
 
+  // Route every inbound signal through the pure reducer (decideOnSignal) and
+  // execute its decision here — the reducer owns the branching, this owns the
+  // effects (peer connection, realtime sends, React state).
   const onSignal = useCallback(
     (event: CallSignal, payload: unknown) => {
-      const p = payload as { from?: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit; audioOnly?: boolean }
-      if (p.from === viewerId) return // our own echo (self:false already, belt & braces)
-
-      if (event === "call_offer") {
-        // Busy — already in a call. Tell the caller so they stop ringing.
-        if (state !== "idle" || pcRef.current) {
+      const p = payload as SignalPayload
+      const decision = decideOnSignal(
+        { phase: state, hasPeer: !!pcRef.current, remoteReady: remoteReadyRef.current, autoAccept: autoAcceptRef.current },
+        viewerId,
+        event,
+        p,
+      )
+      switch (decision.type) {
+        case "ignore":
+          return
+        case "reject_busy":
           channelRef.current?.send({ type: "broadcast", event: "call_end", payload: { from: viewerId } })
           return
-        }
-        pendingOfferRef.current = p.sdp ?? null
-        setIsCaller(false)
-        setAudioOnly(!!p.audioOnly)
-        // Came in through the global ring (already accepted) → answer immediately.
-        if (autoAcceptRef.current && p.sdp) {
-          autoAcceptRef.current = false
-          doAnswer(p.sdp, !!p.audioOnly)
-        } else {
-          setState("ringing")
-        }
-      } else if (event === "call_answer") {
-        if (pcRef.current && p.sdp) {
-          pcRef.current.setRemoteDescription(p.sdp).then(() => {
+        case "incoming":
+          pendingOfferRef.current = decision.sdp
+          setIsCaller(false)
+          setAudioOnly(decision.audioOnly)
+          if (decision.autoAnswer && decision.sdp) {
+            autoAcceptRef.current = false
+            doAnswer(decision.sdp, decision.audioOnly)
+          } else {
+            setState("ringing")
+          }
+          return
+        case "apply_answer":
+          pcRef.current?.setRemoteDescription(decision.sdp).then(() => {
             remoteReadyRef.current = true
             flushIce()
             setState("connected")
           })
-        }
-      } else if (event === "call_ice") {
-        if (!p.candidate) return
-        if (pcRef.current && remoteReadyRef.current) {
-          pcRef.current.addIceCandidate(p.candidate).catch(() => {})
-        } else {
-          pendingIceRef.current.push(p.candidate)
-        }
-      } else if (event === "call_end") {
-        cleanup()
+          return
+        case "add_ice":
+          pcRef.current?.addIceCandidate(decision.candidate).catch(() => {})
+          return
+        case "buffer_ice":
+          pendingIceRef.current.push(decision.candidate)
+          return
+        case "end":
+          cleanup()
+          return
       }
     },
     [viewerId, state, channelRef, flushIce, cleanup, doAnswer],
