@@ -15,7 +15,7 @@ import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { useVideoCall, CallOverlay, type CallSignal } from "./VideoCall"
 import type { CallData, MessageView } from "@/modules/messaging/types"
-import { callLabel } from "@/modules/messaging/call-log"
+import { callLabel, callDisplayStatus } from "@/modules/messaging/call-log"
 import { setCallActive } from "@/modules/messaging/call-active"
 import { applyReaction, groupReactions } from "@/modules/messaging/reactions"
 import {
@@ -156,6 +156,7 @@ export default function ConversationView({
   // "Calling…" call-log message into the thread (shown to both sides).
   const startCall = useCallback(
     (video: boolean) => {
+      if (call.state !== "idle") return // already in / placing a call — don't stack
       ringingRef.current = true
       callConnectedRef.current = false
       call.start(video)
@@ -606,6 +607,7 @@ export default function ConversationView({
               return (
                 <CallLogRow
                   key={msg.id} call={msg.call} mine={isMe}
+                  createdAtMs={new Date(msg.createdAt).getTime()}
                   time={formatTime(msg.createdAt)} onJoin={joinCall}
                 />
               )
@@ -790,16 +792,20 @@ export default function ConversationView({
 /** Centered system-message card for a call: "Calling…" / "Video call · 3:12" /
  *  "Missed call", with a Join button while an incoming call is still ringing. */
 function CallLogRow({
-  call, mine, time, onJoin,
+  call, mine, createdAtMs, time, onJoin,
 }: {
   call: CallData
   mine: boolean
+  createdAtMs: number
   time: string
   onJoin: () => void
 }) {
-  const missedToMe = call.status === "missed" && !mine
-  const Icon = call.status === "missed" ? PhoneMissed : call.audioOnly ? PhoneCall : Video
-  const canJoin = call.status === "ringing" && !mine
+  // A stale ringing card reads as missed (see callDisplayStatus) so an orphaned
+  // "Calling…" doesn't hang forever and Join can't fire into a dead call.
+  const status = callDisplayStatus(call, createdAtMs, Date.now())
+  const missedToMe = status === "missed" && !mine
+  const Icon = status === "missed" ? PhoneMissed : call.audioOnly ? PhoneCall : Video
+  const canJoin = status === "ringing" && !mine
   return (
     <div className="my-2 flex justify-center">
       <div
@@ -808,7 +814,7 @@ function CallLogRow({
         }`}
       >
         <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="font-medium">{callLabel(call, mine)}</span>
+        <span className="font-medium">{callLabel({ ...call, status }, mine)}</span>
         <span className="text-[10px] text-gray-400">{time}</span>
         {canJoin && (
           <button

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatDuration, callLabel } from "@/modules/messaging/call-log"
+import { formatDuration, callLabel, callDisplayStatus, RING_STALE_MS } from "@/modules/messaging/call-log"
 import type { CallData } from "@/modules/messaging/types"
 
 const call = (over: Partial<CallData>): CallData => ({
@@ -39,5 +39,23 @@ describe("callLabel", () => {
   })
   it("completed with null duration falls back to 0:00", () => {
     expect(callLabel(call({ status: "completed", durationSec: null }), true)).toBe("Video call · 0:00")
+  })
+})
+
+describe("callDisplayStatus", () => {
+  const now = 1_000_000_000_000
+  it("keeps a fresh ringing call ringing", () => {
+    expect(callDisplayStatus(call({ status: "ringing" }), now - 1000, now)).toBe("ringing")
+  })
+  it("just under the stale window is still ringing", () => {
+    expect(callDisplayStatus(call({ status: "ringing" }), now - (RING_STALE_MS - 1), now)).toBe("ringing")
+  })
+  it("at/over the stale window becomes missed", () => {
+    expect(callDisplayStatus(call({ status: "ringing" }), now - RING_STALE_MS, now)).toBe("missed")
+    expect(callDisplayStatus(call({ status: "ringing" }), now - 5 * RING_STALE_MS, now)).toBe("missed")
+  })
+  it("never rewrites a terminal status regardless of age", () => {
+    expect(callDisplayStatus(call({ status: "completed" }), now - 5 * RING_STALE_MS, now)).toBe("completed")
+    expect(callDisplayStatus(call({ status: "missed" }), now - 5 * RING_STALE_MS, now)).toBe("missed")
   })
 })

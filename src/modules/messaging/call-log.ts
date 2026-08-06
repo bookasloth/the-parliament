@@ -1,4 +1,15 @@
-import type { CallData } from "./types"
+import type { CallData, CallStatus } from "./types"
+
+// A ringing call-log older than this is dead — the caller reloaded, navigated
+// away, or closed the tab without a clean hang-up, so it never got finalised.
+// Show it as missed and drop the Join button (joining a dead call is a no-op).
+export const RING_STALE_MS = 60_000
+
+/** Effective status for display: a stale "ringing" reads as "missed". */
+export function callDisplayStatus(call: CallData, createdAtMs: number, now: number): CallStatus {
+  if (call.status === "ringing" && now - createdAtMs >= RING_STALE_MS) return "missed"
+  return call.status
+}
 
 /** Seconds → "m:ss" (or "h:mm:ss" past an hour). */
 export function formatDuration(totalSec: number): string {
