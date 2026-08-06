@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { isAuthorizedCron } from "@/lib/cron-auth"
 import { drainEmailOutbox } from "@/modules/email/service"
 import { sendProfileViewDigests } from "@/modules/profile/view-digest"
+import { sendDailyDigests } from "@/modules/engagement/daily-digest"
 
 // Vercel Cron hits this to flush the email outbox — mail that deliver() deferred
 // during quiet hours (22:00–07:00 IST) and any future enqueue-for-later sends.
@@ -25,5 +26,9 @@ export async function GET(req: NextRequest) {
     profileViews = await sendProfileViewDigests()
   }
 
-  return NextResponse.json({ ok: true, results, profileViews })
+  // Daily "what you missed" digest — the floor of the cadence. Runs every day;
+  // only reaches users with a personal signal (unread messages / new followers).
+  const digest = await sendDailyDigests()
+
+  return NextResponse.json({ ok: true, results, profileViews, digest })
 }

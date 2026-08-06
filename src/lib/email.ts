@@ -18,6 +18,7 @@ export type EmailTemplates = {
   new_follower: { fromName: string; profileUrl: string }
   new_message: { fromName: string; messagesUrl: string }
   profile_views: { count: string; profileUrl: string }
+  daily_digest: { newFollowers: string; unreadMessages: string; upcomingEvents: string; feedUrl: string }
   comment_on_post: { fromName: string; postUrl: string }
   reaction_on_post: { fromName: string; postUrl: string }
   mention: { fromName: string; postUrl: string }
@@ -192,6 +193,33 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         heading: `<em>${d.count}</em> ${Number(d.count) === 1 ? "person" : "people"} viewed your profile`,
         body: p(`${d.count} ${Number(d.count) === 1 ? "person" : "people"} checked out your profile on NNAWCA this week. Keep it fresh so you make a great impression — and see who's in your network.`) + button("View your profile", d.profileUrl, "blue"),
         reason: "You're getting this because you allow engagement emails.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  daily_digest: {
+    // The daily floor: only sent to users who actually have something waiting
+    // (unread messages or new followers), so it never feels like noise.
+    subject: () => `What you missed on NNAWCA`,
+    text: (d) =>
+      `You have ${d.unreadMessages} unread messages and ${d.newFollowers} new followers.\n\nCatch up: ${d.feedUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Digest",
+        eyebrow: "Daily · What you missed",
+        heading: `What you missed`,
+        body:
+          p(`Here's what's waiting for you on NNAWCA:`) +
+          bullets(
+            [
+              Number(d.unreadMessages) > 0 ? `<strong>${d.unreadMessages}</strong> unread message${d.unreadMessages === "1" ? "" : "s"}` : "",
+              Number(d.newFollowers) > 0 ? `<strong>${d.newFollowers}</strong> new follower${d.newFollowers === "1" ? "" : "s"}` : "",
+              Number(d.upcomingEvents) > 0 ? `<strong>${d.upcomingEvents}</strong> upcoming event${d.upcomingEvents === "1" ? "" : "s"}` : "",
+            ].filter(Boolean),
+          ) +
+          button("Catch up on NNAWCA", d.feedUrl, "blue"),
+        reason: "You're getting this because you allow digest emails.",
         manageUrl: MANAGE_URL,
         unsubscribeUrl: MANAGE_URL,
       }),
@@ -432,6 +460,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   new_follower: "engagement",
   new_message: "engagement",
   profile_views: "engagement",
+  daily_digest: "digest",
   comment_on_post: "engagement",
   reaction_on_post: "engagement",
   mention: "engagement",
