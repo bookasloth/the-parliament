@@ -1,6 +1,11 @@
 /** Human labels for Alfazy periods/anchors. Pure, client-safe (no DB import). */
 import type { Period } from "./periods";
 
+/** Leaderboard scopes. Defined here (client-safe) so client components can import
+ *  the list without pulling in leaderboard.ts's prisma dependency. */
+export type Scope = "individual" | "house" | "batch";
+export const SCOPES: Scope[] = ["individual", "house", "batch"];
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",

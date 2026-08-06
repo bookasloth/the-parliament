@@ -6,9 +6,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { Period, windowFor, anchorFor, priorAnchor } from "./periods";
+import { type Scope, SCOPES } from "./format";
 
-export type Scope = "individual" | "house" | "batch";
-export const SCOPES: Scope[] = ["individual", "house", "batch"];
+export { type Scope, SCOPES }; // re-export for existing importers
 
 /** A single play, flattened with the player's house/batch identity. */
 export interface ScoreRow {
@@ -23,6 +23,7 @@ export interface ScoreRow {
   houseLabel: string | null;
   houseColor: string | null;
   batchLabel: string | null;
+  avatarUrl: string | null;
 }
 
 export interface LeaderEntry {
@@ -33,6 +34,7 @@ export interface LeaderEntry {
   total: number;
   players: number; // distinct players contributing
   bestGuesses: number | null; // fewest guesses to solve, in window
+  avatarUrl: string | null; // individual scope only; null for house/batch
 }
 
 function keyFor(row: ScoreRow, scope: Scope): { key: string; label: string; color: string | null } | null {
@@ -50,14 +52,14 @@ function keyFor(row: ScoreRow, scope: Scope): { key: string; label: string; colo
 export function aggregate(rows: ScoreRow[], scope: Scope): Omit<LeaderEntry, "rank">[] {
   const acc = new Map<
     string,
-    { label: string; color: string | null; total: number; players: Set<string>; best: number | null; guessSum: number; lastPlay: number }
+    { label: string; color: string | null; avatarUrl: string | null; total: number; players: Set<string>; best: number | null; guessSum: number; lastPlay: number }
   >();
   for (const row of rows) {
     const k = keyFor(row, scope);
     if (!k) continue;
     const cur =
       acc.get(k.key) ??
-      { label: k.label, color: k.color, total: 0, players: new Set<string>(), best: null as number | null, guessSum: 0, lastPlay: 0 };
+      { label: k.label, color: k.color, avatarUrl: scope === "individual" ? row.avatarUrl : null, total: 0, players: new Set<string>(), best: null as number | null, guessSum: 0, lastPlay: 0 };
     cur.total += row.score;
     cur.players.add(row.userId);
     if (row.solved && row.guesses != null) {
@@ -73,6 +75,7 @@ export function aggregate(rows: ScoreRow[], scope: Scope): Omit<LeaderEntry, "ra
     key,
     label: v.label,
     color: v.color,
+    avatarUrl: v.avatarUrl,
     total: v.total,
     players: v.players.size,
     bestGuesses: v.best,
@@ -108,6 +111,7 @@ export function rankEntries(entries: Omit<LeaderEntry, "rank">[]): LeaderEntry[]
       key: r.key,
       label: r.label,
       color: r.color,
+      avatarUrl: r.avatarUrl,
       total: r.total,
       players: r.players,
       bestGuesses: r.bestGuesses,
@@ -144,6 +148,7 @@ export async function fetchWindowScores(gameId: string, start: Date, end: Date):
             select: {
               houseId: true,
               batchId: true,
+              photoUrl: true,
               house: { select: { name: true, colorHex: true } },
               batch: { select: { label: true } },
             },
@@ -164,6 +169,7 @@ export async function fetchWindowScores(gameId: string, start: Date, end: Date):
     houseLabel: s.user.profile?.house?.name ?? null,
     houseColor: s.user.profile?.house?.colorHex ?? null,
     batchLabel: s.user.profile?.batch?.label ?? null,
+    avatarUrl: s.user.profile?.photoUrl ?? null,
   }));
 }
 

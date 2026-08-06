@@ -1,9 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronUp, ChevronDown, Minus, Sparkles, Trophy, Crown } from "lucide-react";
 import { requireUser } from "@/modules/auth/session";
 import { leaderboardWithMovement, SCOPES, type Scope, type Movement, type LeaderEntry } from "@/modules/games/leaderboard";
 import { PERIODS, type Period } from "@/modules/games/periods";
 import { formatAnchor, PERIOD_LABEL, SCOPE_LABEL } from "@/modules/games/format";
+import Podium from "@/components/games/Podium";
+import LeaderboardTabs from "@/components/games/LeaderboardTabs";
 
 export const metadata = { title: "Alfazy Leaderboard · The Parliament" };
 export const dynamic = "force-dynamic";
@@ -21,8 +24,6 @@ function MovementBadge({ m }: { m: Movement | undefined }) {
   if (m === "new") return <Sparkles className="h-3.5 w-3.5 text-brand" />;
   return <Minus className="h-4 w-4 text-gray-300" />;
 }
-
-const MEDAL = ["", "bg-amber-400 text-white", "bg-gray-300 text-gray-800", "bg-orange-400 text-white"];
 
 export default async function AlfazyLeaderboardPage({
   searchParams,
@@ -68,35 +69,8 @@ export default async function AlfazyLeaderboardPage({
         </Link>
       </header>
 
-      {/* Tabs */}
-      <div className="space-y-2.5">
-        <div className="flex gap-1.5">
-          {SCOPES.map((s) => (
-            <Link
-              key={s}
-              href={tabLink({ scope: s })}
-              className={`rounded-lg px-4 py-2 text-[13.5px] font-semibold transition-colors ${
-                s === scope ? "bg-brand text-white" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {SCOPE_LABEL[s]}
-            </Link>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {PERIODS.map((p) => (
-            <Link
-              key={p}
-              href={tabLink({ period: p })}
-              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                p === period ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {PERIOD_LABEL[p]}
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* Tabs (client, snappy) */}
+      <LeaderboardTabs scope={scope} period={period} />
 
       <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
         {/* Main column */}
@@ -105,30 +79,11 @@ export default async function AlfazyLeaderboardPage({
           {podium.length > 0 ? (
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
               <h2 className="mb-5 font-heading text-lg font-bold text-gray-900">Podium Finishers</h2>
-              <div className="flex items-end justify-center gap-3">
-                {[1, 0, 2].map((i) => {
-                  const e = podium[i];
-                  if (!e) return <div key={i} className="w-24" />;
-                  const h = i === 0 ? "h-24" : i === 1 ? "h-16" : "h-12";
-                  return (
-                    <div key={e.key} className="flex w-24 flex-col items-center">
-                      <div
-                        className="mb-2 flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white"
-                        style={{ background: scope === "house" && e.color ? e.color : "var(--color-brand)" }}
-                      >
-                        {e.label.charAt(0)}
-                      </div>
-                      <p className="mb-1 max-w-full truncate text-center text-[12.5px] font-semibold text-gray-800">
-                        {e.key === user.id ? "You" : e.label}
-                      </p>
-                      <div className={`flex ${h} w-full items-center justify-center rounded-t-lg text-xl font-extrabold ${MEDAL[i + 1]}`}>
-                        {i + 1}
-                      </div>
-                      <p className="mt-1 text-[12px] font-semibold text-gray-500">{e.total} pts</p>
-                    </div>
-                  );
-                })}
-              </div>
+              <Podium
+                entries={podium.map((e) => ({ key: e.key, label: e.label, color: e.color, total: e.total, avatarUrl: e.avatarUrl }))}
+                scope={scope}
+                currentUserId={user.id}
+              />
               {myEntry && (
                 <div className="mt-5 flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3">
                   <span className="text-[13.5px] font-semibold text-gray-700">Your rank</span>
@@ -137,8 +92,15 @@ export default async function AlfazyLeaderboardPage({
               )}
             </section>
           ) : (
-            <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
-              No plays in this window yet.
+            <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-12 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+                <Trophy className="h-7 w-7 text-gray-300" />
+              </div>
+              <p className="font-semibold text-gray-700">No plays in this window yet</p>
+              <p className="mt-1 text-[13.5px] text-gray-400">Be the first to get on the board.</p>
+              <Link href="/games/alfazy/play" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+                Play now
+              </Link>
             </section>
           )}
 
@@ -157,10 +119,21 @@ export default async function AlfazyLeaderboardPage({
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {(rest.length ? entries : podium).map((e: LeaderEntry) => (
-                    <tr key={e.key} className={e.key === user.id ? "bg-brand-50/60" : ""}>
+                    <tr
+                      key={e.key}
+                      className={`transition-colors hover:bg-gray-50 ${e.key === user.id ? "bg-brand-50/60" : ""}`}
+                    >
                       <td className="px-4 py-3 font-bold text-gray-700">{e.rank}</td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-2">
+                          {scope === "individual" &&
+                            (e.avatarUrl ? (
+                              <Image src={e.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
+                            ) : (
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand">
+                                {e.label.charAt(0)}
+                              </span>
+                            ))}
                           {scope === "house" && (
                             <span className="h-2.5 w-2.5 rounded-full" style={{ background: e.color ?? "#ccc" }} />
                           )}

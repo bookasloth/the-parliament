@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getDailyPuzzle } from "@/modules/games/alfazy";
 import { leaderboard, alfazyGameId } from "@/modules/games/leaderboard";
 import { trophiesForUser } from "@/modules/games/champions";
+import CountUp from "@/components/games/CountUp";
 
 export const metadata = { title: "Alfazy · The Parliament" };
 export const dynamic = "force-dynamic";
@@ -116,11 +117,11 @@ export default async function AlfazyHubPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-brand-50 p-4">
               <div className="text-[12px] font-semibold uppercase tracking-wide text-brand">Games Played</div>
-              <div className="mt-1 text-3xl font-extrabold text-brand">{gamesPlayed}</div>
+              <CountUp value={gamesPlayed} className="mt-1 block text-3xl font-extrabold text-brand" />
             </div>
             <div className="rounded-xl bg-amber-50 p-4">
               <div className="text-[12px] font-semibold uppercase tracking-wide text-amber-600">Titles</div>
-              <div className="mt-1 text-3xl font-extrabold text-amber-600">{trophies.length}</div>
+              <CountUp value={trophies.length} className="mt-1 block text-3xl font-extrabold text-amber-600" />
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-[13.5px] text-gray-700">

@@ -12,6 +12,7 @@ function row(p: Partial<ScoreRow> & { userId: string; score: number }): ScoreRow
     houseLabel: p.houseLabel ?? null,
     houseColor: p.houseColor ?? null,
     batchLabel: p.batchLabel ?? null,
+    avatarUrl: p.avatarUrl ?? null,
     ...p,
   };
 }
@@ -97,13 +98,13 @@ describe("scope excludes rows lacking that identity", () => {
 
 describe("movementMap", () => {
   const cur: LeaderEntry[] = [
-    { rank: 1, key: "udaigiri", label: "Udaigiri", color: null, total: 880, players: 2, bestGuesses: 2 },
-    { rank: 2, key: "laxmi", label: "Laxmi", color: null, total: 580, players: 2, bestGuesses: 2 },
-    { rank: 3, key: "aravali", label: "Aravali", color: null, total: 100, players: 1, bestGuesses: 5 },
+    { rank: 1, key: "udaigiri", label: "Udaigiri", color: null, avatarUrl: null, total: 880, players: 2, bestGuesses: 2 },
+    { rank: 2, key: "laxmi", label: "Laxmi", color: null, avatarUrl: null, total: 580, players: 2, bestGuesses: 2 },
+    { rank: 3, key: "aravali", label: "Aravali", color: null, avatarUrl: null, total: 100, players: 1, bestGuesses: 5 },
   ];
   const prior: LeaderEntry[] = [
-    { rank: 1, key: "laxmi", label: "Laxmi", color: null, total: 900, players: 2, bestGuesses: 1 },
-    { rank: 2, key: "udaigiri", label: "Udaigiri", color: null, total: 700, players: 2, bestGuesses: 2 },
+    { rank: 1, key: "laxmi", label: "Laxmi", color: null, avatarUrl: null, total: 900, players: 2, bestGuesses: 1 },
+    { rank: 2, key: "udaigiri", label: "Udaigiri", color: null, avatarUrl: null, total: 700, players: 2, bestGuesses: 2 },
   ];
   const m = movementMap(cur, prior);
   it("climbed / slipped / new", () => {
