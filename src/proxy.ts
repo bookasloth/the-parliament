@@ -39,7 +39,10 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith("/api") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/images") ||
-    pathname.startsWith("/fonts")
+    pathname.startsWith("/fonts") ||
+    // Service worker must be publicly fetchable (no auth cookie during SW
+    // update fetches) so Web Push can register.
+    pathname === "/sw.js"
   ) {
     return NextResponse.next()
   }
