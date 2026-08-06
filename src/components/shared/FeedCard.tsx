@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { MediaGallery } from "@/components/shared/MediaGallery"
@@ -21,7 +22,10 @@ import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle
 import { VerifiedTick } from "./VerifiedTick"
 import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
-import CommentsSection from "@/app/(main)/feed/[postId]/comments-section"
+// Lazy-loaded: the comments thread only mounts when a post's comments are
+// expanded, so keep it out of the initial feed bundle. The commentsOpen gate
+// already shows CommentsSkeleton while it (and the data) load.
+const CommentsSection = dynamic(() => import("@/app/(main)/feed/[postId]/comments-section"))
 import { CommentsSkeleton } from "@/components/shared/feed-skeletons"
 import type { InlineComments } from "@/app/(main)/feed/actions"
 
