@@ -57,6 +57,12 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Modularize the phosphor barrel so admin bundles ship only the icons they
+  // use. Next auto-optimizes lucide-react (member app); phosphor (admin only)
+  // is not in the default list, so its full icon set was being pulled in.
+  experimental: {
+    optimizePackageImports: ["@phosphor-icons/react"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
