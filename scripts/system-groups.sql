@@ -48,5 +48,45 @@ WHERE NOT EXISTS (
   SELECT 1 FROM groups g WHERE g.school_id = s.id AND g.ref_department = v.key
 );
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- 4) POOL MEMBERS — put every active alumnus into their batch/house group.
+--    Idempotent (NOT EXISTS guard); safe to re-run as new members join.
+--    role='member', status='active'. Only active, non-deleted users.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- 4a) Pool people into their BATCH group (by profiles.batch_id)
+INSERT INTO group_members (group_id, user_id, role, status, joined_at)
+SELECT g.id, p.user_id, 'member', 'active', now()
+FROM profiles p
+JOIN groups g ON g.type = 'batch' AND g.ref_batch_id = p.batch_id
+JOIN users  u ON u.id = p.user_id
+WHERE p.batch_id IS NOT NULL
+  AND u.status = 'active'
+  AND u.deleted_at IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = p.user_id
+  );
+
+-- 4b) Pool people into their HOUSE group (by profiles.house_id)
+INSERT INTO group_members (group_id, user_id, role, status, joined_at)
+SELECT g.id, p.user_id, 'member', 'active', now()
+FROM profiles p
+JOIN groups g ON g.type = 'house' AND g.ref_house_id = p.house_id
+JOIN users  u ON u.id = p.user_id
+WHERE p.house_id IS NOT NULL
+  AND u.status = 'active'
+  AND u.deleted_at IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = p.user_id
+  );
+
 -- Verify
 SELECT type, count(*) FROM groups GROUP BY type ORDER BY type;
+
+-- Member counts per batch/house group (largest first)
+SELECT g.type, g.name, count(gm.user_id) AS members
+FROM groups g
+LEFT JOIN group_members gm ON gm.group_id = g.id
+WHERE g.type IN ('batch', 'house')
+GROUP BY g.type, g.name
+ORDER BY members DESC, g.name;
