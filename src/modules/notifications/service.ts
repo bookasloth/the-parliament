@@ -1,6 +1,7 @@
 import { after } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, type EmailTemplates } from "@/lib/email"
+import { broadcastToUser } from "@/lib/supabase-realtime"
 
 // A burst of the same kind on the same entity (e.g. many reactions on one post)
 // coalesces into a single unread row within this window instead of spamming the
@@ -88,6 +89,10 @@ export async function sendNotification<K extends NotificationKind>(
       },
     })
   }
+
+  // Nudge the recipient's notification bell to refetch instantly (realtime),
+  // instead of waiting out its poll. Best-effort; the poll is the fallback.
+  void broadcastToUser(input.userId, "notification", { at: Date.now() })
 
   // Email is best-effort and must not add latency to the triggering action
   // (follow/comment/reaction). Defer it past the response with after(); suppress
