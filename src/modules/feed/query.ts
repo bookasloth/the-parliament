@@ -1,6 +1,9 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
+import { recencyCursorWhere, type FeedCursor } from "./cursor"
+
+export { recencyCursorWhere, type FeedCursor } from "./cursor"
 
 export interface FeedFilters {
   schoolId: string
@@ -16,6 +19,13 @@ export interface FeedFilters {
   viewerId?: string
   /** "Following" feed: only posts from users the viewer follows (+ their own). */
   followingOnly?: boolean
+  /**
+   * Keyset pagination cursor — the last row of the previous page. ONLY honoured
+   * on the recency feed (rankerName === "recency"), whose (createdAt, id) key is
+   * stable. Prevents the offset drift (dup/skip) that `skip` suffers when posts
+   * are inserted mid-scroll. Ignored on the ranked feed (mutable rankingScore).
+   */
+  cursor?: FeedCursor
 }
 
 export async function getFeed(filters: FeedFilters) {
@@ -106,17 +116,30 @@ export async function getFeed(filters: FeedFilters) {
   }
 
   // Order by the stored hot score (indexed) — real DB pagination over every
-  // candidate, not an in-memory re-rank of a recency window. "recency" ranker
-  // falls back to createdAt.
-  const orderBy: Prisma.PostOrderByWithRelationInput[] =
-    filters.rankerName === "recency"
-      ? [{ isPinned: "desc" }, { createdAt: "desc" }]
-      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+  // candidate, not an in-memory re-rank of a recency window. The recency feed
+  // sorts purely by (createdAt, id) so it can keyset-paginate; it drops the
+  // isPinned float (a "for you" concept) which would otherwise re-surface a
+  // pinned post on later keyset pages (a duplicate).
+  const isRecency = filters.rankerName === "recency"
+  const orderBy: Prisma.PostOrderByWithRelationInput[] = isRecency
+    ? [{ createdAt: "desc" }, { id: "desc" }]
+    : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+
+  // Recency + cursor → keyset (no offset drift). Everything else keeps offset.
+  const usesCursor = isRecency && !!filters.cursor
+  if (usesCursor) {
+    const keyset = recencyCursorWhere(filters.cursor!)
+    where.AND = Array.isArray(where.AND)
+      ? [...where.AND, keyset]
+      : where.AND
+        ? [where.AND, keyset]
+        : [keyset]
+  }
 
   let rows = await prisma.post.findMany({
     where,
     orderBy,
-    skip: (page - 1) * pageSize,
+    ...(usesCursor ? {} : { skip: (page - 1) * pageSize }),
     take: pageSize,
     select: postSelect(filters.viewerId),
   })
@@ -125,7 +148,7 @@ export async function getFeed(filters: FeedFilters) {
   // seen exclusion (hidden/blocked still enforced) so the feed is never blank —
   // they simply re-browse recent posts.
   let caughtUp = false
-  if (shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length })) {
+  if (!usesCursor && shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length })) {
     caughtUp = true
     where.id = hiddenIds.length > 0 ? { notIn: hiddenIds } : undefined
     rows = await prisma.post.findMany({
@@ -165,6 +188,15 @@ export async function getFeed(filters: FeedFilters) {
     viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
   }
 
+  // Keyset cursor for the next page — recency feed only, and only when a full
+  // page came back (a short page means we hit the end → no cursor). Callers pass
+  // it straight back as `cursor` to fetch the next page with no offset drift.
+  const last = rows[rows.length - 1]
+  const nextCursor: FeedCursor | null =
+    isRecency && last && rows.length === pageSize
+      ? { createdAt: last.createdAt.toISOString(), id: last.id }
+      : null
+
   return {
     rows: rows.map((r) => ({
       ...r,
@@ -174,6 +206,7 @@ export async function getFeed(filters: FeedFilters) {
     pageSize,
     rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
     caughtUp,
+    nextCursor,
   }
 }
 

@@ -124,7 +124,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       }),
       user.schoolId
         ? getFeed({ schoolId: user.schoolId, authorId: user.id, viewerId, pageSize: 20, rankerName: "recency" })
-        : Promise.resolve({ rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"] }),
+        : Promise.resolve({ rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"], nextCursor: null }),
       Promise.all([
         prisma.follow.findMany({
           where: { followingId: user.id },
@@ -252,6 +252,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     followingCount: user._count.following,
     postsCount,
     posts,
+    postsNextCursor: feed.nextCursor,
     followers,
     userId: user.id,
     viewerFollows,
