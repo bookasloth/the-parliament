@@ -17,6 +17,7 @@ export type EmailTemplates = {
   verification_rejected: { legalName: string; reason: string }
   new_follower: { fromName: string; profileUrl: string }
   new_message: { fromName: string; messagesUrl: string }
+  profile_views: { count: string; profileUrl: string }
   comment_on_post: { fromName: string; postUrl: string }
   reaction_on_post: { fromName: string; postUrl: string }
   mention: { fromName: string; postUrl: string }
@@ -175,6 +176,22 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         heading: `<em>${d.fromName}</em> sent you a message`,
         body: p(`${d.fromName} sent you a message on NNAWCA. Open your inbox to read it and reply.`) + button("Read message", d.messagesUrl, "blue"),
         reason: "You're getting this because someone sent you a direct message.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  profile_views: {
+    // The classic LinkedIn return-hook: curiosity about who's looking.
+    subject: (d) => `${d.count} ${Number(d.count) === 1 ? "person" : "people"} viewed your profile this week`,
+    text: (d) => `${d.count} viewed your profile on NNAWCA this week.\n\nSee your profile: ${d.profileUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Profile",
+        eyebrow: "Profile · Viewers",
+        heading: `<em>${d.count}</em> ${Number(d.count) === 1 ? "person" : "people"} viewed your profile`,
+        body: p(`${d.count} ${Number(d.count) === 1 ? "person" : "people"} checked out your profile on NNAWCA this week. Keep it fresh so you make a great impression — and see who's in your network.`) + button("View your profile", d.profileUrl, "blue"),
+        reason: "You're getting this because you allow engagement emails.",
         manageUrl: MANAGE_URL,
         unsubscribeUrl: MANAGE_URL,
       }),
@@ -414,6 +431,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   verification_rejected: "transactional",
   new_follower: "engagement",
   new_message: "engagement",
+  profile_views: "engagement",
   comment_on_post: "engagement",
   reaction_on_post: "engagement",
   mention: "engagement",

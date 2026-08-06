@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { after } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCurrent } from "@/modules/membership/service"
@@ -112,6 +113,22 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   // pooler latency on a top-traffic page).
   const viewerId = session?.user?.id
   const isOwnProfile = viewerId === user.id
+
+  // Record "who viewed your profile" (feeds the weekly re-engagement email).
+  // Fire-and-forget past the response so it never slows the profile render; one
+  // row per (profile, viewer), bumped on repeat visits. Skips self-views.
+  if (viewerId && !isOwnProfile) {
+    const targetId = user.id
+    after(() =>
+      prisma.profileView
+        .upsert({
+          where: { profileUserId_viewerId: { profileUserId: targetId, viewerId } },
+          create: { profileUserId: targetId, viewerId },
+          update: { count: { increment: 1 }, lastViewedAt: new Date() },
+        })
+        .catch(() => {}),
+    )
+  }
   const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current] =
     await Promise.all([
       prisma.experience.findMany({

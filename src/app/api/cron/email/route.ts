@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthorizedCron } from "@/lib/cron-auth"
 import { drainEmailOutbox } from "@/modules/email/service"
+import { sendProfileViewDigests } from "@/modules/profile/view-digest"
 
 // Vercel Cron hits this to flush the email outbox — mail that deliver() deferred
 // during quiet hours (22:00–07:00 IST) and any future enqueue-for-later sends.
@@ -14,5 +15,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const results = await drainEmailOutbox()
-  return NextResponse.json({ ok: true, results })
+
+  // Weekly re-engagement send, folded into this daily cron (Vercel Hobby caps
+  // sub-daily crons, so we gate by weekday instead of adding a weekly cron):
+  // Mondays in IST → "N people viewed your profile this week".
+  const istDay = new Date(Date.now() + 5.5 * 60 * 60 * 1000).getUTCDay()
+  let profileViews: { sent: number; candidates: number } | null = null
+  if (istDay === 1) {
+    profileViews = await sendProfileViewDigests()
+  }
+
+  return NextResponse.json({ ok: true, results, profileViews })
 }
