@@ -36,6 +36,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
         otherUser={meta.otherUser}
         initialMessages={messages}
         initialOtherLastReadAt={meta.otherLastReadAt}
+        initialMuted={meta.muted}
+        initialBlocked={meta.blocked}
         birthday={birthday}
         suppressValentine={suppressValentine}
       />
