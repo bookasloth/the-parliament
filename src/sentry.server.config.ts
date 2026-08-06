@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/nextjs"
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-  // Attach local variable values to server stack frames for easier debugging.
-  includeLocalVariables: true,
+  // Local-variable capture is handy in dev but adds per-error overhead and can
+  // leak sensitive values into prod error payloads — keep it out of production.
+  includeLocalVariables: process.env.NODE_ENV !== "production",
 })

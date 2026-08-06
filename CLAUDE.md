@@ -25,7 +25,9 @@
 ## Project Structure
 ```
 src/
-  middleware.ts # Route protection + onboarding gate (active redirect layer)
+  # NOTE: there is no src/middleware.ts in the active tree. Route protection +
+  # onboarding gating happen per-page/per-route via requireUser/optionalUser
+  # (src/modules/auth/session.ts). A middleware gate is a possible future refactor.
   app/          # Next.js App Router routes
     (auth)/     # Auth route group (signin, signup)
     (main)/     # Gated route group — shared layout.tsx mounts PrivateNavbar on every page.
@@ -106,12 +108,12 @@ scripts/
 ### Auth
 - Auth.js config in `src/lib/auth.ts` — **Google OAuth + Credentials** providers
 - Sign-in page at `/auth/signin`, sign-up at `/auth/signup`
-- Route protection + onboarding gate in `src/middleware.ts` (matcher-configured; sole active layer).
+- Route protection + onboarding gating are done **per-page/per-route** via `requireUser`/`optionalUser`/`requireAdmin` (`src/modules/auth/session.ts`). **There is no active `src/middleware.ts`** (a middleware gate is a possible future refactor).
 - Session via JWT — user ID in `token.sub`. Session/JWT augmented with `username`, `onboardingStep`, `onboardingCompleted`, `membershipStatus` (typed in `src/types/next-auth.d.ts`, populated in the `jwt`/`session` callbacks)
 - `username` is auto-generated (slug from name + uniqueness suffix) on both credentials signup and first Google sign-in — see `generateUsername`/`ensureUniqueUsername`
 - User model fields: `legalName` (not `name`), `passwordHash` (not `hashedPassword`)
 - School is optional at signup (`schoolId String?`); new users default `status: "active"`, `onboardingStep: "profile"`
-- Auth is **enabled** — `src/middleware.ts` enforces JWT + onboarding redirect. (The old root `proxy.ts` is removed; middleware is the sole gate.)
+- Auth is **enabled** — JWT + onboarding redirects are enforced per-page via the session helpers (see above), not by middleware. (The old root `proxy.ts` is removed.)
 
 ### Onboarding
 - Multi-step wizard, route group `(onboarding)` → `/onboarding/[step]` rendered by `components/onboarding/OnboardingWizard`
