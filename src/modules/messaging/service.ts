@@ -477,6 +477,19 @@ export async function startCallLog(
   audioOnly: boolean,
 ): Promise<MessageView> {
   await assertParticipant(callerId, conversationId)
+  // Resolve any of this caller's still-ringing logs in this thread first — a
+  // reload / navigate-away orphans the old "Calling…" otherwise, leaving a
+  // permanently-ringing card with a dead Join button. Mark them missed.
+  const orphans = await prisma.message.findMany({
+    where: { conversationId, senderId: callerId, type: "call", callData: { path: ["status"], equals: "ringing" } },
+    select: { id: true, callData: true },
+  })
+  for (const o of orphans) {
+    const prev = o.callData as unknown as CallData
+    const next: CallData = { ...prev, status: "missed", endedAt: new Date().toISOString(), durationSec: null }
+    await prisma.message.update({ where: { id: o.id }, data: { callData: next as object } })
+    await broadcast(conversationId, "call_update", { id: o.id, call: next })
+  }
   const call: CallData = { status: "ringing", audioOnly, endedAt: null, durationSec: null }
   const row = await prisma.message.create({
     data: { conversationId, senderId: callerId, body: "", type: "call", callData: call as object },
