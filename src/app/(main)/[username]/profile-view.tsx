@@ -17,6 +17,7 @@ import {
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
+import TrophyCase from "@/components/shared/TrophyCase"
 
 // Brand SVGs (lucide 1.17 doesn't ship brand icons). Simple Icons paths.
 type Brand = (props: { className?: string }) => React.JSX.Element
@@ -471,6 +472,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 </div>
               )
             })()}
+            <TrophyCase userId={data.userId} />
           </div>
         </Card>
 
