@@ -202,6 +202,76 @@ export async function getEventReports(schoolId: string): Promise<EventReportRow[
   }))
 }
 
+// ── Admin console list ──
+
+export type AdminEventStatus = "upcoming" | "draft" | "past" | "cancelled"
+
+export interface AdminEventRow {
+  id: string
+  title: string
+  category: string
+  mode: "in-person" | "virtual" | "hybrid"
+  date: string
+  organizer: string
+  going: number
+  revenuePaise: number
+  isFree: boolean
+  status: AdminEventStatus
+  featured: boolean
+}
+
+/** Derive the admin list status from the DB status + start time. Pure. */
+export function deriveEventStatus(
+  status: string,
+  startsAt: Date,
+  now: Date,
+): AdminEventStatus {
+  if (status === "draft") return "draft"
+  if (status === "cancelled") return "cancelled"
+  if (status === "completed") return "past"
+  // published
+  return startsAt >= now ? "upcoming" : "past"
+}
+
+/**
+ * Every event with its host, going-count, and paid revenue — for /admin/events.
+ * Global (all schools) since the admin console is cross-school.
+ */
+export async function getAdminEventRows(): Promise<AdminEventRow[]> {
+  const events = await prisma.event.findMany({
+    orderBy: { startsAt: "desc" },
+    select: {
+      id: true, title: true, mode: true, startsAt: true, status: true,
+      isFeatured: true, priceInPaise: true,
+      host: { select: { legalName: true, displayName: true, username: true } },
+    },
+  })
+  if (events.length === 0) return []
+  const ids = events.map((e) => e.id)
+  const now = new Date()
+
+  const [going, revenue] = await Promise.all([
+    prisma.eventRsvp.groupBy({ by: ["eventId"], where: { eventId: { in: ids }, status: "going" }, _count: true }),
+    prisma.eventOrder.groupBy({ by: ["eventId"], where: { eventId: { in: ids }, status: "paid" }, _sum: { amountPaise: true } }),
+  ])
+  const goingMap = new Map(going.map((g) => [g.eventId, g._count]))
+  const revMap = new Map(revenue.map((r) => [r.eventId, r._sum.amountPaise ?? 0]))
+
+  return events.map((e) => ({
+    id: e.id,
+    title: e.title,
+    category: e.mode === "online" ? "Online" : "In-person",
+    mode: mapMode(e.mode),
+    date: formatDate(e.startsAt),
+    organizer: e.host.displayName || e.host.legalName || e.host.username || "—",
+    going: goingMap.get(e.id) ?? 0,
+    revenuePaise: revMap.get(e.id) ?? 0,
+    isFree: e.priceInPaise <= 0,
+    status: deriveEventStatus(e.status, e.startsAt, now),
+    featured: e.isFeatured,
+  }))
+}
+
 // ── Attendance (host-facing check-in) ──
 
 export interface AttendeeRow {
