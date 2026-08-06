@@ -77,6 +77,9 @@ export function useVideoCall(opts: {
   const localRef = useRef<MediaStream | null>(null)
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
+  // Our own gathered candidates, so a late-joining callee (global ring) can be
+  // re-sent the ones that fired before they were on the channel.
+  const localIceRef = useRef<RTCIceCandidateInit[]>([])
   const remoteReadyRef = useRef(false)
   const lastOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
   const autoAcceptRef = useRef(false)
@@ -95,6 +98,7 @@ export function useVideoCall(opts: {
     localRef.current = null
     pendingOfferRef.current = null
     pendingIceRef.current = []
+    localIceRef.current = []
     remoteReadyRef.current = false
     setLocalStream(null)
     setRemoteStream(null)
@@ -124,7 +128,10 @@ export function useVideoCall(opts: {
       setRemoteStream(remote)
       pc.ontrack = (e) => e.streams[0].getTracks().forEach((t) => remote.addTrack(t))
       pc.onicecandidate = (e) => {
-        if (e.candidate) sig("call_ice", { candidate: e.candidate.toJSON() })
+        if (!e.candidate) return
+        const c = e.candidate.toJSON()
+        localIceRef.current.push(c) // keep for a late callee (see peerJoined)
+        sig("call_ice", { candidate: c })
       }
       pc.onconnectionstatechange = () => {
         const s = pc.connectionState
@@ -205,6 +212,9 @@ export function useVideoCall(opts: {
   const peerJoined = useCallback(() => {
     if (state === "calling" && lastOfferRef.current) {
       sig("call_offer", { sdp: lastOfferRef.current, audioOnly })
+      // Replay candidates that fired before the callee was on the channel —
+      // otherwise ICE has only the callee's side and the call never connects.
+      for (const c of localIceRef.current) sig("call_ice", { candidate: c })
     }
   }, [state, audioOnly, sig])
 
