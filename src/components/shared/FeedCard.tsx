@@ -349,17 +349,20 @@ export function FeedCard({
                 <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
               </a>
             )}
-            {/* Stacked block — text over a full-width CTA. No flex row, so the
-                text can never collapse in a narrow column. */}
-            <div className="rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3">
-              {post.headline && <p className="text-sm font-semibold text-gray-900">{post.headline}</p>}
-              {post.content && <p className="mt-0.5 text-xs text-gray-500">{post.content}</p>}
+            {/* Facebook-style: text left, CTA right on desktop; stacked with a
+                full-width CTA on mobile. min-w-0 + shrink-0 keep the button from
+                squishing the headline in the narrow column. */}
+            <div className="rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                {post.headline && <p className="text-sm font-semibold text-gray-900">{post.headline}</p>}
+                {post.content && <p className="mt-0.5 text-xs text-gray-500">{post.content}</p>}
+              </div>
               <a
                 href={post.sponsorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={post.sponsorAccent ? { backgroundColor: post.sponsorAccent } : undefined}
-                className={`mt-3 block w-full rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
+                className={`block w-full sm:w-auto shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
               >
                 {post.sponsorCta ?? "Learn more"}
               </a>

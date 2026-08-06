@@ -17,7 +17,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Required when running behind a reverse proxy / managed host (Railway, a VPS
   // with Caddy/Nginx, etc.) — Auth.js otherwise rejects the forwarded host.
   trustHost: true,
-  session: { strategy: "jwt" },
+  // Stay signed in for 30 days; the cookie's Expires is derived from this.
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: "/auth/signin",
   },
@@ -67,32 +68,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token }) {
       if (token.sub) {
-        const user = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: {
-            email: true,
-            legalName: true,
-            displayName: true,
-            onboardingStep: true,
-            onboardingCompleted: true,
-            membershipStatus: true,
-            username: true,
-            isSuperAdmin: true,
-            userRoles: { select: { role: true } },
-          },
-        });
-        if (user) {
-          token.name = user.displayName || user.legalName;
-          token.onboardingStep = user.onboardingStep;
-          token.onboardingCompleted = user.onboardingCompleted;
-          token.membershipStatus = user.membershipStatus;
-          token.username = user.username ?? undefined;
-          token.roles = user.userRoles.map((r) => r.role);
-          token.isAdmin = computeIsAdmin({
-            email: user.email,
-            isSuperAdmin: user.isSuperAdmin,
-            roles: token.roles,
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              email: true,
+              legalName: true,
+              displayName: true,
+              onboardingStep: true,
+              onboardingCompleted: true,
+              membershipStatus: true,
+              username: true,
+              isSuperAdmin: true,
+              userRoles: { select: { role: true } },
+            },
           });
+          if (user) {
+            token.name = user.displayName || user.legalName;
+            token.onboardingStep = user.onboardingStep;
+            token.onboardingCompleted = user.onboardingCompleted;
+            token.membershipStatus = user.membershipStatus;
+            token.username = user.username ?? undefined;
+            token.roles = user.userRoles.map((r) => r.role);
+            token.isAdmin = computeIsAdmin({
+              email: user.email,
+              isSuperAdmin: user.isSuperAdmin,
+              roles: token.roles,
+            });
+          }
+        } catch (err) {
+          // A transient DB blip must NOT drop the session — throwing here logs
+          // the user out. Keep the existing token; it refreshes next request.
+          console.error("jwt callback: user refresh failed, keeping token", err);
         }
       }
       return token;
