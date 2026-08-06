@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import dynamic from "next/dynamic"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -15,7 +16,9 @@ import {
 } from "lucide-react"
 import { useDropdown } from "./use-dropdown"
 import { awards } from "./types"
-import EmojiPicker from "@/components/shared/EmojiPicker"
+// Lazy-loaded: the emoji picker only mounts inside the award modal (opened on
+// tap), so keep it out of the feed bundle that every post ships.
+const EmojiPicker = dynamic(() => import("@/components/shared/EmojiPicker"))
 
 // --- Award Modal ---
 function AwardModal({
