@@ -48,6 +48,19 @@ const FROM_BY_CATEGORY: Record<EmailCategory, string> = {
   marketing: "NNAWCA Community <community@nnawca.com>",
 }
 
+// Re-engagement mail budget: at most this many of the CAPPED_CATEGORIES per
+// user per rolling 24h (the 1–4/day ceiling). Transactional / admin /
+// institutional mail is exempt (operational, must always send).
+const DAILY_CAP = 4
+const CAPPED_CATEGORIES = new Set<EmailCategory>([
+  "engagement",
+  "digest",
+  "reminder",
+  "wish",
+  "marketing",
+  "lifecycle",
+])
+
 let cachedTransport: nodemailer.Transporter | null = null
 
 function getTransport(): nodemailer.Transporter {
@@ -131,6 +144,20 @@ export async function deliver(args: DeliverArgs): Promise<{ messageId: string | 
     const prefs = await prisma.emailPreference.findUnique({ where: { userId: args.userId } })
     const flags: PreferenceFlags = prefs ?? defaultPreferences()
     if (!flags[CATEGORY_PREF_MAP[args.category]]) return { messageId: null, reason: "opted_out" }
+  }
+
+  // 2.5. Frequency cap — at most DAILY_CAP re-engagement emails per user per
+  //   rolling 24h. Message/follow/digest/profile-view mail can otherwise pile up
+  //   on an active day and tip a user into spam-marking, wrecking deliverability
+  //   for everyone. Only CAPPED_CATEGORIES count toward (and are limited by) the
+  //   budget — transactional/admin/institutional mail is never capped. The
+  //   digest is the floor, this is the ceiling → the 1–4/day target.
+  if (args.userId && CAPPED_CATEGORIES.has(args.category)) {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const recent = await prisma.emailMessage.count({
+      where: { userId: args.userId, category: { in: [...CAPPED_CATEGORIES] }, queuedAt: { gte: since } },
+    })
+    if (recent >= DAILY_CAP) return { messageId: null, reason: "daily_cap" }
   }
 
   // 3. Quiet hours — defer non-transactional mail sent overnight (IST).
