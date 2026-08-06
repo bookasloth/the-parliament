@@ -1,10 +1,18 @@
-import GamesSidebar from "@/components/games/GamesSidebar";
+import { Suspense } from "react";
+import { GamesRail } from "@/components/games/GamesRail";
+import { ProfileSidebarSkeleton } from "@/components/shared/ProfileSidebarView";
 
 export default function GamesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <GamesSidebar />
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <aside className="hidden w-[280px] flex-shrink-0 lg:block">
+          <div className="sticky top-20">
+            <Suspense fallback={<ProfileSidebarSkeleton navRows={4} />}>
+              <GamesRail />
+            </Suspense>
+          </div>
+        </aside>
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>

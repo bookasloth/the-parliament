@@ -1,13 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ChevronUp, ChevronDown, Minus, Sparkles, Trophy, Crown } from "lucide-react";
+import { ChevronUp, ChevronDown, Minus, Sparkles, Trophy, Crown, Zap } from "lucide-react";
 import { requireUser } from "@/modules/auth/session";
 import { leaderboardWithMovementCached, type Movement, type LeaderEntry } from "@/modules/games/leaderboard";
 import { PERIODS, type Period } from "@/modules/games/periods";
 import { formatAnchor, PERIOD_LABEL, SCOPE_LABEL, SCOPES, type Scope } from "@/modules/games/format";
 import Podium from "@/components/games/Podium";
 import LeaderboardTabs from "@/components/games/LeaderboardTabs";
+import NudgePanel from "@/components/games/NudgePanel";
+import { getFollowData } from "@/modules/connections/service";
 
 export const metadata = { title: "Alfazy Leaderboard · The Parliament" };
 
@@ -47,6 +49,18 @@ export default async function AlfazyLeaderboardPage({
   const podium = entries.slice(0, 3);
   const rest = entries.slice(3);
   const myEntry = scope === "individual" ? entries.find((e) => e.key === user.id) : undefined;
+
+  // Nudge list only makes sense on the LIVE individual/daily board — connections
+  // who haven't played *today* yet. Skip on past anchors and aggregate boards.
+  const showNudge = scope === "individual" && period === "daily" && !anchorParam;
+  let nudgeTargets: { userId: string; name: string; avatar: string; headline?: string }[] = [];
+  if (showNudge) {
+    const { following } = await getFollowData(user.id);
+    const playedIds = new Set(entries.map((e) => e.key));
+    nudgeTargets = following
+      .filter((c) => !playedIds.has(c.userId ?? c.id))
+      .map((c) => ({ userId: c.userId ?? c.id, name: c.name, avatar: c.avatar, headline: c.headline }));
+  }
 
   const base = "/games/alfazy/leaderboard";
   const q = anchorParam ? `?anchor=${anchorParam}` : "";
@@ -144,7 +158,20 @@ export default async function AlfazyLeaderboardPage({
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{e.total}</td>
                       {scope === "individual" && (
-                        <td className="px-4 py-3 text-right text-gray-500">{e.bestGuesses ? `${e.bestGuesses}/6` : "—"}</td>
+                        <td className="px-4 py-3 text-right">
+                          {e.bestGuesses == null ? (
+                            <span className="text-gray-300">—</span>
+                          ) : e.bestGuesses <= 2 ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600"
+                              title="Ace — solved in 2 guesses or fewer"
+                            >
+                              <Zap className="h-3 w-3" /> Ace {e.bestGuesses}/6
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">{e.bestGuesses}/6</span>
+                          )}
+                        </td>
                       )}
                     </tr>
                   ))}
@@ -182,6 +209,14 @@ export default async function AlfazyLeaderboardPage({
           ))}
         </aside>
       </div>
+
+      {showNudge && nudgeTargets.length > 0 && (
+        <NudgePanel
+          connections={nudgeTargets}
+          title="Haven't played today"
+          subtitle="Give a connection a nudge to jump on today's board."
+        />
+      )}
     </div>
   );
 }

@@ -124,6 +124,40 @@ export function rankEntries(entries: Omit<LeaderEntry, "rank">[]): LeaderEntry[]
   return out;
 }
 
+const DAY_MS = 86_400_000;
+const utcDayKey = (d: Date): string => d.toISOString().slice(0, 10);
+
+/**
+ * Consecutive daily-play streak ending today — or yesterday, if today isn't
+ * played yet (the streak stays alive until the day rolls over). Pure. `now` and
+ * every day in `playedDays` are compared in UTC.
+ */
+export function streakLength(playedDays: Set<string>, now: Date): number {
+  let cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  if (!playedDays.has(utcDayKey(cursor))) {
+    cursor = new Date(cursor.getTime() - DAY_MS);
+    if (!playedDays.has(utcDayKey(cursor))) return 0;
+  }
+  let n = 0;
+  while (playedDays.has(utcDayKey(cursor))) {
+    n++;
+    cursor = new Date(cursor.getTime() - DAY_MS);
+  }
+  return n;
+}
+
+/** The current user's Alfazy daily streak. */
+export async function currentStreak(userId: string): Promise<number> {
+  const gameId = await alfazyGameId();
+  const rows = await prisma.gameScore.findMany({
+    where: { gameId, userId },
+    select: { puzzleDate: true },
+    orderBy: { puzzleDate: "desc" },
+    take: 400,
+  });
+  return streakLength(new Set(rows.map((r) => utcDayKey(r.puzzleDate))), new Date());
+}
+
 let cachedGameId: string | null = null;
 /** The Alfazy game row id (cached). */
 export async function alfazyGameId(): Promise<string> {

@@ -3,9 +3,13 @@ import { Type, Trophy, Flame, Play, CheckCircle2, ChevronRight } from "lucide-re
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getDailyPuzzle } from "@/modules/games/alfazy";
-import { leaderboardCached, alfazyGameId } from "@/modules/games/leaderboard";
+import { leaderboardCached, alfazyGameId, currentStreak } from "@/modules/games/leaderboard";
 import { trophiesForUser } from "@/modules/games/champions";
+import { getFollowData } from "@/modules/connections/service";
+import { env } from "@/config/env";
 import CountUp from "@/components/games/CountUp";
+import NudgePanel from "@/components/games/NudgePanel";
+import ShareResult from "@/components/games/ShareResult";
 
 export const metadata = { title: "Alfazy · The Parliament" };
 export const dynamic = "force-dynamic";
@@ -20,7 +24,7 @@ export default async function AlfazyHubPage() {
   const gameId = await alfazyGameId();
   const { puzzleNo } = await getDailyPuzzle();
 
-  const [playedToday, gamesPlayed, board, trophies] = await Promise.all([
+  const [playedToday, gamesPlayed, board, trophies, follow, streak] = await Promise.all([
     prisma.gameScore.findUnique({
       where: { gameId_userId_puzzleDate: { gameId, userId: user.id, puzzleDate: todayUtc() } },
       select: { score: true, solved: true, levelReached: true },
@@ -28,10 +32,26 @@ export default async function AlfazyHubPage() {
     prisma.gameScore.count({ where: { gameId, userId: user.id } }),
     leaderboardCached("individual", "daily"),
     trophiesForUser(user.id),
+    getFollowData(user.id),
+    currentStreak(user.id),
   ]);
+
+  const nudgeTargets = follow.following.map((c) => ({
+    userId: c.userId ?? c.id,
+    name: c.name,
+    avatar: c.avatar,
+    headline: c.headline,
+  }));
 
   const top5 = board.entries.slice(0, 5);
   const myRank = board.entries.find((e) => e.key === user.id)?.rank ?? null;
+  const totalPlayers = board.entries.length;
+  const topPct = myRank && totalPlayers ? Math.max(1, Math.round((myRank / totalPlayers) * 100)) : null;
+  const shareText = playedToday
+    ? `Alfazy #${String(puzzleNo).padStart(3, "0")} — ${
+        playedToday.solved ? `solved ${playedToday.levelReached}/6` : "unsolved"
+      } · ${playedToday.score} pts${streak > 1 ? ` · ${streak}-day streak 🔥` : ""}\nPlay: ${env.authUrl}/games/alfazy`
+    : "";
 
   return (
     <div className="space-y-6">
@@ -50,13 +70,28 @@ export default async function AlfazyHubPage() {
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-brand-700 p-6 text-white lg:row-span-1">
           <h2 className="font-heading text-xl font-bold">Play Alfazy</h2>
           {playedToday ? (
-            <div className="mt-4 rounded-xl bg-white/15 p-4">
-              <div className="flex items-center gap-2 font-semibold">
-                <CheckCircle2 className="h-5 w-5" /> Done for today
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl bg-white/15 p-4">
+                <div className="flex items-center gap-2 font-semibold">
+                  <CheckCircle2 className="h-5 w-5" /> Done for today
+                </div>
+                <p className="mt-1 text-[13px] text-white/85">
+                  {playedToday.solved ? `Solved in ${playedToday.levelReached}/6` : "Not solved"} · {playedToday.score} pts
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {streak > 1 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
+                      <Flame className="h-3.5 w-3.5" /> {streak}-day streak
+                    </span>
+                  )}
+                  {topPct != null && (
+                    <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
+                      Top {topPct}% today
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="mt-1 text-[13px] text-white/85">
-                {playedToday.solved ? `Solved in ${playedToday.levelReached}/6` : "Not solved"} · {playedToday.score} pts. Come back tomorrow!
-              </p>
+              <ShareResult text={shareText} className="w-full bg-white text-brand hover:bg-white/90" />
             </div>
           ) : (
             <>
@@ -136,6 +171,8 @@ export default async function AlfazyHubPage() {
           </div>
         </section>
       </div>
+
+      <NudgePanel connections={nudgeTargets} />
     </div>
   );
 }
