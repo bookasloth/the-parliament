@@ -8,8 +8,11 @@ import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import type { FeedPost } from "@/components/shared/FeedCard"
-import PostCard from "../feed/[postId]/post-card"
-import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
+import { ProfileTimeline } from "./profile-timeline"
+import type { FeedCursor } from "@/modules/feed/query"
+
+/** One rendered post in a profile timeline. */
+export type ProfileTimelinePost = { post: FeedPost; isAuthor: boolean; initialSaved: boolean }
 import { startConversationAction } from "../messages/actions"
 import {
   Briefcase, MapPin, Building2, MoreHorizontal,
@@ -112,7 +115,9 @@ export interface ProfileViewData {
   followersCount: number
   followingCount: number
   postsCount: number
-  posts: { post: FeedPost; isAuthor: boolean; initialSaved: boolean }[]
+  posts: ProfileTimelinePost[]
+  /** Keyset cursor for the next timeline page (null = no more / not paginated). */
+  postsNextCursor: FeedCursor | null
   followers: {
     userId: string
     username: string | null
@@ -495,38 +500,14 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           {/* ===== BODY — left column, flows directly under the profile card ===== */}
           <div className="flex min-w-0 flex-col gap-[18px]">
             {tab === "posts" && (
-              <div className="flex flex-col gap-[18px]">
-                {/* Own profile: start-a-post entry above the timeline */}
-                {isOwn && <ComposeTrigger avatar={data.photoUrl ?? undefined} />}
-                {data.posts.length > 0 ? (
-                  data.posts.map(({ post, isAuthor, initialSaved }) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      isAuthor={isAuthor}
-                      initialSaved={initialSaved}
-                      defaultCommentsOpen={false}
-                      disableCardNav={false}
-                    />
-                  ))
-                ) : (
-                  <Card>
-                    <div className="px-7 py-10 text-center">
-                      <p className="text-sm text-gray-500">
-                        {isOwn ? "You haven't posted yet." : `${data.name.split(" ")[0]} hasn't posted yet.`}
-                      </p>
-                      {isOwn && (
-                        <Link
-                          href="/compose"
-                          className={`mt-3 inline-flex items-center gap-1.5 ${R_EL} bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600`}
-                        >
-                          Write your first post
-                        </Link>
-                      )}
-                    </div>
-                  </Card>
-                )}
-              </div>
+              <ProfileTimeline
+                userId={data.userId}
+                initialPosts={data.posts}
+                initialCursor={data.postsNextCursor}
+                isOwn={isOwn}
+                avatar={data.photoUrl ?? undefined}
+                emptyName={data.name.split(" ")[0]}
+              />
             )}
 
             {tab === "about" && (
