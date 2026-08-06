@@ -14,6 +14,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   verification_approved: { legalName: "Shubham", loginUrl: "https://x/login" },
   verification_rejected: { legalName: "Shubham", reason: "ID photo unreadable" },
   new_follower: { fromName: "Neha Gupta", profileUrl: "https://x/u/neha" },
+  new_message: { fromName: "Neha Gupta", messagesUrl: "https://x/messages/c1" },
   comment_on_post: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
   reaction_on_post: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
   mention: { fromName: "Neha Gupta", postUrl: "https://x/p/1" },
@@ -62,8 +63,8 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 19 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(19)
+  it("covers all 20 keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(20)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
