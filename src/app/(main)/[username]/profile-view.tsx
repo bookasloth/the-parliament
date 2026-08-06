@@ -17,7 +17,7 @@ import {
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
-import TrophyCase from "@/components/shared/TrophyCase"
+import { AchievementsPanel, type AchievementBadge } from "@/components/shared/AchievementsPanel"
 
 // Brand SVGs (lucide 1.17 doesn't ship brand icons). Simple Icons paths.
 type Brand = (props: { className?: string }) => React.JSX.Element
@@ -135,6 +135,10 @@ export interface ProfileViewData {
     canListBusiness: boolean
     canApplyMentor: boolean
   } | null
+  badges: AchievementBadge[]
+  totalBadges: number
+  karma: number
+  eggs: number
 }
 
 const MS_COLOR: Record<ProfileViewData["membership"]["tier"], string> = {
@@ -374,9 +378,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           </div>
         </Card>
 
-        {/* About sidebar — spans both rows so the body flows directly under the
-            profile card instead of waiting for this taller column. */}
-        <Card className="lg:sticky lg:top-4 lg:row-span-2">
+        {/* Right rail — About + Achievements. Spans both rows so the body flows
+            directly under the profile card instead of waiting for this taller column. */}
+        <div className="flex flex-col gap-[18px] lg:sticky lg:top-4 lg:row-span-2">
+        <Card>
           <div className="flex items-center justify-between px-7 pt-5 pb-1">
             <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
           </div>
@@ -472,9 +477,20 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 </div>
               )
             })()}
-            <TrophyCase userId={data.userId} />
           </div>
         </Card>
+
+        <AchievementsPanel
+          data={{
+            ownerFirstName: data.name.split(" ")[0],
+            userId: data.userId,
+            badges: data.badges,
+            totalBadges: data.totalBadges,
+            eggs: data.eggs,
+            karma: data.karma,
+          }}
+        />
+        </div>
 
           {/* ===== BODY — left column, flows directly under the profile card ===== */}
           <div className="flex min-w-0 flex-col gap-[18px]">

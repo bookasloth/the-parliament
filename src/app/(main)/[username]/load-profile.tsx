@@ -9,6 +9,7 @@ import { formatDuration } from "@/modules/profile/history"
 import { getFeed } from "@/modules/feed/query"
 import { mapRowToFeedPost, batchOrdinal } from "../feed/map-row"
 import { getFollowingIds } from "@/modules/connections/service"
+import { getBalance } from "@/modules/karma/ledger"
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "Present"
@@ -97,6 +98,10 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
           following: true,
           posts: true,
         },
+      },
+      userBadges: {
+        orderBy: { awardedAt: "desc" },
+        select: { badge: { select: { key: true, label: true, iconUrl: true } } },
       },
     },
   })
@@ -194,6 +199,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     where: { authorId: user.id, deletedAt: null, status: "visible" },
   })
 
+  const karma = await getBalance(user.id)
+
   const p = user.profile
   const batch = p?.batch
   const membership = resolveMembership(user.membershipStatus)
@@ -259,6 +266,10 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     linkedinUrl: p?.linkedinUrl ?? null,
     socialLinks: social,
     owner,
+    badges: user.userBadges.map((ub) => ub.badge),
+    totalBadges: user.userBadges.length,
+    karma: Math.round(karma.balance),
+    eggs: 0, // ponytail: no eggs currency model yet — wire the real count here when one exists
   }
 
   return <ProfileView data={data} initialTab={initialTab} />
