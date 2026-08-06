@@ -1506,8 +1506,22 @@ model Game {
   matches     GameMatch[]
   challenges  GameChallenge[]
   tournaments Tournament[]
+  champions   GameChampion[]
 
   @@map("games")
+}
+
+// Alfazy word dictionary. Daily puzzle = the row whose `idx` equals
+// (daysSinceLaunch % activeCount), so the ordering is stable and deterministic.
+// Seeded via SQL (see docs plan). idx is a dense 0-based sequence over active rows.
+model AlfazyWord {
+  id       String  @id @default(uuid()) @db.Uuid
+  idx      Int     @unique
+  word     String  @unique @db.VarChar(5)
+  isActive Boolean @default(true) @map("is_active")
+
+  @@index([isActive, idx])
+  @@map("alfazy_words")
 }
 
 model GameScore {
@@ -1515,15 +1529,19 @@ model GameScore {
   gameId       String   @map("game_id") @db.Uuid
   userId       String   @map("user_id") @db.Uuid
   score        Int      @default(0)
-  levelReached Int?     @map("level_reached")
+  levelReached Int?     @map("level_reached") // Alfazy: guesses used (1-6); null = failed
+  solved       Boolean  @default(false)
+  puzzleDate   DateTime @map("puzzle_date") @db.Date
   karmaAwarded Decimal  @default(0) @map("karma_awarded") @db.Decimal(8, 2)
   playedAt     DateTime @default(now()) @map("played_at") @db.Timestamptz
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([gameId, userId, puzzleDate]) // one play per user per day — no farming
   @@index([gameId, score])
   @@index([userId, playedAt])
+  @@index([gameId, puzzleDate])
   @@map("game_scores")
 }
 
@@ -1607,6 +1625,28 @@ model TournamentEntry {
 
   @@id([tournamentId, userId])
   @@map("tournament_entries")
+}
+
+// Frozen period champions. One row per winner per (scope, period, anchor); ties
+// share rank 1 as co-champions (multiple rows, same anchor). Powers the Hall of
+// Champions + profile trophy case (derived: rows whose winnerKey matches the
+// user's id / houseId / batchId). winnerLabel is denormalized to survive deletion.
+model GameChampion {
+  gameId      String   @map("game_id") @db.Uuid
+  scope       String   @db.VarChar(12) // individual | house | batch
+  period      String   @db.VarChar(12) // daily | weekly | monthly | yearly
+  anchor      String   @db.VarChar(16) // 2026-08-05 | 2026-W23 | 2026-08 | 2026
+  winnerKey   String   @map("winner_key") @db.Uuid // userId | houseId | batchId
+  winnerLabel String   @map("winner_label") @db.VarChar(120)
+  totalScore  Int      @map("total_score")
+  decidedAt   DateTime @default(now()) @map("decided_at") @db.Timestamptz
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@id([gameId, scope, period, anchor, winnerKey])
+  @@index([scope, period])
+  @@index([winnerKey])
+  @@map("game_champions")
 }
 
 // ─────────────────────────────────────────────
