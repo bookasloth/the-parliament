@@ -9,15 +9,22 @@ const FOOTER_LINKS = [
   { label: "Terms", href: "/terms" },
 ];
 
-// Dark network-art brand panel — the shared left side of the homepage and every
-// auth screen. Heading top, ambient graph filling the panel, footer bottom.
+// Dark network-art brand panel — the shared brand side of the homepage and every
+// auth screen. Heading top, optional stat cards, ambient graph filling the
+// panel, footer bottom.
 export function NetworkPanel({
   heading = "Welcome to the NNAWCA!",
   subhead = "Reconnect, reminisce, and rediscover your Navodaya family.",
+  stats,
+  credit = (
+    <>Powered by <span className="font-semibold text-slate-200">Shubham Datarkar</span></>
+  ),
   className = "",
 }: {
-  heading?: string;
-  subhead?: string;
+  heading?: React.ReactNode;
+  subhead?: React.ReactNode;
+  stats?: { value: string; label: string; icon?: React.ReactNode }[];
+  credit?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -36,6 +43,21 @@ export function NetworkPanel({
         <p className="mt-4 max-w-sm text-base leading-relaxed text-slate-300">{subhead}</p>
       </Link>
 
+      {stats && stats.length > 0 && (
+        <div className="relative mt-8 flex flex-wrap gap-3">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="min-w-[104px] rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
+            >
+              {s.icon && <div className="mb-2">{s.icon}</div>}
+              <div className="font-heading text-2xl font-extrabold leading-none text-white">{s.value}</div>
+              <div className="mt-1 text-xs font-medium text-slate-400">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex-1" />
 
       <div className="relative border-t border-white/10 pt-5">
@@ -46,9 +68,7 @@ export function NetworkPanel({
             </a>
           ))}
         </nav>
-        <p className="mt-3 text-xs text-slate-400">
-          Powered by <span className="font-semibold text-slate-200">Shubham Datarkar</span>
-        </p>
+        <p className="mt-3 text-xs text-slate-400">{credit}</p>
       </div>
     </div>
   );
