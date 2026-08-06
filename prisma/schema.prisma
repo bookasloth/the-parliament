@@ -189,6 +189,7 @@ model User {
   karmaRedemptions         KarmaRedemption[]
   groupRequests            GroupRequest[]
   sentMessages             Message[]                 @relation("message_sender")
+  messageReactions         MessageReaction[]
   savedPosts               SavedPost[]
   hiddenPosts              HiddenPost[]
   postImpressions          PostImpression[]
@@ -841,6 +842,10 @@ model ConversationParticipant {
   conversationId String    @map("conversation_id") @db.Uuid
   userId         String    @map("user_id") @db.Uuid
   lastReadAt     DateTime? @map("last_read_at") @db.Timestamptz
+  muted          Boolean   @default(false)
+  // "Delete chat" is per-participant: hides history up to this point from this
+  // user only; a new message re-surfaces the thread in their inbox.
+  clearedAt      DateTime? @map("cleared_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -856,16 +861,37 @@ model Message {
   senderId       String    @map("sender_id") @db.Uuid
   body           String
   media          Json      @default("[]")
+  replyToId      String?   @map("reply_to_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   editedAt       DateTime? @map("edited_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("message_sender", fields: [senderId], references: [id], onDelete: Cascade)
+  // Reply parent nulls out if the quoted message is hard-deleted.
+  replyTo      Message?          @relation("message_reply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]         @relation("message_reply")
+  reactions    MessageReaction[]
 
   @@index([senderId, createdAt])
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+// One reaction per user per message (Instagram-style — tapping a new emoji
+// replaces the old one). Deleted when the message is removed.
+model MessageReaction {
+  messageId String   @map("message_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([messageId])
+  @@map("message_reactions")
 }
 
 // ─────────────────────────────────────────────

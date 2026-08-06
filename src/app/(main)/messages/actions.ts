@@ -24,11 +24,61 @@ export async function startConversationAction(otherId: string) {
   }
 }
 
-export async function sendMessageAction(conversationId: string, body: string, media: string[] = []) {
+export async function sendMessageAction(conversationId: string, body: string, media: string[] = [], replyToId?: string) {
   const u = await requireUser()
   try {
-    const msg = await svc.sendMessage(u.id, conversationId, { body, media })
+    const msg = await svc.sendMessage(u.id, conversationId, { body, media, replyToId })
     return { ok: true as const, msg }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
+export async function toggleReactionAction(messageId: string, emoji: string) {
+  const u = await requireUser()
+  try {
+    await svc.toggleReaction(u.id, messageId, emoji)
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
+export async function setMutedAction(conversationId: string, muted: boolean) {
+  const u = await requireUser()
+  try {
+    await svc.setMuted(u.id, conversationId, muted)
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
+export async function clearConversationAction(conversationId: string) {
+  const u = await requireUser()
+  try {
+    await svc.clearConversation(u.id, conversationId)
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
+export async function blockUserAction(otherId: string) {
+  const u = await requireUser()
+  try {
+    await svc.blockUser(u.id, otherId)
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
+export async function reportUserAction(otherId: string, reason: string) {
+  const u = await requireUser()
+  try {
+    await svc.reportUser(u.id, otherId, reason)
+    return { ok: true as const }
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
   }
