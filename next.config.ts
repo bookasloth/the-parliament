@@ -52,8 +52,8 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // camera/microphone allowed for our own origin (WebRTC 1:1 calls); geolocation stays off.
-  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=()" },
+  // camera/microphone/geolocation all disabled — no feature needs them.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Content-Security-Policy", value: buildCsp(process.env.NODE_ENV !== "production") },
 ];
 

@@ -2,29 +2,23 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
-  ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
+  ArrowLeft, MoreVertical, Send, UserCheck, Trash2,
   Check, Sparkles, Smile, ImagePlus, Pencil, X, Reply, Bell, BellOff, Ban, Flag,
-  PhoneMissed, PhoneCall,
 } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
 import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
-import { useVideoCall, CallOverlay, type CallSignal } from "./VideoCall"
-import type { CallData, MessageView } from "@/modules/messaging/types"
-import { callLabel, callDisplayStatus } from "@/modules/messaging/call-log"
-import { setCallActive } from "@/modules/messaging/call-active"
+import type { MessageView } from "@/modules/messaging/types"
 import { applyReaction, groupReactions } from "@/modules/messaging/reactions"
 import {
   sendMessageAction, markReadAction, realtimeTokenAction,
   editMessageAction, deleteMessageAction, refreshMessagesAction,
   toggleReactionAction, setMutedAction, clearConversationAction,
   blockUserAction, reportUserAction,
-  ringCallAction, cancelRingAction,
-  startCallLogAction, endCallLogAction,
 } from "../actions"
 
 const EMOJIS = [
@@ -69,7 +63,6 @@ export default function ConversationView({
   initialMuted, initialBlocked, birthday, suppressValentine,
 }: Props) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<MessageView[]>(initialMessages)
   const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(initialOtherLastReadAt)
   const [input, setInput] = useState("")
@@ -88,23 +81,6 @@ export default function ConversationView({
   const [loadingOlder, setLoadingOlder] = useState(false)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const call = useVideoCall({ channelRef, viewerId })
-  // The channel effect (below) subscribes once and captures handlers; route call
-  // signals through a ref so they always hit the current handler, never a stale one.
-  const onCallSignalRef = useRef(call.onSignal)
-  onCallSignalRef.current = call.onSignal
-  const onPeerJoinedRef = useRef(call.peerJoined)
-  onPeerJoinedRef.current = call.peerJoined
-  // We landed here from a global incoming-call ring (?call=<callerId>): announce
-  // ourselves on the channel so the caller re-offers, and auto-answer that offer.
-  const wantCallRef = useRef(false)
-  const ringingRef = useRef(false)
-  // Outgoing call-log bookkeeping (caller side): the log message id, whether the
-  // call ever connected, and when — so on hang-up we write completed+duration or
-  // missed. Cleared once finalised.
-  const callMsgIdRef = useRef<string | null>(null)
-  const callConnectedRef = useRef(false)
-  const callAnsweredAtRef = useRef(0)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
@@ -140,85 +116,6 @@ export default function ConversationView({
   useEffect(() => {
     markReadAction(conversationId)
   }, [conversationId, lastIncomingId])
-
-  // Accepted an incoming call from the global ring: arm auto-answer, then strip
-  // ?call from the URL so a refresh doesn't try to re-join a finished call.
-  useEffect(() => {
-    if (!searchParams.get("call")) return
-    wantCallRef.current = true
-    call.armAutoAccept()
-    router.replace(`/messages/${conversationId}`)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId])
-
-  // Start an outgoing call: ring the peer on their personal channel (so it
-  // reaches them anywhere), begin the WebRTC offer on this channel, and drop a
-  // "Calling…" call-log message into the thread (shown to both sides).
-  const startCall = useCallback(
-    (video: boolean) => {
-      if (call.state !== "idle") return // already in / placing a call — don't stack
-      ringingRef.current = true
-      callConnectedRef.current = false
-      call.start(video)
-      ringCallAction(otherUser.id, conversationId, !video)
-      startCallLogAction(conversationId, !video).then((res) => {
-        if (res.ok) {
-          callMsgIdRef.current = res.msg.id
-          setMessages((prev) => (prev.some((m) => m.id === res.msg.id) ? prev : [...prev, res.msg]))
-        }
-      })
-    },
-    [call, otherUser.id, conversationId],
-  )
-
-  // Watch the call lifecycle (caller side): clear the global ring on
-  // answer/hang-up, and finalise our call-log to completed+duration (if it ever
-  // connected) or missed (if it never did).
-  useEffect(() => {
-    if (call.state === "connected") {
-      ringingRef.current = false
-      if (!callConnectedRef.current) {
-        callConnectedRef.current = true
-        callAnsweredAtRef.current = Date.now()
-      }
-    } else if (call.state === "ringing") {
-      ringingRef.current = false
-    } else if (call.state === "idle") {
-      if (ringingRef.current) {
-        ringingRef.current = false
-        cancelRingAction(otherUser.id, conversationId)
-      }
-      const id = callMsgIdRef.current
-      if (id) {
-        callMsgIdRef.current = null
-        const connected = callConnectedRef.current
-        const outcome = connected ? "completed" : "missed"
-        const durationSec = connected ? Math.round((Date.now() - callAnsweredAtRef.current) / 1000) : 0
-        endCallLogAction(id, outcome, durationSec).then((res) => {
-          if (res.ok) setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, call: res.call } : m)))
-        })
-      }
-    }
-  }, [call.state, otherUser.id, conversationId])
-
-  // Tell the navbar we're in a call (any non-idle state) so it can suppress a
-  // second incoming-call ring while we're busy.
-  useEffect(() => {
-    setCallActive(call.state !== "idle")
-    return () => setCallActive(false)
-  }, [call.state])
-
-  // Caller-side ring timeout: if the callee never picks up, stop ringing after
-  // 45s — the lifecycle effect above then finalises the call-log as "missed"
-  // and clears the peer's global ring. Keyed on state only (ref for end) so an
-  // unrelated re-render can't reset the timer.
-  const callEndRef = useRef(call.end)
-  callEndRef.current = call.end
-  useEffect(() => {
-    if (call.state !== "calling") return
-    const t = setTimeout(() => callEndRef.current(), 45_000)
-    return () => clearTimeout(t)
-  }, [call.state])
 
   useEffect(() => {
     let cancelled = false
@@ -273,21 +170,9 @@ export default function ConversationView({
           const state = channel.presenceState()
           setOtherOnline(Object.keys(state).some((k) => k !== viewerId))
         })
-        .on("broadcast", { event: "call_offer" }, ({ payload }) => onCallSignalRef.current("call_offer" as CallSignal, payload))
-        .on("broadcast", { event: "call_answer" }, ({ payload }) => onCallSignalRef.current("call_answer" as CallSignal, payload))
-        .on("broadcast", { event: "call_ice" }, ({ payload }) => onCallSignalRef.current("call_ice" as CallSignal, payload))
-        .on("broadcast", { event: "call_end" }, ({ payload }) => onCallSignalRef.current("call_end" as CallSignal, payload))
-        .on("broadcast", { event: "call_hello" }, () => onPeerJoinedRef.current())
-        // Caller finalised a call-log (completed/missed) — patch the card.
-        .on("broadcast", { event: "call_update" }, ({ payload }) => {
-          const p = payload as { id: string; call: CallData }
-          setMessages((prev) => prev.map((m) => (m.id === p.id ? { ...m, call: p.call } : m)))
-        })
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             channel.track({ online_at: Date.now() })
-            // Arrived via a global ring accept → tell the caller we're here.
-            if (wantCallRef.current) channel.send({ type: "broadcast", event: "call_hello", payload: { from: viewerId } })
             refreshMessagesAction(conversationId).then((fresh) => {
               if (cancelled || fresh.length === 0) return
               setMessages((prev) => {
@@ -357,9 +242,9 @@ export default function ConversationView({
     const reply = replyTarget
     const optimisticId = `optimistic-${Date.now()}`
     const optimistic: MessageView = {
-      id: optimisticId, senderId: viewerId, type: "text", body, media: [],
+      id: optimisticId, senderId: viewerId, body, media: [],
       createdAt: new Date().toISOString(), editedAt: null, deleted: false,
-      reactions: [], call: null,
+      reactions: [],
       replyTo: reply ? { id: reply.id, senderId: reply.senderId, body: reply.body, deleted: reply.deleted } : null,
     }
     setMessages((prev) => [...prev, optimistic])
@@ -510,7 +395,6 @@ export default function ConversationView({
 
   return (
     <div className="flex h-full flex-col">
-      <CallOverlay call={call} otherUser={{ name: otherUser.name, avatar: otherUser.avatar }} />
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-3 sm:px-4 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -537,13 +421,6 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button onClick={() => startCall(false)} disabled={blocked || call.state !== "idle"} title="Audio call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
-            <Phone className="h-4 w-4" />
-          </button>
-          <button onClick={() => startCall(true)} disabled={blocked || call.state !== "idle"} title="Video call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
-            <Video className="h-4 w-4" />
-          </button>
-
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
               <MoreVertical className="h-4 w-4" />
@@ -591,15 +468,6 @@ export default function ConversationView({
           {loadingOlder && <p className="py-2 text-center text-[11px] text-gray-400">Loading…</p>}
           {messages.map((msg) => {
             const isMe = msg.senderId === viewerId
-            if (msg.type === "call" && msg.call) {
-              return (
-                <CallLogRow
-                  key={msg.id} call={msg.call} mine={isMe}
-                  createdAtMs={new Date(msg.createdAt).getTime()}
-                  time={formatTime(msg.createdAt)}
-                />
-              )
-            }
             const bubble = isMe ? theme.sent : theme.received
             const mine = myReaction(msg, viewerId)
             const grouped = groupReactions(msg.reactions)
@@ -776,39 +644,6 @@ export default function ConversationView({
 }
 
 // ── helpers ──────────────────────────────────────────────
-
-/** Centered system-message card logging a call: "Calling…" / "Incoming call" /
- *  "Video call · 3:12" / "Missed call". Log only — a live incoming call is
- *  answered via the fullscreen ring overlay (in-thread) or the navbar ring
- *  popup (elsewhere), both of which require a caller that's actually live. A
- *  card button can't know that, so there isn't one. */
-function CallLogRow({
-  call, mine, createdAtMs, time,
-}: {
-  call: CallData
-  mine: boolean
-  createdAtMs: number
-  time: string
-}) {
-  // A stale ringing card reads as missed (see callDisplayStatus) so an orphaned
-  // "Calling…" doesn't hang forever.
-  const status = callDisplayStatus(call, createdAtMs, Date.now())
-  const missedToMe = status === "missed" && !mine
-  const Icon = status === "missed" ? PhoneMissed : call.audioOnly ? PhoneCall : Video
-  return (
-    <div className="my-2 flex justify-center">
-      <div
-        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-sm ${
-          missedToMe ? "border-red-200 bg-red-50 text-red-600" : "border-gray-200 bg-white text-gray-600"
-        }`}
-      >
-        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="font-medium">{callLabel({ ...call, status }, mine)}</span>
-        <span className="text-[10px] text-gray-400">{time}</span>
-      </div>
-    </div>
-  )
-}
 
 function MessageMenu({
   msg, isMe, openId, setOpenId, menuRef, onReact, onReply, onEdit, onDelete,

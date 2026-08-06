@@ -24,22 +24,9 @@ export interface ReplyStub {
   deleted: boolean
 }
 
-// Lifecycle of a call-log message. "ringing" flips to one terminal state:
-// completed (was answered — has durationSec) or missed (never connected).
-export type CallStatus = "ringing" | "completed" | "missed"
-
-export interface CallData {
-  status: CallStatus
-  audioOnly: boolean
-  endedAt: string | null
-  durationSec: number | null
-}
-
 export interface MessageView {
   id: string
   senderId: string
-  /** "text" for a normal message, "call" for a call-log entry (see call). */
-  type: "text" | "call"
   body: string
   media: string[]
   createdAt: string
@@ -47,6 +34,4 @@ export interface MessageView {
   deleted: boolean
   reactions: MessageReactionView[]
   replyTo: ReplyStub | null
-  /** Present only when type === "call". */
-  call: CallData | null
 }

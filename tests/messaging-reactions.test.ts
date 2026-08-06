@@ -4,8 +4,8 @@ import type { MessageView } from "@/modules/messaging/types"
 
 function msg(id: string, reactions: MessageView["reactions"] = []): MessageView {
   return {
-    id, senderId: "u1", type: "text", body: "hi", media: [], createdAt: "2026-01-01T00:00:00.000Z",
-    editedAt: null, deleted: false, reactions, replyTo: null, call: null,
+    id, senderId: "u1", body: "hi", media: [], createdAt: "2026-01-01T00:00:00.000Z",
+    editedAt: null, deleted: false, reactions, replyTo: null,
   }
 }
 
