@@ -208,6 +208,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
   }
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
+  const [msgCount, setMsgCount] = useState(0)
 
   const load = useCallback(async () => {
     try {
@@ -221,16 +222,45 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
     }
   }, [])
 
+  // Unread-DM badge count. Hidden while on /messages (you're reading them there).
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname
+  const loadMsg = useCallback(async () => {
+    if (pathnameRef.current.startsWith("/messages")) {
+      setMsgCount(0)
+      return
+    }
+    try {
+      const r = await fetch("/api/messages/unread")
+      if (!r.ok) return
+      const d = await r.json()
+      setMsgCount(d.count ?? 0)
+    } catch {
+      /* ignore — retried next tick */
+    }
+  }, [])
+
   // Initial load + a slow safety-net poll (5 min). Instant updates come from the
   // realtime subscription below; this only backstops a dropped channel.
   useEffect(() => {
     load()
-    const id = setInterval(load, 5 * 60_000)
+    loadMsg()
+    const id = setInterval(() => { load(); loadMsg() }, 5 * 60_000)
     return () => clearInterval(id)
-  }, [load])
+  }, [load, loadMsg])
 
-  // Realtime bell: subscribe to this user's private channel and refetch the
-  // summary the moment a notification is broadcast — no 60s lag. Reuses the
+  // Clear/refresh the DM badge when navigating in or out of /messages, and
+  // refresh it when the tab regains focus.
+  useEffect(() => {
+    loadMsg()
+    const onFocus = () => loadMsg()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [pathname, loadMsg])
+
+  // Realtime: subscribe to this user's private channel and refetch the bell +
+  // DM badge the moment a notification is broadcast — no poll lag. A new DM
+  // fires a "notification", so the Messages badge updates live too. Reuses the
   // messaging realtime infra (token → setAuth → private user:{id} channel).
   useEffect(() => {
     const supabase = getSupabaseBrowser()
@@ -241,14 +271,14 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
       if (!auth || cancelled) return
       await supabase.realtime.setAuth(auth.token)
       channel = supabase.channel(`user:${auth.userId}`, { config: { private: true } })
-      channel.on("broadcast", { event: "notification" }, () => load())
+      channel.on("broadcast", { event: "notification" }, () => { load(); loadMsg() })
       channel.subscribe()
     })()
     return () => {
       cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
-  }, [load])
+  }, [load, loadMsg])
 
   function markOne(id: string, wasRead: boolean) {
     if (wasRead) return
@@ -358,14 +388,20 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           {/* Icon links (hidden on small mobile — bottom nav covers them) */}
           {iconLinks.map(item => {
             const active = pathname.startsWith(item.href)
+            const badge = item.href === "/messages" ? msgCount : 0
             return (
               <li key={item.href} className="hidden md:block">
                 <a
                   href={item.href}
                   title={item.label}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${active ? "bg-brand text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"}`}
+                  className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${active ? "bg-brand text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"}`}
                 >
                   <item.icon className="h-4 w-4" />
+                  {badge > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
                 </a>
               </li>
             )

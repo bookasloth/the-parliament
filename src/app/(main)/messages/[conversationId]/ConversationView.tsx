@@ -12,6 +12,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
 import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
+import { useVideoCall, CallOverlay, type CallSignal } from "./VideoCall"
 import type { MessageView } from "@/modules/messaging/types"
 import { applyReaction, groupReactions } from "@/modules/messaging/reactions"
 import {
@@ -81,6 +82,11 @@ export default function ConversationView({
   const [loadingOlder, setLoadingOlder] = useState(false)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const call = useVideoCall({ channelRef, viewerId })
+  // The channel effect (below) subscribes once and captures handlers; route call
+  // signals through a ref so they always hit the current handler, never a stale one.
+  const onCallSignalRef = useRef(call.onSignal)
+  onCallSignalRef.current = call.onSignal
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
@@ -170,6 +176,10 @@ export default function ConversationView({
           const state = channel.presenceState()
           setOtherOnline(Object.keys(state).some((k) => k !== viewerId))
         })
+        .on("broadcast", { event: "call_offer" }, ({ payload }) => onCallSignalRef.current("call_offer" as CallSignal, payload))
+        .on("broadcast", { event: "call_answer" }, ({ payload }) => onCallSignalRef.current("call_answer" as CallSignal, payload))
+        .on("broadcast", { event: "call_ice" }, ({ payload }) => onCallSignalRef.current("call_ice" as CallSignal, payload))
+        .on("broadcast", { event: "call_end" }, ({ payload }) => onCallSignalRef.current("call_end" as CallSignal, payload))
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             channel.track({ online_at: Date.now() })
@@ -395,6 +405,7 @@ export default function ConversationView({
 
   return (
     <div className="flex h-full flex-col">
+      <CallOverlay call={call} otherUser={{ name: otherUser.name, avatar: otherUser.avatar }} />
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-3 sm:px-4 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -421,10 +432,10 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button title="Audio call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
+          <button onClick={() => call.start(false)} disabled={blocked || call.state !== "idle"} title="Audio call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
             <Phone className="h-4 w-4" />
           </button>
-          <button title="Video call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
+          <button onClick={() => call.start(true)} disabled={blocked || call.state !== "idle"} title="Video call" className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-brand/10 disabled:hover:text-brand">
             <Video className="h-4 w-4" />
           </button>
 

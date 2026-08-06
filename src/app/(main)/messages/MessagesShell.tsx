@@ -83,6 +83,9 @@ export function MessagesShell({
             const bumpUnread = !isMine && !isActive && !c.muted
             const updated: ConversationSummary = {
               ...c,
+              // A new send un-deletes a chat the viewer had cleared — a live
+              // message always post-dates clearedAt, so reveal it immediately.
+              hidden: false,
               lastMessagePreview: previewOf(m.body, m.media),
               lastMessageAt: m.createdAt,
               unreadCount: bumpUnread ? c.unreadCount + 1 : isActive ? 0 : c.unreadCount,
@@ -111,7 +114,7 @@ export function MessagesShell({
         <aside
           className={`${inConversation ? "hidden lg:flex" : "flex"} w-full flex-col border-r border-gray-200 bg-white lg:w-[340px] xl:w-[380px] flex-shrink-0`}
         >
-          <ChatSidebar conversations={conversations} />
+          <ChatSidebar conversations={conversations.filter((c) => !c.hidden)} />
         </aside>
 
         {/* Detail (conversation or empty state) */}

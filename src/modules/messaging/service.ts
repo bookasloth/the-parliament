@@ -12,6 +12,12 @@ export function dmKeyFor(a: string, b: string): string {
   return [a, b].sort().join(":")
 }
 
+/** A chat is hidden ("deleted") for a viewer when they cleared it and nothing
+ *  has arrived since. A newer message (equal timestamp doesn't count) reveals it. */
+export function isChatHidden(clearedAt: Date | null, lastMessageAt: Date | null): boolean {
+  return !!(clearedAt && lastMessageAt && lastMessageAt <= clearedAt)
+}
+
 async function isBlockedBetween(a: string, b: string): Promise<boolean> {
   const block = await prisma.userBlock.findFirst({
     where: {
@@ -101,23 +107,39 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     : []
   const unreadByConv = new Map(unreadRows.map((r) => [r.conversation_id, Number(r.unread)]))
 
-  return rows
-    .map((c) => {
-      const me = c.participants.find((p) => p.userId === viewerId)!
-      // "Deleted" the chat and nothing new since → keep it hidden from this user.
-      if (me.clearedAt && c.lastMessageAt && c.lastMessageAt <= me.clearedAt) return null
-      const other = c.participants.find((p) => p.userId !== viewerId)!.user
-      const last = c.messages[0]
-      return {
-        id: c.id,
-        otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
-        lastMessagePreview: last ? (last.body || ((last.media as string[]).length ? "📷 Photo" : "")) : "",
-        lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
-        unreadCount: unreadByConv.get(c.id) ?? 0,
-        muted: me.muted,
-      } satisfies ConversationSummary
-    })
-    .filter((s): s is ConversationSummary => s !== null)
+  return rows.map((c) => {
+    const me = c.participants.find((p) => p.userId === viewerId)!
+    // "Deleted" the chat and nothing new since → mark hidden (not dropped) so the
+    // client keeps its Realtime subscription and the peer's next message can
+    // reveal it instantly instead of waiting for the 60s safety poll.
+    const hidden = isChatHidden(me.clearedAt, c.lastMessageAt)
+    const other = c.participants.find((p) => p.userId !== viewerId)!.user
+    const last = c.messages[0]
+    return {
+      id: c.id,
+      otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
+      lastMessagePreview: last ? (last.body || ((last.media as string[]).length ? "📷 Photo" : "")) : "",
+      lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
+      unreadCount: hidden ? 0 : unreadByConv.get(c.id) ?? 0,
+      muted: me.muted,
+      ...(hidden ? { hidden: true } : {}),
+    } satisfies ConversationSummary
+  })
+}
+
+/** Total unread DM count across all the viewer's chats — feeds the navbar badge.
+ *  Excludes messages the viewer has read (lastReadAt) or cleared away (clearedAt). */
+export async function totalUnread(viewerId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<{ n: number }[]>`
+    SELECT count(*)::int AS n
+    FROM messages m
+    JOIN conversation_participants cp
+      ON cp.conversation_id = m.conversation_id AND cp.user_id = ${viewerId}::uuid
+    WHERE m.deleted_at IS NULL
+      AND m.sender_id <> ${viewerId}::uuid
+      AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+      AND (cp.cleared_at IS NULL OR m.created_at > cp.cleared_at)`
+  return Number(rows[0]?.n ?? 0)
 }
 
 export async function getConversationMeta(

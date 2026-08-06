@@ -5,6 +5,10 @@ export interface ConversationSummary {
   lastMessageAt: string | null
   unreadCount: number
   muted: boolean
+  // "Deleted" (cleared) by the viewer and nothing new since. Kept in the list so
+  // the client stays subscribed to its Realtime channel; hidden from the sidebar
+  // until the peer's next message reveals it. See MessagesShell.
+  hidden?: boolean
 }
 
 export interface MessageReactionView {
