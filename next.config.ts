@@ -65,7 +65,19 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@phosphor-icons/react"],
   },
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      // The service worker must be served as JavaScript (Vercel labels it
+      // text/plain by default, which browsers reject for SW registration).
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        ],
+      },
+    ];
   },
   images: {
     remotePatterns: [

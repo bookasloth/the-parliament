@@ -7,13 +7,15 @@ import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, UserCheck, Trash2,
   Check, Sparkles, Smile, ImagePlus, Pencil, X, Reply, Bell, BellOff, Ban, Flag,
+  PhoneMissed, PhoneCall,
 } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
 import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { useVideoCall, CallOverlay, type CallSignal } from "./VideoCall"
-import type { MessageView } from "@/modules/messaging/types"
+import type { CallData, MessageView } from "@/modules/messaging/types"
+import { callLabel } from "@/modules/messaging/call-log"
 import { applyReaction, groupReactions } from "@/modules/messaging/reactions"
 import {
   sendMessageAction, markReadAction, realtimeTokenAction,
@@ -21,6 +23,7 @@ import {
   toggleReactionAction, setMutedAction, clearConversationAction,
   blockUserAction, reportUserAction,
   ringCallAction, cancelRingAction,
+  startCallLogAction, endCallLogAction,
 } from "../actions"
 
 const EMOJIS = [
@@ -95,6 +98,12 @@ export default function ConversationView({
   // ourselves on the channel so the caller re-offers, and auto-answer that offer.
   const wantCallRef = useRef(false)
   const ringingRef = useRef(false)
+  // Outgoing call-log bookkeeping (caller side): the log message id, whether the
+  // call ever connected, and when — so on hang-up we write completed+duration or
+  // missed. Cleared once finalised.
+  const callMsgIdRef = useRef<string | null>(null)
+  const callConnectedRef = useRef(false)
+  const callAnsweredAtRef = useRef(0)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
@@ -142,24 +151,65 @@ export default function ConversationView({
   }, [conversationId])
 
   // Start an outgoing call: ring the peer on their personal channel (so it
-  // reaches them anywhere) AND begin the WebRTC offer on this channel.
+  // reaches them anywhere), begin the WebRTC offer on this channel, and drop a
+  // "Calling…" call-log message into the thread (shown to both sides).
   const startCall = useCallback(
     (video: boolean) => {
       ringingRef.current = true
+      callConnectedRef.current = false
       call.start(video)
       ringCallAction(otherUser.id, conversationId, !video)
+      startCallLogAction(conversationId, !video).then((res) => {
+        if (res.ok) {
+          callMsgIdRef.current = res.msg.id
+          setMessages((prev) => (prev.some((m) => m.id === res.msg.id) ? prev : [...prev, res.msg]))
+        }
+      })
     },
     [call, otherUser.id, conversationId],
   )
 
-  // If we hang up before the callee answers, clear their global ring.
+  // Watch the call lifecycle (caller side): clear the global ring on
+  // answer/hang-up, and finalise our call-log to completed+duration (if it ever
+  // connected) or missed (if it never did).
   useEffect(() => {
-    if (call.state === "connected" || call.state === "ringing") ringingRef.current = false
-    else if (call.state === "idle" && ringingRef.current) {
+    if (call.state === "connected") {
       ringingRef.current = false
-      cancelRingAction(otherUser.id, conversationId)
+      if (!callConnectedRef.current) {
+        callConnectedRef.current = true
+        callAnsweredAtRef.current = Date.now()
+      }
+    } else if (call.state === "ringing") {
+      ringingRef.current = false
+    } else if (call.state === "idle") {
+      if (ringingRef.current) {
+        ringingRef.current = false
+        cancelRingAction(otherUser.id, conversationId)
+      }
+      const id = callMsgIdRef.current
+      if (id) {
+        callMsgIdRef.current = null
+        const connected = callConnectedRef.current
+        const outcome = connected ? "completed" : "missed"
+        const durationSec = connected ? Math.round((Date.now() - callAnsweredAtRef.current) / 1000) : 0
+        endCallLogAction(id, outcome, durationSec).then((res) => {
+          if (res.ok) setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, call: res.call } : m)))
+        })
+      }
     }
   }, [call.state, otherUser.id, conversationId])
+
+  // "Join" on an incoming call card. If the caller's offer already reached us
+  // (overlay is ringing) just accept it; otherwise announce ourselves so the
+  // caller re-offers and auto-answer that (same path as the global-ring accept).
+  const joinCall = useCallback(() => {
+    if (call.state === "ringing") {
+      call.accept()
+    } else if (call.state === "idle") {
+      call.armAutoAccept()
+      channelRef.current?.send({ type: "broadcast", event: "call_hello", payload: { from: viewerId } })
+    }
+  }, [call, viewerId])
 
   useEffect(() => {
     let cancelled = false
@@ -219,6 +269,11 @@ export default function ConversationView({
         .on("broadcast", { event: "call_ice" }, ({ payload }) => onCallSignalRef.current("call_ice" as CallSignal, payload))
         .on("broadcast", { event: "call_end" }, ({ payload }) => onCallSignalRef.current("call_end" as CallSignal, payload))
         .on("broadcast", { event: "call_hello" }, () => onPeerJoinedRef.current())
+        // Caller finalised a call-log (completed/missed) — patch the card.
+        .on("broadcast", { event: "call_update" }, ({ payload }) => {
+          const p = payload as { id: string; call: CallData }
+          setMessages((prev) => prev.map((m) => (m.id === p.id ? { ...m, call: p.call } : m)))
+        })
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             channel.track({ online_at: Date.now() })
@@ -293,9 +348,9 @@ export default function ConversationView({
     const reply = replyTarget
     const optimisticId = `optimistic-${Date.now()}`
     const optimistic: MessageView = {
-      id: optimisticId, senderId: viewerId, body, media: [],
+      id: optimisticId, senderId: viewerId, type: "text", body, media: [],
       createdAt: new Date().toISOString(), editedAt: null, deleted: false,
-      reactions: [],
+      reactions: [], call: null,
       replyTo: reply ? { id: reply.id, senderId: reply.senderId, body: reply.body, deleted: reply.deleted } : null,
     }
     setMessages((prev) => [...prev, optimistic])
@@ -527,6 +582,14 @@ export default function ConversationView({
           {loadingOlder && <p className="py-2 text-center text-[11px] text-gray-400">Loading…</p>}
           {messages.map((msg) => {
             const isMe = msg.senderId === viewerId
+            if (msg.type === "call" && msg.call) {
+              return (
+                <CallLogRow
+                  key={msg.id} call={msg.call} mine={isMe}
+                  time={formatTime(msg.createdAt)} onJoin={joinCall}
+                />
+              )
+            }
             const bubble = isMe ? theme.sent : theme.received
             const mine = myReaction(msg, viewerId)
             const grouped = groupReactions(msg.reactions)
@@ -703,6 +766,42 @@ export default function ConversationView({
 }
 
 // ── helpers ──────────────────────────────────────────────
+
+/** Centered system-message card for a call: "Calling…" / "Video call · 3:12" /
+ *  "Missed call", with a Join button while an incoming call is still ringing. */
+function CallLogRow({
+  call, mine, time, onJoin,
+}: {
+  call: CallData
+  mine: boolean
+  time: string
+  onJoin: () => void
+}) {
+  const missedToMe = call.status === "missed" && !mine
+  const Icon = call.status === "missed" ? PhoneMissed : call.audioOnly ? PhoneCall : Video
+  const canJoin = call.status === "ringing" && !mine
+  return (
+    <div className="my-2 flex justify-center">
+      <div
+        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-sm ${
+          missedToMe ? "border-red-200 bg-red-50 text-red-600" : "border-gray-200 bg-white text-gray-600"
+        }`}
+      >
+        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="font-medium">{callLabel(call, mine)}</span>
+        <span className="text-[10px] text-gray-400">{time}</span>
+        {canJoin && (
+          <button
+            onClick={onJoin}
+            className="ml-1 rounded-full bg-green-500 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-green-600"
+          >
+            Join
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function MessageMenu({
   msg, isMe, openId, setOpenId, menuRef, onReact, onReply, onEdit, onDelete,

@@ -5,7 +5,7 @@ import { broadcast, broadcastToUser } from "@/lib/supabase-realtime"
 import { sendPush } from "@/lib/web-push"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
-import type { ConversationSummary, MessageView, ReplyStub } from "./types"
+import type { CallData, ConversationSummary, MessageView, ReplyStub } from "./types"
 
 const MAX_MESSAGE_LEN = 5000
 
@@ -85,7 +85,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       participants: {
         select: { userId: true, lastReadAt: true, muted: true, clearedAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } } },
       },
-      messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true, type: true } },
     },
   })
   // Unread badges for ALL conversations in one query instead of one
@@ -119,7 +119,11 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     return {
       id: c.id,
       otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
-      lastMessagePreview: last ? (last.body || ((last.media as string[]).length ? "📷 Photo" : "")) : "",
+      lastMessagePreview: last
+        ? last.type === "call"
+          ? "📞 Call"
+          : last.body || ((last.media as string[]).length ? "📷 Photo" : "")
+        : "",
       lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
       unreadCount: hidden ? 0 : unreadByConv.get(c.id) ?? 0,
       muted: me.muted,
@@ -211,13 +215,14 @@ export async function getMessages(
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
-      id: true, senderId: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true,
+      id: true, senderId: true, type: true, callData: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true,
       reactions: { select: { emoji: true, userId: true } },
       replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true } },
     },
   })
   return rows.reverse().map((m) => ({
     id: m.id, senderId: m.senderId,
+    type: m.type === "call" ? ("call" as const) : ("text" as const),
     body: m.deletedAt ? "" : m.body,
     media: m.deletedAt ? [] : (m.media as string[]),
     createdAt: m.createdAt.toISOString(),
@@ -225,6 +230,7 @@ export async function getMessages(
     deleted: !!m.deletedAt,
     reactions: m.deletedAt ? [] : m.reactions.map((r) => ({ emoji: r.emoji, userId: r.userId })),
     replyTo: toReplyStub(m.replyTo),
+    call: m.type === "call" && !m.deletedAt ? (m.callData as unknown as CallData) : null,
   }))
 }
 
@@ -274,9 +280,9 @@ export async function sendMessage(
   if (!msg) throw new ForbiddenError("Not a participant")
 
   const view: MessageView = {
-    id: msg.id, senderId: msg.sender_id, body: msg.body, media: msg.media,
+    id: msg.id, senderId: msg.sender_id, type: "text", body: msg.body, media: msg.media,
     createdAt: msg.created_at.toISOString(), editedAt: null, deleted: false,
-    reactions: [], replyTo: replyStub,
+    reactions: [], replyTo: replyStub, call: null,
   }
   await broadcast(conversationId, "new_message", view)
   // No notification-bell row for DMs — messages surface in the messages inbox
@@ -459,6 +465,62 @@ export async function declineCall(viewerId: string, conversationId: string): Pro
 export async function cancelRing(viewerId: string, otherId: string, conversationId: string): Promise<void> {
   await assertParticipant(viewerId, conversationId)
   await broadcastToUser(otherId, "call_cancel", { conversationId })
+}
+
+/** Insert a call-log message the moment a call starts. The SENDER is the caller;
+ *  it shows as "Calling…" (outgoing) / "Incoming call" (the callee). The caller
+ *  later finalises it via endCallLog. Returns the view so the caller can render
+ *  it right away — broadcast self:false won't echo it back to them. */
+export async function startCallLog(
+  callerId: string,
+  conversationId: string,
+  audioOnly: boolean,
+): Promise<MessageView> {
+  await assertParticipant(callerId, conversationId)
+  const call: CallData = { status: "ringing", audioOnly, endedAt: null, durationSec: null }
+  const row = await prisma.message.create({
+    data: { conversationId, senderId: callerId, body: "", type: "call", callData: call as object },
+    select: { id: true, createdAt: true },
+  })
+  // A call bumps the thread to the top of both inboxes, same as a message does.
+  await prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: row.createdAt } })
+  const view: MessageView = {
+    id: row.id, senderId: callerId, type: "call", body: "", media: [],
+    createdAt: row.createdAt.toISOString(), editedAt: null, deleted: false,
+    reactions: [], replyTo: null, call,
+  }
+  await broadcast(conversationId, "new_message", view)
+  return view
+}
+
+/** Finalise a ringing call-log to its terminal state. Only the caller (the
+ *  message sender) may do this, and a terminal state is never rewritten (a late
+ *  duplicate "end" is a no-op). durationSec is clamped and only kept for a
+ *  completed call. */
+export async function endCallLog(
+  callerId: string,
+  messageId: string,
+  outcome: "completed" | "missed",
+  durationSec = 0,
+): Promise<CallData> {
+  const row = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: { senderId: true, conversationId: true, type: true, callData: true },
+  })
+  if (!row || row.type !== "call") throw new ForbiddenError("Not a call")
+  if (row.senderId !== callerId) throw new ForbiddenError("Not your call")
+  const prev = row.callData as unknown as CallData
+  if (prev.status !== "ringing") return prev // already terminal — leave it be
+  const next: CallData = {
+    ...prev,
+    status: outcome,
+    endedAt: new Date().toISOString(),
+    // clamp to [0, 24h] so a bad client can't write a nonsense duration.
+    durationSec: outcome === "completed" ? Math.max(0, Math.min(Math.round(durationSec), 86_400)) : null,
+  }
+  await prisma.message.update({ where: { id: messageId }, data: { callData: next as object } })
+  await broadcast(row.conversationId, "call_update", { id: messageId, call: next })
+  return next
 }
 
 export async function markRead(viewerId: string, conversationId: string): Promise<void> {

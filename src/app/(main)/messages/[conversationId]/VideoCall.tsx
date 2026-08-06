@@ -300,15 +300,20 @@ export function CallOverlay({
   call: VideoCallApi
   otherUser: { name: string; avatar: string | null }
 }) {
-  const localVideo = useRef<HTMLVideoElement>(null)
-  const remoteVideo = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    if (localVideo.current) localVideo.current.srcObject = call.localStream
-  }, [call.localStream])
-  useEffect(() => {
-    if (remoteVideo.current) remoteVideo.current.srcObject = call.remoteStream
-  }, [call.remoteStream])
+  // Callback refs, not effect+ref: the <video> nodes mount/unmount as the call
+  // state flips (remote video only exists once "connected"), while the streams
+  // are set earlier during "calling". A callback ref binds srcObject the moment
+  // the node mounts AND whenever the stream identity changes — an effect keyed
+  // on the stream alone would fire while the node is still unmounted and never
+  // re-run, leaving the remote video black (you'd see only your own PiP).
+  const bindLocal = useCallback(
+    (el: HTMLVideoElement | null) => { if (el) el.srcObject = call.localStream },
+    [call.localStream],
+  )
+  const bindRemote = useCallback(
+    (el: HTMLVideoElement | null) => { if (el) el.srcObject = call.remoteStream },
+    [call.remoteStream],
+  )
 
   if (call.state === "idle") return null
 
@@ -320,7 +325,7 @@ export function CallOverlay({
       {/* Remote media / status backdrop */}
       <div className="relative flex h-full w-full items-center justify-center">
         {showRemoteVideo ? (
-          <video ref={remoteVideo} autoPlay playsInline className="h-full w-full object-cover" />
+          <video ref={bindRemote} autoPlay playsInline className="h-full w-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-4">
             <Image src={avatar} alt={otherUser.name} width={112} height={112} className="h-28 w-28 rounded-full object-cover ring-4 ring-white/10" />
@@ -334,13 +339,13 @@ export function CallOverlay({
         )}
         {/* keep the remote audio audible even on the audio-only avatar screen */}
         {call.audioOnly && call.state === "connected" && (
-          <video ref={remoteVideo} autoPlay playsInline className="hidden" />
+          <video ref={bindRemote} autoPlay playsInline className="hidden" />
         )}
 
         {/* Local picture-in-picture (video calls only) */}
         {!call.audioOnly && call.localStream && (
           <video
-            ref={localVideo}
+            ref={bindLocal}
             autoPlay
             playsInline
             muted
