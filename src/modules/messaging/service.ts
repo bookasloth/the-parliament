@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
-import { broadcast, broadcastToUser } from "@/lib/supabase-realtime"
-import { sendPush } from "@/lib/web-push"
+import { broadcast } from "@/lib/supabase-realtime"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
-import { RING_STALE_MS } from "./call-log"
-import type { CallData, ConversationSummary, MessageView, ReplyStub } from "./types"
+import type { ConversationSummary, MessageView, ReplyStub } from "./types"
 
 const MAX_MESSAGE_LEN = 5000
 
@@ -86,7 +84,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       participants: {
         select: { userId: true, lastReadAt: true, muted: true, clearedAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } } },
       },
-      messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true, type: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true } },
     },
   })
   // Unread badges for ALL conversations in one query instead of one
@@ -120,11 +118,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     return {
       id: c.id,
       otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
-      lastMessagePreview: last
-        ? last.type === "call"
-          ? "📞 Call"
-          : last.body || ((last.media as string[]).length ? "📷 Photo" : "")
-        : "",
+      lastMessagePreview: last ? last.body || ((last.media as string[]).length ? "📷 Photo" : "") : "",
       lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
       unreadCount: hidden ? 0 : unreadByConv.get(c.id) ?? 0,
       muted: me.muted,
@@ -201,11 +195,6 @@ export async function getMessages(
   opts: { limit?: number; before?: string } = {},
 ): Promise<MessageView[]> {
   await assertParticipant(viewerId, conversationId)
-  // Server-authoritative expiry: a call left "ringing" (caller reloaded / closed
-  // the tab) durably becomes "missed" here, so orphans don't linger in the DB or
-  // for the other participant. Live view only (not pagination) — the query is
-  // indexed and usually returns 0 rows.
-  if (!opts.before) await expireStaleRingingCalls(conversationId)
   const me = await prisma.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId, userId: viewerId } },
     select: { clearedAt: true },
@@ -221,14 +210,13 @@ export async function getMessages(
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
-      id: true, senderId: true, type: true, callData: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true,
+      id: true, senderId: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true,
       reactions: { select: { emoji: true, userId: true } },
       replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true } },
     },
   })
   return rows.reverse().map((m) => ({
     id: m.id, senderId: m.senderId,
-    type: m.type === "call" ? ("call" as const) : ("text" as const),
     body: m.deletedAt ? "" : m.body,
     media: m.deletedAt ? [] : (m.media as string[]),
     createdAt: m.createdAt.toISOString(),
@@ -236,7 +224,6 @@ export async function getMessages(
     deleted: !!m.deletedAt,
     reactions: m.deletedAt ? [] : m.reactions.map((r) => ({ emoji: r.emoji, userId: r.userId })),
     replyTo: toReplyStub(m.replyTo),
-    call: m.type === "call" && !m.deletedAt ? (m.callData as unknown as CallData) : null,
   }))
 }
 
@@ -286,9 +273,9 @@ export async function sendMessage(
   if (!msg) throw new ForbiddenError("Not a participant")
 
   const view: MessageView = {
-    id: msg.id, senderId: msg.sender_id, type: "text", body: msg.body, media: msg.media,
+    id: msg.id, senderId: msg.sender_id, body: msg.body, media: msg.media,
     createdAt: msg.created_at.toISOString(), editedAt: null, deleted: false,
-    reactions: [], replyTo: replyStub, call: null,
+    reactions: [], replyTo: replyStub,
   }
   await broadcast(conversationId, "new_message", view)
   // No notification-bell row for DMs — messages surface in the messages inbox
@@ -425,137 +412,6 @@ export async function reportUser(viewerId: string, otherId: string, reason: stri
     create: { reporterId: viewerId, entityType: "user", entityId: otherId, reason: trimmed },
     update: { reason: trimmed },
   })
-}
-
-/** Ring the other user on their personal channel so an incoming call reaches
- *  them on ANY page, not only inside the open chat. The WebRTC offer/answer/ice
- *  still flow over the conversation channel once they land in the thread. */
-export async function ringCall(
-  callerId: string,
-  otherId: string,
-  conversationId: string,
-  audioOnly: boolean,
-): Promise<void> {
-  await assertParticipant(callerId, conversationId)
-  const caller = await prisma.user.findUnique({
-    where: { id: callerId },
-    select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
-  })
-  if (!caller) return
-  const name = caller.displayName || caller.legalName
-  await broadcastToUser(otherId, "call_ring", {
-    conversationId,
-    callerId,
-    callerName: name,
-    callerAvatar: caller.profile?.photoUrl ?? null,
-    audioOnly,
-  })
-  // Also push to the device so a closed-tab / locked-phone callee still gets it.
-  void sendPush(otherId, {
-    title: `${name} is calling…`,
-    body: audioOnly ? "Incoming audio call" : "Incoming video call",
-    url: `/messages/${conversationId}?call=${callerId}`,
-    icon: caller.profile?.photoUrl ?? undefined,
-    tag: `call:${conversationId}`,
-  })
-}
-
-/** Callee declined from the global ring (before joining the chat) — tell the
- *  caller (who is on the conversation channel) to stop ringing. */
-export async function declineCall(viewerId: string, conversationId: string): Promise<void> {
-  await assertParticipant(viewerId, conversationId)
-  await broadcast(conversationId, "call_end", { from: viewerId })
-}
-
-/** Caller hung up before the callee answered — clear the callee's global ring. */
-export async function cancelRing(viewerId: string, otherId: string, conversationId: string): Promise<void> {
-  await assertParticipant(viewerId, conversationId)
-  await broadcastToUser(otherId, "call_cancel", { conversationId })
-}
-
-/** Mark one ringing call-log "missed" (ended now, no duration) and broadcast the
- *  update so both sides' cards flip. The server-authoritative way a ringing call
- *  dies — used by the start-of-call sweep and the on-read expiry sweep. */
-async function resolveCallMissed(conversationId: string, id: string, prev: CallData): Promise<void> {
-  const next: CallData = { ...prev, status: "missed", endedAt: new Date().toISOString(), durationSec: null }
-  await prisma.message.update({ where: { id }, data: { callData: next as object } })
-  await broadcast(conversationId, "call_update", { id, call: next })
-}
-
-/** Flip this conversation's ringing call-logs older than the stale window to
- *  "missed" — durable, server-authoritative orphan cleanup (caller reloaded /
- *  closed the tab so it never finalised). Called on the live message read. */
-async function expireStaleRingingCalls(conversationId: string): Promise<void> {
-  const cutoff = new Date(Date.now() - RING_STALE_MS)
-  const stale = await prisma.message.findMany({
-    where: { conversationId, type: "call", createdAt: { lt: cutoff }, callData: { path: ["status"], equals: "ringing" } },
-    select: { id: true, callData: true },
-  })
-  for (const s of stale) await resolveCallMissed(conversationId, s.id, s.callData as unknown as CallData)
-}
-
-/** Insert a call-log message the moment a call starts. The SENDER is the caller;
- *  it shows as "Calling…" (outgoing) / "Incoming call" (the callee). The caller
- *  later finalises it via endCallLog. Returns the view so the caller can render
- *  it right away — broadcast self:false won't echo it back to them. */
-export async function startCallLog(
-  callerId: string,
-  conversationId: string,
-  audioOnly: boolean,
-): Promise<MessageView> {
-  await assertParticipant(callerId, conversationId)
-  // Resolve any of this caller's still-ringing logs in this thread first — a
-  // reload / navigate-away orphans the old "Calling…" otherwise, leaving a
-  // permanently-ringing card with a dead Join button. Mark them missed.
-  const orphans = await prisma.message.findMany({
-    where: { conversationId, senderId: callerId, type: "call", callData: { path: ["status"], equals: "ringing" } },
-    select: { id: true, callData: true },
-  })
-  for (const o of orphans) await resolveCallMissed(conversationId, o.id, o.callData as unknown as CallData)
-  const call: CallData = { status: "ringing", audioOnly, endedAt: null, durationSec: null }
-  const row = await prisma.message.create({
-    data: { conversationId, senderId: callerId, body: "", type: "call", callData: call as object },
-    select: { id: true, createdAt: true },
-  })
-  // A call bumps the thread to the top of both inboxes, same as a message does.
-  await prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: row.createdAt } })
-  const view: MessageView = {
-    id: row.id, senderId: callerId, type: "call", body: "", media: [],
-    createdAt: row.createdAt.toISOString(), editedAt: null, deleted: false,
-    reactions: [], replyTo: null, call,
-  }
-  await broadcast(conversationId, "new_message", view)
-  return view
-}
-
-/** Finalise a ringing call-log to its terminal state. Only the caller (the
- *  message sender) may do this, and a terminal state is never rewritten (a late
- *  duplicate "end" is a no-op). durationSec is clamped and only kept for a
- *  completed call. */
-export async function endCallLog(
-  callerId: string,
-  messageId: string,
-  outcome: "completed" | "missed",
-  durationSec = 0,
-): Promise<CallData> {
-  const row = await prisma.message.findUnique({
-    where: { id: messageId },
-    select: { senderId: true, conversationId: true, type: true, callData: true },
-  })
-  if (!row || row.type !== "call") throw new ForbiddenError("Not a call")
-  if (row.senderId !== callerId) throw new ForbiddenError("Not your call")
-  const prev = row.callData as unknown as CallData
-  if (prev.status !== "ringing") return prev // already terminal — leave it be
-  const next: CallData = {
-    ...prev,
-    status: outcome,
-    endedAt: new Date().toISOString(),
-    // clamp to [0, 24h] so a bad client can't write a nonsense duration.
-    durationSec: outcome === "completed" ? Math.max(0, Math.min(Math.round(durationSec), 86_400)) : null,
-  }
-  await prisma.message.update({ where: { id: messageId }, data: { callData: next as object } })
-  await broadcast(row.conversationId, "call_update", { id: messageId, call: next })
-  return next
 }
 
 export async function markRead(viewerId: string, conversationId: string): Promise<void> {

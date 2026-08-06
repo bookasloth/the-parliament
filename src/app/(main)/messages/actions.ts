@@ -133,56 +133,6 @@ export async function conversationMetaAction(conversationId: string) {
   }
 }
 
-export async function ringCallAction(otherId: string, conversationId: string, audioOnly: boolean) {
-  const u = await requireUser()
-  try {
-    await svc.ringCall(u.id, otherId, conversationId, audioOnly)
-    return { ok: true as const }
-  } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
-  }
-}
-
-export async function declineCallAction(conversationId: string) {
-  const u = await requireUser()
-  try {
-    await svc.declineCall(u.id, conversationId)
-    return { ok: true as const }
-  } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
-  }
-}
-
-export async function cancelRingAction(otherId: string, conversationId: string) {
-  const u = await requireUser()
-  try {
-    await svc.cancelRing(u.id, otherId, conversationId)
-    return { ok: true as const }
-  } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
-  }
-}
-
-export async function startCallLogAction(conversationId: string, audioOnly: boolean) {
-  const u = await requireUser()
-  try {
-    const msg = await svc.startCallLog(u.id, conversationId, audioOnly)
-    return { ok: true as const, msg }
-  } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
-  }
-}
-
-export async function endCallLogAction(messageId: string, outcome: "completed" | "missed", durationSec?: number) {
-  const u = await requireUser()
-  try {
-    const call = await svc.endCallLog(u.id, messageId, outcome, durationSec)
-    return { ok: true as const, call }
-  } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
-  }
-}
-
 export async function refreshConversationsAction(): Promise<ConversationSummary[]> {
   try {
     const u = await requireUser()

@@ -875,10 +875,6 @@ model Message {
   senderId       String    @map("sender_id") @db.Uuid
   body           String
   media          Json      @default("[]")
-  // "text" (default) or "call" — a call-log entry (calling / missed / duration),
-  // whose lifecycle lives in callData. The message SENDER is always the caller.
-  type           String    @default("text")
-  callData       Json?     @map("call_data")
   replyToId      String?   @map("reply_to_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   editedAt       DateTime? @map("edited_at") @db.Timestamptz
