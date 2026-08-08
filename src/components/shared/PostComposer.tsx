@@ -20,6 +20,7 @@ import {
   Send,
   Trash2,
 } from "lucide-react"
+import MentionInput from "@/components/shared/MentionInput"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 import { TEXT_BACKGROUNDS, STUDENT_BG_PICKER, DEFAULT_BG_PICKER } from "@/config/text-backgrounds"
@@ -380,21 +381,27 @@ export default function PostComposer({
                 {activeBgDef.svg && (
                   <div className="absolute inset-0 pointer-events-none" dangerouslySetInnerHTML={{ __html: activeBgDef.svg }} />
                 )}
-                <textarea
+                <MentionInput
                   value={text}
                   maxLength={CHAR_LIMIT}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={setText}
                   placeholder={placeholder}
+                  multiline
+                  rows={5}
+                  hideEmoji
                   className="relative z-[1] w-full min-h-[180px] resize-none border-0 bg-transparent rounded-[5px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70 outline-none"
                   style={activeBgDef.fg ? { color: activeBgDef.fg } : undefined}
                 />
               </div>
             ) : (
-              <textarea
+              <MentionInput
                 value={text}
                 maxLength={CHAR_LIMIT}
-                onChange={(e) => setText(e.target.value)}
+                onChange={setText}
                 placeholder={placeholder}
+                multiline
+                rows={5}
+                hideEmoji
                 className={`w-full resize-none border-0 outline-none transition-all placeholder:text-gray-400 ${
                   type === "quote"
                   ? "min-h-[120px] text-lg italic leading-relaxed text-gray-800"
