@@ -52,6 +52,7 @@ export function FeedCard({
   onHide,
   onPollVote,
   commentsLoader,
+  commentViewer = null,
   defaultCommentsOpen = false,
   disableCardNav = false,
 }: {
@@ -70,6 +71,8 @@ export function FeedCard({
   onPollVote?: (optionId: string) => void | Promise<unknown>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
+  /** Viewer info for rendering the comment input instantly (before server data loads). */
+  commentViewer?: { id: string; displayName: string; avatarUrl: string } | null
   /** Detail-page use: open the comment thread on mount instead of on click. */
   defaultCommentsOpen?: boolean
   /** Detail-page use: card is already the post view, so disable click-to-open. */
@@ -458,19 +461,9 @@ export function FeedCard({
         />
       </div>
 
-      {/* Inline comment thread (lazy-loaded on first open) */}
+      {/* Inline comment thread — input appears instantly, comments load in background */}
       {commentsOpen && commentsLoader && (
-        loadingComments && !commentsData ? (
-          // Known-empty post → no spinner, just say so instantly. Otherwise a
-          // skeleton (up to 3 rows) while the thread loads.
-          post.comments > 0 ? (
-            <div className="px-1 py-2">
-              <CommentsSkeleton count={Math.min(post.comments, 3)} />
-            </div>
-          ) : (
-            <div className="px-5 py-4 text-sm text-gray-400">No comments yet.</div>
-          )
-        ) : commentsData ? (
+        commentsData ? (
           <CommentsSection
             embedded
             postId={post.id}
@@ -478,7 +471,16 @@ export function FeedCard({
             initialCount={commentsData.count}
             viewer={commentsData.viewer}
           />
-        ) : null
+        ) : (
+          <CommentsSection
+            embedded
+            postId={post.id}
+            initialComments={[]}
+            initialCount={post.comments}
+            viewer={commentViewer}
+            key="loading"
+          />
+        )
       )}
     </div>
   )

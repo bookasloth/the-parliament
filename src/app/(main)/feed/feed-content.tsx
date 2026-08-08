@@ -10,7 +10,6 @@ import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 import {
   reactToPost,
   commentOnPost,
-  throwEgg,
   sharePostAction,
   toggleSavePostAction,
   awardPostAction,
@@ -26,13 +25,7 @@ import {
 import { prepareImpressionBatch } from "@/modules/feed/impressions"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
-
-interface Connection {
-  name: string
-  role: string
-  avatar: string
-  hasStory?: boolean
-}
+import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard"
 
 export type SuggestedConnection = {
   username: string
@@ -46,15 +39,6 @@ export type NewsItem = {
   title: string
   time: string
 }
-
-
-const connections: Connection[] = [
-  { name: "Judy Nguyen", role: "News Anchor · Nagpur", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" },
-  { name: "Amanda Reed", role: "Web Developer · Mumbai", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face", hasStory: true },
-  { name: "Billy Vasquez", role: "News Anchor · Delhi", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face" },
-  { name: "Shubham Datarkar", role: "Web Developer · NNAWCA", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face" },
-  { name: "Carolyn Ortiz", role: "News Anchor · Pune", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face" },
-]
 
 // --- Left Sidebar ---
 export type ViewerCard = {
@@ -81,10 +65,12 @@ const FeedRow = memo(function FeedRow({
   post,
   isAuthor,
   setRemovedIds,
+  commentViewer,
 }: {
   post: FeedPost
   isAuthor: boolean
   setRemovedIds: Dispatch<SetStateAction<Set<string>>>
+  commentViewer?: { id: string; displayName: string; avatarUrl: string } | null
 }) {
   const optimisticRemove = () => setRemovedIds((s) => new Set(s).add(post.id))
   const restore = () =>
@@ -100,6 +86,7 @@ const FeedRow = memo(function FeedRow({
         isAuthor={isAuthor}
         initialSaved={post.savedByViewer}
         commentsLoader={loadPostCommentsAction}
+        commentViewer={commentViewer}
         onUpvote={() => void reactToPost(post.id, "upvote")}
         onDownvote={() => void reactToPost(post.id, "downvote")}
         onComment={(body) => void commentOnPost(post.id, body)}
@@ -168,10 +155,12 @@ export function FeedContent({
   /** Viewer has seen every fresh post — feed is re-showing recent posts. */
   caughtUp?: boolean
 }) {
+  const commentViewer = viewerId && viewer
+    ? { id: viewerId, displayName: viewer.name, avatarUrl: viewer.photoUrl }
+    : null
   const followingOnly = activeTab === "following"
   const router = useRouter()
   const [newCount, setNewCount] = useState(0)
-  const [eggedUsernames, setEggedUsernames] = useState<Set<string>>(() => new Set(initialEgged))
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
@@ -300,19 +289,6 @@ export function FeedContent({
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function handleThrowEgg(username: string) {
-    if (!username || eggedUsernames.has(username)) return
-    setEggedUsernames((s) => new Set(s).add(username))
-    const res = await throwEgg(username)
-    if (!res.ok) {
-      setEggedUsernames((s) => {
-        const next = new Set(s)
-        next.delete(username)
-        return next
-      })
-    }
-  }
-
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
       {/* Feed Layout */}
@@ -394,7 +370,7 @@ export function FeedContent({
               }
 
               return (
-                <FeedRow key={post.id} post={post} isAuthor={isAuthor} setRemovedIds={setRemovedIds} />
+                <FeedRow key={post.id} post={post} isAuthor={isAuthor} setRemovedIds={setRemovedIds} commentViewer={commentViewer} />
               )
             })}
 
@@ -436,97 +412,10 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-full lg:w-[340px] flex-shrink-0">
-            <div className="sticky top-20 space-y-3">
-              {/* Sticky Ad */}
-              <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
-                <div className="p-4">
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Sponsored</span>
-                  <a href="https://www.google.com" target="_blank" className="relative mt-2 block">
-                    <Image src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop" alt="Ad" width={600} height={400} className="w-full h-auto rounded-[3px] object-cover" />
-                  </a>
-                  <p className="mt-1.5 text-xs text-gray-400 text-center">Advertisement</p>
-                </div>
-              </div>
-
-              {/* Connections Widget */}
-              {(suggestions.length > 0 ? suggestions : connections).length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <h5 className="text-sm font-semibold text-gray-900">Throw 1 Egg to Poke Them</h5>
-                  </div>
-                  <div className="py-1">
-                    {(suggestions.length > 0
-                      ? suggestions.map((s) => ({
-                          key: s.username || s.name,
-                          name: s.name,
-                          role: s.role,
-                          avatar: s.avatar,
-                          href: s.username ? `/${s.username}` : undefined,
-                        }))
-                      : connections.map((c) => ({
-                          key: c.name,
-                          name: c.name,
-                          role: c.role,
-                          avatar: c.avatar,
-                          href: undefined,
-                        }))
-                    ).map((c) => {
-                      const username = "username" in c ? (c as { username?: string }).username ?? "" : ""
-                      const src = suggestions.length > 0 ? (suggestions.find((s) => (s.username || s.name) === c.key) ?? null) : null
-                      const targetUsername = src?.username ?? username
-                      const thrown = targetUsername ? eggedUsernames.has(targetUsername) : false
-                      return (
-                        <div key={c.key} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors">
-                          <a href={c.href ?? "#"} className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-[4px]">
-                            <Image src={c.avatar} alt={c.name} className="h-full w-full object-cover" fill sizes="36px" />
-                          </a>
-                          <div className="min-w-0 flex-1">
-                            <a href={c.href ?? "#"} className="truncate text-sm font-medium text-gray-900 hover:text-brand block">{c.name}</a>
-                            <p className="truncate text-xs text-gray-500">{c.role}</p>
-                          </div>
-                          <button
-                            onClick={() => targetUsername && handleThrowEgg(targetUsername)}
-                            disabled={!targetUsername || thrown}
-                            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[3px] transition-colors ${
-                              thrown ? "bg-amber-100 text-amber-600 opacity-60 cursor-default" : "bg-amber-50 text-amber-500 hover:bg-amber-100"
-                            }`}
-                            title={thrown ? "Egg thrown" : "Throw egg"}
-                          >
-                            🥚
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <a
-                    href="/community"
-                    className="block text-center py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors border-t border-gray-100"
-                  >
-                    View more
-                  </a>
-                </div>
-              )}
-
-              {/* Alumni News — pinned posts */}
-              {news.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <h5 className="text-sm font-semibold text-gray-900">Alumni News</h5>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {news.map((item) => (
-                      <div key={item.id} className="px-4 py-2.5 hover:bg-gray-50 transition-colors">
-                        <h6 className="text-xs font-medium leading-snug text-gray-700 line-clamp-2">
-                          <a href={`/feed/${item.id}`} className="hover:text-brand transition-colors">{item.title}</a>
-                        </h6>
-                        <span className="text-[10px] text-gray-400 mt-0.5 block">{item.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {/* Right Sidebar — Timewheel ads */}
+          <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
+            <div className="sticky top-20">
+              <TimewheelAdCard />
             </div>
           </div>
         </div>

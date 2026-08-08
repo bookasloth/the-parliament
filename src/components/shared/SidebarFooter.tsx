@@ -11,9 +11,9 @@ export function SidebarFooter() {
       </div>
       <p className="mt-2 text-gray-400">
         Powered by{" "}
-        <a href="/shubham" className="font-medium text-gray-500 hover:text-brand">SN Datarkar</a>
-        {" "}and{" "}
-        <a href="/durga-laxne" className="font-medium text-gray-500 hover:text-brand">DJ Laxne</a>
+        <a href="/durga-laxne" className="font-medium text-gray-500 hover:text-brand">Durga</a>
+        {" "}&amp;{" "}
+        <a href="/shubham" className="font-medium text-gray-500 hover:text-brand">Shubham</a>
       </p>
     </div>
   )
