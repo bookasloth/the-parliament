@@ -47,29 +47,8 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
       </div>
 
       <div className="px-7 pb-6 pt-3">
-        {/* Badges */}
-        <h4 className={SUBHEAD}>Badges</h4>
-        <div className="flex flex-wrap items-center gap-2.5">
-          {shown.map((b) => (
-            <div
-              key={b.key}
-              title={b.label}
-              className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 ring-1 ring-gray-200"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="h-6 w-6 object-contain" />
-            </div>
-          ))}
-          {overflow > 0 && (
-            <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 text-xs font-bold text-brand ring-1 ring-gray-200">
-              +{overflow}
-            </div>
-          )}
-          {totalBadges === 0 && <p className="text-[13px] text-gray-400">No badges yet</p>}
-        </div>
-
         {/* Collectables */}
-        <h4 className={`${SUBHEAD} mt-5 border-t border-gray-100 pt-4`}>Collectables</h4>
+        <h4 className={SUBHEAD}>Collectables</h4>
         <div className="grid grid-cols-3 gap-3">
           <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Eggs" />
           <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma" />

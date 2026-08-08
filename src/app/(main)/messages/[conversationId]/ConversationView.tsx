@@ -748,7 +748,7 @@ export default function ConversationView({
             )}
           </div>
           <textarea
-            ref={textareaRef} value={input}
+            ref={textareaRef} value={input} autoFocus
             onChange={(e) => { setInput(e.target.value); autoResize(); signalTyping() }}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             rows={1} placeholder="Type a message"

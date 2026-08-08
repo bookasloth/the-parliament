@@ -20,8 +20,10 @@ import {
   Send,
   Trash2,
 } from "lucide-react"
+import MentionInput from "@/components/shared/MentionInput"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
+import { TEXT_BACKGROUNDS, STUDENT_BG_PICKER, DEFAULT_BG_PICKER } from "@/config/text-backgrounds"
 
 const R_CARD = "rounded-[5px]"
 const R_EL = "rounded-[4px]"
@@ -36,19 +38,6 @@ const POST_TYPES: { key: PostType; label: string; icon: typeof Type; color: stri
   { key: "link", label: "Link", icon: Link2, color: "#0aa6b8", soft: "#e0f6f8" },
   { key: "poll", label: "Poll", icon: ListChecks, color: "#d4a800", soft: "#fff7df" },
   { key: "question", label: "Question", icon: HelpCircle, color: "#e75480", soft: "#fde7ef" },
-]
-
-// Facebook-style coloured backgrounds (text mode). `fg` overrides text colour where needed.
-const BG_OPTIONS: { id: string; bg: string; plain?: boolean; fg?: string }[] = [
-  { id: "plain", bg: "#ffffff", plain: true },
-  { id: "navy", bg: "linear-gradient(135deg,#1a3a6b,#0b1c38)" },
-  { id: "brand", bg: "linear-gradient(135deg,#009ae4,#005c8c)" },
-  { id: "sunset", bg: "linear-gradient(135deg,#ff8a5b,#e75480)" },
-  { id: "gold", bg: "linear-gradient(135deg,#ffd119,#d4a800)" },
-  { id: "forest", bg: "linear-gradient(135deg,#3ea35f,#1f6b3e)" },
-  { id: "violet", bg: "linear-gradient(135deg,#9b6cff,#5a2ec0)" },
-  { id: "christmas", bg: "linear-gradient(135deg,#c0392b 0%,#0e7a3a 100%)" },
-  { id: "tricolour", bg: "linear-gradient(180deg,#FF9933 0%,#FF9933 33%,#ffffff 33%,#ffffff 66%,#138808 66%,#138808 100%)", fg: "#1a3a6b" },
 ]
 
 const CATEGORIES = ["Career Update", "Job Opening", "Achievement", "Startup", "Seeking Help", "Mentorship", "School Memory", "Event"]
@@ -224,9 +213,11 @@ export default function PostComposer({
 
   const jobGateBlocked = category === "Job Opening" && !jobsAllowed
 
+  const bgPicker = plan === "student" ? STUDENT_BG_PICKER : DEFAULT_BG_PICKER
   const active = POST_TYPES.find((t) => t.key === type)!
-  const activeBg = BG_OPTIONS.find((b) => b.id === bg)!
-  const coloured = type === "text" && !activeBg.plain
+  const activeBgDef = TEXT_BACKGROUNDS[bg]
+  const isPlain = bg === "plain"
+  const coloured = type === "text" && !isPlain && !!activeBgDef
   const remaining = CHAR_LIMIT - text.length
   const pct = Math.min(100, (text.length / CHAR_LIMIT) * 100)
   const near = remaining <= 80
@@ -385,35 +376,60 @@ export default function PostComposer({
 
           {/* ===== Composer body ===== */}
           <div className="px-5 pt-4">
-            <textarea
-              value={text}
-              maxLength={CHAR_LIMIT}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={placeholder}
-              className={`w-full resize-none border-0 outline-none transition-all placeholder:text-gray-400 ${
-                coloured
-                  ? "min-h-[180px] rounded-[5px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70"
-                  : type === "quote"
+            {coloured && activeBgDef ? (
+              <div className="relative min-h-[180px] rounded-[5px] overflow-hidden" style={{ background: activeBgDef.bg }}>
+                {activeBgDef.svg && (
+                  <div className="absolute inset-0 pointer-events-none" dangerouslySetInnerHTML={{ __html: activeBgDef.svg }} />
+                )}
+                <MentionInput
+                  value={text}
+                  maxLength={CHAR_LIMIT}
+                  onChange={setText}
+                  placeholder={placeholder}
+                  multiline
+                  rows={5}
+                  hideEmoji
+                  className="relative z-[1] w-full min-h-[180px] resize-none border-0 bg-transparent rounded-[5px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70 outline-none"
+                  style={activeBgDef.fg ? { color: activeBgDef.fg } : undefined}
+                />
+              </div>
+            ) : (
+              <MentionInput
+                value={text}
+                maxLength={CHAR_LIMIT}
+                onChange={setText}
+                placeholder={placeholder}
+                multiline
+                rows={5}
+                hideEmoji
+                className={`w-full resize-none border-0 outline-none transition-all placeholder:text-gray-400 ${
+                  type === "quote"
                   ? "min-h-[120px] text-lg italic leading-relaxed text-gray-800"
                   : "min-h-[120px] text-[15px] leading-relaxed text-gray-800"
-              }`}
-              style={coloured ? { background: activeBg.bg, color: activeBg.fg } : undefined}
-            />
+                }`}
+              />
+            )}
 
-            {/* Text background swatches (Facebook) — editable in both modes */}
+            {/* Text background swatches — editable in both modes */}
             {type === "text" && (
               <div className="mt-2 flex items-center gap-2">
-                {BG_OPTIONS.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => setBg(b.id)}
-                    className={`h-8 w-8 shrink-0 rounded-[5px] border transition-transform hover:scale-105 ${bg === b.id ? "ring-2 ring-brand ring-offset-1" : "border-gray-200"}`}
-                    style={{ background: b.bg }}
-                    aria-label={b.id}
-                  >
-                    {b.plain && <span className="text-[10px] font-bold text-gray-400">Aa</span>}
-                  </button>
-                ))}
+                {bgPicker.map((b) => {
+                  const def = b.plain ? null : TEXT_BACKGROUNDS[b.id]
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => setBg(b.id)}
+                      className={`relative h-8 w-8 shrink-0 rounded-[5px] border overflow-hidden transition-transform hover:scale-105 ${bg === b.id ? "ring-2 ring-brand ring-offset-1" : "border-gray-200"}`}
+                      style={{ background: b.plain ? "#ffffff" : def?.bg }}
+                      aria-label={b.id}
+                    >
+                      {b.plain && <span className="text-[10px] font-bold text-gray-400">Aa</span>}
+                      {def?.svg && (
+                        <div className="absolute inset-0 pointer-events-none" dangerouslySetInnerHTML={{ __html: def.svg }} />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
 

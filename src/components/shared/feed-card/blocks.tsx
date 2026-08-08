@@ -1,10 +1,22 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import Image from "next/image"
 import { Eye, Clock, Quote } from "lucide-react"
 import type { FeedPost, FeedMembership } from "./types"
 import { truncateForPreview } from "@/lib/text-preview"
+
+const G_COLORS = ["#4285F4", "#EA4335", "#FBBC05", "#34A853"] as const
+function GoogleColoredMention({ handle }: { handle: string }) {
+  return (
+    <Link href={`/${handle.slice(1)}`} className="inline font-semibold hover:underline">
+      {[...handle].map((ch, i) => (
+        <span key={i} style={{ color: G_COLORS[i % G_COLORS.length] }}>{ch}</span>
+      ))}
+    </Link>
+  )
+}
 
 // Scalloped verified seal (Twitter-style 24pt burst) + check, styled per tier:
 // life = solid gold / black tick, student = green, premium = solid blue,
@@ -143,17 +155,13 @@ export function RichText({ text, collapsible = false }: { text: string; collapsi
     <p className="text-sm md:text-[15px] text-[#374151] leading-[1.7] whitespace-pre-line">
       {parts.map((part, i) => {
         if (part.startsWith("@")) {
-          return (
-            <button key={i} className="text-brand font-medium hover:underline">
-              {part}
-            </button>
-          )
+          return <GoogleColoredMention key={i} handle={part} />
         }
         if (part.startsWith("#")) {
           return (
-            <button key={i} className="text-brand font-medium hover:underline">
+            <Link key={i} href={`/hashtag/${part.slice(1)}`} className="text-brand font-medium hover:underline">
               {part}
-            </button>
+            </Link>
           )
         }
         if (part.startsWith("http")) {
