@@ -15,12 +15,13 @@ const FIRST_PAGE_SIZE = 15
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; new?: string }>
 }) {
-  const [{ tab }, [schoolId, viewer]] = await Promise.all([
+  const [params, [schoolId, viewer]] = await Promise.all([
     searchParams,
     Promise.all([getDefaultSchoolId(), optionalUser()]),
   ])
+  const { tab, new: pinnedNewId } = params
   const followingOnly = tab === "following" && !!viewer?.id
 
   let mappedReal: FeedPost[] = []
@@ -81,6 +82,16 @@ export default async function FeedPage({
       : undefined
     const tier = u?.membershipStatus ?? "student"
     mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)), tier)
+
+    // Pin the viewer's just-created post at the top so they see it immediately.
+    if (pinnedNewId && viewer?.id) {
+      const idx = mappedReal.findIndex((p) => p.id === pinnedNewId)
+      if (idx > 0) {
+        const [post] = mappedReal.splice(idx, 1)
+        mappedReal.unshift(post)
+      }
+    }
+
     // Students get a capped 5-item feed — no "load more".
     hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
     caughtUp = cu

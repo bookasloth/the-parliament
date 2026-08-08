@@ -95,11 +95,11 @@ export function relativeTime(date: Date): string {
   if (hr < 24) return `${hr}h`
   const day = Math.floor(hr / 24)
   if (day < 7) return `${day}d`
-  return new Date(date).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+  const wk = Math.floor(day / 7)
+  if (wk < 5) return `${wk}w`
+  const mo = Math.floor(day / 30)
+  if (mo < 12) return `${mo}mo`
+  return `${Math.floor(mo / 12)}y`
 }
 
 export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): FeedPost {

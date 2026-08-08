@@ -56,7 +56,7 @@ export async function createPostAction(input: {
   const visibilityScope =
     anonymous ? "public" : input.audience === "followers" ? "followers" : input.audience === "groups" ? "groups" : "public"
 
-  await createPost({
+  const post = await createPost({
     authorId: user.id,
     schoolId,
     categoryKey: input.categoryKey || "career_update",
@@ -77,7 +77,7 @@ export async function createPostAction(input: {
     redirect("/compose/drafts")
   }
   revalidatePath("/feed")
-  redirect("/feed")
+  redirect(`/feed?new=${post.id}`)
 }
 
 /** Publish a saved draft. */

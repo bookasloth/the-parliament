@@ -448,7 +448,7 @@ export default function PostComposer({
               </div>
             )}
 
-            {/* Photo dropzone — editable in both modes */}
+            {/* Photo dropzone — shown when type is photo */}
             {type === "photo" && (
               <div className="mt-2">
                 <label
@@ -468,28 +468,28 @@ export default function PostComposer({
                   <div className="text-xs text-gray-400">click or drag and drop · up to 64 MB each</div>
                 </label>
                 {uploadErr && <p className="mt-2 text-xs text-rose-600">{uploadErr}</p>}
-                {media.length > 0 && (
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {media.map((m, i) => (
-                      <div key={m.key || i} className={`relative aspect-square overflow-hidden ${R_EL} border border-gray-200`}>
-                        {m.type === "video" ? (
-                          <video src={m.url} className="h-full w-full object-cover" muted />
-                        ) : (
-                          // Local blob: URL — plain <img>, next/image can't optimize blobs.
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={m.url} alt="" className="h-full w-full object-cover" />
-                        )}
-                        <button
-                          onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
-                          className="absolute right-1 top-1 rounded-[3px] bg-black/60 p-1 text-white hover:bg-black/80"
-                          aria-label="Remove"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
+              </div>
+            )}
+            {/* Media preview grid — always visible when media exists */}
+            {media.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {media.map((m, i) => (
+                  <div key={m.key || i} className={`relative aspect-square overflow-hidden ${R_EL} border border-gray-200`}>
+                    {m.type === "video" ? (
+                      <video src={m.url} className="h-full w-full object-cover" muted />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    <button
+                      onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
+                      className="absolute right-1 top-1 rounded-[3px] bg-black/60 p-1 text-white hover:bg-black/80"
+                      aria-label="Remove"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                )}
+                ))}
               </div>
             )}
 
