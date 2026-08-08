@@ -52,8 +52,10 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // camera/microphone/geolocation all disabled — no feature needs them.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // camera+microphone allowed for same-origin (LiveKit video calling needs
+  // getUserMedia). An EMPTY allowlist here blocks getUserMedia site-wide and
+  // every call fails — do not revert to camera=()/microphone=(). geolocation stays off.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=()" },
   { key: "Content-Security-Policy", value: buildCsp(process.env.NODE_ENV !== "production") },
 ];
 
