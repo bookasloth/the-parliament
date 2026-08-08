@@ -85,12 +85,12 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
 
 function Collectable({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-[5px] border border-gray-200 bg-white px-3 py-2.5">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={icon} alt="" className="h-8 w-8 flex-shrink-0 object-contain" />
-      <div className="min-w-0">
-        <p className="text-base font-bold leading-tight text-gray-900 tabular-nums">{value}</p>
-        <p className="truncate text-xs text-gray-500">{label}</p>
+    <div className="rounded-[5px] border border-gray-200 bg-white px-3 py-2.5">
+      <p className="text-xs font-semibold text-gray-500">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={icon} alt="" className="h-6 w-6 flex-shrink-0 object-contain" />
+        <p className="text-lg font-bold leading-tight text-gray-900 tabular-nums">{value}</p>
       </div>
     </div>
   )

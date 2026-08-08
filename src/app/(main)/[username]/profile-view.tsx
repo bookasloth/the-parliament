@@ -9,6 +9,7 @@ import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { ProfileTimeline } from "./profile-timeline"
+import PostCard from "@/app/(main)/feed/[postId]/post-card"
 import type { FeedCursor } from "@/modules/feed/query"
 
 /** One rendered post in a profile timeline. */
@@ -118,6 +119,8 @@ export interface ProfileViewData {
   posts: ProfileTimelinePost[]
   /** Keyset cursor for the next timeline page (null = no more / not paginated). */
   postsNextCursor: FeedCursor | null
+  tagged: ProfileTimelinePost[]
+  taggedCount: number
   followers: {
     userId: string
     username: string | null
@@ -183,7 +186,7 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
 // ─────────────────────────────────────────────
 // Main view
 // ─────────────────────────────────────────────
-type Tab = "posts" | "about" | "followers"
+type Tab = "posts" | "tagged" | "about" | "followers"
 
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
   const router = useRouter()
@@ -340,6 +343,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div className="-mt-[62px] flex justify-center">{avatarInner}</div>
               <div className="mt-3 flex justify-center">{nameTick}</div>
               {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
+              {data.bio && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13px] text-gray-500">{data.bio.length > 50 ? data.bio.slice(0, 50) + "…" : data.bio}</p>}
               {data.bio && <p className="mx-auto mt-1 max-w-[560px] line-clamp-2 text-[13px] text-gray-500">{data.bio}</p>}
               <div className="mt-4 flex items-center justify-center gap-2.5">{actionsCompact}</div>
               {metaRow && (
@@ -355,7 +359,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <div className="min-w-0">
                     {nameTick}
                     {data.headline && <p className="mt-1 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
-                    {data.bio && <p className="mt-0.5 line-clamp-2 text-[13px] text-gray-500">{data.bio}</p>}
+                    {data.bio && <p className="mt-0.5 truncate text-[13px] text-gray-500">{data.bio.length > 50 ? data.bio.slice(0, 50) + "…" : data.bio}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">{actions}</div>
                 </div>
@@ -367,7 +371,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
             {/* tabs — centred on mobile, left on desktop */}
             <div className="mt-3 flex justify-center gap-1.5 border-t border-gray-100 px-1 pt-1.5 lg:justify-start">
-              {([["posts", "Posts"], ["about", "About"], ["followers", "Followers"]] as const).map(([key, label]) => (
+              {([["posts", "Posts"], ["tagged", "Tagged"], ["about", "About"], ["followers", "Followers"]] as const).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
@@ -376,6 +380,9 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   {label}
                   {key === "posts" && data.postsCount > 0 && (
                     <span className="ml-1 rounded-[5px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
+                  )}
+                  {key === "tagged" && data.taggedCount > 0 && (
+                    <span className="ml-1 rounded-[5px] bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">{data.taggedCount}</span>
                   )}
                   {key === "followers" && data.followersCount > 0 && (
                     <span className="ml-1 rounded-[5px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
@@ -394,8 +401,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
           </div>
           <div className="px-7 pb-6 pt-2">
-            {data.bio && <p className="text-[13.5px] leading-relaxed text-gray-700">{data.bio}</p>}
-            <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
               {data.dateOfBirth && (
                 <li className="flex items-center gap-2">
                   <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
@@ -513,8 +519,32 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               />
             )}
 
+            {tab === "tagged" && (
+              <div className="flex flex-col gap-4">
+                {data.tagged.length === 0 ? (
+                  <Card>
+                    <div className="px-7 py-12 text-center text-sm text-gray-400">
+                      No tagged posts yet.
+                    </div>
+                  </Card>
+                ) : (
+                  data.tagged.map(({ post, isAuthor, initialSaved }) => (
+                    <PostCard key={post.id} post={post} isAuthor={isAuthor} initialSaved={initialSaved} />
+                  ))
+                )}
+              </div>
+            )}
+
             {tab === "about" && (
               <>
+                {data.bio && (
+                  <Card>
+                    <SectionTitle>Bio</SectionTitle>
+                    <div className="px-7 pb-6 pt-1">
+                      <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-gray-700">{data.bio}</p>
+                    </div>
+                  </Card>
+                )}
                 {data.skills.length > 0 && (
                   <Card>
                     <SectionTitle>Skills</SectionTitle>
