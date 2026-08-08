@@ -180,13 +180,13 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       isOwnProfile ? getCurrent(user.id) : Promise.resolve(null),
       prisma.postMention.findMany({
         where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
+        orderBy: { post: { createdAt: "desc" } },
         take: 30,
         select: {
           post: {
             select: {
-              id: true, body: true, mediaUrls: true, status: true, visibility: true,
-              createdAt: true, updatedAt: true, deletedAt: true, type: true,
+              id: true, body: true, media: true, status: true,
+              createdAt: true, deletedAt: true,
               upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true,
               author: {
                 select: {
@@ -338,6 +338,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     postsCount,
     posts,
     postsNextCursor: feed.nextCursor,
+    tagged,
+    taggedCount: tagged.length,
     followers,
     userId: user.id,
     viewerFollows,
