@@ -8,11 +8,8 @@ import { trophyDef, TROPHY_TONE_CLASS } from "@/config/alfazy-trophies";
 import { formatAnchor, PERIOD_LABEL } from "@/modules/games/format";
 import type { Trophy } from "@/modules/games/champions";
 
-/**
- * Profile trophy case — Alfazy champion titles the member (or their house/batch)
- * has won. Derived entirely from frozen champion rows; renders nothing until it
- * has data so it never shows an empty shell.
- */
+const SHOWN = 2;
+
 export default function TrophyCase({ userId }: { userId: string }) {
   const [trophies, setTrophies] = useState<Trophy[] | null>(null);
 
@@ -28,7 +25,7 @@ export default function TrophyCase({ userId }: { userId: string }) {
 
   if (!trophies || trophies.length === 0) return null;
 
-  const shown = trophies.slice(0, 6);
+  const shown = trophies.slice(0, SHOWN);
   const more = trophies.length - shown.length;
 
   return (
@@ -42,34 +39,36 @@ export default function TrophyCase({ userId }: { userId: string }) {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2.5">
+      <div className="space-y-2.5">
         {shown.map((t) => {
           const def = trophyDef(t.scope, t.period);
           const Icon = def.Icon;
+          const subtitle = `${formatAnchor(t.period, t.anchor)}${t.scope !== "individual" ? ` · ${t.label}` : ""}`;
           return (
             <div
               key={`${t.scope}-${t.period}-${t.anchor}`}
-              title={`${def.label} — ${formatAnchor(t.period, t.anchor)}${t.scope !== "individual" ? ` (${t.label})` : ""}`}
-              className={`flex h-11 w-11 items-center justify-center rounded-[5px] ring-1 ${TROPHY_TONE_CLASS[def.tone]}`}
+              className="flex items-center gap-3 rounded-[5px] border border-gray-200 bg-white px-3 py-2.5"
             >
-              <Icon className="h-5 w-5" />
+              <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[4px] ring-1 ${TROPHY_TONE_CLASS[def.tone]}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-bold leading-tight text-gray-900">{def.label}</p>
+                <p className="truncate text-[11px] text-gray-500">{subtitle}</p>
+              </div>
             </div>
           );
         })}
-        {more > 0 && (
-          <Link
-            href={`/games/alfazy/champions?winner=${userId}`}
-            className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 text-xs font-bold text-gray-500 ring-1 ring-gray-200 hover:bg-gray-100"
-          >
-            +{more}
-          </Link>
-        )}
       </div>
 
-      <p className="mt-3 text-[13px] font-semibold text-gray-900">
-        {trophies.length} title{trophies.length === 1 ? "" : "s"}
-        <span className="ml-1 font-normal text-gray-500">across {PERIOD_LABEL.weekly.toLowerCase()} &amp; more</span>
-      </p>
+      {more > 0 && (
+        <Link
+          href={`/games/alfazy/champions?winner=${userId}`}
+          className="mt-2 block text-center text-xs font-semibold text-brand hover:underline"
+        >
+          +{more} more title{more === 1 ? "" : "s"}
+        </Link>
+      )}
     </div>
   );
 }

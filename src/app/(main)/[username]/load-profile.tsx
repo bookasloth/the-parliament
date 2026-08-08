@@ -282,6 +282,9 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     totalBadges: user.userBadges.length,
     karma: Math.round(karma.balance),
     eggs: 0, // ponytail: no eggs currency model yet — wire the real count here when one exists
+    viewerMembershipTier: session?.user?.membershipStatus
+      ? resolveMembership(session.user.membershipStatus).tier
+      : null,
   }
 
   return <ProfileView data={data} initialTab={initialTab} />

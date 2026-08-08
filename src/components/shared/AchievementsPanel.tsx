@@ -13,6 +13,7 @@ import TrophyCase from "./TrophyCase"
 
 const EGG_ICON = "/achievements/rotten-egg.svg"
 const KARMA_ICON = "/achievements/karma.svg"
+const SHELL_ICON = "/achievements/shell.svg"
 const BADGE_FALLBACK = "/achievements/badge.svg"
 
 const BADGES_SHOWN = 6
@@ -69,9 +70,10 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
 
         {/* Collectables */}
         <h4 className={`${SUBHEAD} mt-5 border-t border-gray-100 pt-4`}>Collectables</h4>
-        <div className="grid grid-cols-2 gap-3">
-          <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Rotten Eggs" />
-          <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma Points" />
+        <div className="grid grid-cols-3 gap-3">
+          <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Eggs" />
+          <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma" />
+          <Collectable icon={SHELL_ICON} value={fmt(0)} label="Shells" />
         </div>
 
         {/* Trophies — existing Alfazy champion titles. Renders nothing if none. */}
