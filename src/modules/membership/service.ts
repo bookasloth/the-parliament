@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import {
   BENEFITS,
-  MEMBERSHIP_GRACE_DAYS,
   PLANS,
   PURCHASABLE_PLANS,
   ASSOCIATE_TO_PREMIUM_DELTA_INR,
@@ -165,5 +164,3 @@ export async function getHistory(userId: string): Promise<MembershipHistoryEntry
     invoiceId: r.order?.invoice?.id ?? null,
   }))
 }
-
-export const constants = { MEMBERSHIP_GRACE_DAYS }

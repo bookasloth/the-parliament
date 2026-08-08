@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { deleteObject, getSignedReadUrl } from "@/lib/r2"
+import { getSignedReadUrl } from "@/lib/r2"
 import { audit } from "@/lib/audit"
 import { academicYearFor } from "@/lib/membership-cycle"
 import { PLANS, type PlanCode } from "@/config/membership"
@@ -172,11 +172,4 @@ export async function getInvoiceUrl(invoiceId: string, viewerId: string): Promis
   })
   if (!inv || inv.userId !== viewerId || !inv.pdfKey) return null
   return getSignedReadUrl(inv.pdfKey, 60 * 10)
-}
-
-export async function deleteInvoice(invoiceId: string): Promise<void> {
-  const inv = await prisma.membershipInvoice.findUnique({ where: { id: invoiceId } })
-  if (!inv) return
-  if (inv.pdfKey) await deleteObject(inv.pdfKey)
-  await prisma.membershipInvoice.delete({ where: { id: invoiceId } })
 }

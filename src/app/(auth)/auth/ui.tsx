@@ -7,7 +7,6 @@ import { Eye, EyeOff } from "lucide-react"
 // Light aesthetic, matching the homepage signup screen — grey inputs, NNAWCA
 // brand blue accent.
 
-export const ACCENT = "#009ae4" // matches --color-brand
 
 export const fieldClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-11 text-sm " +
