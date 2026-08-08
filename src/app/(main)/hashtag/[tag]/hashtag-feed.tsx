@@ -16,7 +16,7 @@ export default function HashtagFeed({ posts }: { posts: PostItem[] }) {
   return (
     <div className="flex flex-col gap-4">
       {posts.map(({ post, isAuthor, initialSaved }) => (
-        <PostCard key={post.id} post={post} isAuthor={isAuthor} initialSaved={initialSaved} />
+        <PostCard key={post.id} post={post} isAuthor={isAuthor} initialSaved={initialSaved} defaultCommentsOpen={false} disableCardNav={false} />
       ))}
     </div>
   )
