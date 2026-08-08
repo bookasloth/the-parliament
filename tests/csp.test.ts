@@ -21,6 +21,11 @@ describe("CSP policy", () => {
     expect(prod).toContain("https://*.sentry.io")
   })
 
+  it("allows LiveKit over https + wss (else video calling can't reach the SFU)", () => {
+    expect(prod).toContain("https://*.livekit.cloud")
+    expect(prod).toContain("wss://*.livekit.cloud")
+  })
+
   it("keeps report-uri so violations are logged even while enforcing", () => {
     expect(prod).toContain("report-uri /api/csp-report")
   })

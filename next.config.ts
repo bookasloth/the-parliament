@@ -21,7 +21,9 @@ const host = storageHost();
 // Origins in the allowlist: Razorpay checkout (script + iframe + connect), Supabase
 // over both https AND wss (Realtime messaging uses a WebSocket to *.supabase.co),
 // Sentry ingest (*.sentry.io — client error/trace reporting, else CSP silently
-// blocks it), and https: images (unsplash / ui-avatars / supabase / cover hosts).
+// blocks it), LiveKit over https AND wss (*.livekit.cloud — video calling fetches
+// region settings + opens a signaling WebSocket; CSP silently blocks the call
+// otherwise), and https: images (unsplash / ui-avatars / supabase / cover hosts).
 // ponytail: 'unsafe-inline' stays in script-src/style-src because Next injects inline
 // scripts/styles today. Enforcing WITH unsafe-inline still blocks external/injected
 // script origins, object/base/frame — a real gain. Upgrade path: switch Next to
@@ -38,7 +40,7 @@ export function buildCsp(isDev: boolean): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.razorpay.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
+    "connect-src 'self' https://*.razorpay.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.livekit.cloud wss://*.livekit.cloud",
     "frame-src https://*.razorpay.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
