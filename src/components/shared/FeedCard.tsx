@@ -22,6 +22,7 @@ import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle
 import { VerifiedTick } from "./VerifiedTick"
 import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
+import { startConversationAction } from "@/app/(main)/messages/actions"
 // Lazy-loaded: the comments thread only mounts when a post's comments are
 // expanded, so keep it out of the initial feed bundle. The commentsOpen gate
 // already shows CommentsSkeleton while it (and the data) load.
@@ -82,6 +83,7 @@ export function FeedCard({
   const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen)
   const [commentsData, setCommentsData] = useState<InlineComments | null>(null)
   const [loadingComments, setLoadingComments] = useState(false)
+  const [messagingLoading, setMessagingLoading] = useState(false)
 
   // Detail page opens the thread on mount — lazy-load it once.
   useEffect(() => {
@@ -262,12 +264,21 @@ export function FeedCard({
             )}
             {!post.isSponsored && !isAuthor && (
               following ? (
-                <a
-                  href="/messages"
-                  className="hidden text-[13px] font-semibold text-brand hover:underline whitespace-nowrap sm:inline"
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (messagingLoading || !post.authorId) return
+                    setMessagingLoading(true)
+                    try {
+                      const r = await startConversationAction(post.authorId)
+                      if (r.ok) router.push(`/messages/${r.conversationId}`)
+                    } finally { setMessagingLoading(false) }
+                  }}
+                  disabled={messagingLoading}
+                  className="hidden text-[13px] font-semibold text-brand hover:underline whitespace-nowrap sm:inline disabled:opacity-50"
                 >
-                  Message
-                </a>
+                  {messagingLoading ? "Opening…" : "Message"}
+                </button>
               ) : (
                 <button
                   onClick={handleFollow}
@@ -324,11 +335,14 @@ export function FeedCard({
         {post.content && !post.isSponsored && !post.quote && !post.question && !post.poll && (
           post.textBg && TEXT_BG[post.textBg] ? (
             <div
-              className="flex min-h-[180px] items-center justify-center rounded-[4px] p-6"
+              className="relative flex min-h-[180px] items-center justify-center rounded-[4px] overflow-hidden p-6"
               style={{ background: TEXT_BG[post.textBg].bg }}
             >
+              {TEXT_BG[post.textBg].svg && (
+                <div className="absolute inset-0 pointer-events-none" dangerouslySetInnerHTML={{ __html: TEXT_BG[post.textBg].svg! }} />
+              )}
               <p
-                className="whitespace-pre-line text-center text-xl font-bold leading-snug text-white"
+                className="relative z-[1] whitespace-pre-line text-center text-xl font-bold leading-snug text-white"
                 style={TEXT_BG[post.textBg].fg ? { color: TEXT_BG[post.textBg].fg } : undefined}
               >
                 {post.content}

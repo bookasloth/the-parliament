@@ -79,22 +79,8 @@ export const avatarColors: Record<BorderType, string> = {
   green: "#059669",
 }
 
-// Coloured text-post backgrounds — mirrors BG_OPTIONS in the composer.
-// ponytail: duplicated here (like the membership/house colours already are) to
-// keep the card self-contained; keep in sync with compose/page.tsx if edited.
-export const TEXT_BG: Record<string, { bg: string; fg?: string }> = {
-  navy: { bg: "linear-gradient(135deg,#1a3a6b,#0b1c38)" },
-  brand: { bg: "linear-gradient(135deg,#009ae4,#005c8c)" },
-  sunset: { bg: "linear-gradient(135deg,#ff8a5b,#e75480)" },
-  gold: { bg: "linear-gradient(135deg,#ffd119,#d4a800)" },
-  forest: { bg: "linear-gradient(135deg,#3ea35f,#1f6b3e)" },
-  violet: { bg: "linear-gradient(135deg,#9b6cff,#5a2ec0)" },
-  christmas: { bg: "linear-gradient(135deg,#c0392b 0%,#0e7a3a 100%)" },
-  tricolour: {
-    bg: "linear-gradient(180deg,#FF9933 0%,#FF9933 33%,#ffffff 33%,#ffffff 66%,#138808 66%,#138808 100%)",
-    fg: "#1a3a6b",
-  },
-}
+// Single source of truth for text-post backgrounds (shared with PostComposer).
+export { TEXT_BACKGROUNDS as TEXT_BG } from "@/config/text-backgrounds"
 
 // Award grid — single source of truth shared with the server catalog.
 export { POST_AWARD_LIST as awards } from "@/config/post-awards"
