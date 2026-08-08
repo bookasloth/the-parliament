@@ -13,25 +13,30 @@ jobs:
         env:
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           TARGET: ${{ vars.CRON_TARGET_URL || 'https://nnawca.vercel.app' }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
           if [ -z "${WEBHOOK_SECRET:-}" ]; then
-            echo "::error::GITHUB_WEBHOOK_SECRET repo secret is not set"
+            echo "::error::WEBHOOK_SECRET repo secret is not set"
             exit 1
           fi
 
-          # Extract PR body (truncate to 1000 chars to avoid shell issues)
-          BODY=$(echo '${{ toJSON(github.event.pull_request.body) }}' | head -c 1000)
+          # Truncate body to 1000 chars
+          BODY_TRUNC=$(printf '%s' "$PR_BODY" | head -c 1000)
 
           curl -fsS --max-time 30 \
             -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
-              --arg title '${{ github.event.pull_request.title }}' \
-              --argjson number '${{ github.event.pull_request.number }}' \
-              --arg url '${{ github.event.pull_request.html_url }}' \
-              --arg merged_by '${{ github.event.pull_request.merged_by.login }}' \
-              --arg body "$BODY" \
+              --arg title "$PR_TITLE" \
+              --argjson number "$PR_NUMBER" \
+              --arg url "$PR_URL" \
+              --arg merged_by "$PR_MERGED_BY" \
+              --arg body "$BODY_TRUNC" \
               '{title: $title, number: $number, url: $url, merged_by: $merged_by, body: $body}'
             )" \
             "${TARGET}/api/webhooks/github-pr"
