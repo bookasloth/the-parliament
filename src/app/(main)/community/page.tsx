@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { unstable_cache } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
@@ -6,15 +7,12 @@ import { searchDirectory, getDirectoryFacets, type DirectoryFilters } from "@/mo
 import { getFollowingIds } from "@/modules/connections/service"
 import { CommunityClient } from "./community-client"
 import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
+import Loading from "./loading"
 
 export const dynamic = "force-dynamic"
 
 const PAGE_SIZE = 24
 
-// Directory data is shared across viewers (only the follow-state overlay is
-// per-viewer, fetched separately below). Cache it, keyed by the filter args.
-// Short window on the result set, longer on facets/counts (they drift slowly);
-// tagged "directory" so profile/verification changes can revalidateTag it.
 const getDirectoryCached = unstable_cache(
   (filters: DirectoryFilters) => searchDirectory(filters, { page: 1, pageSize: PAGE_SIZE }),
   ["community-directory"],
@@ -38,15 +36,9 @@ const getCountsCached = unstable_cache(
   { tags: ["directory"], revalidate: 300 },
 )
 
-export default async function CommunityPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>
-}) {
-  const sp = await searchParams
+async function CommunityData({ sp }: { sp: Record<string, string | undefined> }) {
   const schoolId = (await getDefaultSchoolId()) ?? undefined
   const me = await optionalUser()
-  // Server always renders the first page; the client lazy-loads the rest.
 
   const [{ rows, total }, facets, { totalActive, verifiedCount }] = await Promise.all([
     getDirectoryCached({
@@ -80,5 +72,19 @@ export default async function CommunityPage({
       followingIds={followingIds}
       sidebarViewer={sidebarViewer}
     />
+  )
+}
+
+export default async function CommunityPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
+  const sp = await searchParams
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <CommunityData sp={sp} />
+    </Suspense>
   )
 }

@@ -1,5 +1,11 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { loadProfile, VALID_TABS, type TabKey } from "../load-profile"
+import ProfileSkeleton from "../loading"
+
+async function ProfileTabData({ username, tab }: { username: string; tab: TabKey }) {
+  return loadProfile(username, tab)
+}
 
 export default async function ProfileTabPage({
   params,
@@ -8,5 +14,9 @@ export default async function ProfileTabPage({
 }) {
   const { username, tab } = await params
   if (!VALID_TABS.includes(tab as TabKey)) notFound()
-  return loadProfile(username, tab as TabKey)
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileTabData username={username} tab={tab as TabKey} />
+    </Suspense>
+  )
 }
