@@ -25,7 +25,7 @@ export function AlumniCarousel({ title, subtitle, itemClassName = "w-[260px]", c
   }
 
   return (
-    <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+    <section className="bg-white border border-gray-200 rounded-[5px] p-4 sm:p-5">
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
@@ -35,14 +35,14 @@ export function AlumniCarousel({ title, subtitle, itemClassName = "w-[260px]", c
           <button
             onClick={() => scroll(-1)}
             aria-label="Scroll left"
-            className="grid h-8 w-8 place-items-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-brand hover:text-brand"
+            className="grid h-8 w-8 place-items-center rounded-[3px] border border-gray-200 text-gray-500 transition-colors hover:border-brand hover:text-brand"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => scroll(1)}
             aria-label="Scroll right"
-            className="grid h-8 w-8 place-items-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-brand hover:text-brand"
+            className="grid h-8 w-8 place-items-center rounded-[3px] border border-gray-200 text-gray-500 transition-colors hover:border-brand hover:text-brand"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

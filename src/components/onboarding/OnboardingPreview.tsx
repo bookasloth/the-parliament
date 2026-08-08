@@ -23,10 +23,10 @@ export function OnboardingPreview({
       <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-white/70">Live preview</p>
 
       {/* Profile card */}
-      <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div className="overflow-hidden rounded-[5px] bg-white shadow-xl">
         <div className="h-16 bg-gradient-to-r from-brand-400 to-brand-600" />
         <div className="px-5 pb-5 -mt-8">
-          <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow">
+          <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-[4px] border-4 border-white bg-gray-100 shadow">
             {profile.photoUrl
               ? <Image src={profile.photoUrl} alt="" fill sizes="80px" className="h-full w-full object-cover" />
               : <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-gray-300">{memberName.charAt(0)}</div>}
@@ -36,8 +36,8 @@ export function OnboardingPreview({
           {headline && <p className="mt-1 text-center text-sm text-gray-600">{headline}</p>}
 
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
-            {houseName && <span className="rounded-full px-2.5 py-1 font-semibold text-white" style={{ backgroundColor: houseColor ?? "#6b7280" }}>{houseName}</span>}
-            {batchLabel && <span className="rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-600">{batchLabel}</span>}
+            {houseName && <span className="rounded-[3px] px-2.5 py-1 font-semibold text-white" style={{ backgroundColor: houseColor ?? "#6b7280" }}>{houseName}</span>}
+            {batchLabel && <span className="rounded-[3px] bg-gray-100 px-2.5 py-1 font-medium text-gray-600">{batchLabel}</span>}
           </div>
 
           {profile.location && (
@@ -51,7 +51,7 @@ export function OnboardingPreview({
 
       {/* Intro post preview */}
       {step === "intro" && data.intro.text && (
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-xl">
+        <div className="mt-4 rounded-[5px] bg-white p-4 shadow-xl">
           <p className="mb-2 text-xs font-semibold text-gray-400">Your first post</p>
           <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{data.intro.text}</p>
         </div>

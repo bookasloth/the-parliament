@@ -27,12 +27,12 @@ export default async function GamesLandingPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Link
           href="/games/alfazy"
-          className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-brand-50 to-white p-6 transition-shadow hover:shadow-md"
+          className="group relative overflow-hidden rounded-[5px] border border-gray-200 bg-gradient-to-br from-brand-50 to-white p-6 transition-shadow hover:shadow-md"
         >
-          <span className="absolute right-4 top-4 rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+          <span className="absolute right-4 top-4 rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
             Live
           </span>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand text-white">
             <Type className="h-6 w-6" />
           </div>
           <h2 className="mt-4 font-heading text-lg font-bold text-gray-900">Alfazy</h2>
@@ -53,8 +53,8 @@ export default async function GamesLandingPage() {
 
         {["Tic Tac Toe", "Rock Paper Scissors", "Guess the Number", "Memory Flip", "Maze Escape", "Quick Math Duel", "Sudoku Mini"].map(
           (name) => (
-            <div key={name} className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 opacity-70">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+            <div key={name} className="rounded-[5px] border border-dashed border-gray-200 bg-white p-6 opacity-70">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-gray-100 text-gray-400">
                 <Gamepad2 className="h-6 w-6" />
               </div>
               <h2 className="mt-4 font-heading text-lg font-bold text-gray-500">{name}</h2>

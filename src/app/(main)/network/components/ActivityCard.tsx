@@ -20,10 +20,10 @@ const TYPE_ACTION = {
 export function ActivityCard({ entry }: { entry: ActivityEntry }) {
   const Icon = TYPE_ICON[entry.type]
   return (
-    <li className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50">
+    <li className="flex items-center gap-3 rounded-[4px] px-2 py-2.5 transition-colors hover:bg-gray-50">
       <Link href={`/${entry.username}`} className="relative flex-shrink-0">
-        <Image src={entry.avatar} alt={entry.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
-        <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-brand text-white ring-2 ring-white">
+        <Image src={entry.avatar} alt={entry.name} width={40} height={40} className="h-10 w-10 rounded-[4px] object-cover" />
+        <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-[3px] bg-brand text-white ring-2 ring-white">
           <Icon className="h-3 w-3" />
         </span>
       </Link>
@@ -34,7 +34,7 @@ export function ActivityCard({ entry }: { entry: ActivityEntry }) {
       </p>
       <Link
         href={entry.href ?? "#"}
-        className="flex flex-shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand-50"
+        className="flex flex-shrink-0 items-center gap-1 rounded-[3px] px-2.5 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand-50"
       >
         {TYPE_ACTION[entry.type]} <ArrowRight className="h-3 w-3" />
       </Link>

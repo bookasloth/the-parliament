@@ -48,7 +48,7 @@ function SignInFormInner() {
 
       <div className="flex items-center justify-between">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-charcoal-600">
-          <input type="checkbox" name="remember" className="h-4 w-4 rounded border-gray-300 accent-brand" />
+          <input type="checkbox" name="remember" className="h-4 w-4 rounded-[3px] border-gray-300 accent-brand" />
           Remember me
         </label>
         <a href="/auth/forgot" className="text-sm font-medium text-charcoal-600 hover:text-brand">

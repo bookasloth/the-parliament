@@ -94,12 +94,12 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
         <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-zinc-800">
-          <div className="flex gap-1 rounded-lg bg-zinc-900 p-1 overflow-x-auto">
+          <div className="flex gap-1 rounded-[4px] bg-zinc-900 p-1 overflow-x-auto">
             {(["all", "upcoming", "draft", "past", "cancelled"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-[#111113] text-blue-400 shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}>
+                className={`rounded-[3px] px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-[#111113] text-blue-400 shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}>
                 {t}
               </button>
             ))}
@@ -107,7 +107,7 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
           <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
             <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events..."
-              className="w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
+              className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
           </div>
         </div>
 
@@ -156,11 +156,11 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
                     <Td><StatusBadge status={status} /></Td>
                     <Td className="relative">
                       <button onClick={() => setActiveMenu(activeMenu === e.id ? null : e.id)}
-                        className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
+                        className="p-1.5 rounded-[3px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
                         <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                       </button>
                       {activeMenu === e.id && (
-                        <div className="absolute right-4 top-10 z-20 w-52 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
+                        <div className="absolute right-4 top-10 z-20 w-52 rounded-[4px] border border-zinc-800 bg-[#111113] py-1 shadow-xl">
                           <button
                             onClick={() => inviteAll(e.id)}
                             disabled={pending}

@@ -74,9 +74,9 @@ export default async function PostAnalyticsPage({
         {stats.map((s) => (
           <div
             key={s.label}
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3"
+            className="bg-white border border-gray-200 rounded-[5px] px-4 py-3 flex items-center gap-3"
           >
-            <div className={`inline-flex rounded-lg p-2 ${s.bg} ${s.color}`}>{s.icon}</div>
+            <div className={`inline-flex rounded-[4px] p-2 ${s.bg} ${s.color}`}>{s.icon}</div>
             <div className="min-w-0">
               <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">{s.value}</p>
               <p className="text-[11px] text-gray-500 mt-1 truncate">{s.label}</p>
@@ -86,9 +86,9 @@ export default async function PostAnalyticsPage({
       </div>
 
       {totalReactions > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 rounded-[5px] p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Upvote vs downvote</h3>
-          <div className="h-3 rounded-full overflow-hidden flex bg-red-100">
+          <div className="h-3 rounded-[3px] overflow-hidden flex bg-red-100">
             <div className="bg-brand-600" style={{ width: `${upvotePct}%` }} />
           </div>
           <div className="flex justify-between mt-1.5 text-xs">
@@ -115,9 +115,9 @@ export default async function PostAnalyticsPage({
                 <Link
                   key={tc.authorId}
                   href={u?.username ? `/${u.username}` : "#"}
-                  className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2.5 hover:border-brand-300 transition-colors"
+                  className="bg-white border border-gray-200 rounded-[5px] p-3 flex items-center gap-2.5 hover:border-brand-300 transition-colors"
                 >
-                  <Image src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
+                  <Image src={avatar} alt={name} className="h-9 w-9 rounded-[4px] object-cover flex-shrink-0" width={36} height={36} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
                     <p className="text-xs text-gray-500">

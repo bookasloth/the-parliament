@@ -8,7 +8,7 @@ import { MailOpen } from "lucide-react"
 export default function MessagesEmptyState() {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
         <MailOpen className="h-8 w-8" />
       </div>
       <h5 className="text-lg font-bold text-gray-900">No message selected</h5>

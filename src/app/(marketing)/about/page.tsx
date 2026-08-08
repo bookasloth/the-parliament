@@ -121,13 +121,13 @@ export default function AboutPage() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
                   href="/join"
-                  className="rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                  className="rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
                 >
                   Become a member
                 </a>
                 <a
                   href="/committee"
-                  className="rounded-full border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
+                  className="rounded-[3px] border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
                 >
                   Meet the committee
                 </a>
@@ -142,7 +142,7 @@ export default function AboutPage() {
                 {ALUMNI_COLLAGE.slice(0, 3).map((url, i) => (
                   <div
                     key={i}
-                    className="w-full overflow-hidden rounded-3xl bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
+                    className="w-full overflow-hidden rounded-[5px] bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
                     style={{ backgroundImage: `url(${url})`, aspectRatio: i === 1 ? "3/4" : "1/1" }}
                   />
                 ))}
@@ -151,7 +151,7 @@ export default function AboutPage() {
                 {ALUMNI_COLLAGE.slice(3).map((url, i) => (
                   <div
                     key={i}
-                    className="w-full overflow-hidden rounded-3xl bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
+                    className="w-full overflow-hidden rounded-[5px] bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
                     style={{ backgroundImage: `url(${url})`, aspectRatio: i === 0 ? "3/4" : "1/1" }}
                   />
                 ))}
@@ -183,8 +183,8 @@ export default function AboutPage() {
             const Icon = p.icon
             return (
               <Reveal key={p.title} delay={i * 0.08}>
-                <div className="h-full rounded-2xl border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_12px_32px_-12px_rgba(26,26,26,0.18)]">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 ring-1 ring-brand/15 text-brand">
+                <div className="h-full rounded-[5px] border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_12px_32px_-12px_rgba(26,26,26,0.18)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[5px] bg-brand/10 ring-1 ring-brand/15 text-brand">
                     <Icon className="h-7 w-7" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-5 font-heading text-xl font-semibold text-[#1a1a1a]">
@@ -203,8 +203,8 @@ export default function AboutPage() {
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
           {/* Vision */}
           <Reveal>
-            <div className="rounded-3xl bg-brand p-8 text-white sm:p-10">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+            <div className="rounded-[5px] bg-brand p-8 text-white sm:p-10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-white/15">
                 <Eye className="h-6 w-6" strokeWidth={1.75} />
               </div>
               <p className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
@@ -250,7 +250,7 @@ export default function AboutPage() {
             const Icon = s.icon
             return (
               <Reveal key={s.label} delay={i * 0.1}>
-                <div className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 transition hover:bg-white/[0.05]">
+                <div className="flex flex-col items-center rounded-[5px] border border-white/10 bg-white/[0.03] px-4 py-8 transition hover:bg-white/[0.05]">
                   {/* Label first */}
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">
                     {s.label}

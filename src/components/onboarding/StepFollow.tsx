@@ -39,8 +39,8 @@ export function StepFollow({
         {suggestions.map((s) => {
           const isFollowed = followed.has(s.id)
           return (
-            <div key={s.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-              <Image src={s.photoUrl} alt={s.name} width={44} height={44} className="h-11 w-11 flex-shrink-0 rounded-full object-cover ring-1 ring-gray-200" />
+            <div key={s.id} className="flex items-center gap-3 rounded-[5px] border border-gray-200 bg-white p-3">
+              <Image src={s.photoUrl} alt={s.name} width={44} height={44} className="h-11 w-11 flex-shrink-0 rounded-[4px] object-cover ring-1 ring-gray-200" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold text-gray-900">{s.name}</div>
                 <div className="truncate text-xs text-gray-500">
@@ -53,7 +53,7 @@ export function StepFollow({
               <button
                 onClick={() => toggle(s.id)}
                 disabled={isFollowed}
-                className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
+                className={`flex flex-shrink-0 items-center gap-1.5 rounded-[4px] px-3.5 py-2 text-xs font-bold transition-colors ${
                   isFollowed ? "bg-green-50 text-green-700" : "bg-brand text-white hover:bg-brand-600"
                 }`}
               >
@@ -65,8 +65,8 @@ export function StepFollow({
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={onSkip} className="rounded-lg px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100">Skip</button>
-        <button onClick={onNext} className="flex-1 rounded-lg bg-brand py-3 text-base font-semibold text-white hover:bg-brand-600">
+        <button onClick={onSkip} className="rounded-[4px] px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100">Skip</button>
+        <button onClick={onNext} className="flex-1 rounded-[4px] bg-brand py-3 text-base font-semibold text-white hover:bg-brand-600">
           {followed.size > 0 ? `Continue (${followed.size} followed)` : "Continue"}
         </button>
       </div>

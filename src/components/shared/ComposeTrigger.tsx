@@ -30,10 +30,10 @@ export function ComposeTrigger({
   ]
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3">
+    <div className="bg-white border border-gray-200 rounded-[5px] p-3">
       <a href={href} className="flex items-center gap-3 group">
-        <Image src={avatar} alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
-        <span className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-400 group-hover:border-brand group-hover:bg-white transition-all">
+        <Image src={avatar} alt="" width={40} height={40} className="h-10 w-10 rounded-[4px] object-cover flex-shrink-0" />
+        <span className="flex-1 rounded-[3px] border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-400 group-hover:border-brand group-hover:bg-white transition-all">
           {placeholder}
         </span>
       </a>
@@ -42,7 +42,7 @@ export function ComposeTrigger({
           <a
             key={label}
             href={`${href}${href.includes("?") ? "&" : "?"}type=${label.toLowerCase()}`}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
           >
             <Icon className="h-4 w-4" style={{ color }} />
             <span className="hidden sm:inline">{label}</span>

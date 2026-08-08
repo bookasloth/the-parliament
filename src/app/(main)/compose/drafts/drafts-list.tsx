@@ -41,7 +41,7 @@ export default function DraftsList({ drafts }: { drafts: Draft[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center">
+      <div className="rounded-[5px] border border-gray-200 bg-white px-6 py-16 text-center">
         <FileText className="mx-auto mb-3 h-10 w-10 text-gray-200" />
         <p className="text-sm font-medium text-gray-500">No drafts yet</p>
         <p className="mt-1 text-xs text-gray-400">Save a post as a draft to see it here.</p>
@@ -52,15 +52,15 @@ export default function DraftsList({ drafts }: { drafts: Draft[] }) {
   return (
     <div className="flex flex-col gap-3">
       {items.map((d) => (
-        <div key={d.id} className="rounded-xl border border-gray-200 bg-white p-4">
+        <div key={d.id} className="rounded-[5px] border border-gray-200 bg-white p-4">
           <div className="flex items-start gap-3">
             {d.image && (
               // eslint-disable-next-line @next/next/no-img-element -- user media, arbitrary host
-              <img src={d.image} alt="" className="h-16 w-16 flex-shrink-0 rounded-lg object-cover" />
+              <img src={d.image} alt="" className="h-16 w-16 flex-shrink-0 rounded-[4px] object-cover" />
             )}
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                   {d.format}
                 </span>
                 <span className="text-[11px] text-gray-400">

@@ -184,7 +184,7 @@ export default function RulesPage() {
     <>
       <Section width="5xl" className="pt-32 lg:pt-40">
         <Reveal>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
             <ShieldCheck className="h-6 w-6" />
           </div>
         </Reveal>
@@ -202,7 +202,7 @@ export default function RulesPage() {
           </p>
         </Reveal>
         <Reveal delay={0.16}>
-          <div className="mt-6 rounded-2xl border border-brand/15 bg-brand/5 px-6 py-5">
+          <div className="mt-6 rounded-[5px] border border-brand/15 bg-brand/5 px-6 py-5">
             <p className="text-sm font-semibold uppercase tracking-wide text-brand">Our goal is simple</p>
             <p className="mt-1 text-[15px] leading-relaxed text-[#1a1a1a]">
               Create a safe, respectful, high-signal space for Navodayans to connect, contribute, and grow.
@@ -221,7 +221,7 @@ export default function RulesPage() {
 
                 {b.kind === "allow" ? (
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
+                    <div className="rounded-[5px] border border-emerald-200 bg-emerald-50/60 p-5">
                       <p className="mb-3 flex items-center gap-2 text-sm font-bold text-emerald-700">
                         <Check className="h-4 w-4" /> Allowed
                       </p>
@@ -231,7 +231,7 @@ export default function RulesPage() {
                         ))}
                       </ul>
                     </div>
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
+                    <div className="rounded-[5px] border border-rose-200 bg-rose-50/60 p-5">
                       <p className="mb-3 flex items-center gap-2 text-sm font-bold text-rose-700">
                         <X className="h-4 w-4" /> Not allowed
                       </p>
@@ -258,7 +258,7 @@ export default function RulesPage() {
                 )}
 
                 {b.note && (
-                  <p className={`mt-4 flex items-start gap-2 rounded-lg px-4 py-2.5 text-sm ${b.kind === "danger" ? "bg-rose-50 text-rose-700" : "bg-gray-50 text-[#5b5b5b]"}`}>
+                  <p className={`mt-4 flex items-start gap-2 rounded-[4px] px-4 py-2.5 text-sm ${b.kind === "danger" ? "bg-rose-50 text-rose-700" : "bg-gray-50 text-[#5b5b5b]"}`}>
                     {b.kind === "danger" && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
                     {b.note}
                   </p>
@@ -269,7 +269,7 @@ export default function RulesPage() {
 
           {/* Final note */}
           <Reveal>
-            <section className="rounded-3xl border border-black/5 bg-[#1a1a1a] p-8 text-white">
+            <section className="rounded-[5px] border border-black/5 bg-[#1a1a1a] p-8 text-white">
               <h2 className="font-heading text-xl font-semibold sm:text-2xl">Final Note</h2>
               <p className="mt-3 text-[15px] leading-relaxed text-white/80">
                 NNAWCA is built on trust, shared roots, and responsibility. If something makes the platform:
@@ -289,7 +289,7 @@ export default function RulesPage() {
       <Section width="5xl" className="pt-8">
         <Reveal>
           <div className="flex items-center gap-3 border-t border-black/10 pt-10">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e8503a]/10 text-[#e8503a]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-[#e8503a]/10 text-[#e8503a]">
               <Scale className="h-5 w-5" />
             </div>
             <div>
@@ -301,7 +301,7 @@ export default function RulesPage() {
         <div className="mt-6 space-y-4">
           {BYLAWS.map((s, i) => (
             <Reveal key={s.heading} delay={(i % 3) * 0.05}>
-              <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+              <div className="rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <h3 className="font-heading text-lg font-semibold text-[#1a1a1a]">{s.heading}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-[#4a4a4a]">{s.body}</p>
               </div>

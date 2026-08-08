@@ -100,12 +100,12 @@ export default function ConnectionsClient({
       <>
         {mode === "following" ? (
           <a href={`/messages/conv-${user.id}`}
-            className="flex items-center gap-1.5 rounded-md border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300">
+            className="flex items-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-white hover:text-brand transition-all duration-300">
             <MessageSquare className="h-3.5 w-3.5" /> Message
           </a>
         ) : (
           <a href={`/${user.id}`}
-            className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300">
+            className="rounded-[3px] border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-all duration-300">
             View Profile
           </a>
         )}
@@ -137,7 +137,7 @@ export default function ConnectionsClient({
 
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-[52px] max-w-[1400px] items-center gap-3 px-4 sm:px-6">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-[4px] hover:bg-gray-100">
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
           <div className="flex items-center gap-2 flex-1">
@@ -152,14 +152,14 @@ export default function ConnectionsClient({
 
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
         {/* Tabs */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
           <div className="flex overflow-x-auto scrollbar-none">
             {tabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-3.5 text-xs font-semibold border-b-2 transition-colors ${tab === t.key ? "border-brand text-brand" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                 {t.label}
                 {t.count > 0 && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
+                  <span className={`rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
                 )}
               </button>
             ))}
@@ -174,12 +174,12 @@ export default function ConnectionsClient({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={`Search ${tab === "suggestions" ? "suggestions" : tab}…`}
-              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+              className="w-full rounded-[5px] border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${showFilters ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+            className={`flex items-center gap-1.5 rounded-[5px] border px-3 py-2.5 text-sm font-medium transition-colors ${showFilters ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filter</span>
           </button>
@@ -187,12 +187,12 @@ export default function ConnectionsClient({
 
         {/* Filter Chips */}
         {showFilters && (
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2.5">Filter by House</p>
             <div className="flex flex-wrap gap-2">
               {HOUSE_FILTER.map(h => (
                 <button key={h} onClick={() => setHouseFilter(h)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${houseFilter === h ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  className={`rounded-[3px] px-3 py-1 text-xs font-medium transition-colors ${houseFilter === h ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   {h}
                 </button>
               ))}
@@ -208,7 +208,7 @@ export default function ConnectionsClient({
               { label: "Followers", value: followers.length, color: "text-amber-500" },
               { label: "Suggestions", value: suggestions.length, color: "text-purple-500" },
             ].map((s, i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+              <div key={i} className="bg-white border border-gray-200 rounded-[5px] p-3 text-center">
                 <p className={`text-xl font-bold ${s.color} tabular-nums`}>{s.value}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
               </div>
@@ -232,7 +232,7 @@ export default function ConnectionsClient({
             ))}
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl py-16 text-center">
+          <div className="bg-white border border-gray-200 rounded-[5px] py-16 text-center">
             <Users className="h-10 w-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-500">No results found</p>
             <p className="text-xs text-gray-400 mt-1">

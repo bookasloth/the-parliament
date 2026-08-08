@@ -30,11 +30,11 @@ export function NewBusinessForm({ categories }: { categories: { id: string; labe
     }
   }
 
-  const input = "mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+  const input = "mt-1 w-full rounded-[3px] border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-[3px] bg-red-50 p-2 text-sm text-red-600">{error}</p>}
       <div>
         <label className="text-sm font-medium">Business name *</label>
         <input name="name" required className={input} />
@@ -73,7 +73,7 @@ export function NewBusinessForm({ categories }: { categories: { id: string; labe
         Offer a discount to fellow alumni
       </label>
       <button type="submit" disabled={submitting}
-        className="w-full rounded bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+        className="w-full rounded-[3px] bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
         {submitting ? "Submitting…" : "Submit for review"}
       </button>
     </form>

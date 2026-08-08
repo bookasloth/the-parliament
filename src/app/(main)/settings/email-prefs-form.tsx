@@ -22,7 +22,7 @@ export default function EmailPrefsForm({ initial }: { initial: Record<EmailPrefK
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900 mb-1">Email preferences</h2>
       <p className="text-sm text-gray-500 mb-4">
         Choose what we email you. Account &amp; security emails are always sent.
@@ -52,7 +52,7 @@ export default function EmailPrefsForm({ initial }: { initial: Record<EmailPrefK
         <button
           onClick={save}
           disabled={saving}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-[4px] bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save preferences"}
         </button>

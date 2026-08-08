@@ -42,7 +42,7 @@ export function VerifiedBadge({ membership = "premium" }: { membership?: FeedMem
           strokeLinejoin="round"
         />
       </svg>
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[10px] text-white shadow-lg">
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block whitespace-nowrap rounded-[3px] bg-gray-900 px-2 py-1 text-[10px] text-white shadow-lg">
         Verified Alumni
       </span>
     </span>
@@ -86,7 +86,7 @@ export function PollCard({
 
   const topVotes = Math.max(0, ...options.map((o) => o.votes))
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5">
+    <div className="rounded-[5px] border border-gray-100 bg-gray-50/50 p-3.5">
       <p className="mb-3 text-sm font-semibold text-gray-900">{poll.question}</p>
       <div className="space-y-2">
         {options.map((opt) => {
@@ -98,7 +98,7 @@ export function PollCard({
               key={opt.id}
               onClick={() => vote(opt.id)}
               disabled={poll.isClosed || revealed}
-              className={`group relative flex h-11 w-full items-center overflow-hidden rounded-lg border px-3 text-left text-sm transition-all ${
+              className={`group relative flex h-11 w-full items-center overflow-hidden rounded-[4px] border px-3 text-left text-sm transition-all ${
                 isMine ? "border-brand" : "border-gray-200"
               } ${!revealed && !poll.isClosed ? "hover:border-brand hover:bg-brand-50/40" : "cursor-default"}`}
             >
@@ -112,7 +112,7 @@ export function PollCard({
               <div className="relative flex w-full items-center justify-between gap-2">
                 <span className={`flex items-center gap-1.5 truncate ${isMine ? "font-semibold text-brand-700" : "font-medium text-gray-700"}`}>
                   {isMine && (
-                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand">
+                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] bg-brand">
                       <svg viewBox="0 0 24 24" className="h-2.5 w-2.5"><path d="M5 13l4 4L19 7" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </span>
                   )}
@@ -180,7 +180,7 @@ export function RichText({ text, collapsible = false }: { text: string; collapsi
 // --- Media Section ---
 export function MediaSection({ image, mediaCount, videoDuration }: { image: string; mediaCount?: number; videoDuration?: string }) {
   return (
-    <div className="relative mt-3 overflow-hidden rounded-lg">
+    <div className="relative mt-3 overflow-hidden rounded-[4px]">
       <Image
         src={image}
         alt="Post media"
@@ -190,13 +190,13 @@ export function MediaSection({ image, mediaCount, videoDuration }: { image: stri
         className="w-full h-auto max-h-[500px] object-cover"
       />
       {mediaCount && mediaCount > 1 && (
-        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-[3px] bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
           <Eye className="h-3.5 w-3.5" />
           <span>+{mediaCount - 1} Photos</span>
         </div>
       )}
       {videoDuration && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+        <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-[3px] bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
           <Clock className="h-3 w-3" />
           <span>{videoDuration}</span>
         </div>
@@ -208,7 +208,7 @@ export function MediaSection({ image, mediaCount, videoDuration }: { image: stri
 // --- Quote Block ---
 export function QuoteBlock({ quote }: { quote: { text: string; author: string; source?: string } }) {
   return (
-    <div className="relative mt-2 rounded-xl bg-brand p-6">
+    <div className="relative mt-2 rounded-[5px] bg-brand p-6">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-1">
           <Quote className="h-6 w-6 text-white/70" />

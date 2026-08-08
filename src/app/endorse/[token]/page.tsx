@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-[#f3f2ef] px-4 py-10">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm">{children}</div>
+      <div className="w-full max-w-md rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">{children}</div>
     </div>
   )
 }
@@ -72,12 +72,12 @@ export default async function EndorsePage({ params }: { params: Promise<{ token:
         They&apos;re verifying their JNV Nagpur alumni status. You were suggested as someone who studied around the same time.
       </p>
 
-      <div className="mt-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div className="mt-4 flex items-center gap-3 rounded-[4px] border border-gray-200 bg-gray-50 p-3">
         {candidate?.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={candidate.photoUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+          <img src={candidate.photoUrl} alt="" className="h-11 w-11 rounded-[4px] object-cover" />
         ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[3px] bg-brand text-sm font-bold text-white">
             {candidateName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
         )}

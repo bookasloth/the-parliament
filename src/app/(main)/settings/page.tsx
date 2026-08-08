@@ -51,7 +51,7 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
 
         <div className="space-y-6">
-          <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Account</h2>
             <dl className="grid grid-cols-1 gap-3 text-sm">
               <Row label="Name" value={user.legalName} />
@@ -66,13 +66,13 @@ export default async function SettingsPage() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/profile/edit"
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-[4px] bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
               >
                 Edit profile
               </Link>
               <Link
                 href="/membership"
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-[4px] border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Manage membership
               </Link>
@@ -80,7 +80,7 @@ export default async function SettingsPage() {
           </section>
 
           {user.profile && (
-            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile</h2>
               <dl className="grid grid-cols-1 gap-3 text-sm">
                 <Row label="Headline" value={user.profile.profession ?? "—"} />

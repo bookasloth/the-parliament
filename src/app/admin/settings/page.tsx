@@ -12,7 +12,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange}
       className={`relative h-6 w-11 rounded-full transition-colors flex-shrink-0 ${on ? "bg-blue-600" : "bg-zinc-700"}`}>
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? "left-[22px]" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 h-5 w-5 rounded-[3px] bg-white shadow transition-transform ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
   )
 }
@@ -73,7 +73,7 @@ export default function AdminSettingsPage() {
         description="Global configuration for NNAWCA"
         actions={
           <button onClick={save}
-            className={`flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-semibold text-white transition-colors ${saved ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-500"}`}>
+            className={`flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-xs font-semibold text-white transition-colors ${saved ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-500"}`}>
             {saved ? <><CheckCircle className="h-3.5 w-3.5" weight="duotone" /> Saved</> : <><FloppyDisk className="h-3.5 w-3.5" weight="duotone" /> Save All</>}
           </button>
         }
@@ -82,7 +82,7 @@ export default function AdminSettingsPage() {
       <div className="space-y-4">
 
         {/* General */}
-        <section className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+        <section className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-zinc-800">
             <Globe className="h-4 w-4 text-blue-400" weight="duotone" />
             <h2 className="text-sm font-bold text-zinc-100">General</h2>
@@ -98,23 +98,23 @@ export default function AdminSettingsPage() {
                 <input
                   value={general[f.key]}
                   onChange={e => { setGeneral(g => ({ ...g, [f.key]: e.target.value })); setSaved(false) }}
-                  className="w-full rounded-md border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                  className="w-full rounded-[3px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500"
                 />
               </div>
             ))}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1">Active School</label>
-              <div className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-[3px] border border-zinc-800 bg-zinc-900 px-3 py-2">
                 <GraduationCap className="h-3.5 w-3.5 text-zinc-500" weight="duotone" />
                 <span className="text-xs text-zinc-400">{general.school}</span>
-                <span className="ml-auto rounded bg-blue-950/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">Multi-school ready</span>
+                <span className="ml-auto rounded-[3px] bg-blue-950/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">Multi-school ready</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* Registration & access */}
-        <section className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+        <section className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-zinc-800">
             <UserPlus className="h-4 w-4 text-emerald-400" weight="duotone" />
             <h2 className="text-sm font-bold text-zinc-100">Registration & Access</h2>
@@ -136,7 +136,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Feature flags */}
-        <section className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+        <section className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-zinc-800">
             <ToggleLeft className="h-4 w-4 text-violet-400" weight="duotone" />
             <h2 className="text-sm font-bold text-zinc-100">Feature Modules</h2>
@@ -160,13 +160,13 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Integrations */}
-        <section className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+        <section className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-zinc-800">
             <Key className="h-4 w-4 text-amber-400" weight="duotone" />
             <h2 className="text-sm font-bold text-zinc-100">Integrations</h2>
           </div>
           <div className="p-4 sm:p-5 space-y-4">
-            <div className="rounded-lg border border-zinc-800 p-4">
+            <div className="rounded-[4px] border border-zinc-800 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <CreditCard className="h-4 w-4 text-zinc-500" weight="duotone" />
                 <p className="text-xs font-bold text-zinc-200">Razorpay</p>
@@ -180,18 +180,18 @@ export default function AdminSettingsPage() {
                   type={showRazorpayKey ? "text" : "password"}
                   readOnly
                   value="rzp_live_XXXXXXXXXXXX"
-                  className="flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none"
+                  className="flex-1 rounded-[3px] border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none"
                 />
-                <button onClick={() => setShowRazorpayKey(!showRazorpayKey)} className="rounded-md border border-zinc-700 px-3 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800">
+                <button onClick={() => setShowRazorpayKey(!showRazorpayKey)} className="rounded-[3px] border border-zinc-700 px-3 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800">
                   {showRazorpayKey ? <EyeSlash className="h-4 w-4" weight="duotone" /> : <Eye className="h-4 w-4" weight="duotone" />}
                 </button>
-                <button className="flex items-center gap-1 rounded-md border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">
+                <button className="flex items-center gap-1 rounded-[3px] border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">
                   <ArrowsClockwise className="h-3.5 w-3.5" weight="duotone" /> Rotate
                 </button>
               </div>
             </div>
 
-            <div className="rounded-lg border border-zinc-800 p-4">
+            <div className="rounded-[4px] border border-zinc-800 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Envelope className="h-4 w-4 text-zinc-500" weight="duotone" />
                 <p className="text-xs font-bold text-zinc-200">SMTP (Hostinger)</p>
@@ -202,19 +202,19 @@ export default function AdminSettingsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1">Host</label>
-                  <input readOnly value="smtp.hostinger.com" className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none" />
+                  <input readOnly value="smtp.hostinger.com" className="w-full rounded-[3px] border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1">From</label>
-                  <input readOnly value="noreply@nnawca.org" className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none" />
+                  <input readOnly value="noreply@nnawca.org" className="w-full rounded-[3px] border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-400 outline-none" />
                 </div>
               </div>
-              <button className="mt-3 rounded-md border border-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 hover:bg-zinc-800">
+              <button className="mt-3 rounded-[3px] border border-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 hover:bg-zinc-800">
                 Send test email
               </button>
             </div>
 
-            <div className="rounded-lg border border-zinc-800 p-4">
+            <div className="rounded-[4px] border border-zinc-800 p-4">
               <div className="flex items-center gap-2">
                 <Database className="h-4 w-4 text-zinc-500" weight="duotone" />
                 <p className="text-xs font-bold text-zinc-200">Cloudflare R2 Storage</p>
@@ -228,7 +228,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Danger zone */}
-        <section className="rounded-xl border border-rose-900 bg-[#111113] overflow-hidden">
+        <section className="rounded-[5px] border border-rose-900 bg-[#111113] overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-rose-900/60 bg-rose-950/30">
             <Warning className="h-4 w-4 text-rose-400" weight="duotone" />
             <h2 className="text-sm font-bold text-rose-300">Danger Zone</h2>
@@ -242,7 +242,7 @@ export default function AdminSettingsPage() {
                 <p className="text-xs font-semibold text-zinc-200">Purge cached data</p>
                 <p className="text-[11px] text-zinc-500 mt-0.5">Clears feed caches and recomputed counters</p>
               </div>
-              <button className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">
+              <button className="flex items-center gap-1.5 rounded-[3px] border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">
                 <Power className="h-3.5 w-3.5" weight="duotone" /> Purge
               </button>
             </div>
@@ -251,7 +251,7 @@ export default function AdminSettingsPage() {
                 <p className="text-xs font-semibold text-rose-400">Export and delete all platform data</p>
                 <p className="text-[11px] text-zinc-500 mt-0.5">Irreversible. Requires two super-admin approvals.</p>
               </div>
-              <button className="flex items-center gap-1.5 rounded-md border border-rose-800 px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/50">
+              <button className="flex items-center gap-1.5 rounded-[3px] border border-rose-800 px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/50">
                 <Trash className="h-3.5 w-3.5" weight="duotone" /> Request Deletion
               </button>
             </div>

@@ -7,14 +7,14 @@ import { submitEnquiry, type EnquiryState } from "./actions"
 const initial: EnquiryState = { ok: false }
 
 const inputCls =
-  "w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition placeholder:text-[#a3a3a3] focus:border-brand focus:ring-2 focus:ring-brand/20"
+  "w-full rounded-[5px] border border-black/10 bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none transition placeholder:text-[#a3a3a3] focus:border-brand focus:ring-2 focus:ring-brand/20"
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState(submitEnquiry, initial)
 
   if (state.ok) {
     return (
-      <div className="flex flex-col items-center rounded-3xl border border-[#70ad47]/30 bg-[#eef6e8] p-10 text-center">
+      <div className="flex flex-col items-center rounded-[5px] border border-[#70ad47]/30 bg-[#eef6e8] p-10 text-center">
         <CheckCircle2 className="h-12 w-12 text-[#70ad47]" />
         <h3 className="mt-4 font-heading text-xl font-semibold text-[#1a1a1a]">
           Message sent.
@@ -29,7 +29,7 @@ export function ContactForm() {
   return (
     <form
       action={formAction}
-      className="rounded-3xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-8"
+      className="rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-8"
     >
       {/* honeypot */}
       <input
@@ -72,7 +72,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
+        className="mt-6 inline-flex items-center gap-2 rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
       >
         <Send className="h-4 w-4" />
         {pending ? "Sending…" : "Send message"}

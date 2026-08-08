@@ -26,7 +26,7 @@ const houseButtons: {
 ];
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 pr-11 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10";
+  "w-full rounded-[5px] border border-gray-200 bg-gray-50 py-3 px-4 pr-11 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10";
 
 const iconCls = "pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400";
 
@@ -135,7 +135,7 @@ export function SignupCard() {
                   onMouseEnter={() => setHovered(h.id)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => setHouse(active ? null : h.id)}
-                  className="flex w-full items-center justify-center gap-2 truncate rounded-xl px-3 py-2.5 text-sm font-semibold outline-none transition-all sm:py-3"
+                  className="flex w-full items-center justify-center gap-2 truncate rounded-[5px] px-3 py-2.5 text-sm font-semibold outline-none transition-all sm:py-3"
                   style={{
                     backgroundColor: bg,
                     color: h.textColor,
@@ -151,12 +151,12 @@ export function SignupCard() {
         </div>
       </div>
 
-      {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 rounded-[4px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-8 w-full rounded-xl bg-brand py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-brand-600 hover:shadow-lg disabled:opacity-60"
+        className="mt-8 w-full rounded-[5px] bg-brand py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-brand-600 hover:shadow-lg disabled:opacity-60"
       >
         {loading ? "Creating account…" : "Register at NNAWCA"}
       </button>

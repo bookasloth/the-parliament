@@ -69,7 +69,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState title="No AMAs yet" description="Schedule your first Ask-Me-Anything session." />
         ) : (
@@ -113,7 +113,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
               placeholder="Career Q&A with the 2010 batch"
             />
           </Field>
@@ -122,7 +122,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
             />
           </Field>
           <Field label="Starts at">
@@ -130,14 +130,14 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
               type="datetime-local"
               value={form.startsAt}
               onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
             />
           </Field>
           <Field label="Co-host user ID (optional — they can answer/publish)">
             <input
               value={form.coHostId}
               onChange={(e) => setForm({ ...form, coHostId: e.target.value })}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
               placeholder="uuid"
             />
           </Field>

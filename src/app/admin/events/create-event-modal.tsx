@@ -37,7 +37,7 @@ function PillGroup<T extends string>({ label, value, options, onChange }: PillGr
   return (
     <div>
       <label className="block text-sm text-zinc-400 mb-2">{label}</label>
-      <div className="flex rounded-lg border border-zinc-800 overflow-hidden">
+      <div className="flex rounded-[4px] border border-zinc-800 overflow-hidden">
         {options.map((o) => (
           <button
             key={o.key}
@@ -103,7 +103,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div role="presentation" className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-lg border border-zinc-800 bg-[#111113] shadow-2xl">
+      <div className="relative w-full max-w-2xl rounded-[4px] border border-zinc-800 bg-[#111113] shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
           <h2 className="text-base font-bold text-zinc-100">Create Event</h2>
           <button
@@ -123,7 +123,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="Event name here"
-              className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
@@ -134,7 +134,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Ex: topics, schedule, etc."
-              className="w-full resize-y rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full resize-y rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
@@ -146,7 +146,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
+                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
               />
             </div>
             <div>
@@ -156,7 +156,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
+                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
               />
             </div>
             <div>
@@ -165,7 +165,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
                 value={durationText}
                 onChange={(e) => setDurationText(e.target.value)}
                 placeholder="1hr 30m"
-                className="w-full rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
               />
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder={mode === "online" ? "https://meet.google.com/…" : "MP Hall, JNV Nagpur"}
-              className="w-full rounded-lg border border-blue-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full rounded-[4px] border border-blue-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
             />
           </div>
 
@@ -217,7 +217,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-60 transition-colors"
+            className="w-full rounded-[4px] bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-60 transition-colors"
           >
             {pending ? "Creating…" : "Create Event Now"}
           </button>

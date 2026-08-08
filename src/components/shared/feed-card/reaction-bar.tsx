@@ -67,10 +67,10 @@ function AwardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/60" role="presentation" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-[5px] bg-white shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h5 className="text-base font-semibold text-gray-900">Give an Award</h5>
-          <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 transition-colors" aria-label="Close">
+          <button onClick={onClose} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 transition-colors" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -81,7 +81,7 @@ function AwardModal({
               <button
                 key={a.key}
                 onClick={() => setSelected(a.key)}
-                className={`flex flex-col items-center rounded-lg p-2.5 transition-all ${
+                className={`flex flex-col items-center rounded-[4px] p-2.5 transition-all ${
                   selected === a.key
                     ? "bg-brand-50 ring-1 ring-brand"
                     : "hover:bg-gray-50"
@@ -101,7 +101,7 @@ function AwardModal({
           <button
             onClick={submit}
             disabled={!selected || submitting}
-            className={`rounded-full px-5 py-1.5 text-xs font-semibold text-white transition-all ${
+            className={`rounded-[3px] px-5 py-1.5 text-xs font-semibold text-white transition-all ${
               selected && !submitting ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-200"
             }`}
           >
@@ -165,13 +165,13 @@ function ShareDropdown({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
       >
         <Send className="h-4 w-4" strokeWidth={1.6} />
         <span className="text-[13px] font-medium"><span className="hidden sm:inline">Share</span>{shares > 0 ? ` (${shares})` : ""}</span>
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
           <button
             onClick={extShare}
             className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -284,7 +284,7 @@ export function ReactionBar({
         {/* Upvote */}
         <button
           onClick={handleUpvote}
-          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] transition-all ${
             voteState === "up"
               ? "text-brand hover:bg-brand-50/30"
               : "text-gray-500 hover:text-brand hover:bg-brand-50/30"
@@ -297,7 +297,7 @@ export function ReactionBar({
         {/* Downvote */}
         <button
           onClick={handleDownvote}
-          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] transition-all ${
             voteState === "down"
               ? "text-red-500 hover:bg-red-50/30"
               : "text-gray-500 hover:text-red-500 hover:bg-red-50/30"
@@ -311,7 +311,7 @@ export function ReactionBar({
         {commentHref ? (
           <a
             href={commentHref}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] text-gray-500 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
           >
             <MessageCircle className="h-4 w-4" strokeWidth={1.6} />
             <span className="text-[13px] font-medium"><span className="hidden sm:inline">Comments </span>({commentCount})</span>
@@ -319,7 +319,7 @@ export function ReactionBar({
         ) : (
           <button
             onClick={onCommentClick ?? (() => setCommentOpen((o) => !o))}
-            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] transition-all ${
               (onCommentClick ? commentsExpanded : commentOpen)
                 ? "text-blue-500 hover:bg-blue-50/30"
                 : "text-gray-500 hover:text-blue-500 hover:bg-blue-50/30"
@@ -337,7 +337,7 @@ export function ReactionBar({
         {isAuthor ? (
           <a
             href={`/feed/${postId}/analytics`}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] text-gray-500 hover:text-brand hover:bg-gray-100 transition-all"
           >
             <BarChart2 className="h-4 w-4" strokeWidth={1.6} />
             <span className="text-[13px] font-medium hidden sm:inline">Analytics</span>
@@ -345,7 +345,7 @@ export function ReactionBar({
         ) : (
           <button
             onClick={() => setAwardModalOpen(true)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50/30 transition-all"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-[4px] text-gray-400 hover:text-amber-500 hover:bg-amber-50/30 transition-all"
           >
             <Award className="h-4 w-4" strokeWidth={1.6} />
             <span className="text-[13px] font-medium hidden sm:inline">Award It</span>
@@ -365,7 +365,7 @@ export function ReactionBar({
                 }
               }}
               placeholder="Write a comment…"
-              className="w-full rounded-full border border-gray-200 pl-4 pr-9 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-[3px] border border-gray-200 pl-4 pr-9 py-2 text-sm outline-none focus:border-brand"
             />
             <EmojiPicker
               className="absolute right-2 top-1/2 -translate-y-1/2"
@@ -375,7 +375,7 @@ export function ReactionBar({
           <button
             onClick={handleSubmitComment}
             disabled={!commentText.trim()}
-            className={`rounded-full px-4 py-2 text-xs font-semibold text-white transition-colors ${
+            className={`rounded-[3px] px-4 py-2 text-xs font-semibold text-white transition-colors ${
               commentText.trim() ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-200"
             }`}
           >

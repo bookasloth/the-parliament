@@ -81,7 +81,7 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 py-4 sm:py-6">
-        <div className="bg-white border border-gray-200 rounded-xl">
+        <div className="bg-white border border-gray-200 rounded-[5px]">
           <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-100">
             <h1 className="text-base font-bold text-gray-900">Notifications</h1>
             <button
@@ -101,7 +101,7 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  className={`flex-shrink-0 rounded-[3px] px-3 py-1 text-xs font-semibold transition-colors ${
                     filter === f.key ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
@@ -127,7 +127,7 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                 {visible.map((n) => (
                   <li key={n.id}>
                     <div
-                      className={`relative rounded-xl p-3 transition-colors ${
+                      className={`relative rounded-[5px] p-3 transition-colors ${
                         !n.isRead ? "bg-brand/5" : "hover:bg-gray-50"
                       }`}
                     >
@@ -140,12 +140,12 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                             <Image
                               src={n.imageUrl}
                               alt=""
-                              className="h-10 w-10 rounded-full object-cover"
+                              className="h-10 w-10 rounded-[4px] object-cover"
                               width={40}
                               height={40}
                             />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-[3px] bg-brand-100 text-brand-700">
                               <Bell className="h-4 w-4" />
                             </div>
                           )}
@@ -167,8 +167,8 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                               onClick={() => markOne(n.id)}
                               className={
                                 c.primary
-                                  ? "rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600"
-                                  : "rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                                  ? "rounded-[3px] bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600"
+                                  : "rounded-[3px] border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                               }
                             >
                               {c.label}
@@ -181,7 +181,7 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                           e.stopPropagation()
                           remove(n.id)
                         }}
-                        className="absolute right-2 top-2 p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        className="absolute right-2 top-2 p-1.5 rounded-[3px] text-gray-400 hover:text-red-500 hover:bg-red-50"
                         aria-label="Delete notification"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

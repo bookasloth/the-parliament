@@ -45,11 +45,11 @@ export default function Podium({
                 alt={e.label}
                 width={48}
                 height={48}
-                className={`mb-2 h-12 w-12 rounded-full object-cover ${ring}`}
+                className={`mb-2 h-12 w-12 rounded-[4px] object-cover ${ring}`}
               />
             ) : (
               <div
-                className={`mb-2 flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white ${ring}`}
+                className={`mb-2 flex h-12 w-12 items-center justify-center rounded-[4px] text-lg font-bold text-white ${ring}`}
                 style={{ background: bg }}
               >
                 {e.label.charAt(0)}
@@ -62,7 +62,7 @@ export default function Podium({
               initial={{ height: 0 }}
               animate={{ height: "auto" }}
               transition={{ delay: i * 0.12 + 0.1, duration: 0.4 }}
-              className={`flex ${HEIGHT[rankIdx]} w-full items-center justify-center rounded-t-lg text-xl font-extrabold ${MEDAL[rankIdx]}`}
+              className={`flex ${HEIGHT[rankIdx]} w-full items-center justify-center rounded-t-[4px] text-xl font-extrabold ${MEDAL[rankIdx]}`}
             >
               {rankIdx + 1}
             </motion.div>

@@ -23,7 +23,7 @@ import {
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 
-const R_CARD = "rounded-[6px]"
+const R_CARD = "rounded-[5px]"
 const R_EL = "rounded-[4px]"
 const CHAR_LIMIT = 600
 
@@ -307,7 +307,7 @@ export default function PostComposer({
 
         {/* Title */}
         <div className="mb-4 flex items-center gap-2">
-          <span className="h-[22px] w-[6px] rounded bg-brand" />
+          <span className="h-[22px] w-[6px] rounded-[3px] bg-brand" />
           <h1 className="font-heading text-xl font-extrabold text-gray-900">{title}</h1>
         </div>
 
@@ -316,7 +316,7 @@ export default function PostComposer({
           {/* ===== Author + audience ===== */}
           <div className="flex items-center gap-3 px-5 pt-5">
             {anon ? (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-200 text-gray-500 ring-2 ring-gray-300" title="Photo hidden">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[4px] bg-gray-200 text-gray-500 ring-2 ring-gray-300" title="Photo hidden">
                 <VenetianMask className="h-5 w-5" />
               </div>
             ) : (
@@ -325,7 +325,7 @@ export default function PostComposer({
                 alt=""
                 width={44}
                 height={44}
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-brand/60"
+                className="h-11 w-11 rounded-[4px] object-cover ring-2 ring-brand/60"
               />
             )}
             <div className="relative">
@@ -392,7 +392,7 @@ export default function PostComposer({
               placeholder={placeholder}
               className={`w-full resize-none border-0 outline-none transition-all placeholder:text-gray-400 ${
                 coloured
-                  ? "min-h-[180px] rounded-[6px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70"
+                  ? "min-h-[180px] rounded-[5px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70"
                   : type === "quote"
                   ? "min-h-[120px] text-lg italic leading-relaxed text-gray-800"
                   : "min-h-[120px] text-[15px] leading-relaxed text-gray-800"
@@ -407,7 +407,7 @@ export default function PostComposer({
                   <button
                     key={b.id}
                     onClick={() => setBg(b.id)}
-                    className={`h-8 w-8 shrink-0 rounded-[6px] border transition-transform hover:scale-105 ${bg === b.id ? "ring-2 ring-brand ring-offset-1" : "border-gray-200"}`}
+                    className={`h-8 w-8 shrink-0 rounded-[5px] border transition-transform hover:scale-105 ${bg === b.id ? "ring-2 ring-brand ring-offset-1" : "border-gray-200"}`}
                     style={{ background: b.bg }}
                     aria-label={b.id}
                   >
@@ -481,7 +481,7 @@ export default function PostComposer({
                         )}
                         <button
                           onClick={() => setMedia((cur) => cur.filter((_, j) => j !== i))}
-                          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                          className="absolute right-1 top-1 rounded-[3px] bg-black/60 p-1 text-white hover:bg-black/80"
                           aria-label="Remove"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

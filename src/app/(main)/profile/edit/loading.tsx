@@ -2,7 +2,7 @@
 // mobile strength banner + [240px nav | content card | 320px right rail].
 
 const box = "rounded-[4px] bg-gray-200"
-const line = "rounded bg-gray-200"
+const line = "rounded-[3px] bg-gray-200"
 
 function Bar({ w, h = "h-3" }: { w: string; h?: string }) {
   return <div className={`${line} ${h} ${w}`} />
@@ -14,7 +14,7 @@ export default function Loading() {
       <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 sm:py-6">
         {/* mobile strength banner */}
         <div className="mb-4 flex items-center gap-3 rounded-[4px] border border-gray-200 bg-white p-3 xl:hidden">
-          <div className="h-[72px] w-[72px] flex-shrink-0 rounded-full border-[7px] border-gray-200" />
+          <div className="h-[72px] w-[72px] flex-shrink-0 rounded-[4px] border-[7px] border-gray-200" />
           <div className="flex-1 space-y-2"><Bar w="w-24" h="h-3.5" /><Bar w="w-40" /></div>
         </div>
 
@@ -39,7 +39,7 @@ export default function Loading() {
                 <div className="overflow-hidden rounded-[4px] border border-gray-200">
                   <div className="h-[120px] w-full bg-gray-200 sm:h-[160px]" />
                   <div className="flex items-end gap-3 bg-white px-4 pb-3 sm:px-5">
-                    <div className="-mt-10 h-24 w-24 rounded-full border-4 border-white bg-gray-200 sm:h-28 sm:w-28" />
+                    <div className="-mt-10 h-24 w-24 rounded-[4px] border-4 border-white bg-gray-200 sm:h-28 sm:w-28" />
                     <div className="space-y-2 pb-2"><Bar w="w-44" /><Bar w="w-52" /></div>
                   </div>
                 </div>
@@ -62,7 +62,7 @@ export default function Loading() {
           <div className="hidden w-[320px] flex-shrink-0 space-y-4 xl:block">
             <div className="rounded-[4px] border border-gray-200 bg-white p-4">
               <div className="flex items-center gap-3">
-                <div className="h-[72px] w-[72px] flex-shrink-0 rounded-full border-[7px] border-gray-200" />
+                <div className="h-[72px] w-[72px] flex-shrink-0 rounded-[4px] border-[7px] border-gray-200" />
                 <div className="space-y-2"><Bar w="w-28" h="h-3.5" /><div className={`${box} h-4 w-20`} /></div>
               </div>
               <div className="mt-3 space-y-1.5">
@@ -75,7 +75,7 @@ export default function Loading() {
               <div className="overflow-hidden rounded-[4px] border border-gray-200">
                 <div className="h-[70px] w-full bg-gray-200" />
                 <div className="flex flex-col items-center px-4 pb-4">
-                  <div className="-mt-[38px] h-[76px] w-[76px] rounded-full border-4 border-white bg-gray-200" />
+                  <div className="-mt-[38px] h-[76px] w-[76px] rounded-[4px] border-4 border-white bg-gray-200" />
                   <div className="mt-2 space-y-2"><Bar w="w-32" h="h-3.5" /></div>
                   <div className="mt-3 h-12 w-full border-y border-gray-100" />
                   <div className="mt-3 flex w-full gap-2"><div className={`${box} h-8 flex-1`} /><div className={`${box} h-8 flex-1`} /></div>

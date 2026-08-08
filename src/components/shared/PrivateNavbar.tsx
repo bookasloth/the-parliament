@@ -100,7 +100,7 @@ function useClickOutside<T extends HTMLElement>(onClose: () => void) {
 /* ---------------- Search panel (shared desktop + mobile) ---------------- */
 function SearchPanel({ query }: { query: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+    <div className="overflow-hidden rounded-[5px] border border-gray-200 bg-white shadow-lg">
       {query.trim() ? (
         <>
           {/* Quora-style scoped search */}
@@ -143,7 +143,7 @@ function SearchPanel({ query }: { query: string }) {
                     ? <TrendingUp className="h-3.5 w-3.5 text-brand flex-shrink-0" />
                     : <Clock className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />}
                   <span className="text-sm text-gray-700">{s.text}</span>
-                  {s.trending && <span className="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">Trending</span>}
+                  {s.trending && <span className="ml-auto rounded-[3px] bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">Trending</span>}
                 </a>
               </li>
             ))}
@@ -164,7 +164,7 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
     <div className="space-y-1.5">
       <a
         href="/membership"
-        className={`block w-full rounded-lg px-3 py-2 text-center text-xs font-bold shadow-sm transition-transform hover:scale-[1.02] ${meta.textClass}`}
+        className={`block w-full rounded-[4px] px-3 py-2 text-center text-xs font-bold shadow-sm transition-transform hover:scale-[1.02] ${meta.textClass}`}
         style={meta.style}
       >
         You&rsquo;ve {meta.label} Membership
@@ -172,7 +172,7 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
       {canUpgrade && nextMeta ? (
         <a
           href={`/upgrade/${meta.next}`}
-          className="flex items-center justify-center gap-1 w-full rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:border-brand hover:text-brand transition-colors"
+          className="flex items-center justify-center gap-1 w-full rounded-[4px] border border-dashed border-gray-300 px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:border-brand hover:text-brand transition-colors"
         >
           Upgrade to {nextMeta.label} <ArrowUpRight className="h-3 w-3" />
         </a>
@@ -319,7 +319,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
         {/* Logo */}
         <a href="/feed" className="flex items-center gap-2 flex-shrink-0 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-700 shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-gradient-to-br from-brand to-brand-700 shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3">
             <Users className="h-4 w-4 text-white" />
           </div>
           <span className="hidden md:inline text-sm font-bold text-gray-900 group-hover:text-brand transition-colors">NNAWCA</span>
@@ -336,7 +336,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
               onChange={e => setQuery(e.target.value)}
               onFocus={() => setSearchOpen(true)}
               placeholder="Search…"
-              className="w-full rounded-full border border-gray-200 bg-gray-50 pl-10 pr-4 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors"
+              className="w-full rounded-[3px] border border-gray-200 bg-gray-50 pl-10 pr-4 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors"
             />
           </div>
           {searchOpen && (
@@ -357,7 +357,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           return (
             <a
               href={`/upgrade/${next}`}
-              className="hidden lg:flex items-center gap-1.5 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 transition-all flex-shrink-0"
+              className="hidden lg:flex items-center gap-1.5 rounded-[3px] border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 transition-all flex-shrink-0"
             >
               <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
               Upgrade to {MEMBERSHIP_META[next].label}
@@ -372,7 +372,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           <li className="sm:hidden">
             <button
               onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${mobileSearchOpen ? "bg-brand text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-[3px] transition-colors ${mobileSearchOpen ? "bg-brand text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
             >
               <Search className="h-4 w-4" />
             </button>
@@ -380,7 +380,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
           {/* Mobile: membership */}
           <li className="lg:hidden">
-            <a href="/membership" className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
+            <a href="/membership" className="flex h-9 w-9 items-center justify-center rounded-[3px] bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
               <CreditCard className="h-4 w-4" />
             </a>
           </li>
@@ -394,7 +394,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                 <a
                   href={item.href}
                   title={item.label}
-                  className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${active ? "bg-brand text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"}`}
+                  className={`relative flex h-9 w-9 items-center justify-center rounded-[3px] transition-colors ${active ? "bg-brand text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"}`}
                 >
                   <item.icon className="h-4 w-4" />
                   {badge > 0 && (
@@ -411,7 +411,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           <li className="relative" ref={notifRef}>
             <button
               onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false) }}
-              className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${notifOpen ? "bg-brand text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-[3px] transition-colors ${notifOpen ? "bg-brand text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
             >
               <Bell className="h-4 w-4" />
               {notifCount > 0 && (
@@ -422,7 +422,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-[320px] max-w-[calc(100vw-1rem)] sm:w-[360px] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 z-50 w-[320px] max-w-[calc(100vw-1rem)] sm:w-[360px] rounded-[5px] border border-gray-200 bg-white shadow-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h6 className="text-sm font-semibold text-gray-900">Your Notifications</h6>
                   {notifCount > 0 && (
@@ -435,12 +435,12 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                   ) : (
                     notifItems.map(n => (
                       <li key={n.id}>
-                        <div className={`rounded-lg p-2.5 transition-colors ${n.isRead ? "" : "bg-brand-50/40"}`}>
-                          <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className="flex items-start gap-3 rounded-md hover:opacity-90">
+                        <div className={`rounded-[4px] p-2.5 transition-colors ${n.isRead ? "" : "bg-brand-50/40"}`}>
+                          <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className="flex items-start gap-3 rounded-[3px] hover:opacity-90">
                             {n.imageUrl ? (
-                              <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover flex-shrink-0" />
+                              <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-[4px] object-cover flex-shrink-0" />
                             ) : (
-                              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
+                              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-gray-800 leading-snug">{n.title}</p>
@@ -457,8 +457,8 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                                   onClick={() => markOne(n.id, n.isRead)}
                                   className={
                                     c.primary
-                                      ? "rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-600"
-                                      : "rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
+                                      ? "rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-600"
+                                      : "rounded-[3px] border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
                                   }
                                 >
                                   {c.label}
@@ -472,7 +472,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                   )}
                 </ul>
                 <div className="border-t border-gray-100 p-2.5 text-center">
-                  <a href="/notifications" className="inline-block rounded-full bg-brand/10 px-4 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors">
+                  <a href="/notifications" className="inline-block rounded-[3px] bg-brand/10 px-4 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors">
                     See all Logs
                   </a>
                 </div>
@@ -484,17 +484,17 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           <li className="relative" ref={profileRef}>
             <button
               onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false) }}
-              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-brand transition-all"
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-gray-200 hover:ring-brand transition-all"
             >
               <Image src={currentUser.avatar} alt={currentUser.name} width={36} height={36} className="h-full w-full object-cover" />
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 z-50 w-[280px] rounded-[5px] border border-gray-200 bg-white shadow-xl overflow-hidden">
                 {/* Profile info */}
                 <div className="p-4 pb-3">
                   <div className="flex items-center gap-3 mb-3">
-                    <Image src={currentUser.avatar} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover" />
+                    <Image src={currentUser.avatar} alt="" width={44} height={44} className="h-11 w-11 rounded-[4px] object-cover" />
                     <div className="min-w-0">
                       <a href={profileHref} className="text-sm font-bold text-gray-900 hover:text-brand transition-colors block truncate">
                         {currentUser.name}
@@ -505,7 +505,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
                   <a
                     href={profileHref}
-                    className="block w-full rounded-lg bg-brand/10 px-3 py-2 text-center text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors mb-2"
+                    className="block w-full rounded-[4px] bg-brand/10 px-3 py-2 text-center text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors mb-2"
                   >
                     View Your Profile
                   </a>
@@ -567,7 +567,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search NNAWCA…"
-              className="w-full rounded-full border border-gray-200 bg-gray-50 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
+              className="w-full rounded-[3px] border border-gray-200 bg-gray-50 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
             />
           </div>
           <SearchPanel query={query} />

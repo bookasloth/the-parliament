@@ -161,7 +161,7 @@ export default function MentionInput({
       )}
 
       {open && (
-        <ul className="absolute left-0 top-full z-20 mt-1 w-72 max-h-72 overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+        <ul className="absolute left-0 top-full z-20 mt-1 w-72 max-h-72 overflow-auto rounded-[5px] border border-gray-200 bg-white py-1 shadow-lg">
           {items.map((t, i) => (
             <li key={t.id}>
               <button
@@ -175,7 +175,7 @@ export default function MentionInput({
                   i === active ? "bg-brand-50" : "hover:bg-gray-50"
                 }`}
               >
-                <Image src={t.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" width={32} height={32} />
+                <Image src={t.avatarUrl} alt="" className="h-8 w-8 rounded-[4px] object-cover" width={32} height={32} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1">
                     <span className="truncate text-sm font-medium text-gray-900">

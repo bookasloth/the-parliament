@@ -31,7 +31,7 @@ export default function AttendancePanel({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
+    <div className="bg-white border border-gray-200 rounded-[5px] p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <UserCheck className="h-4 w-4 text-brand-700" /> Attendance
@@ -51,7 +51,7 @@ export default function AttendancePanel({
               <button
                 onClick={() => toggle(r.userId, !r.checkedIn)}
                 disabled={busy === r.userId}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
                   r.checkedIn
                     ? "bg-green-50 text-green-700 hover:bg-green-100"
                     : "bg-gray-50 text-gray-500 hover:bg-gray-100"

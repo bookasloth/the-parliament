@@ -143,7 +143,7 @@ export default function MembershipPage() {
       {showConfirm && selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div role="presentation" className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirm(false)} />
-          <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+          <div className="relative bg-white rounded-[5px] p-6 w-full max-w-md shadow-2xl">
             <button onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600" aria-label="Close"><X className="h-5 w-5" /></button>
             {(() => {
               const plan =
@@ -158,22 +158,22 @@ export default function MembershipPage() {
 
               return (
                 <>
-                  <div className={`mx-auto mb-4 h-14 w-14 rounded-2xl bg-gradient-to-br ${tierBg} flex items-center justify-center text-white shadow-lg`}>
+                  <div className={`mx-auto mb-4 h-14 w-14 rounded-[5px] bg-gradient-to-br ${tierBg} flex items-center justify-center text-white shadow-lg`}>
                     {plan.icon}
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 text-center mb-1">Join as {plan.shortName}</h3>
                   <p className="text-sm text-gray-500 text-center mb-4">{plan.tagline}</p>
-                  <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-center mb-5">
+                  <div className="rounded-[5px] bg-gray-50 border border-gray-200 p-3 text-center mb-5">
                     <span className="text-2xl font-black text-gray-900">{priceLabel}</span>
                     <div className="text-xs text-gray-500 mt-1">{plan.cycle}</div>
                   </div>
 
-                  <label className="flex items-start gap-3 mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
+                  <label className="flex items-start gap-3 mb-4 rounded-[5px] border border-amber-300 bg-amber-50 p-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={acknowledgedNonRefundable}
                       onChange={(e) => setAcknowledgedNonRefundable(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-amber-400 text-[#0c1d3d] focus:ring-[#d4a82c]"
+                      className="mt-0.5 h-4 w-4 rounded-[3px] border-amber-400 text-[#0c1d3d] focus:ring-[#d4a82c]"
                     />
                     <span className="text-xs text-amber-900 leading-relaxed">
                       <strong>I understand this is a non-refundable contribution to NNAWCA.</strong> I have read the membership terms.
@@ -183,11 +183,11 @@ export default function MembershipPage() {
                   <button
                     disabled={!acknowledgedNonRefundable}
                     onClick={() => { window.location.href = `/membership/checkout?plan=${selectedPlan}` }}
-                    className={`w-full rounded-xl py-3 text-sm font-bold text-white transition-opacity mb-2 bg-gradient-to-r ${tierBg} ${acknowledgedNonRefundable ? "hover:opacity-95" : "opacity-40 cursor-not-allowed"}`}
+                    className={`w-full rounded-[5px] py-3 text-sm font-bold text-white transition-opacity mb-2 bg-gradient-to-r ${tierBg} ${acknowledgedNonRefundable ? "hover:opacity-95" : "opacity-40 cursor-not-allowed"}`}
                   >
                     <CreditCard className="inline h-4 w-4 mr-2" />Continue to Payment
                   </button>
-                  <button onClick={() => setShowConfirm(false)} className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  <button onClick={() => setShowConfirm(false)} className="w-full rounded-[5px] border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                     Cancel
                   </button>
                   <p className="mt-3 text-center text-xs text-gray-400 flex items-center justify-center gap-1">
@@ -211,7 +211,7 @@ export default function MembershipPage() {
           }}
         />
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#d4a82c]/30 bg-[#d4a82c]/10 px-4 py-1.5 text-xs font-semibold text-[#f3d56e] mb-5">
+          <div className="inline-flex items-center gap-2 rounded-[3px] border border-[#d4a82c]/30 bg-[#d4a82c]/10 px-4 py-1.5 text-xs font-semibold text-[#f3d56e] mb-5">
             <Award className="h-3.5 w-3.5" /> NNAWCA Membership
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-white mb-3 tracking-tight">
@@ -222,11 +222,11 @@ export default function MembershipPage() {
           </p>
 
           {currentPlan === "student" ? (
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-semibold text-white/80">
+            <div className="mt-5 inline-flex items-center gap-2 rounded-[3px] bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-semibold text-white/80">
               <Heart className="h-3.5 w-3.5 text-[#f3d56e]" /> You're a Student member · upgrade to contribute
             </div>
           ) : (
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-4 py-1.5 text-xs font-semibold text-emerald-300">
+            <div className="mt-5 inline-flex items-center gap-2 rounded-[3px] bg-emerald-500/15 border border-emerald-400/30 px-4 py-1.5 text-xs font-semibold text-emerald-300">
               <BadgeCheck className="h-3.5 w-3.5" /> Your current plan: {currentPlan}
             </div>
           )}
@@ -258,7 +258,7 @@ export default function MembershipPage() {
           {/* PREMIUM — recommended */}
           <div className="lg:col-span-4 relative">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#d4a82c] to-[#f3d56e] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-[#06122a] shadow-lg shadow-[#d4a82c]/30">
+              <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-gradient-to-r from-[#d4a82c] to-[#f3d56e] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-[#06122a] shadow-lg shadow-[#d4a82c]/30">
                 <Sparkles className="h-3.5 w-3.5" /> Recommended
               </span>
             </div>
@@ -302,7 +302,7 @@ export default function MembershipPage() {
         </div>
 
         {/* Non-refundable banner */}
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-5 py-3">
+        <div className="flex items-center gap-3 rounded-[5px] border border-amber-200 bg-amber-50/70 px-5 py-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-900">
             <strong>All NNAWCA contributions are non-refundable.</strong> Membership payments fund welfare drives, scholarships, events, and the platform — there is no refund window or self-service cancellation refund. You'll acknowledge this at checkout.
@@ -310,7 +310,7 @@ export default function MembershipPage() {
         </div>
 
         {/* Feature comparison — canonical matrix from MEMBERSHIP_PLAN §1b */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-[#06122a] to-[#0c1d3d]">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Trophy className="h-4 w-4 text-[#f3d56e]" /> Benefit Matrix
@@ -352,18 +352,18 @@ export default function MembershipPage() {
         </div>
 
         {/* Where your contribution goes */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#06122a] via-[#0c1d3d] to-[#1a3266] p-8 text-white">
+        <div className="relative overflow-hidden rounded-[5px] bg-gradient-to-br from-[#06122a] via-[#0c1d3d] to-[#1a3266] p-8 text-white">
           <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-[#d4a82c]/20 blur-3xl" />
           <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-[#1a3266]/40 blur-3xl" />
           <div className="relative">
-            <div className="inline-flex items-center gap-2 mb-4 rounded-full bg-[#d4a82c]/15 border border-[#d4a82c]/30 px-3 py-1 text-xs font-semibold text-[#f3d56e]">
+            <div className="inline-flex items-center gap-2 mb-4 rounded-[3px] bg-[#d4a82c]/15 border border-[#d4a82c]/30 px-3 py-1 text-xs font-semibold text-[#f3d56e]">
               <Sparkles className="h-3.5 w-3.5" /> Where your contribution goes
             </div>
             <h2 className="text-2xl font-extrabold mb-6">A contribution, not a subscription</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
               {whereItGoes.map((b, i) => (
                 <div key={i} className="flex gap-3">
-                  <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-[#d4a82c]/30 to-[#d4a82c]/10 border border-[#d4a82c]/30 flex items-center justify-center text-[#f3d56e]">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-[5px] bg-gradient-to-br from-[#d4a82c]/30 to-[#d4a82c]/10 border border-[#d4a82c]/30 flex items-center justify-center text-[#f3d56e]">
                     {b.icon}
                   </div>
                   <div>
@@ -377,15 +377,15 @@ export default function MembershipPage() {
         </div>
 
         {/* Committee callout */}
-        <div className="rounded-2xl border border-[#d4a82c]/40 bg-gradient-to-r from-[#fef9e7] via-white to-[#fef9e7] p-6">
+        <div className="rounded-[5px] border border-[#d4a82c]/40 bg-gradient-to-r from-[#fef9e7] via-white to-[#fef9e7] p-6">
           <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-[#7a5a13] to-[#c9a341] text-white flex items-center justify-center shadow-md">
+            <div className="flex-shrink-0 h-12 w-12 rounded-[5px] bg-gradient-to-br from-[#7a5a13] to-[#c9a341] text-white flex items-center justify-center shadow-md">
               <Hand className="h-6 w-6" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-extrabold text-[#0c1d3d]">NNAWCA Committee</h3>
-                <span className="rounded-full bg-[#0c1d3d] text-[#f3d56e] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">Invite-only</span>
+                <span className="rounded-[3px] bg-[#0c1d3d] text-[#f3d56e] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">Invite-only</span>
               </div>
               <p className="text-sm text-gray-700">
                 The Committee is the governance body of NNAWCA. It's not for sale — invitations are extended by Super-Admins exclusively to <strong>Life Members</strong>, with a default 3-year tenure. Becoming a Life Member is the first step toward being eligible.
@@ -399,7 +399,7 @@ export default function MembershipPage() {
           <h2 className="text-2xl font-extrabold text-gray-900 mb-5 text-center">Frequently Asked Questions</h2>
           <div className="max-w-3xl mx-auto space-y-2">
             {faqs.map((faq, i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div key={i} className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left"
@@ -418,10 +418,10 @@ export default function MembershipPage() {
         </div>
 
         {/* Footer CTA */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+        <div className="bg-white border border-gray-200 rounded-[5px] p-8 text-center">
           <p className="text-sm font-semibold text-gray-800 mb-1">Join the contributors of NNAWCA</p>
           <p className="text-xs text-gray-500 mb-5">Every contribution funds scholarships, events, and the platform</p>
-          <button onClick={() => handleUpgrade("premium")} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0c1d3d] to-[#1a3266] px-7 py-3 text-sm font-bold text-white shadow-lg shadow-[#0c1d3d]/20 hover:opacity-95 transition-opacity">
+          <button onClick={() => handleUpgrade("premium")} className="inline-flex items-center gap-2 rounded-[5px] bg-gradient-to-r from-[#0c1d3d] to-[#1a3266] px-7 py-3 text-sm font-bold text-white shadow-lg shadow-[#0c1d3d]/20 hover:opacity-95 transition-opacity">
             <Sparkles className="h-4 w-4 text-[#f3d56e]" /> Become Premium
           </button>
           <p className="mt-3 text-xs text-gray-400 flex items-center justify-center gap-1.5">
@@ -478,7 +478,7 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
   }[accent]
 
   return (
-    <div className={`relative h-full bg-white border rounded-2xl overflow-hidden transition-all ${styles.ring} ${recommended ? "lg:scale-[1.02]" : ""}`}>
+    <div className={`relative h-full bg-white border rounded-[5px] overflow-hidden transition-all ${styles.ring} ${recommended ? "lg:scale-[1.02]" : ""}`}>
       {recommended && (
         <>
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#d4a82c] via-[#f3d56e] to-[#d4a82c]" />
@@ -486,7 +486,7 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
         </>
       )}
       <div className="p-6 sm:p-7 flex flex-col h-full">
-        <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${styles.iconBg} shadow-md`}>
+        <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-[5px] ${styles.iconBg} shadow-md`}>
           {icon}
         </div>
         <h3 className="text-xl font-extrabold text-gray-900">{name}</h3>
@@ -501,20 +501,20 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
         </div>
 
         {isCurrent ? (
-          <div className="w-full rounded-xl py-3 text-sm font-bold text-center mb-3 bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center gap-1.5">
+          <div className="w-full rounded-[5px] py-3 text-sm font-bold text-center mb-3 bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center gap-1.5">
             <BadgeCheck className="h-4 w-4" /> Your current plan
           </div>
         ) : (
           <button
             onClick={onClick}
-            className={`w-full rounded-xl py-3 text-sm font-bold transition-all mb-3 ${styles.cta}`}
+            className={`w-full rounded-[5px] py-3 text-sm font-bold transition-all mb-3 ${styles.cta}`}
           >
             {ctaLabel}
           </button>
         )}
 
         {upgradeNote && (
-          <div className="mb-4 rounded-lg bg-amber-50/60 border border-amber-200/70 px-3 py-2 text-[11px] text-amber-900 leading-relaxed">
+          <div className="mb-4 rounded-[4px] bg-amber-50/60 border border-amber-200/70 px-3 py-2 text-[11px] text-amber-900 leading-relaxed">
             {upgradeNote}
           </div>
         )}

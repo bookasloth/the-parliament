@@ -86,19 +86,19 @@ export default function AuditLogsClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search action, entity, IP…"
-            className="w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-600"
+            className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-600"
           />
         </div>
         <select
           value={q0.action || "All"}
           onChange={(e) => pushQuery({ action: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-lg border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600"
+          className="rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600"
         >
           {["All", ...actions].map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
-      <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -120,7 +120,7 @@ export default function AuditLogsClient({
                   <td className="px-4 py-3 whitespace-nowrap text-zinc-400">{fmt(r.at)}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-zinc-200">{r.actor}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{r.action}</span>
+                    <span className="rounded-[3px] bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{r.action}</span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-zinc-400">
                     {r.entityType ? <>{r.entityType}{r.entityId && <span className="text-zinc-600"> · {r.entityId.slice(0, 8)}</span>}</> : "—"}
@@ -138,17 +138,17 @@ export default function AuditLogsClient({
         <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
           <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span></p>
           <div className="flex items-center gap-1">
-            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-md border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
               <CaretLeft className="h-4 w-4" weight="duotone" />
             </button>
             {nums.map((p) => (
               <button key={p} onClick={() => pushQuery({ page: p })}
-                className={`h-7 w-7 rounded-md text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
                 {p}
               </button>
             ))}
             {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-md border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
               <CaretRight className="h-4 w-4" weight="duotone" />
             </button>
           </div>

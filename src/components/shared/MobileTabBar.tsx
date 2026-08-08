@@ -39,7 +39,7 @@ export function MobileTabBar() {
               >
                 {tab.center ? (
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-[4px] transition-colors ${
                       active ? "bg-brand text-white" : "bg-brand/10 text-brand"
                     }`}
                   >

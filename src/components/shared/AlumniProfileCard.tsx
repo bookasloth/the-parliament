@@ -61,7 +61,7 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
   const batchShort = alumni.batch || alumni.batchLabel?.replace(/\s*Batch\s*$/i, "") || "—"
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-[350px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
+    <div className="mx-auto flex h-full w-full max-w-[350px] flex-col overflow-hidden rounded-[5px] border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
       {/* House-colored cover band */}
       <div className="h-[70px] w-full flex-shrink-0" style={{ background: cover }} />
 
@@ -74,7 +74,7 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
               alt={alumni.name}
               width={76}
               height={76}
-              className="mx-auto h-[76px] w-[76px] rounded-full border-4 border-white object-cover cursor-pointer transition-transform duration-300 hover:scale-105"
+              className="mx-auto h-[76px] w-[76px] rounded-[4px] border-4 border-white object-cover cursor-pointer transition-transform duration-300 hover:scale-105"
             />
           </Link>
         </div>
@@ -123,12 +123,12 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
           <div className="mt-auto flex flex-wrap justify-center gap-2">{actions}</div>
         ) : (
           <div className="mt-auto flex gap-2">
-            <button className="flex-1 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-brand-600">
+            <button className="flex-1 rounded-[4px] bg-brand px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-brand-600">
               Follow
             </button>
             <Link
               href={href}
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-[13px] font-semibold text-gray-700 transition-colors duration-300 hover:bg-gray-50"
+              className="flex-1 rounded-[4px] border border-gray-200 px-4 py-2 text-[13px] font-semibold text-gray-700 transition-colors duration-300 hover:bg-gray-50"
             >
               Profile
             </Link>

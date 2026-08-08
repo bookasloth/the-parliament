@@ -47,7 +47,7 @@ export default function MoaPage() {
     <>
       <Section width="5xl" className="pt-32 lg:pt-40">
         <Reveal>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
             <Landmark className="h-6 w-6" />
           </div>
         </Reveal>
@@ -93,7 +93,7 @@ export default function MoaPage() {
         <Reveal delay={0.1}>
           <a
             href="{{MOA_PDF_URL}}"
-            className="mt-10 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+            className="mt-10 inline-flex items-center gap-2 rounded-[3px] bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
           >
             <Download className="h-4 w-4" /> Download the registered Memorandum (PDF)
           </a>

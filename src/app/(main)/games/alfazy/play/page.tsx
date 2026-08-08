@@ -143,13 +143,13 @@ export default function AlfazyPlayPage() {
       {status === "loading" ? (
         <BoardSkeleton />
       ) : status === "done" && !gameOver ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center" style={{ animation: "fade-in-up 0.4s ease" }}>
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+        <div className="rounded-[5px] border border-gray-200 bg-white p-8 text-center" style={{ animation: "fade-in-up 0.4s ease" }}>
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[5px] bg-emerald-50">
             <Trophy className="h-7 w-7 text-emerald-500" />
           </div>
           <p className="text-lg font-bold text-gray-900">You&apos;ve already played today</p>
           <p className="mt-1 text-[14px] text-gray-500">A new word unlocks tomorrow. See how you did:</p>
-          <Link href="/games/alfazy/results" className="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+          <Link href="/games/alfazy/results" className="mt-4 inline-block rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
             View your result
           </Link>
         </div>
@@ -180,7 +180,7 @@ export default function AlfazyPlayPage() {
                         key={graded ? c : `${c}-${letter}`}
                         role="gridcell"
                         aria-label={label}
-                        className={`flex h-14 w-14 items-center justify-center rounded-md border-2 text-2xl font-bold uppercase transition-colors ${tileClass(state)} ${anim} ${bounce} ${!graded && letter ? "alfazy-pop" : ""}`}
+                        className={`flex h-14 w-14 items-center justify-center rounded-[3px] border-2 text-2xl font-bold uppercase transition-colors ${tileClass(state)} ${anim} ${bounce} ${!graded && letter ? "alfazy-pop" : ""}`}
                         style={{
                           animationDelay: graded ? `${c * 0.22}s` : bounce ? `${c * 0.08}s` : undefined,
                         }}
@@ -203,7 +203,7 @@ export default function AlfazyPlayPage() {
           {/* Result banner */}
           {gameOver && result && (
             <div
-              className={`mt-5 rounded-2xl p-5 text-center ${status === "won" ? "bg-emerald-50" : "bg-gray-50"}`}
+              className={`mt-5 rounded-[5px] p-5 text-center ${status === "won" ? "bg-emerald-50" : "bg-gray-50"}`}
               style={{ animation: "fade-in-up 0.5s ease 0.3s both" }}
             >
               <p className="text-lg font-bold text-gray-900">
@@ -214,7 +214,7 @@ export default function AlfazyPlayPage() {
               </p>
               <Link
                 href="/games/alfazy/results"
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105"
               >
                 <Trophy className="h-4 w-4" /> See full results
               </Link>
@@ -232,7 +232,7 @@ export default function AlfazyPlayPage() {
                       onClick={() => onKey(k)}
                       disabled={busy}
                       aria-label={k === "DEL" ? "Delete" : k === "ENTER" ? "Enter" : k}
-                      className={`flex h-12 items-center justify-center rounded-md text-[13px] font-bold uppercase transition-all disabled:opacity-60 ${
+                      className={`flex h-12 items-center justify-center rounded-[3px] text-[13px] font-bold uppercase transition-all disabled:opacity-60 ${
                         k === "ENTER" || k === "DEL" ? "w-14 px-2" : "w-9"
                       } ${keyClass(keyState[k])}`}
                     >
@@ -256,7 +256,7 @@ function BoardSkeleton() {
         {Array.from({ length: ROWS }).map((_, r) => (
           <div key={r} className="flex gap-1.5">
             {Array.from({ length: COLS }).map((_, c) => (
-              <div key={c} className="h-14 w-14 rounded-md bg-gray-100" />
+              <div key={c} className="h-14 w-14 rounded-[3px] bg-gray-100" />
             ))}
           </div>
         ))}
@@ -265,7 +265,7 @@ function BoardSkeleton() {
         {[10, 9, 9].map((n, i) => (
           <div key={i} className="flex gap-1.5">
             {Array.from({ length: n }).map((_, k) => (
-              <div key={k} className="h-12 w-9 rounded-md bg-gray-100" />
+              <div key={k} className="h-12 w-9 rounded-[3px] bg-gray-100" />
             ))}
           </div>
         ))}

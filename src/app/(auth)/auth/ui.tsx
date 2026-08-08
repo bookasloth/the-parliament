@@ -9,7 +9,7 @@ import { Eye, EyeOff } from "lucide-react"
 
 
 export const fieldClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-11 text-sm " +
+  "w-full rounded-[5px] border border-gray-200 bg-gray-50 px-4 py-3 pr-11 text-sm " +
   "text-charcoal-800 placeholder:text-gray-400 outline-none transition " +
   "focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
 
@@ -55,7 +55,7 @@ export function SubmitButton({ loading, idleLabel }: { loading: boolean; idleLab
     <button
       type="submit"
       disabled={loading}
-      className="w-full rounded-xl bg-brand px-4 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-600 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-[5px] bg-brand px-4 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-600 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {loading ? "Please wait…" : idleLabel}
     </button>
@@ -64,7 +64,7 @@ export function SubmitButton({ loading, idleLabel }: { loading: boolean; idleLab
 
 export function FormError({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+    <p className="rounded-[4px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
       {children}
     </p>
   )
@@ -72,7 +72,7 @@ export function FormError({ children }: { children: React.ReactNode }) {
 
 export function FormSuccess({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
+    <p className="rounded-[4px] border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
       {children}
     </p>
   )
@@ -93,10 +93,10 @@ export function AuthHeading({ title }: { title: string }) {
 export function AuthActions({ ghostLabel, ghostHref }: { ghostLabel: string; ghostHref: string }) {
   return (
     <div className="mb-10 flex flex-wrap items-center justify-end gap-3">
-      <a href={ghostHref} className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-brand-100">
+      <a href={ghostHref} className="rounded-[4px] bg-brand-50 px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-brand-100">
         {ghostLabel}
       </a>
-      <a href="/community" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600">
+      <a href="/community" className="rounded-[4px] bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600">
         Find an Alumni
       </a>
     </div>

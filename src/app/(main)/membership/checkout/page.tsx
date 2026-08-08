@@ -141,7 +141,7 @@ function CheckoutInner() {
       {(status === "error" || status === "cancelled") && (
         <a
           href="/membership"
-          className="mt-6 rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+          className="mt-6 rounded-[5px] bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
         >
           Back to Membership
         </a>

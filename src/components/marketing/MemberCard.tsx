@@ -17,9 +17,9 @@ export function MemberCard({
   const placeholder = isPlaceholder(member.name)
   const initial = placeholder ? null : member.name.charAt(0)
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
+    <div className="flex items-center gap-4 rounded-[5px] border border-black/5 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-heading text-lg font-semibold text-white"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[4px] font-heading text-lg font-semibold text-white"
         style={{ backgroundColor: ACCENT_HEX[accent] }}
       >
         {initial ?? <Users className="h-5 w-5" />}

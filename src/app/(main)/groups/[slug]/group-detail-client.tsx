@@ -25,11 +25,11 @@ function initials(name: string): string {
 
 function Avatar({ name, src, size = 40, className = "" }: { name: string; src: string | null; size?: number; className?: string }) {
   if (src) {
-    return <Image src={src} alt={name} width={size} height={size} className={`rounded-full object-cover ${className}`} style={{ width: size, height: size }} />
+    return <Image src={src} alt={name} width={size} height={size} className={`rounded-[4px] object-cover ${className}`} style={{ width: size, height: size }} />
   }
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full bg-brand-50 text-brand font-semibold ${className}`}
+      className={`inline-flex items-center justify-center rounded-[3px] bg-brand-50 text-brand font-semibold ${className}`}
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials(name) || "?"}
@@ -82,10 +82,10 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
         </a>
 
         {/* Header */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6">
+        <div className="bg-white border border-gray-200 rounded-[5px] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-brand-50 text-3xl">{data.icon}</span>
+              <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[3px] bg-brand-50 text-3xl">{data.icon}</span>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-xl font-bold text-gray-900 truncate">{data.name}</h1>
@@ -103,13 +103,13 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
               <button
                 onClick={join}
                 disabled={joined || pending}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${joined ? "bg-gray-100 text-gray-500 cursor-default" : "border border-gray-200 text-gray-700 hover:border-brand hover:text-brand"}`}
+                className={`rounded-[4px] px-4 py-2 text-sm font-semibold transition-colors ${joined ? "bg-gray-100 text-gray-500 cursor-default" : "border border-gray-200 text-gray-700 hover:border-brand hover:text-brand"}`}
               >
                 {joined ? "Joined" : "Join"}
               </button>
               <button
                 onClick={() => { setMsg(null); setModalOpen(true) }}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
+                className="rounded-[4px] bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
               >
                 + Request
               </button>
@@ -124,7 +124,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                   <Avatar key={m.id} name={m.name} src={m.photoUrl} size={34} className="border-2 border-white" />
                 ))}
                 {overflow > 0 && (
-                  <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-brand text-white text-xs font-bold border-2 border-white">+{overflow}</span>
+                  <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[3px] bg-brand text-white text-xs font-bold border-2 border-white">+{overflow}</span>
                 )}
               </div>
               <p className="text-sm text-brand truncate">
@@ -138,7 +138,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
         {/* Three info cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Top Contributors */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3">Top Contributors</h3>
             {data.topContributors.length === 0 ? (
               <p className="text-xs text-gray-400">No contributors yet.</p>
@@ -148,7 +148,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                   <div key={c.id} className="flex items-center gap-2.5">
                     <Avatar name={c.name} src={c.photoUrl} size={32} />
                     <a href={`/${c.id}`} className="flex-1 min-w-0 text-sm font-medium text-gray-800 hover:text-brand truncate">{c.name}</a>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${i === 0 ? "bg-amber-100 text-amber-700" : "bg-brand-50 text-brand"}`}>{c.karma} Karma</span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-[3px] ${i === 0 ? "bg-amber-100 text-amber-700" : "bg-brand-50 text-brand"}`}>{c.karma} Karma</span>
                   </div>
                 ))}
               </div>
@@ -156,21 +156,21 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
           </div>
 
           {/* Most Request Accepted */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3">Most Request Accepted</h3>
             {data.acceptedTags.length === 0 ? (
               <p className="text-xs text-gray-400">No accepted requests yet.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {data.acceptedTags.map(tag => (
-                  <span key={tag} className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md capitalize">{tag}</span>
+                  <span key={tag} className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-[3px] capitalize">{tag}</span>
                 ))}
               </div>
             )}
           </div>
 
           {/* Welcome New Members */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3">Welcome New Members</h3>
             {data.newMemberCount === 0 ? (
               <p className="text-xs text-gray-400">No new members this week.</p>
@@ -190,31 +190,31 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
         </div>
 
         {/* Group Members */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6">
+        <div className="bg-white border border-gray-200 rounded-[5px] p-5 sm:p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Group Members</h2>
           {data.members.length === 0 ? (
             <p className="text-sm text-gray-400">No members yet.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {shownMembers.map(m => (
-                <div key={m.id} className="border border-gray-200 rounded-xl p-4 flex flex-col items-center text-center">
+                <div key={m.id} className="border border-gray-200 rounded-[5px] p-4 flex flex-col items-center text-center">
                   <Avatar name={m.name} src={m.photoUrl} size={56} />
                   <div className="flex items-center gap-1 mt-2">
                     <p className="text-sm font-semibold text-gray-900 truncate">{m.name}</p>
                     {m.isVerified && <BadgeCheck className="h-3.5 w-3.5 text-brand flex-shrink-0" />}
                   </div>
                   {m.yearsLabel && <p className="text-xs text-gray-400">{m.yearsLabel}</p>}
-                  <a href={`/${m.id}`} className="mt-3 w-full rounded-md border border-brand px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-colors">
+                  <a href={`/${m.id}`} className="mt-3 w-full rounded-[3px] border border-brand px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-colors">
                     View Profile
                   </a>
                 </div>
               ))}
               {!canSeeAll && memberCount > shownMembers.length && (
-                <div className="rounded-xl bg-brand p-4 flex flex-col items-center justify-center text-center text-white">
+                <div className="rounded-[5px] bg-brand p-4 flex flex-col items-center justify-center text-center text-white">
                   <Lock className="h-6 w-6 mb-2" />
                   <p className="text-sm font-bold">More Members</p>
                   <p className="text-xs text-white/80 mb-3">Unlock to see all</p>
-                  <button onClick={join} disabled={pending} className="rounded-md bg-white px-4 py-1.5 text-sm font-semibold text-brand hover:bg-white/90 transition-colors">
+                  <button onClick={join} disabled={pending} className="rounded-[3px] bg-white px-4 py-1.5 text-sm font-semibold text-brand hover:bg-white/90 transition-colors">
                     {loggedIn ? "Join to unlock" : "Unlock"}
                   </button>
                 </div>
@@ -227,10 +227,10 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
       {/* Submit a Request modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setModalOpen(false)}>
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-[5px] bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Submit a Request</h3>
-              <button onClick={() => setModalOpen(false)} className="p-1 rounded-lg text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={() => setModalOpen(false)} className="p-1 rounded-[4px] text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
             </div>
 
             <div className="grid grid-cols-5 gap-2 mb-4">
@@ -238,7 +238,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                 <button
                   key={key}
                   onClick={() => setCategory(key)}
-                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-xs font-medium transition-colors ${category === key ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"}`}
+                  className={`flex flex-col items-center gap-1.5 rounded-[4px] border px-2 py-3 text-xs font-medium transition-colors ${category === key ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"}`}
                 >
                   <Icon className="h-5 w-5" />
                   {label}
@@ -252,7 +252,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
               onChange={e => setBody(e.target.value)}
               rows={4}
               placeholder="Write here in details…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-brand focus:ring-2 focus:ring-brand-50 resize-none"
+              className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-brand focus:ring-2 focus:ring-brand-50 resize-none"
             />
 
             <div className="flex items-center justify-between gap-3 mt-4">
@@ -260,7 +260,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
               <button
                 onClick={submitRequest}
                 disabled={pending || body.trim().length < 5}
-                className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
+                className="rounded-[4px] bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
               >
                 {pending ? "Submitting…" : "Submit Request"}
               </button>

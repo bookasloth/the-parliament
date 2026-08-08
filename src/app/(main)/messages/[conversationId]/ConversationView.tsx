@@ -451,7 +451,7 @@ export default function ConversationView({
           <a href="/messages" className="lg:hidden p-1 -ml-1 text-gray-500 hover:text-brand">
             <ArrowLeft className="h-5 w-5" />
           </a>
-          <Image src={avatar} alt={otherUser.name} width={40} height={40} className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+          <Image src={avatar} alt={otherUser.name} width={40} height={40} className="h-10 w-10 rounded-[4px] object-cover flex-shrink-0" />
           <div className="min-w-0">
             <h6 className="flex items-center gap-1 truncate text-sm font-semibold text-gray-900">
               <span className="truncate">{otherUser.name}</span>
@@ -476,17 +476,17 @@ export default function ConversationView({
               onClick={() => connectCall(true)}
               disabled={callConnecting || !!callSession}
               title="Start video call"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-50"
+              className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-50"
             >
               <Video className="h-4 w-4" />
             </button>
           )}
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(!menuOpen)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
               <MoreVertical className="h-4 w-4" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
                 <a href={otherUser.username ? `/${otherUser.username}` : "#"} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
                   <UserCheck className="h-4 w-4" /> View profile
                 </a>
@@ -526,13 +526,13 @@ export default function ConversationView({
             <button
               onClick={() => connectCall(false)}
               disabled={callConnecting}
-              className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+              className="rounded-[4px] bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
             >
               {callConnecting ? "Joining…" : "Join"}
             </button>
             <button
               onClick={() => setIncomingCall(false)}
-              className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+              className="rounded-[4px] px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
             >
               Dismiss
             </button>
@@ -572,7 +572,7 @@ export default function ConversationView({
               <div key={msg.id} className="group">
                 <div className={`flex mb-1 ${isMe ? "justify-end" : "items-end gap-2"}`}>
                   {!isMe && (
-                    <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-md object-cover flex-shrink-0 mb-5" />
+                    <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-[3px] object-cover flex-shrink-0 mb-5" />
                   )}
 
                   {/* Action trigger (left of my bubble) */}
@@ -587,14 +587,14 @@ export default function ConversationView({
                   <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[78%] sm:max-w-[65%]`}>
                     {/* Quoted reply stub */}
                     {msg.replyTo && !msg.deleted && (
-                      <div className="mb-0.5 max-w-full truncate rounded-md border-l-2 border-brand bg-black/5 px-2 py-1 text-[11px] text-gray-500">
+                      <div className="mb-0.5 max-w-full truncate rounded-[3px] border-l-2 border-brand bg-black/5 px-2 py-1 text-[11px] text-gray-500">
                         <span className="font-medium">{msg.replyTo.senderId === viewerId ? "You" : otherUser.name.split(" ")[0]}: </span>
                         {stubText(msg.replyTo)}
                       </div>
                     )}
 
                     {editingId === msg.id ? (
-                      <div className="flex items-center gap-1.5 rounded-2xl border border-brand bg-white px-2 py-1">
+                      <div className="flex items-center gap-1.5 rounded-[5px] border border-brand bg-white px-2 py-1">
                         <input
                           autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={(e) => {
@@ -603,17 +603,17 @@ export default function ConversationView({
                           }}
                           className="w-48 sm:w-64 bg-transparent px-1 py-1 text-sm text-gray-700 outline-none"
                         />
-                        <button onClick={() => submitEdit(msg.id)} className="flex h-6 w-6 items-center justify-center rounded-full text-brand hover:bg-brand/10">
+                        <button onClick={() => submitEdit(msg.id)} className="flex h-6 w-6 items-center justify-center rounded-[4px] text-brand hover:bg-brand/10">
                           <Check className="h-3.5 w-3.5" />
                         </button>
-                        <button onClick={() => setEditingId(null)} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
+                        <button onClick={() => setEditingId(null)} className="flex h-6 w-6 items-center justify-center rounded-[4px] text-gray-400 hover:bg-gray-100">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ) : (
                       <div
                         onDoubleClick={() => canReact && react(msg, "❤️")}
-                        className="relative rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm"
+                        className="relative rounded-[5px] px-3.5 py-2 text-sm leading-relaxed shadow-sm"
                         style={{ background: bubble.background, color: bubble.color }}
                       >
                         {msg.deleted ? (
@@ -623,7 +623,7 @@ export default function ConversationView({
                             {msg.body}
                             {msg.media.map((url) => (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img key={url} src={url} alt="" className="mt-1.5 max-h-64 rounded-lg object-cover" />
+                              <img key={url} src={url} alt="" className="mt-1.5 max-h-64 rounded-[4px] object-cover" />
                             ))}
                           </>
                         )}
@@ -634,7 +634,7 @@ export default function ConversationView({
                               <button
                                 key={emoji}
                                 onClick={() => canReact && react(msg, emoji)}
-                                className={`flex items-center gap-0.5 rounded-full border bg-white px-1.5 py-0.5 text-[11px] shadow-sm ${mine === emoji ? "border-brand" : "border-gray-200"}`}
+                                className={`flex items-center gap-0.5 rounded-[3px] border bg-white px-1.5 py-0.5 text-[11px] shadow-sm ${mine === emoji ? "border-brand" : "border-gray-200"}`}
                               >
                                 <span>{emoji}</span>
                                 {count > 1 && <span className="text-gray-500">{count}</span>}
@@ -668,8 +668,8 @@ export default function ConversationView({
           })}
           {otherTyping && (
             <div className="flex items-end gap-2">
-              <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-md object-cover flex-shrink-0" />
-              <div className="rounded-2xl px-3.5 py-2.5 shadow-sm" style={{ background: theme.received.background, color: theme.received.color }}>
+              <Image src={avatar} alt="" width={24} height={24} className="h-6 w-6 rounded-[3px] object-cover flex-shrink-0" />
+              <div className="rounded-[5px] px-3.5 py-2.5 shadow-sm" style={{ background: theme.received.background, color: theme.received.color }}>
                 <span className="flex gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-typing-dot" />
                   <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-typing-dot [animation-delay:0.15s]" />
@@ -690,7 +690,7 @@ export default function ConversationView({
             <p className="font-medium text-gray-700">Replying to {replyTarget.senderId === viewerId ? "yourself" : otherUser.name.split(" ")[0]}</p>
             <p className="truncate text-gray-500">{replyTarget.deleted ? "Deleted message" : replyTarget.body || "Attachment"}</p>
           </div>
-          <button onClick={() => setReplyTarget(null)} className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200">
+          <button onClick={() => setReplyTarget(null)} className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[4px] text-gray-400 hover:bg-gray-200">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -703,19 +703,19 @@ export default function ConversationView({
         </div>
       ) : (
       <div className="border-t border-gray-200 px-3 sm:px-4 py-2.5">
-        <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 focus-within:border-brand focus-within:bg-white focus-within:ring-2 focus-within:ring-brand/10 transition-colors">
+        <div className="flex items-end gap-2 rounded-[5px] border border-gray-200 bg-gray-50 px-2 py-1.5 focus-within:border-brand focus-within:bg-white focus-within:ring-2 focus-within:ring-brand/10 transition-colors">
           <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageSelect} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Attach image" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-brand disabled:opacity-50">
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Attach image" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] text-gray-400 hover:bg-gray-100 hover:text-brand disabled:opacity-50">
             <ImagePlus className="h-4.5 w-4.5" />
           </button>
           <div className="relative" ref={emojiRef}>
-            <button onClick={() => setEmojiOpen(!emojiOpen)} title="Emoji" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-brand">
+            <button onClick={() => setEmojiOpen(!emojiOpen)} title="Emoji" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] text-gray-400 hover:bg-gray-100 hover:text-brand">
               <Smile className="h-4.5 w-4.5" />
             </button>
             {emojiOpen && (
-              <div className="absolute bottom-full left-0 mb-1 z-30 grid w-64 grid-cols-8 gap-0.5 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+              <div className="absolute bottom-full left-0 mb-1 z-30 grid w-64 grid-cols-8 gap-0.5 rounded-[5px] border border-gray-200 bg-white p-2 shadow-xl">
                 {EMOJIS.map((e) => (
-                  <button key={e} onClick={() => insertEmoji(e)} className="flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 text-base">
+                  <button key={e} onClick={() => insertEmoji(e)} className="flex h-7 w-7 items-center justify-center rounded-[3px] hover:bg-gray-100 text-base">
                     {e}
                   </button>
                 ))}
@@ -729,7 +729,7 @@ export default function ConversationView({
             rows={1} placeholder="Type a message"
             className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-gray-700 outline-none placeholder:text-gray-400 max-h-[120px]"
           />
-          <button onClick={send} disabled={!input.trim()} className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${input.trim() ? "bg-brand text-white hover:bg-brand-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
+          <button onClick={send} disabled={!input.trim()} className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] transition-colors ${input.trim() ? "bg-brand text-white hover:bg-brand-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             <Send className="h-4 w-4" />
           </button>
         </div>
@@ -757,27 +757,27 @@ function MessageMenu({
   const open = openId === msg.id
   return (
     <div className="relative self-center opacity-0 group-hover:opacity-100 transition-opacity" ref={open ? menuRef : undefined}>
-      <button onClick={() => setOpenId(open ? null : msg.id)} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+      <button onClick={() => setOpenId(open ? null : msg.id)} className="flex h-6 w-6 items-center justify-center rounded-[4px] text-gray-400 hover:bg-gray-100 hover:text-gray-600">
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className={`absolute bottom-full ${isMe ? "right-0" : "left-0"} mb-1 z-30 w-40 rounded-lg border border-gray-200 bg-white p-1 shadow-lg`}>
+        <div className={`absolute bottom-full ${isMe ? "right-0" : "left-0"} mb-1 z-30 w-40 rounded-[4px] border border-gray-200 bg-white p-1 shadow-lg`}>
           <div className="mb-1 flex justify-between px-1 pb-1">
             {QUICK_REACTIONS.map((e) => (
-              <button key={e} onClick={() => onReact(msg, e)} className="flex h-7 w-7 items-center justify-center rounded-full text-base hover:bg-gray-100">
+              <button key={e} onClick={() => onReact(msg, e)} className="flex h-7 w-7 items-center justify-center rounded-[4px] text-base hover:bg-gray-100">
                 {e}
               </button>
             ))}
           </div>
-          <button onClick={() => { onReply(msg); setOpenId(null) }} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded">
+          <button onClick={() => { onReply(msg); setOpenId(null) }} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded-[3px]">
             <Reply className="h-3.5 w-3.5" /> Reply
           </button>
           {isMe && (
             <>
-              <button onClick={() => onEdit(msg)} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded">
+              <button onClick={() => onEdit(msg)} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded-[3px]">
                 <Pencil className="h-3.5 w-3.5" /> Edit
               </button>
-              <button onClick={() => onDelete(msg.id)} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded">
+              <button onClick={() => onDelete(msg.id)} className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-[3px]">
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </button>
             </>

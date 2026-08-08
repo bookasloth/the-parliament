@@ -66,7 +66,7 @@ export default async function EventDetailPage({
       </Link>
 
       {event.bannerUrl && (
-        <div className="relative w-full h-48 sm:h-64 overflow-hidden rounded-xl border border-gray-200">
+        <div className="relative w-full h-48 sm:h-64 overflow-hidden rounded-[5px] border border-gray-200">
           <Image
             src={event.bannerUrl}
             alt={event.title}
@@ -79,13 +79,13 @@ export default async function EventDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="rounded-full bg-brand-50 text-brand-700 text-xs font-semibold px-2.5 py-0.5">
+              <span className="rounded-[3px] bg-brand-50 text-brand-700 text-xs font-semibold px-2.5 py-0.5">
                 {mode}
               </span>
               {event.isFeatured && (
-                <span className="rounded-full bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-0.5 flex items-center gap-1">
+                <span className="rounded-[3px] bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-0.5 flex items-center gap-1">
                   <Star className="h-3 w-3 fill-amber-500" /> Featured
                 </span>
               )}
@@ -104,9 +104,9 @@ export default async function EventDetailPage({
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-5 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-brand-50 flex items-center justify-center">
+              <div className="flex-shrink-0 h-9 w-9 rounded-[4px] bg-brand-50 flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-brand-700" />
               </div>
               <div>
@@ -117,7 +117,7 @@ export default async function EventDetailPage({
             </div>
             {(event.venue || event.onlineUrl) && (
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
+                <div className="flex-shrink-0 h-9 w-9 rounded-[4px] bg-green-50 flex items-center justify-center">
                   <ModeIcon className="h-4 w-4 text-green-600" />
                 </div>
                 <div className="min-w-0">
@@ -138,7 +138,7 @@ export default async function EventDetailPage({
               </div>
             )}
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-purple-50 flex items-center justify-center">
+              <div className="flex-shrink-0 h-9 w-9 rounded-[4px] bg-purple-50 flex items-center justify-center">
                 <Users className="h-4 w-4 text-purple-600" />
               </div>
               <p className="text-sm text-gray-900">
@@ -149,7 +149,7 @@ export default async function EventDetailPage({
           </div>
 
           {event.description && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-[5px] p-5">
               <h2 className="text-base font-bold text-gray-900 mb-3">About</h2>
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                 {event.description}
@@ -170,7 +170,7 @@ export default async function EventDetailPage({
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-5 lg:sticky lg:top-4">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-5 lg:sticky lg:top-4">
             <EventRegister
               eventId={event.id}
               priceInPaise={event.priceInPaise}

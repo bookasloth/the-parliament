@@ -81,13 +81,13 @@ export default function UpgradeCheckout({
 
           {/* ─── LEFT: profile card ─── */}
           <aside className="lg:col-span-3 space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-[5px] border border-gray-200 overflow-hidden">
               <div
                 className="h-20 bg-gray-200 bg-cover bg-center"
                 style={profile.coverUrl ? { backgroundImage: `url(${profile.coverUrl})` } : undefined}
               />
               <div className="px-5 pb-5 -mt-9 text-center">
-                <div className="relative mx-auto h-16 w-16 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
+                <div className="relative mx-auto h-16 w-16 rounded-[4px] border-4 border-white bg-gray-100 overflow-hidden">
                   {profile.photoUrl ? (
                     <Image src={profile.photoUrl} alt={profile.name} className="h-full w-full object-cover" fill sizes="(max-width: 768px) 100vw, 400px" />
                   ) : (
@@ -135,10 +135,10 @@ export default function UpgradeCheckout({
           {/* ─── MIDDLE: plan card ─── */}
           <section className="lg:col-span-4">
             <div
-              className="rounded-2xl p-6 text-white shadow-lg"
+              className="rounded-[5px] p-6 text-white shadow-lg"
               style={{ background: meta.background }}
             >
-              <div className="rounded-xl bg-white py-3 text-center">
+              <div className="rounded-[5px] bg-white py-3 text-center">
                 <span className="text-lg font-extrabold" style={{ color: "#0c1d3d" }}>
                   {plan.displayName}
                 </span>
@@ -152,13 +152,13 @@ export default function UpgradeCheckout({
               {target !== "life" ? (
                 <Link
                   href="/upgrade/life"
-                  className="mt-4 block rounded-xl bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-900 hover:bg-amber-200 transition-colors"
+                  className="mt-4 block rounded-[5px] bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-900 hover:bg-amber-200 transition-colors"
                 >
                   <Crown className="inline h-4 w-4 mr-1 text-amber-700" />
                   Get Life Membership today and never pay again! 🎉
                 </Link>
               ) : (
-                <div className="mt-4 rounded-xl bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-900">
+                <div className="mt-4 rounded-[5px] bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-900">
                   🎉 The last membership you&rsquo;ll ever buy.
                 </div>
               )}
@@ -173,7 +173,7 @@ export default function UpgradeCheckout({
 
               <Link
                 href="/membership"
-                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#2b2b2b] py-3 text-sm font-bold text-white hover:bg-black transition-colors"
+                className="mt-4 flex items-center justify-center gap-2 rounded-[5px] bg-[#2b2b2b] py-3 text-sm font-bold text-white hover:bg-black transition-colors"
               >
                 <ArrowLeftRight className="h-4 w-4" /> Change Membership
               </Link>
@@ -182,7 +182,7 @@ export default function UpgradeCheckout({
 
           {/* ─── RIGHT: price breakdown ─── */}
           <section className="lg:col-span-5">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-7">
+            <div className="rounded-[5px] border border-gray-200 bg-white p-6 sm:p-7">
               {/* Plan price */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-500">Plan Price</span>
@@ -196,7 +196,7 @@ export default function UpgradeCheckout({
                     type="checkbox"
                     checked={platformFee}
                     onChange={(e) => setPlatformFee(e.target.checked)}
-                    className="h-4 w-4 rounded accent-brand"
+                    className="h-4 w-4 rounded-[3px] accent-brand"
                   />
                   Platform Fee
                 </label>
@@ -210,7 +210,7 @@ export default function UpgradeCheckout({
                     type="checkbox"
                     checked={donate}
                     onChange={(e) => setDonate(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded accent-brand"
+                    className="mt-0.5 h-4 w-4 rounded-[3px] accent-brand"
                   />
                   <span>
                     Support Development Team
@@ -235,19 +235,19 @@ export default function UpgradeCheckout({
                     value={promoInput}
                     onChange={(e) => { setPromoInput(e.target.value); setPromoError(null) }}
                     placeholder="Enter Promo Code"
-                    className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand uppercase placeholder:normal-case placeholder:text-gray-400"
+                    className="w-full rounded-[4px] border border-gray-300 pl-9 pr-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand uppercase placeholder:normal-case placeholder:text-gray-400"
                   />
                 </div>
                 <button
                   onClick={applyPromo}
-                  className="rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+                  className="rounded-[4px] bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
                 >
                   Apply
                 </button>
               </div>
               {promoError && <p className="mt-1.5 text-xs text-red-600">{promoError}</p>}
               {pricing.promo && (
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs">
+                <div className="mt-2 flex items-center justify-between rounded-[4px] bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs">
                   <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
                     <Check className="h-3.5 w-3.5" /> {pricing.promo.code} · {pricing.promo.label}
                   </span>
@@ -271,7 +271,7 @@ export default function UpgradeCheckout({
                   type="checkbox"
                   checked={acknowledged}
                   onChange={(e) => setAcknowledged(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded accent-brand"
+                  className="mt-0.5 h-4 w-4 rounded-[3px] accent-brand"
                 />
                 <span className="text-xs text-gray-600 leading-relaxed">
                   I understand this is a <strong>non-refundable</strong> contribution to NNAWCA and have read the membership terms.
@@ -282,10 +282,10 @@ export default function UpgradeCheckout({
               <button
                 onClick={subscribe}
                 disabled={!acknowledged}
-                className={`group mt-4 w-full rounded-xl p-[2px] transition-opacity ${acknowledged ? "" : "opacity-40 cursor-not-allowed"}`}
+                className={`group mt-4 w-full rounded-[5px] p-[2px] transition-opacity ${acknowledged ? "" : "opacity-40 cursor-not-allowed"}`}
                 style={{ background: "linear-gradient(90deg,#ff5f6d,#ffc371,#2ecc71,#00c6ff,#8e44ad,#ff5f6d)" }}
               >
-                <span className="flex items-center justify-center rounded-[10px] bg-white py-3 text-sm font-bold text-gray-900 group-hover:bg-transparent group-hover:text-white transition-colors">
+                <span className="flex items-center justify-center rounded-[5px] bg-white py-3 text-sm font-bold text-gray-900 group-hover:bg-transparent group-hover:text-white transition-colors">
                   Subscribe to NNAWCA
                 </span>
               </button>

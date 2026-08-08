@@ -15,7 +15,7 @@ export function StepIndicator({ current }: { current: OnboardingStep }) {
         return (
           <div key={step} className="flex items-center gap-1 sm:gap-2">
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all sm:h-9 sm:w-9 sm:text-sm ${
+              className={`flex h-8 w-8 items-center justify-center rounded-[4px] text-xs font-semibold transition-all sm:h-9 sm:w-9 sm:text-sm ${
                 isCompleted
                   ? "bg-brand text-white"
                   : isCurrent
