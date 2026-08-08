@@ -74,7 +74,7 @@ export function ProfileSidebarView({
                 {name}
               </a>
             </h6>
-            <small className="text-xs text-gray-500">{viewer?.headline || "—"}</small>
+            <small className="text-xs leading-tight text-gray-500">{viewer?.headline || "—"}</small>
 
             {/* Stats: Post · Followers · Following */}
             <div className="mt-3 flex items-stretch">
