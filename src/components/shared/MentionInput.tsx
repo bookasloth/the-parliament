@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { ShieldCheck } from "lucide-react"
-import { searchMentionsAction } from "@/app/(main)/feed/actions"
 import EmojiPicker from "@/components/shared/EmojiPicker"
 import type { MentionTarget } from "@/modules/feed/comments"
 
@@ -25,6 +24,51 @@ interface Props {
 }
 
 const TOKEN_RE = /(^|\s)@(\w{0,20})$/
+
+// Module-level cache shared across all MentionInput instances in the session.
+type MentionCache = { items: MentionTarget[]; followedIds: Set<string> } | null
+let _cache: MentionCache = null
+let _loading: Promise<MentionCache> | null = null
+
+function loadMentionCache(): Promise<MentionCache> {
+  if (_cache) return Promise.resolve(_cache)
+  if (_loading) return _loading
+  _loading = fetch("/api/mentions")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (d) {
+        _cache = { items: d.items, followedIds: new Set(d.followedIds as string[]) }
+      }
+      return _cache
+    })
+    .catch(() => null)
+  return _loading
+}
+
+function filterMentions(
+  all: MentionTarget[],
+  followedIds: Set<string>,
+  query: string,
+  limit = 8,
+): MentionTarget[] {
+  const q = query.toLowerCase()
+  const matched = q
+    ? all.filter(
+        (t) =>
+          (t.displayName?.toLowerCase().includes(q)) ||
+          (t.username?.toLowerCase().includes(q)),
+      )
+    : all
+
+  // Rank: followed first, then the rest
+  const followed: MentionTarget[] = []
+  const rest: MentionTarget[] = []
+  for (const t of matched) {
+    if (followedIds.has(t.id)) followed.push(t)
+    else rest.push(t)
+  }
+  return [...followed, ...rest].slice(0, limit)
+}
 
 export default function MentionInput({
   value,
@@ -48,6 +92,12 @@ export default function MentionInput({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const tokenStart = useRef(0)
+  const cacheRef = useRef(_cache)
+
+  // Eagerly load the user cache on mount
+  useEffect(() => {
+    loadMentionCache().then((c) => { cacheRef.current = c })
+  }, [])
 
   useEffect(() => {
     const before = value.slice(0, caret)
@@ -58,22 +108,23 @@ export default function MentionInput({
     }
     tokenStart.current = m.index! + m[1].length
     const q = m[2]
-    let live = true
-    const t = setTimeout(async () => {
-      try {
-        const res = await searchMentionsAction(q)
-        if (!live) return
-        setItems(res)
+
+    const cache = cacheRef.current
+    if (cache) {
+      const results = filterMentions(cache.items, cache.followedIds, q)
+      setItems(results)
+      setActive(0)
+      setOpen(results.length > 0)
+    } else {
+      // Cache still loading — wait for it, then filter
+      loadMentionCache().then((c) => {
+        if (!c) return
+        cacheRef.current = c
+        const results = filterMentions(c.items, c.followedIds, q)
+        setItems(results)
         setActive(0)
-        setOpen(res.length > 0)
-      } catch (err) {
-        console.error("[MentionInput] search failed", err)
-        if (live) setOpen(false)
-      }
-    }, 150)
-    return () => {
-      live = false
-      clearTimeout(t)
+        setOpen(results.length > 0)
+      })
     }
   }, [value, caret])
 
