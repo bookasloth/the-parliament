@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { cached, invalidate } from "@/lib/redis";
 import { computeIsAdmin } from "@/modules/auth/admin";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
@@ -88,20 +89,24 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
       });
       if (!mustRefresh) return token;
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: {
-            email: true,
-            legalName: true,
-            displayName: true,
-            onboardingStep: true,
-            onboardingCompleted: true,
-            membershipStatus: true,
-            username: true,
-            isSuperAdmin: true,
-            userRoles: { select: { role: true } },
-          },
-        });
+        const user = await cached(
+          `session:${token.sub}`,
+          300, // 5 min
+          () => prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              email: true,
+              legalName: true,
+              displayName: true,
+              onboardingStep: true,
+              onboardingCompleted: true,
+              membershipStatus: true,
+              username: true,
+              isSuperAdmin: true,
+              userRoles: { select: { role: true } },
+            },
+          }),
+        );
         if (user) {
           token.name = user.displayName || user.legalName;
           token.onboardingStep = user.onboardingStep;

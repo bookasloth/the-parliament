@@ -1,5 +1,6 @@
 import { after } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { redis } from "@/lib/redis"
 import { sendEmail, type EmailTemplates } from "@/lib/email"
 import { broadcastToUser } from "@/lib/supabase-realtime"
 import { sendPush } from "@/lib/web-push"
@@ -95,6 +96,10 @@ export async function sendNotification<K extends NotificationKind>(
         imageUrl: input.imageUrl,
       },
     })
+    // Bump Redis unread counter (DMs don't count toward bell)
+    if (input.kind !== "new_message") {
+      try { await redis.incr(`notif:unread:${input.userId}`) } catch {}
+    }
   }
 
   // Nudge the recipient's notification bell to refetch instantly (realtime),
@@ -143,17 +148,24 @@ export async function sendNotification<K extends NotificationKind>(
 
 export async function markRead(userId: string, notificationId: string) {
   await prisma.notification.updateMany({
-    where: { id: notificationId, userId },
+    where: { id: notificationId, userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
   })
+  try { await redis.decr(`notif:unread:${userId}`) } catch {}
 }
 
 export async function unreadCount(userId: string): Promise<number> {
-  return prisma.notification.count({
-    // DMs surface in the messages inbox (own unread + realtime), so they never
-    // count toward the notification bell.
+  // Redis counter is the fast path; DB is the fallback + source of truth.
+  try {
+    const cached = await redis.get<number>(`notif:unread:${userId}`)
+    if (cached !== null && cached !== undefined) return Math.max(0, cached)
+  } catch {}
+  const count = await prisma.notification.count({
     where: { userId, isRead: false, type: { not: "new_message" } },
   })
+  // Seed Redis so the next call is fast
+  try { await redis.set(`notif:unread:${userId}`, count) } catch {}
+  return count
 }
 
 export interface NotificationRow {
@@ -196,8 +208,14 @@ export async function markAllRead(userId: string): Promise<void> {
     where: { userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
   })
+  try { await redis.del(`notif:unread:${userId}`) } catch {}
 }
 
 export async function deleteNotification(userId: string, id: string): Promise<void> {
+  // Check if unread before deleting — need to adjust counter
+  const row = await prisma.notification.findFirst({ where: { id, userId }, select: { isRead: true } })
   await prisma.notification.deleteMany({ where: { id, userId } })
+  if (row && !row.isRead) {
+    try { await redis.decr(`notif:unread:${userId}`) } catch {}
+  }
 }

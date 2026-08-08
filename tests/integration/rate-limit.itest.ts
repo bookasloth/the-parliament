@@ -1,16 +1,23 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { prisma } from "@/lib/prisma";
-import { checkRateLimit, enforceRateLimit, purgeExpired, RateLimitedError } from "@/lib/rate-limit";
+import { redis } from "@/lib/redis";
+import { checkRateLimit, enforceRateLimit, RateLimitedError } from "@/lib/rate-limit";
 
-// Unique bucket per run so parallel/leftover rows never collide.
+// Unique bucket per run so parallel keys never collide.
 const bucket = `test.itest.${Math.random().toString(36).slice(2)}`;
 
 afterAll(async () => {
-  await prisma.rateLimitCounter.deleteMany({ where: { bucket: { startsWith: `${bucket}:` } } });
-  await prisma.$disconnect();
+  // Clean up test keys
+  let cursor: string | number = 0;
+  do {
+    const result = await redis.scan(cursor, { match: `rl:${bucket}:*`, count: 100 });
+    const next = result[0] as string | number;
+    const keys = result[1] as string[];
+    cursor = next;
+    if (keys.length) await redis.del(...keys);
+  } while (cursor !== 0 && cursor !== "0");
 });
 
-describe("checkRateLimit (DB)", () => {
+describe("checkRateLimit (Redis)", () => {
   it("counts up to the limit, then blocks; remaining decrements", async () => {
     const args = { bucket, identifier: "1.2.3.4", limit: 3, windowSec: 3600 };
 
@@ -38,16 +45,9 @@ describe("checkRateLimit (DB)", () => {
     expect(b.allowed).toBe(true); // bob not affected by alice
   });
 
-  it("enforceRateLimit throws RateLimitedError once over, and purgeExpired removes stale rows", async () => {
+  it("enforceRateLimit throws RateLimitedError once over", async () => {
     const args = { bucket, identifier: "enforce", limit: 1, windowSec: 3600 };
     await enforceRateLimit(args); // 1st ok
     await expect(enforceRateLimit(args)).rejects.toBeInstanceOf(RateLimitedError);
-
-    // Insert an already-expired row and confirm purge deletes it.
-    await prisma.rateLimitCounter.create({
-      data: { bucket: `${bucket}:stale`, windowKey: "0", count: 1, expiresAt: new Date(Date.now() - 60_000) },
-    });
-    const purged = await purgeExpired();
-    expect(purged).toBeGreaterThanOrEqual(1);
   });
 });

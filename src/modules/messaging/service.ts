@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { redis } from "@/lib/redis"
 import { ForbiddenError } from "@/lib/errors"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { broadcast } from "@/lib/supabase-realtime"
@@ -128,8 +129,13 @@ export async function listConversations(viewerId: string): Promise<ConversationS
 }
 
 /** Total unread DM count across all the viewer's chats — feeds the navbar badge.
- *  Excludes messages the viewer has read (lastReadAt) or cleared away (clearedAt). */
+ *  Excludes messages the viewer has read (lastReadAt) or cleared away (clearedAt).
+ *  Redis-first: cached counter avoids the raw SQL join on every navbar render. */
 export async function totalUnread(viewerId: string): Promise<number> {
+  try {
+    const cached = await redis.get<number>(`msg:unread:${viewerId}`)
+    if (cached !== null && cached !== undefined) return Math.max(0, cached)
+  } catch {}
   const rows = await prisma.$queryRaw<{ n: number }[]>`
     SELECT count(*)::int AS n
     FROM messages m
@@ -139,7 +145,9 @@ export async function totalUnread(viewerId: string): Promise<number> {
       AND m.sender_id <> ${viewerId}::uuid
       AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
       AND (cp.cleared_at IS NULL OR m.created_at > cp.cleared_at)`
-  return Number(rows[0]?.n ?? 0)
+  const count = Number(rows[0]?.n ?? 0)
+  try { await redis.set(`msg:unread:${viewerId}`, count, { ex: 300 }) } catch {}
+  return count
 }
 
 export async function getConversationMeta(
@@ -279,6 +287,14 @@ export async function sendMessage(
     reactions: [], replyTo: replyStub,
   }
   await broadcast(conversationId, "new_message", view)
+  // Bump Redis unread counter for all OTHER participants
+  try {
+    const parts = await prisma.conversationParticipant.findMany({
+      where: { conversationId, userId: { not: viewerId } },
+      select: { userId: true },
+    })
+    await Promise.all(parts.map((p) => redis.incr(`msg:unread:${p.userId}`)))
+  } catch {}
   // No notification-bell row for DMs — messages surface in the messages inbox
   // (its own unread badge + realtime sidebar). Instead, a LinkedIn/Instagram-
   // style "you have a message" email brings the recipient back to the site.
@@ -422,5 +438,7 @@ export async function markRead(viewerId: string, conversationId: string): Promis
     where: { conversationId_userId: { conversationId, userId: viewerId } },
     data: { lastReadAt },
   })
+  // Invalidate cached total so next navbar render re-computes from DB
+  try { await redis.del(`msg:unread:${viewerId}`) } catch {}
   await broadcast(conversationId, "read", { userId: viewerId, lastReadAt: lastReadAt.toISOString() })
 }

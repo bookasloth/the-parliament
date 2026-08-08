@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { invalidateSession } from "@/lib/redis"
 import { requireUser } from "@/modules/auth/session"
 import { publicUrlFor } from "@/lib/r2"
 import { validateUsernameFormat } from "@/lib/username-check"
@@ -14,6 +15,7 @@ import type { OnboardingStep } from "@/lib/onboarding"
 // them at the right place. Never moves backwards.
 async function setStep(userId: string, step: OnboardingStep) {
   await prisma.user.update({ where: { id: userId }, data: { onboardingStep: step } })
+  await invalidateSession(userId)
 }
 
 export async function checkUsername(raw: string): Promise<{ ok: boolean; reason?: string; slug?: string }> {

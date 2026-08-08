@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
 import { createResetToken, resetUrl } from "@/lib/password-reset"
 import { sendEmail } from "@/lib/email"
@@ -110,6 +111,7 @@ export async function actOnUser(
     }
   }
 
+  await invalidateSession(targetId)
   await audit({
     actorId,
     action: `admin.user.${action}`,

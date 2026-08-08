@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { invalidateSession } from "@/lib/redis"
 import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/onboarding"
 
 export function nextStep(current: OnboardingStep): OnboardingStep {
@@ -67,6 +68,7 @@ export async function markComplete(userId: string) {
       profileCompletion: 100,
     },
   })
+  await invalidateSession(userId)
 
   await prisma.onboardingProgress.upsert({
     where: { userId },

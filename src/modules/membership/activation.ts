@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
 import { PLANS, type PlanCode } from "@/config/membership"
 import { nextRenewalDate } from "@/lib/membership-cycle"
@@ -94,6 +95,7 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
     }
   })
     .then(async (result) => {
+      await invalidateSession(input.userId)
       await audit({
         actorId: input.grantedByUserId ?? input.userId,
         action: `membership.activate.${input.source}`,

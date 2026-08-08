@@ -9,11 +9,13 @@ import { monthYearToDate } from "@/modules/profile/history"
 import { validateUsernameFormat } from "@/lib/username-check"
 import { isHouseAllowed } from "@/lib/houses"
 import { autoAssignGroups } from "@/modules/groups/service"
+import { invalidateSession } from "@/lib/redis"
 
 async function revalidateOwnProfile(userId: string) {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
   if (u?.username) revalidatePath(`/${u.username}`)
   updateTag("directory")
+  await invalidateSession(userId)
 }
 
 export async function saveAccount(input: {
