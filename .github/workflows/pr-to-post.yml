@@ -25,18 +25,37 @@ jobs:
             exit 1
           fi
 
-          # Truncate body to 1000 chars
           BODY_TRUNC=$(printf '%s' "$PR_BODY" | head -c 1000)
 
-          curl -fsS --max-time 30 \
-            -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-              --arg title "$PR_TITLE" \
-              --argjson number "$PR_NUMBER" \
-              --arg url "$PR_URL" \
-              --arg merged_by "$PR_MERGED_BY" \
-              --arg body "$BODY_TRUNC" \
-              '{title: $title, number: $number, url: $url, merged_by: $merged_by, body: $body}'
-            )" \
-            "${TARGET}/api/webhooks/github-pr"
+          PAYLOAD=$(jq -n \
+            --arg title "$PR_TITLE" \
+            --argjson number "$PR_NUMBER" \
+            --arg url "$PR_URL" \
+            --arg merged_by "$PR_MERGED_BY" \
+            --arg body "$BODY_TRUNC" \
+            '{title: $title, number: $number, url: $url, merged_by: $merged_by, body: $body}')
+
+          # Retry with backoff — Vercel needs time to deploy the merge commit
+          for attempt in 1 2 3 4; do
+            echo "Attempt $attempt..."
+            HTTP_CODE=$(curl -sS -o /tmp/resp.txt -w '%{http_code}' --max-time 60 \
+              -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              "${TARGET}/api/webhooks/github-pr") || true
+
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              echo "Success: $(cat /tmp/resp.txt)"
+              exit 0
+            fi
+
+            echo "Got HTTP $HTTP_CODE: $(cat /tmp/resp.txt)"
+            if [ "$attempt" -lt 4 ]; then
+              WAIT=$((attempt * 45))
+              echo "Waiting ${WAIT}s for Vercel deploy..."
+              sleep "$WAIT"
+            fi
+          done
+
+          echo "::error::All attempts failed (last HTTP $HTTP_CODE)"
+          exit 1
