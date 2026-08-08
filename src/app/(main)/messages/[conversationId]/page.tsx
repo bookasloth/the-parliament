@@ -3,6 +3,7 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { getMessages, getConversationMeta } from "@/modules/messaging/service"
 import { isBirthdayNear, ageYears } from "@/config/chat-themes"
+import { callsEnabled } from "@/config/calls"
 import { ForbiddenError } from "@/lib/errors"
 import ConversationView from "./ConversationView"
 
@@ -40,6 +41,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
         initialBlocked={meta.blocked}
         birthday={birthday}
         suppressValentine={suppressValentine}
+        callsEnabled={callsEnabled()}
       />
     )
   } catch (e) {

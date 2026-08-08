@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireAdmin } from "@/modules/auth/session"
+import { callsEnabled } from "@/config/calls"
 
 const schema = z.object({
   title: z.string().trim().min(3).max(160),
@@ -16,6 +17,7 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin()
+    if (!callsEnabled()) return badRequest("Video calling is coming soon.")
     const { title, description, startsAt, coHostId } = schema.parse(await req.json())
 
     if (coHostId) {
