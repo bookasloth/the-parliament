@@ -8,6 +8,7 @@ import { requireUser } from "@/modules/auth/session"
 import { monthYearToDate } from "@/modules/profile/history"
 import { validateUsernameFormat } from "@/lib/username-check"
 import { isHouseAllowed } from "@/lib/houses"
+import { autoAssignGroups } from "@/modules/groups/service"
 
 async function revalidateOwnProfile(userId: string) {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
@@ -91,6 +92,9 @@ export async function saveAccount(input: {
   })
   revalidatePath(`/${username}`)
   updateTag("directory")
+
+  // Fire-and-forget: assign user to matching batch/house/gender/blood groups.
+  autoAssignGroups(user.id).catch(() => {})
 }
 
 /** Loose E.164 normaliser: keep a single leading +, strip spaces/dashes. Empty → null. */

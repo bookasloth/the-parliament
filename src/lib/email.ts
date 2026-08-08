@@ -31,6 +31,7 @@ export type EmailTemplates = {
   upsell_unlock: { firstName: string; membershipUrl: string }
   upsell_upgrade: { firstName: string; planName: string; upgradeUrl: string }
   endorsement_request: { endorserName: string; candidateName: string; endorseUrl: string }
+  group_request: { fromName: string; groupName: string; category: string; body: string; groupUrl: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -417,6 +418,25 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         unsubscribeUrl: MANAGE_URL,
       }),
   },
+  group_request: {
+    subject: (d) => `${d.fromName} posted a ${d.category} request in ${d.groupName}`,
+    text: (d) =>
+      `${d.fromName} posted a ${d.category} request in ${d.groupName}:\n\n"${d.body}"\n\nView the group: ${d.groupUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: d.category,
+        eyebrow: `Groups · ${d.groupName}`,
+        heading: `New ${d.category} request`,
+        body:
+          p(`<strong>${d.fromName}</strong> posted a request in <strong>${d.groupName}</strong>:`) +
+          p(`<em>"${d.body}"</em>`) +
+          button("View group", d.groupUrl, "blue"),
+        reason: `You're getting this because you're a member of ${d.groupName}.`,
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
   endorsement_request: {
     subject: (d) => `Can you vouch for ${d.candidateName}?`,
     text: (d) =>
@@ -473,6 +493,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   upsell_unlock: "marketing",
   upsell_upgrade: "marketing",
   endorsement_request: "transactional",
+  group_request: "engagement",
 }
 
 /**

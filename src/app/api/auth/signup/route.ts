@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { getDefaultSchoolId } from "@/lib/school";
 import { parseBatchValue } from "@/lib/houses";
 import { revalidateTag } from "next/cache";
+import { autoAssignGroups } from "@/modules/groups/service";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
@@ -150,6 +151,9 @@ export async function POST(req: NextRequest) {
     // New active member belongs in the community directory (cached under the
     // "directory" tag) — surface them now instead of waiting out the revalidate.
     revalidateTag("directory", "max");
+
+    // Auto-assign batch/house groups (gender/blood come later via profile edit).
+    autoAssignGroups(user.id).catch(() => {});
 
     // Auto-follow every new member with Shubham (the network anchor), both ways.
     const anchor = await prisma.user.findUnique({
