@@ -144,6 +144,7 @@ export interface ProfileViewData {
   totalBadges: number
   karma: number
   eggs: number
+  viewerMembershipTier: ProfileViewData["membership"]["tier"] | null
 }
 
 const MS_COLOR: Record<ProfileViewData["membership"]["tier"], string> = {
@@ -339,6 +340,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div className="-mt-[62px] flex justify-center">{avatarInner}</div>
               <div className="mt-3 flex justify-center">{nameTick}</div>
               {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
+              {data.bio && <p className="mx-auto mt-1 max-w-[560px] line-clamp-2 text-[13px] text-gray-500">{data.bio}</p>}
               <div className="mt-4 flex items-center justify-center gap-2.5">{actionsCompact}</div>
               {metaRow && (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">{metaRow}</div>
@@ -353,6 +355,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <div className="min-w-0">
                     {nameTick}
                     {data.headline && <p className="mt-1 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
+                    {data.bio && <p className="mt-0.5 line-clamp-2 text-[13px] text-gray-500">{data.bio}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">{actions}</div>
                 </div>
@@ -385,7 +388,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
         {/* Right rail — About + Achievements. Spans both rows so the body flows
             directly under the profile card instead of waiting for this taller column. */}
-        <div className="flex flex-col gap-[18px] lg:sticky lg:top-4 lg:row-span-2">
+        <div className="flex flex-col gap-[18px] lg:sticky lg:top-4 lg:self-start">
         <Card>
           <div className="flex items-center justify-between px-7 pt-5 pb-1">
             <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
@@ -531,23 +534,23 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                           {e.company.trim().charAt(0).toUpperCase() || "?"}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[15px] font-bold leading-tight text-gray-900">{e.title}</div>
-                          <div className="text-[13px] text-gray-700">
-                            {e.company}
+                          <div className="text-[14px] leading-tight text-gray-900">
+                            <span className="font-bold">{e.title}</span>
+                            <span className="text-gray-500"> · </span>
+                            <span className="text-gray-700">{e.company}</span>
                             {e.employmentType && <span className="text-gray-500"> · {e.employmentType}</span>}
                           </div>
                           <div className="mt-0.5 text-xs text-gray-500">
-                            {e.startLabel} – {e.endLabel}
-                            {e.duration && <span> · {e.duration}</span>}
+                            {e.startLabel} – {e.endLabel}{e.duration && ` · ${e.duration}`}
+                            {(e.location || e.locationType) && (
+                              <span className="text-gray-400">
+                                {" || "}{e.location}{e.location && e.locationType ? " · " : ""}{e.locationType}
+                              </span>
+                            )}
                           </div>
-                          {(e.location || e.locationType) && (
-                            <div className="text-xs text-gray-400">
-                              {e.location}{e.location && e.locationType ? " · " : ""}{e.locationType}
-                            </div>
-                          )}
-                          {e.description && <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-gray-700">{e.description}</p>}
+                          {e.description && <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-gray-600">{e.description}</p>}
                           {e.skills.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
                               {e.skills.map((s) => <span key={s} className="rounded-[4px] bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">{s}</span>)}
                             </div>
                           )}
@@ -632,7 +635,12 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               </>
             )}
 
-            {tab === "followers" && (
+            {tab === "followers" && (() => {
+              const canSeeAll = isOwn || data.viewerMembershipTier === "life" || data.viewerMembershipTier === "committee"
+              const MAX_PREVIEW = 10
+              const visibleFollowers = canSeeAll ? data.followers : data.followers.slice(0, MAX_PREVIEW)
+              const hiddenCount = canSeeAll ? 0 : Math.max(0, data.followersCount - MAX_PREVIEW)
+              return (
               <Card>
                 <SectionTitle>Followers</SectionTitle>
                 {data.followers.length === 0 ? (
@@ -651,7 +659,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100 px-5 pb-3">
-                    {data.followers.map((f) => (
+                    {visibleFollowers.map((f) => (
                       <div key={f.userId} className="flex items-center gap-3 py-3">
                         <Link href={`/${f.username ?? f.userId}`} className="flex-shrink-0">
                           <Image
@@ -675,15 +683,17 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                         )}
                       </div>
                     ))}
-                    {data.followersCount > data.followers.length && (
-                      <Link href="/connections" className="block py-3 text-center text-xs font-semibold text-brand hover:underline">
-                        View all {data.followersCount} followers
-                      </Link>
+                    {hiddenCount > 0 && (
+                      <div className="py-4 text-center">
+                        <p className="text-xs text-gray-500">+{hiddenCount} more followers</p>
+                        <UpgradePrompt currentPlan={(data.viewerMembershipTier ?? "student") as import("@/config/membership").PlanCode} feature="Viewing all followers" compact />
+                      </div>
                     )}
                   </div>
                 )}
               </Card>
-            )}
+              )
+            })()}
           </div>
         </div>
       </div>
