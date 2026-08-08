@@ -59,7 +59,7 @@ export function FollowButton({
     <button
       onClick={toggle}
       disabled={busy}
-      className="group isolate relative flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60 before:pointer-events-none before:absolute before:inset-[-2px] before:rounded-[5px] before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100 before:bg-[conic-gradient(#4285F4_0deg,#4285F4_90deg,#EA4335_90deg,#EA4335_180deg,#FBBC05_180deg,#FBBC05_270deg,#34A853_270deg,#34A853_360deg)] before:-z-10"
+      className="group flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60"
     >
       <UserPlus className="h-3.5 w-3.5" /> {busy ? "…" : "Follow"}
     </button>

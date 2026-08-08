@@ -194,8 +194,8 @@ export function CommunityClient({
       {/* Sticky search + filter bar */}
       <div className="sticky top-14 z-10 -mx-4 bg-[#f3f2ef] px-4 pb-2 pt-1 sm:-mx-6 sm:px-6">
         {/* lg+: search + 5 filters in one row. Mobile: search on top, filters in 2-col grid. */}
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:flex-1 lg:min-w-0">
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+          <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative col-span-2 sm:col-span-3 lg:col-span-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               value={q}
@@ -204,28 +204,26 @@ export function CommunityClient({
               className="w-full rounded-[3px] border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10"
             />
           </form>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:gap-1.5">
-            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
-              <option value="">Batch</option>
-              {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-            </select>
-            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
-              <option value="">House</option>
-              {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
-              <option value="">Tier</option>
-              {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
-              <option value="">Industry</option>
-              {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
-            </select>
-            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
-              <option value="">Location</option>
-              {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
+          <select className={`${sel} w-full min-w-0`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+            <option value="">Batch</option>
+            {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+          </select>
+          <select className={`${sel} w-full min-w-0`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+            <option value="">House</option>
+            {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+          <select className={`${sel} w-full min-w-0`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+            <option value="">Tier</option>
+            {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <select className={`${sel} w-full min-w-0`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
+            <option value="">Industry</option>
+            {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
+          </select>
+          <select className={`${sel} w-full min-w-0`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
+            <option value="">Location</option>
+            {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </div>
 

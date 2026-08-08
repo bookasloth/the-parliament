@@ -327,6 +327,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
         {/* ===== HEADER + ABOUT SIDEBAR ===== */}
         <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
+        {/* Left column: header card + body content stacked with no grid-row gap */}
+        <div className="flex flex-col gap-[18px]">
         <Card>
           <div className="relative h-[200px] bg-gray-200">
             <Image src={cover} alt="" className="h-full w-full object-cover" fill sizes="100vw" />
@@ -343,8 +345,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div className="-mt-[62px] flex justify-center">{avatarInner}</div>
               <div className="mt-3 flex justify-center">{nameTick}</div>
               {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
-              {data.bio && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13px] text-gray-500">{data.bio.length > 50 ? data.bio.slice(0, 50) + "…" : data.bio}</p>}
-              {data.bio && <p className="mx-auto mt-1 max-w-[560px] line-clamp-2 text-[13px] text-gray-500">{data.bio}</p>}
               <div className="mt-4 flex items-center justify-center gap-2.5">{actionsCompact}</div>
               {metaRow && (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">{metaRow}</div>
@@ -359,7 +359,6 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <div className="min-w-0">
                     {nameTick}
                     {data.headline && <p className="mt-1 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
-                    {data.bio && <p className="mt-0.5 truncate text-[13px] text-gray-500">{data.bio.length > 50 ? data.bio.slice(0, 50) + "…" : data.bio}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">{actions}</div>
                 </div>
@@ -393,120 +392,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           </div>
         </Card>
 
-        {/* Right rail — About + Achievements. Spans both rows so the body flows
-            directly under the profile card instead of waiting for this taller column. */}
-        <div className="flex flex-col gap-[18px] lg:sticky lg:top-4 lg:self-start">
-        <Card>
-          <div className="flex items-center justify-between px-7 pt-5 pb-1">
-            <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
-          </div>
-          <div className="px-7 pb-6 pt-2">
-            <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
-              {data.dateOfBirth && (
-                <li className="flex items-center gap-2">
-                  <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
-                </li>
-              )}
-              {data.bloodGroup && (
-                <li className="flex items-center gap-2">
-                  <Droplet className="h-4 w-4 text-rose-500" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
-                </li>
-              )}
-              <li className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-amber-500" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
-              </li>
-              {data.house && (
-                <li className="flex items-center gap-2">
-                  <Home className="h-4 w-4 text-brand" /> House: <span className="font-semibold text-gray-900">{data.house.name}</span>
-                </li>
-              )}
-              {data.batchLabel && (
-                <li className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-indigo-500" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
-                </li>
-              )}
-              {data.currentStatus && (
-                <li className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-emerald-500" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
-                </li>
-              )}
-              {data.homeTown && (
-                <li className="flex items-center gap-2">
-                  <Home className="h-4 w-4 text-teal-500" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
-                </li>
-              )}
-            </ul>
-            {(() => {
-              const links: { key: string; href: string; label: string; Icon: Brand }[] = []
-              const seen = new Set<string>()
-              const add = (key: string, href: string, label: string, Icon: Brand) => {
-                const k = key.toLowerCase()
-                if (!href || seen.has(k)) return
-                seen.add(k)
-                links.push({ key, href, label, Icon })
-              }
-              // Nice display label per platform key.
-              const labelFor = (p: string): string => {
-                const k = p.toLowerCase()
-                const map: Record<string, string> = {
-                  linkedin: "LinkedIn", twitter: "Twitter", x: "Twitter", instagram: "Instagram",
-                  facebook: "Facebook", youtube: "YouTube", github: "GitHub",
-                  website: "Website", web: "Website", site: "Website",
-                }
-                return map[k] ?? p.charAt(0).toUpperCase() + p.slice(1)
-              }
-              if (data.linkedinUrl) add("linkedin", data.linkedinUrl, "LinkedIn", LinkedinIcon)
-              for (const [platform, url] of Object.entries(data.socialLinks)) {
-                const p = platform.toLowerCase()
-                const Icon: Brand =
-                  p === "linkedin" ? LinkedinIcon :
-                  p === "twitter" || p === "x" ? TwitterIcon :
-                  p === "instagram" ? InstagramIcon :
-                  p === "facebook" ? FacebookIcon :
-                  p === "youtube" ? YoutubeIcon :
-                  p === "github" ? GithubIcon :
-                  p === "website" || p === "web" || p === "site" ? (Globe as unknown as Brand) :
-                  (LinkIcon as unknown as Brand)
-                add(platform, url, labelFor(platform), Icon)
-              }
-              if (links.length === 0) return null
-              return (
-                <div className="mt-5 border-t border-gray-100 pt-4">
-                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Connect with me</h4>
-                  <div className="flex flex-wrap gap-2.5">
-                    {links.map(({ key, href, label, Icon }) => (
-                      <a
-                        key={key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={label}
-                        title={label}
-                        className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-gray-200 text-gray-600 transition-colors hover:border-brand hover:bg-brand hover:text-white"
-                      >
-                        <Icon className="h-4 w-4" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-        </Card>
-
-        <AchievementsPanel
-          data={{
-            ownerFirstName: data.name.split(" ")[0],
-            userId: data.userId,
-            badges: data.badges,
-            totalBadges: data.totalBadges,
-            eggs: data.eggs,
-            karma: data.karma,
-          }}
-        />
-        </div>
-
-          {/* ===== BODY — left column, flows directly under the profile card ===== */}
+          {/* ===== BODY — tab content, still in left column ===== */}
           <div className="flex min-w-0 flex-col gap-[18px]">
             {tab === "posts" && (
               <ProfileTimeline
@@ -545,6 +431,60 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     </div>
                   </Card>
                 )}
+                {(() => {
+                  const links: { key: string; href: string; label: string; Icon: Brand }[] = []
+                  const seen = new Set<string>()
+                  const add = (key: string, href: string, label: string, Icon: Brand) => {
+                    const k = key.toLowerCase()
+                    if (!href || seen.has(k)) return
+                    seen.add(k)
+                    links.push({ key, href, label, Icon })
+                  }
+                  const labelFor = (p: string): string => {
+                    const k = p.toLowerCase()
+                    const map: Record<string, string> = {
+                      linkedin: "LinkedIn", twitter: "Twitter", x: "Twitter", instagram: "Instagram",
+                      facebook: "Facebook", youtube: "YouTube", github: "GitHub",
+                      website: "Website", web: "Website", site: "Website",
+                    }
+                    return map[k] ?? p.charAt(0).toUpperCase() + p.slice(1)
+                  }
+                  if (data.linkedinUrl) add("linkedin", data.linkedinUrl, "LinkedIn", LinkedinIcon)
+                  for (const [platform, url] of Object.entries(data.socialLinks)) {
+                    const p = platform.toLowerCase()
+                    const Icon: Brand =
+                      p === "linkedin" ? LinkedinIcon :
+                      p === "twitter" || p === "x" ? TwitterIcon :
+                      p === "instagram" ? InstagramIcon :
+                      p === "facebook" ? FacebookIcon :
+                      p === "youtube" ? YoutubeIcon :
+                      p === "github" ? GithubIcon :
+                      p === "website" || p === "web" || p === "site" ? (Globe as unknown as Brand) :
+                      (LinkIcon as unknown as Brand)
+                    add(platform, url, labelFor(platform), Icon)
+                  }
+                  if (links.length === 0) return null
+                  return (
+                    <Card>
+                      <SectionTitle>Connect with me</SectionTitle>
+                      <div className="px-7 pb-6 pt-1 flex flex-wrap gap-2.5">
+                        {links.map(({ key, href, label, Icon }) => (
+                          <a
+                            key={key}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={label}
+                            title={label}
+                            className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-gray-200 text-gray-600 transition-colors hover:border-brand hover:bg-brand hover:text-white"
+                          >
+                            <Icon className="h-4 w-4" />
+                          </a>
+                        ))}
+                      </div>
+                    </Card>
+                  )
+                })()}
                 {data.skills.length > 0 && (
                   <Card>
                     <SectionTitle>Skills</SectionTitle>
@@ -725,7 +665,64 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               )
             })()}
           </div>
+        </div>{/* /left column */}
+
+        {/* Right rail — About + Achievements */}
+        <div className="flex flex-col gap-[18px] lg:sticky lg:top-4 lg:self-start lg:row-span-2">
+          <Card>
+            <div className="flex items-center justify-between px-7 pt-5 pb-1">
+              <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
+            </div>
+            <div className="px-7 pb-6 pt-2">
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
+                {data.dateOfBirth && (
+                  <li className="flex items-center gap-2">
+                    <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
+                  </li>
+                )}
+                {data.bloodGroup && (
+                  <li className="flex items-center gap-2">
+                    <Droplet className="h-4 w-4 text-rose-500" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
+                  </li>
+                )}
+                <li className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-500" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
+                </li>
+                {data.house && (
+                  <li className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-brand" /> House: <span className="font-semibold text-gray-900">{data.house.name}</span>
+                  </li>
+                )}
+                {data.batchLabel && (
+                  <li className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-500" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
+                  </li>
+                )}
+                {data.currentStatus && (
+                  <li className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-emerald-500" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
+                  </li>
+                )}
+                {data.homeTown && (
+                  <li className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-teal-500" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </Card>
+          <AchievementsPanel
+            data={{
+              ownerFirstName: data.name.split(" ")[0],
+              userId: data.userId,
+              badges: data.badges,
+              totalBadges: data.totalBadges,
+              eggs: data.eggs,
+              karma: data.karma,
+            }}
+          />
         </div>
+        </div>{/* /grid */}
       </div>
     </div>
   )
