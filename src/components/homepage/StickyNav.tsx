@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Menu, X, Users } from "lucide-react";
+import { colorAvatar } from "@/lib/avatar";
 
 interface StickyNavProps {
   logoLabel?: string;
   centerLinks?: { label: string; href: string }[];
   ctaLabel?: string;
+  user?: { name: string; avatar: string | null; username: string | null } | null;
 }
 
 export function StickyNav({
@@ -21,6 +24,7 @@ export function StickyNav({
     { label: "Blog", href: "#" },
   ],
   ctaLabel = "Join Community",
+  user = null,
 }: StickyNavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -75,18 +79,40 @@ export function StickyNav({
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <a
-            href="/auth/signin"
-            className="text-sm font-medium text-charcoal-500 hover:text-brand transition-colors px-4 py-2"
-          >
-            Login
-          </a>
-          <a
-            href="/auth/signup"
-            className="rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-sm hover:shadow-md"
-          >
-            {ctaLabel}
-          </a>
+          {user ? (
+            <>
+              <a
+                href="/feed"
+                className="text-sm font-medium text-charcoal-500 hover:text-brand transition-colors px-4 py-2"
+              >
+                Dashboard
+              </a>
+              <a href={user.username ? `/${user.username}` : "/feed"} className="flex-shrink-0">
+                <Image
+                  src={user.avatar || colorAvatar(user.name)}
+                  alt={user.name}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-[4px] object-cover"
+                />
+              </a>
+            </>
+          ) : (
+            <>
+              <a
+                href="/auth/signin"
+                className="text-sm font-medium text-charcoal-500 hover:text-brand transition-colors px-4 py-2"
+              >
+                Login
+              </a>
+              <a
+                href="/auth/signup"
+                className="rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-sm hover:shadow-md"
+              >
+                {ctaLabel}
+              </a>
+            </>
+          )}
         </div>
 
         <button
@@ -117,18 +143,29 @@ export function StickyNav({
                 </a>
               ))}
               <hr className="border-charcoal-100" />
-              <a
-                href="/auth/signin"
-                className="block text-sm font-medium text-charcoal-500 py-2"
-              >
-                Login
-              </a>
-              <a
-                href="/auth/signup"
-                className="block text-center rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white"
-              >
-                {ctaLabel}
-              </a>
+              {user ? (
+                <a
+                  href="/feed"
+                  className="block text-center rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  Dashboard
+                </a>
+              ) : (
+                <>
+                  <a
+                    href="/auth/signin"
+                    className="block text-sm font-medium text-charcoal-500 py-2"
+                  >
+                    Login
+                  </a>
+                  <a
+                    href="/auth/signup"
+                    className="block text-center rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white"
+                  >
+                    {ctaLabel}
+                  </a>
+                </>
+              )}
             </div>
           </motion.div>
         )}

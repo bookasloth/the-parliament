@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import { StickyNav } from "@/components/homepage/StickyNav"
 import { Footer } from "@/components/homepage/Footer"
+import { optionalUser } from "@/modules/auth/session"
+import { prisma } from "@/lib/prisma"
 
 const NAV_LINKS = [
   { label: "About", href: "/about" },
@@ -45,10 +47,20 @@ const FOOTER_COLUMNS = [
   },
 ]
 
-export default function MarketingLayout({ children }: { children: ReactNode }) {
+export default async function MarketingLayout({ children }: { children: ReactNode }) {
+  const session = await optionalUser()
+  let user: { name: string; avatar: string | null; username: string | null } | null = null
+  if (session) {
+    const u = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } },
+    })
+    if (u) user = { name: u.displayName || u.legalName, avatar: u.profile?.photoUrl ?? null, username: u.username }
+  }
+
   return (
     <div className="min-h-screen bg-[#faf9f6] font-body">
-      <StickyNav centerLinks={NAV_LINKS} ctaLabel="Join Community" />
+      <StickyNav centerLinks={NAV_LINKS} ctaLabel="Join Community" user={user} />
       <main>{children}</main>
       <Footer columns={FOOTER_COLUMNS} />
     </div>
