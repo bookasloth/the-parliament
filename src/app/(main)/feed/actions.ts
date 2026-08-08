@@ -296,6 +296,7 @@ export async function loadMoreFeedAction(
   page: number,
   pageSize = 15,
   followingOnly = false,
+  caughtUp = false,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -309,6 +310,7 @@ export async function loadMoreFeedAction(
     page,
     pageSize,
     followingOnly,
+    skipSeenExclusion: caughtUp,
   })
   const followingIds = viewer?.id
     ? new Set(

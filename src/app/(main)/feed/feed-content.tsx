@@ -182,7 +182,7 @@ export function FeedContent({
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
-        const r = await loadMoreFeedAction(page, pageSize, followingOnly)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
@@ -192,22 +192,15 @@ export function FeedContent({
         // Silent — user can retry via button.
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp])
 
-  // Auto-load when sentinel enters viewport (Twitter/LinkedIn feel).
+  // Eagerly prefetch next page after current batch arrives (Instagram-style).
+  // The loadMore guard (`!hasMore || loadingMore`) prevents concurrent fetches.
   useEffect(() => {
-    if (!hasMore) return
-    const el = sentinelRef.current
-    if (!el || typeof IntersectionObserver === "undefined") return
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) loadMore()
-      },
-      { rootMargin: "600px 0px" },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [hasMore, loadMore])
+    if (!hasMore || loadingMore) return
+    const t = setTimeout(loadMore, 300)
+    return () => clearTimeout(t)
+  }, [hasMore, loadingMore, loadMore])
 
   // Seen-tracking: record each real post once it's ~half on screen, batched and
   // debounced. Fire-and-forget — getFeed uses these to never repeat a post.
