@@ -146,7 +146,7 @@ export async function getConversationMeta(
   viewerId: string,
   conversationId: string,
 ): Promise<{
-  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean }
+  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean; headline: string | null }
   otherLastReadAt: string | null
   muted: boolean
   blocked: boolean
@@ -161,7 +161,7 @@ export async function getConversationMeta(
       where: { conversationId, userId: { not: viewerId } },
       select: {
         lastReadAt: true,
-        user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } },
+        user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true, headline: true } } } },
       },
     }),
   ])
@@ -177,6 +177,7 @@ export async function getConversationMeta(
       username: other.user.username,
       avatar: other.user.profile?.photoUrl ?? null,
       isVerified: other.user.isVerified,
+      headline: other.user.profile?.headline ?? null,
     },
     otherLastReadAt: other.lastReadAt?.toISOString() ?? null,
     muted: me?.muted ?? false,
