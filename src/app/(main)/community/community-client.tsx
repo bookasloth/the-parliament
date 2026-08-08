@@ -33,11 +33,6 @@ const TIERS = [
   { value: "life", label: "Life" },
 ]
 
-const SORTS = [
-  { value: "active", label: "Recently active" },
-  { value: "newest", label: "Newest members" },
-  { value: "name", label: "Name (A–Z)" },
-]
 
 function tierAccent(status: string): string {
   return (MEMBERSHIP_TIERS[status as MembershipTier] ?? MEMBERSHIP_TIERS.associate).accent
@@ -58,6 +53,17 @@ function toCard(r: DirectoryRow): AlumniCard {
     membership: (r.membershipStatus as Membership) ?? "student",
     bio: r.headline ?? undefined,
   }
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-[5px] border border-gray-200 bg-white p-4 animate-pulse">
+      <div className="mx-auto mb-3 h-20 w-20 rounded-[4px] bg-gray-200" />
+      <div className="mx-auto mb-2 h-4 w-3/4 rounded bg-gray-200" />
+      <div className="mx-auto mb-3 h-3 w-1/2 rounded bg-gray-200" />
+      <div className="h-8 w-full rounded-[3px] bg-gray-100" />
+    </div>
+  )
 }
 
 function toQuery(current: Params, extra: Params = {}): string {
@@ -87,12 +93,14 @@ export function CommunityClient({
   const [items, setItems] = useState<DirectoryRow[]>(rows)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [filtering, setFiltering] = useState(false)
   const paramsKey = JSON.stringify({ ...current, page: undefined })
 
   // Reset the list whenever the filters change (server re-renders with new rows).
   useEffect(() => {
     setItems(rows)
     setPage(1)
+    setFiltering(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsKey])
 
@@ -136,6 +144,7 @@ export function CommunityClient({
   }, [loadMore])
 
   function go(patch: Params) {
+    setFiltering(true)
     const s = toQuery({ ...current, ...patch, page: undefined })
     router.push(s ? `/community?${s}` : "/community")
   }
@@ -149,7 +158,6 @@ export function CommunityClient({
     tierLabel && { key: "membership", label: tierLabel },
     current.industry && { key: "industry", label: current.industry },
     current.city && { key: "city", label: current.city },
-    current.verified === "1" && { key: "verified", label: "Verified" },
   ].filter(Boolean) as { key: string; label: string }[]
 
   // 4px controls throughout, brand focus.
@@ -183,55 +191,47 @@ export function CommunityClient({
         </div>
       </div>
 
-      {/* Search over an even filter row: 2 cols mobile, 3 tablet, all 5 in one row from lg. */}
-      <div className="space-y-2">
-        <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search alumni by name or username…"
-            className="w-full rounded-[3px] border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
-          />
-        </form>
-        {/* 5 filters, equal columns — grid-cols-5 on lg fills the row with no ragged gap. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          <select className={`${sel} w-full min-w-0`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
-            <option value="">All batches</option>
-            {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-          </select>
-          <select className={`${sel} w-full min-w-0`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
-            <option value="">All houses</option>
-            {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-          <select className={`${sel} w-full min-w-0`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
-            <option value="">All tiers</option>
-            {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          <select className={`${sel} w-full min-w-0`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
-            <option value="">All industries</option>
-            {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
-          </select>
-          <select className={`${sel} w-full min-w-0`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
-            <option value="">All locations</option>
-            {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+      {/* Sticky search + filter bar */}
+      <div className="sticky top-14 z-10 -mx-4 bg-[#f3f2ef] px-4 pb-2 pt-1 sm:-mx-6 sm:px-6">
+        {/* lg+: search + 5 filters in one row. Mobile: search on top, filters in 2-col grid. */}
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <form onSubmit={(e) => { e.preventDefault(); go({ q }) }} className="relative lg:flex-1 lg:min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search alumni…"
+              className="w-full rounded-[3px] border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/10"
+            />
+          </form>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:gap-1.5">
+            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.batch ?? ""} onChange={(e) => go({ batch: e.target.value || undefined })}>
+              <option value="">Batch</option>
+              {facets.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+            </select>
+            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.house ?? ""} onChange={(e) => go({ house: e.target.value || undefined })}>
+              <option value="">House</option>
+              {facets.houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.membership ?? ""} onChange={(e) => go({ membership: e.target.value || undefined })}>
+              <option value="">Tier</option>
+              {TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.industry ?? ""} onChange={(e) => go({ industry: e.target.value || undefined })} disabled={facets.industries.length === 0}>
+              <option value="">Industry</option>
+              {facets.industries.map((ind) => <option key={ind.name} value={ind.name}>{ind.name} ({ind.count})</option>)}
+            </select>
+            <select className={`${sel} w-full min-w-0 lg:w-auto`} value={current.city ?? ""} onChange={(e) => go({ city: e.target.value || undefined })} disabled={!facets.cities || facets.cities.length === 0}>
+              <option value="">Location</option>
+              {(facets.cities ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Verified toggle + view switch */}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className={`flex cursor-pointer items-center gap-1.5 rounded-[3px] border px-2.5 py-1.5 text-sm transition-colors ${current.verified === "1" ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}>
-          <input type="checkbox" checked={current.verified === "1"} onChange={(e) => go({ verified: e.target.checked ? "1" : undefined })} className="h-3.5 w-3.5 accent-brand" />
-          Verified only
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-gray-500">
-          Sort
-          <select className={sel} value={current.sort ?? "active"} onChange={(e) => go({ sort: e.target.value === "active" ? undefined : e.target.value })}>
-            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </label>
-        <div className="flex-1" />
+      {/* Result count + view toggle */}
+      <div className="flex items-center gap-2">
+        <p className="flex-1 text-xs text-gray-500">{total.toLocaleString()} alumni{current.q && ` for "${current.q}"`}</p>
         <div className="flex items-center gap-1 rounded-[3px] border border-gray-200 bg-white p-1">
           <button aria-label="Grid view" onClick={() => setView("grid")} className={`rounded-[3px] p-1.5 transition-colors ${view === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><Grid className="h-4 w-4" /></button>
           <button aria-label="List view" onClick={() => setView("list")} className={`rounded-[3px] p-1.5 transition-colors ${view === "list" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><List className="h-4 w-4" /></button>
@@ -251,9 +251,11 @@ export function CommunityClient({
         </div>
       )}
 
-      <p className="text-xs text-gray-500">{total.toLocaleString()} alumni found{current.q && ` for "${current.q}"`}</p>
-
-      {items.length === 0 ? (
+      {filtering ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : items.length === 0 ? (
         <div className="rounded-[3px] border border-gray-200 bg-white py-16 text-center">
           <Search className="mx-auto mb-3 h-10 w-10 text-gray-200" />
           <p className="text-sm font-medium text-gray-500">No alumni found</p>
