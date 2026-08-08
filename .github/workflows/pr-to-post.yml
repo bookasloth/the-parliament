@@ -1,0 +1,37 @@
+name: PR merge → feed post
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  post:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create feed post from merged PR
+        env:
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          TARGET: ${{ vars.CRON_TARGET_URL || 'https://nnawca.vercel.app' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_SECRET:-}" ]; then
+            echo "::error::GITHUB_WEBHOOK_SECRET repo secret is not set"
+            exit 1
+          fi
+
+          # Extract PR body (truncate to 1000 chars to avoid shell issues)
+          BODY=$(echo '${{ toJSON(github.event.pull_request.body) }}' | head -c 1000)
+
+          curl -fsS --max-time 30 \
+            -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg title '${{ github.event.pull_request.title }}' \
+              --argjson number '${{ github.event.pull_request.number }}' \
+              --arg url '${{ github.event.pull_request.html_url }}' \
+              --arg merged_by '${{ github.event.pull_request.merged_by.login }}' \
+              --arg body "$BODY" \
+              '{title: $title, number: $number, url: $url, merged_by: $merged_by, body: $body}'
+            )" \
+            "${TARGET}/api/webhooks/github-pr"
