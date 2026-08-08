@@ -21,6 +21,11 @@ export const env = {
   r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
   r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
   r2Bucket: process.env.R2_BUCKET ?? "",
+  // LiveKit (video calling). URL is public (client connects to it); key/secret
+  // are server-only — never expose the secret to the browser.
+  livekitUrl: process.env.LIVEKIT_URL ?? "",
+  livekitApiKey: process.env.LIVEKIT_API_KEY ?? "",
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? "",
 } as const;
 
 // Vars the app genuinely cannot run correctly without. In production a missing

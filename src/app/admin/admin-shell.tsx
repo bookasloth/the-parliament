@@ -9,7 +9,7 @@ import {
   Flag, Megaphone, CreditCard, Storefront, Briefcase, Sparkle,
   Palette, Trophy, GameController, ChatsCircle, Gear, Scroll,
   List, X, MagnifyingGlass, Bell, CaretDown, SignOut,
-  ArrowSquareOut, Bank,
+  ArrowSquareOut, Bank, VideoCamera,
 } from "@phosphor-icons/react"
 
 export interface AdminIdentity {
@@ -48,6 +48,7 @@ const NAV: NavGroup[] = [
       { href: "/admin/verification", label: "Verification", icon: <ShieldCheck className={ICON} weight="duotone" color="#3b82f6" />, badge: 12 },
       { href: "/admin/groups", label: "Groups", icon: <UsersThree className={ICON} weight="duotone" color="#3b82f6" /> },
       { href: "/admin/events", label: "Events", icon: <CalendarDots className={ICON} weight="duotone" color="#0ea5e9" /> },
+      { href: "/admin/ama", label: "AMA Sessions", icon: <VideoCamera className={ICON} weight="duotone" color="#0ea5e9" /> },
     ],
   },
   {

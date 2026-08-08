@@ -7,9 +7,12 @@ import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, MoreVertical, Send, UserCheck, Trash2,
   Check, Sparkles, Smile, ImagePlus, Pencil, X, Reply, Bell, BellOff, Ban, Flag,
+  Video, PhoneCall,
 } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
+import CallHuddle from "./CallHuddle"
+import CallPaywall from "./CallPaywall"
 import { getActiveTheme } from "@/config/chat-themes"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import type { MessageView } from "@/modules/messaging/types"
@@ -79,6 +82,12 @@ export default function ConversationView({
   const [blocked, setBlocked] = useState(initialBlocked)
   const [hasMore, setHasMore] = useState(initialMessages.length >= PAGE_SIZE)
   const [loadingOlder, setLoadingOlder] = useState(false)
+  // Video calling (LiveKit huddle). callSession = joined; incomingCall = peer
+  // started one and we haven't joined yet (Slack-style join banner).
+  const [callSession, setCallSession] = useState<{ token: string; url: string } | null>(null)
+  const [incomingCall, setIncomingCall] = useState(false)
+  const [callConnecting, setCallConnecting] = useState(false)
+  const [paywallOpen, setPaywallOpen] = useState(false)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -165,6 +174,11 @@ export default function ConversationView({
           setOtherTyping(true)
           clearTimeout(typingClearRef.current)
           typingClearRef.current = setTimeout(() => setOtherTyping(false), 3000)
+        })
+        .on("broadcast", { event: "call" }, ({ payload }) => {
+          const p = payload as { userId: string; action: "start" | "end" }
+          if (p.userId === viewerId) return
+          setIncomingCall(p.action === "start")
         })
         .on("presence", { event: "sync" }, () => {
           const state = channel.presenceState()
@@ -351,6 +365,42 @@ export default function ConversationView({
     }
   }
 
+  // Fetch a signed LiveKit token for this conversation's huddle room. The
+  // server enforces tier/quota/pass — a 403 carries the upsell message.
+  async function connectCall(announce: boolean) {
+    if (callConnecting || callSession) return
+    setCallConnecting(true)
+    try {
+      const res = await fetch("/api/calls/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        // Student without included calling → open the pass/upgrade paywall.
+        if (data.code === "pass_required") {
+          setPaywallOpen(true)
+        } else {
+          alert(data.error ?? "Couldn't start the call.")
+        }
+        return
+      }
+      if (announce) {
+        channelRef.current?.send({ type: "broadcast", event: "call", payload: { userId: viewerId, action: "start" } })
+      }
+      setIncomingCall(false)
+      setCallSession({ token: data.token, url: data.url })
+    } finally {
+      setCallConnecting(false)
+    }
+  }
+
+  function leaveCall() {
+    setCallSession(null)
+    channelRef.current?.send({ type: "broadcast", event: "call", payload: { userId: viewerId, action: "end" } })
+  }
+
   async function toggleMute() {
     setMenuOpen(false)
     const next = !muted
@@ -421,6 +471,16 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {!blocked && (
+            <button
+              onClick={() => connectCall(true)}
+              disabled={callConnecting || !!callSession}
+              title="Start video call"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-50"
+            >
+              <Video className="h-4 w-4" />
+            </button>
+          )}
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors">
               <MoreVertical className="h-4 w-4" />
@@ -453,6 +513,42 @@ export default function ConversationView({
           <Sparkles className="h-3 w-3" />
           {theme.name} theme active
         </div>
+      )}
+
+      {/* Incoming-call join banner (Slack-style huddle) */}
+      {incomingCall && !callSession && (
+        <div className="flex items-center justify-between gap-2 bg-brand/10 px-4 py-2 text-sm">
+          <span className="flex items-center gap-2 font-medium text-brand">
+            <PhoneCall className="h-4 w-4 animate-pulse" />
+            {otherUser.name.split(" ")[0]} started a video call
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => connectCall(false)}
+              disabled={callConnecting}
+              className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+            >
+              {callConnecting ? "Joining…" : "Join"}
+            </button>
+            <button
+              onClick={() => setIncomingCall(false)}
+              className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {callSession && (
+        <CallHuddle token={callSession.token} serverUrl={callSession.url} onLeave={leaveCall} />
+      )}
+
+      {paywallOpen && (
+        <CallPaywall
+          onClose={() => setPaywallOpen(false)}
+          onPurchased={() => { setPaywallOpen(false); connectCall(true) }}
+        />
       )}
 
       {/* Conversation content */}
