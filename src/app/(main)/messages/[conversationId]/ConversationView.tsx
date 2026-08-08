@@ -42,6 +42,7 @@ interface OtherUser {
   username: string | null
   avatar: string | null
   isVerified: boolean
+  headline: string | null
 }
 
 interface Props {
@@ -88,6 +89,7 @@ export default function ConversationView({
   const [incomingCall, setIncomingCall] = useState(false)
   const [callConnecting, setCallConnecting] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState(false)
+  const callStartedAtRef = useRef<number | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingClearRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -391,14 +393,24 @@ export default function ConversationView({
       }
       setIncomingCall(false)
       setCallSession({ token: data.token, url: data.url })
+      callStartedAtRef.current = Date.now()
     } finally {
       setCallConnecting(false)
     }
   }
 
   function leaveCall() {
+    const startedAt = callStartedAtRef.current
     setCallSession(null)
+    callStartedAtRef.current = null
     channelRef.current?.send({ type: "broadcast", event: "call", payload: { userId: viewerId, action: "end" } })
+    if (startedAt) {
+      const sec = Math.round((Date.now() - startedAt) / 1000)
+      const dur = sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`
+      sendMessageAction(conversationId, `📹 Video call ended · ${dur}`).then((res) => {
+        if (res.ok) setMessages((m) => [...m, res.msg])
+      })
+    }
   }
 
   async function toggleMute() {
@@ -409,9 +421,17 @@ export default function ConversationView({
     if (!res.ok) { setMuted(!next); alert(res.error) }
   }
 
+  async function clearChat() {
+    setMenuOpen(false)
+    if (!window.confirm("Clear all messages? The conversation will stay in your inbox.")) return
+    const res = await clearConversationAction(conversationId)
+    if (res.ok) setMessages([])
+    else alert(res.error)
+  }
+
   async function deleteChat() {
     setMenuOpen(false)
-    if (!window.confirm("Delete this chat? It will be removed from your inbox until a new message arrives.")) return
+    if (!window.confirm("Delete this chat? It will be removed from your inbox.")) return
     const res = await clearConversationAction(conversationId)
     if (res.ok) { router.push("/messages"); router.refresh() }
     else alert(res.error)
@@ -463,6 +483,8 @@ export default function ConversationView({
                 <span className="text-brand font-medium">typing…</span>
               ) : otherOnline ? (
                 <span className="text-green-600 font-medium">● Online</span>
+              ) : otherUser.headline ? (
+                <span className="text-gray-500">{otherUser.headline}</span>
               ) : (
                 <span className="text-gray-400">Offline</span>
               )}
@@ -498,6 +520,9 @@ export default function ConversationView({
                 </button>
                 <button onClick={blockPerson} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50">
                   <Ban className="h-4 w-4" /> Block
+                </button>
+                <button onClick={clearChat} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                  <Trash2 className="h-4 w-4" /> Clear chat
                 </button>
                 <button onClick={deleteChat} className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50">
                   <Trash2 className="h-4 w-4" /> Delete chat
