@@ -25,7 +25,7 @@ export async function syncPostHashtags(postId: string, body: string | null | und
       })
       await prisma.postHashtag.create({ data: { postId, hashtagId: ht.id } })
     }
-  } catch {
-    // best-effort — never fail the post create/edit path
+  } catch (err) {
+    console.error("[syncPostHashtags] failed for post", postId, err)
   }
 }

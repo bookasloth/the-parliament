@@ -66,7 +66,8 @@ export default function MentionInput({
         setItems(res)
         setActive(0)
         setOpen(res.length > 0)
-      } catch {
+      } catch (err) {
+        console.error("[MentionInput] search failed", err)
         if (live) setOpen(false)
       }
     }, 150)

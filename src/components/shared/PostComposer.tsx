@@ -377,9 +377,9 @@ export default function PostComposer({
           {/* ===== Composer body ===== */}
           <div className="px-5 pt-4">
             {coloured && activeBgDef ? (
-              <div className="relative min-h-[180px] rounded-[5px] overflow-hidden" style={{ background: activeBgDef.bg }}>
+              <div className="relative min-h-[180px] rounded-[5px]" style={{ background: activeBgDef.bg }}>
                 {activeBgDef.svg && (
-                  <div className="absolute inset-0 pointer-events-none" dangerouslySetInnerHTML={{ __html: activeBgDef.svg }} />
+                  <div className="absolute inset-0 overflow-hidden rounded-[5px] pointer-events-none" dangerouslySetInnerHTML={{ __html: activeBgDef.svg }} />
                 )}
                 <MentionInput
                   value={text}
