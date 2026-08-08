@@ -2063,3 +2063,77 @@ model PushSubscription {
   @@index([userId])
   @@map("push_subscriptions")
 }
+
+/* ───────────────────────── Video calling (LiveKit) ─────────────────────────
+ * Plain userId fields, no FK relations — same app-layer-join style as
+ * Reaction/ContentReport/PushSubscription (keeps the giant User model untouched).
+ * Quota/pricing config lives in src/config/calls.ts. */
+
+// One LiveKit room instance. DM huddles reuse the conversation; AMAs link a
+// scheduled session. roomName is the LiveKit room id and is unique.
+model CallSession {
+  id             String    @id @default(uuid())
+  roomName       String    @unique @map("room_name")
+  kind           String    @db.VarChar(10) // "dm" | "ama"
+  conversationId String?   @map("conversation_id")
+  amaSessionId   String?   @map("ama_session_id")
+  startedById    String    @map("started_by_id")
+  status         String    @default("live") @db.VarChar(12) // "live" | "ended"
+  startedAt      DateTime  @default(now()) @map("started_at")
+  endedAt        DateTime? @map("ended_at")
+
+  @@index([conversationId])
+  @@index([amaSessionId])
+  @@map("call_sessions")
+}
+
+// Metering ledger — one row per participant's finished stint, written by the
+// LiveKit webhook (server truth). Rolling-window sums drive the quota engine.
+// AMA usage (kind="ama") is recorded but NOT counted against personal quota.
+model CallUsage {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  callSessionId String?  @map("call_session_id")
+  kind          String   @db.VarChar(10) // "dm" | "ama"
+  minutes       Int
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([createdAt]) // platform-wide monthly budget sum
+  @@map("call_usage")
+}
+
+// Student single-session call pass (₹30 / 30 min). Bought via Razorpay,
+// consumed by exactly one DM call. Expires if unused (STUDENT_PASS.ttlDays).
+model CallPass {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  minutes       Int       @default(30)
+  status        String    @default("active") @db.VarChar(12) // "active" | "consumed" | "expired"
+  paymentId     String?   @map("payment_id")
+  orderId       String?   @map("order_id")
+  callSessionId String?   @map("call_session_id")
+  purchasedAt   DateTime  @default(now()) @map("purchased_at")
+  expiresAt     DateTime  @map("expires_at")
+  consumedAt    DateTime? @map("consumed_at")
+
+  @@index([userId, status])
+  @@map("call_passes")
+}
+
+// Admin-scheduled AMA. Co-host answers (publishes); everyone else is audience.
+model AmaSession {
+  id          String    @id @default(uuid())
+  title       String    @db.VarChar(160)
+  description String?
+  hostId      String    @map("host_id")
+  coHostId    String?   @map("co_host_id")
+  roomName    String    @unique @map("room_name")
+  status      String    @default("scheduled") @db.VarChar(12) // "scheduled" | "live" | "ended"
+  startsAt    DateTime  @map("starts_at")
+  endedAt     DateTime? @map("ended_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([startsAt])
+  @@map("ama_sessions")
+}
