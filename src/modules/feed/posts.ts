@@ -4,6 +4,7 @@ import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { notifyMentions } from "@/modules/feed/mentions"
+import { syncPostHashtags } from "@/modules/feed/hashtags"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
@@ -236,6 +237,8 @@ export async function createPost(input: CreatePostInput) {
     })
   }
 
+  await syncPostHashtags(post.id, input.body ?? null)
+
   return post
 }
 
@@ -290,6 +293,7 @@ export async function publishDraft(input: { postId: string; authorId: string }) 
       url: `${APP_BASE}/feed/${post.id}`,
     })
   }
+  await syncPostHashtags(post.id, post.body)
   return { id: post.id }
 }
 
@@ -351,6 +355,8 @@ export async function editPost(input: {
       editedAt: new Date(),
     },
   })
+
+  await syncPostHashtags(input.postId, input.body ?? post.body)
 }
 
 export async function deletePost(input: { postId: string; userId: string }) {
