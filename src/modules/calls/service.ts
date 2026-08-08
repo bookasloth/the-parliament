@@ -119,6 +119,29 @@ export async function authorizeDmCall(userId: string, conversationId: string): P
   }
 }
 
+/**
+ * Authorize joining an AMA. Free for every signed-in member (incl. students) —
+ * audience only subscribes; the host and co-host publish. AMA minutes count
+ * toward the platform budget but NOT anyone's personal quota.
+ */
+export async function authorizeAmaCall(userId: string, amaSessionId: string): Promise<CallAuth> {
+  const ama = await prisma.amaSession.findUnique({ where: { id: amaSessionId } })
+  if (!ama || ama.status === "ended") {
+    return { ok: false, message: "This AMA has ended or doesn't exist." }
+  }
+  if (await platformBudgetExceeded()) {
+    return { ok: false, code: "budget", message: "Calling is temporarily paused for this month. Please try later." }
+  }
+  const canPublish = userId === ama.hostId || userId === ama.coHostId
+  return {
+    ok: true,
+    roomName: roomForAma(amaSessionId),
+    // Whole-AMA cap; individual audience members aren't metered against quota.
+    maxCallMinutes: 180,
+    canPublish,
+  }
+}
+
 /** Ensure a CallSession row exists for a room (idempotent on room_name). */
 export async function ensureCallSession(opts: {
   roomName: string
