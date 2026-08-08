@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { FeedContent, type ViewerCard, type SuggestedConnection, type NewsItem } from "./feed-content"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
@@ -7,21 +8,14 @@ import { loadViewer } from "@/lib/viewer"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
+import FeedLoading from "./loading"
 
 export const dynamic = "force-dynamic"
 
 const FIRST_PAGE_SIZE = 15
 
-export default async function FeedPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string; new?: string }>
-}) {
-  const [params, [schoolId, viewer]] = await Promise.all([
-    searchParams,
-    Promise.all([getDefaultSchoolId(), optionalUser()]),
-  ])
-  const { tab, new: pinnedNewId } = params
+async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: string }) {
+  const [schoolId, viewer] = await Promise.all([getDefaultSchoolId(), optionalUser()])
   const followingOnly = tab === "following" && !!viewer?.id
 
   let mappedReal: FeedPost[] = []
@@ -33,9 +27,6 @@ export default async function FeedPage({
   let eggedUsernames: string[] = []
 
   if (schoolId) {
-    // These three are mutually independent (feed, the viewer's own card, and
-    // the sidebar rails) — one round-trip group instead of three sequential
-    // awaits. The egg overlay below depends on `users`, so it stays a second hop.
     const [{ rows, caughtUp: cu }, u, [users, pinned]] = await Promise.all([
       getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
       viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
@@ -71,8 +62,6 @@ export default async function FeedPage({
       ]),
     ])
 
-    // Which of the feed's authors the viewer already follows — so posts open in
-    // the correct follow state and stay in sync via the shared follow store.
     const followingIds = viewer?.id
       ? new Set(
           (await prisma.follow.findMany({ where: { followerId: viewer.id }, select: { followingId: true } })).map(
@@ -83,7 +72,6 @@ export default async function FeedPage({
     const tier = u?.membershipStatus ?? "student"
     mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)), tier)
 
-    // Pin the viewer's just-created post at the top so they see it immediately.
     if (pinnedNewId && viewer?.id) {
       const idx = mappedReal.findIndex((p) => p.id === pinnedNewId)
       if (idx > 0) {
@@ -92,7 +80,6 @@ export default async function FeedPage({
       }
     }
 
-    // Students get a capped 5-item feed — no "load more".
     hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
     caughtUp = cu
 
@@ -161,5 +148,19 @@ export default async function FeedPage({
       activeTab={followingOnly ? "following" : "forYou"}
       caughtUp={caughtUp}
     />
+  )
+}
+
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; new?: string }>
+}) {
+  const params = await searchParams
+
+  return (
+    <Suspense fallback={<FeedLoading />}>
+      <FeedData tab={params.tab} pinnedNewId={params.new} />
+    </Suspense>
   )
 }
