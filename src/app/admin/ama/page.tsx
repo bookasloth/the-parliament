@@ -1,25 +1,12 @@
-import { Video } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/modules/auth/session"
-import { callsEnabled } from "@/config/calls"
-import { PageHeader, ComingSoon } from "../admin-ui"
+import { PageHeader } from "../admin-ui"
 import AmaAdmin from "./AmaAdmin"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminAmaPage() {
   await requireAdmin()
-
-  if (!callsEnabled()) {
-    return (
-      <ComingSoon
-        title="Video calling is off"
-        description="AMA sessions unlock when video calling is enabled. Set FEATURE_VIDEO_CALLS=on to launch."
-        icon={<Video className="h-7 w-7" />}
-        planned={["1:1 huddles in DMs", "Admin-scheduled AMA rooms with a co-host", "Free audience access for all members"]}
-      />
-    )
-  }
 
   const sessions = await prisma.amaSession.findMany({
     orderBy: { startsAt: "desc" },

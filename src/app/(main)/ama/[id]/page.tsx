@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { callsEnabled } from "@/config/calls"
 import AmaRoom from "./AmaRoom"
 
 export const dynamic = "force-dynamic"
@@ -9,7 +8,6 @@ export const dynamic = "force-dynamic"
 export default async function AmaJoinPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const user = await requireUser()
-  if (!callsEnabled()) notFound()
 
   const ama = await prisma.amaSession.findUnique({ where: { id } })
   if (!ama || ama.status === "ended") notFound()

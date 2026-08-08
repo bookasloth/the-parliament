@@ -54,7 +54,6 @@ interface Props {
   initialBlocked: boolean
   birthday: boolean
   suppressValentine: boolean
-  callsEnabled: boolean
 }
 
 /** Client mirror of the server's nextReaction: same emoji = remove, else replace. */
@@ -64,7 +63,7 @@ function myReaction(msg: MessageView, viewerId: string): string | null {
 
 export default function ConversationView({
   conversationId, viewerId, otherUser, initialMessages, initialOtherLastReadAt,
-  initialMuted, initialBlocked, birthday, suppressValentine, callsEnabled,
+  initialMuted, initialBlocked, birthday, suppressValentine,
 }: Props) {
   const router = useRouter()
   const [messages, setMessages] = useState<MessageView[]>(initialMessages)
@@ -472,7 +471,7 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {callsEnabled && !blocked && (
+          {!blocked && (
             <button
               onClick={() => connectCall(true)}
               disabled={callConnecting || !!callSession}

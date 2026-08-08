@@ -1,10 +1,9 @@
-import { describe, it, expect, afterEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import {
   evaluateQuota,
   tierHasCalling,
   quotaMessage,
   packPaymentValid,
-  callsEnabled,
   TIER_CALL_LIMITS,
   STUDENT_PASS,
   type UsageByWindow,
@@ -79,27 +78,6 @@ describe("tierHasCalling", () => {
     expect(tierHasCalling("premium")).toBe(true)
     expect(tierHasCalling("life")).toBe(true)
     expect(tierHasCalling("committee")).toBe(true)
-  })
-})
-
-describe("callsEnabled (feature switch)", () => {
-  const prev = process.env.FEATURE_VIDEO_CALLS
-  afterEach(() => {
-    if (prev === undefined) delete process.env.FEATURE_VIDEO_CALLS
-    else process.env.FEATURE_VIDEO_CALLS = prev
-  })
-
-  it("is off by default / when unset", () => {
-    delete process.env.FEATURE_VIDEO_CALLS
-    expect(callsEnabled()).toBe(false)
-  })
-  it("is on only for the exact string 'on'", () => {
-    process.env.FEATURE_VIDEO_CALLS = "on"
-    expect(callsEnabled()).toBe(true)
-    for (const v of ["true", "1", "ON", "yes", ""]) {
-      process.env.FEATURE_VIDEO_CALLS = v
-      expect(callsEnabled()).toBe(false)
-    }
   })
 })
 

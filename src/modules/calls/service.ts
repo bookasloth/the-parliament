@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { getCurrent } from "@/modules/membership/service"
 import {
-  callsEnabled,
   evaluateQuota,
   tierHasCalling,
   quotaMessage,
@@ -10,8 +9,6 @@ import {
   type UsageByWindow,
   type CallKind,
 } from "@/config/calls"
-
-const DISABLED: CallAuth = { ok: false, code: "disabled", message: "Video calling is coming soon." }
 
 export interface CallAuth {
   ok: boolean
@@ -24,7 +21,7 @@ export interface CallAuth {
   /** Present when !ok — user-facing reason. */
   message?: string
   /** Machine-readable reason so the client can branch (e.g. open the paywall). */
-  code?: "pass_required" | "budget" | "not_participant" | "tier_excluded" | "quota" | "disabled"
+  code?: "pass_required" | "budget" | "not_participant" | "tier_excluded" | "quota"
 }
 
 const roomForDm = (conversationId: string) => `dm_${conversationId}`
@@ -82,7 +79,6 @@ async function isParticipant(userId: string, conversationId: string): Promise<bo
  * per-tier quota or (for students) a paid pass. Never trusts the client.
  */
 export async function authorizeDmCall(userId: string, conversationId: string): Promise<CallAuth> {
-  if (!callsEnabled()) return DISABLED
   if (!(await isParticipant(userId, conversationId))) {
     return { ok: false, code: "not_participant", message: "You're not part of this conversation." }
   }
@@ -129,7 +125,6 @@ export async function authorizeDmCall(userId: string, conversationId: string): P
  * toward the platform budget but NOT anyone's personal quota.
  */
 export async function authorizeAmaCall(userId: string, amaSessionId: string): Promise<CallAuth> {
-  if (!callsEnabled()) return DISABLED
   const ama = await prisma.amaSession.findUnique({ where: { id: amaSessionId } })
   if (!ama || ama.status === "ended") {
     return { ok: false, message: "This AMA has ended or doesn't exist." }

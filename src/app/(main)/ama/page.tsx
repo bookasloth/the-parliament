@@ -1,14 +1,11 @@
-import { notFound } from "next/navigation"
 import { CalendarDays } from "lucide-react"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { callsEnabled } from "@/config/calls"
 
 export const dynamic = "force-dynamic"
 
 export default async function AmaListPage() {
   await requireUser()
-  if (!callsEnabled()) notFound()
 
   const sessions = await prisma.amaSession.findMany({
     where: { status: { not: "ended" } },

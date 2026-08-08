@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
 import { getCurrent } from "@/modules/membership/service"
-import { callsEnabled, tierHasCalling, STUDENT_PASS } from "@/config/calls"
+import { tierHasCalling, STUDENT_PASS } from "@/config/calls"
 import { buildReceipt, getRazorpay, publicKeyId } from "@/lib/razorpay"
 
 /**
@@ -14,7 +14,6 @@ import { buildReceipt, getRazorpay, publicKeyId } from "@/lib/razorpay"
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser()
-    if (!callsEnabled()) return badRequest("Video calling is coming soon.")
 
     const { planCode } = await getCurrent(user.id)
     if (tierHasCalling(planCode)) {

@@ -13,13 +13,6 @@ import type { PlanCode } from "@/config/membership"
  * A global monthly platform budget acts as a kill-switch so we never silently
  * overrun the LiveKit free tier. */
 
-/** Feature switch. Video calling is dark until FEATURE_VIDEO_CALLS=on (Vercel
- *  env). Enforced server-side in the authorize paths AND used to hide the UI
- *  entry points — flip the env + redeploy to launch, no code change. */
-export function callsEnabled(): boolean {
-  return process.env.FEATURE_VIDEO_CALLS === "on"
-}
-
 /** Minutes in each rolling window. */
 export const WINDOW_MINUTES = { day: 24 * 60, week: 7 * 24 * 60, month: 30 * 24 * 60 } as const
 
