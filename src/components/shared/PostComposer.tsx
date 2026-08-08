@@ -20,6 +20,7 @@ import {
   Send,
   Trash2,
 } from "lucide-react"
+import MentionInput from "@/components/shared/MentionInput"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 
@@ -385,11 +386,14 @@ export default function PostComposer({
 
           {/* ===== Composer body ===== */}
           <div className="px-5 pt-4">
-            <textarea
+            <MentionInput
               value={text}
               maxLength={CHAR_LIMIT}
-              onChange={(e) => setText(e.target.value)}
+              onChange={setText}
               placeholder={placeholder}
+              multiline
+              rows={5}
+              hideEmoji
               className={`w-full resize-none border-0 outline-none transition-all placeholder:text-gray-400 ${
                 coloured
                   ? "min-h-[180px] rounded-[5px] p-6 text-center text-xl font-bold text-white placeholder:text-white/70"
