@@ -26,6 +26,9 @@ export interface FeedFilters {
    * are inserted mid-scroll. Ignored on the ranked feed (mutable rankingScore).
    */
   cursor?: FeedCursor
+  /** Skip seen-post exclusion (hidden posts are still excluded). Used for
+   *  load-more when page 1 was served in caught-up mode. */
+  skipSeenExclusion?: boolean
 }
 
 export async function getFeed(filters: FeedFilters) {
@@ -103,7 +106,9 @@ export async function getFeed(filters: FeedFilters) {
     // so each visit surfaces fresh content.
     hiddenIds = hidden.map((h) => h.postId)
     seenIds = seen.map((s) => s.postId)
-    const excludeIds = planExclusions(hiddenIds, seenIds)
+    const excludeIds = filters.skipSeenExclusion
+      ? hiddenIds
+      : planExclusions(hiddenIds, seenIds)
     if (excludeIds.length > 0) where.id = { notIn: excludeIds }
 
     // Followers-scoped posts are visible only to the author's followers (or self).
