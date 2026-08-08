@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import Image from "next/image"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
@@ -543,13 +544,13 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                 <hr className="border-gray-100" />
 
                 <div className="py-1.5">
-                  <a
-                    href="/auth/signin"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
                   >
                     <Power className="h-4 w-4 flex-shrink-0" />
                     Sign Out
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
