@@ -8,7 +8,8 @@ import type { PlanCode } from "@/config/membership"
 import { ProfileView, type ExperienceItem, type EducationItem, type ProfileViewData } from "./profile-view"
 import { formatDuration } from "@/modules/profile/history"
 import { getFeed } from "@/modules/feed/query"
-import { mapRowToFeedPost, batchOrdinal } from "../feed/map-row"
+import { mapRowToFeedPost, batchOrdinal, formatBatch, relativeTime } from "../feed/map-row"
+import type { FeedMembership, BorderType } from "@/components/shared/feed-card/types"
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 
@@ -17,7 +18,7 @@ function fmt(d: Date | null | undefined): string {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export const VALID_TABS = ["posts", "about", "followers"] as const
+export const VALID_TABS = ["posts", "tagged", "about", "followers"] as const
 export type TabKey = (typeof VALID_TABS)[number]
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -129,7 +130,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         .catch(() => {}),
     )
   }
-  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current] =
+  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current, taggedMentions] =
     await Promise.all([
       prisma.experience.findMany({
         where: { userId: user.id },
@@ -177,6 +178,36 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
           })
         : Promise.resolve(null),
       isOwnProfile ? getCurrent(user.id) : Promise.resolve(null),
+      prisma.postMention.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          post: {
+            select: {
+              id: true, body: true, mediaUrls: true, status: true, visibility: true,
+              createdAt: true, updatedAt: true, deletedAt: true, type: true,
+              upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true,
+              author: {
+                select: {
+                  id: true, username: true, legalName: true, displayName: true,
+                  isVerified: true, membershipStatus: true,
+                  profile: {
+                    select: {
+                      photoUrl: true,
+                      headline: true,
+                      house: { select: { name: true, colorHex: true } },
+                      batch: { select: { startYear: true, endYear: true, label: true } },
+                    },
+                  },
+                },
+              },
+              poll: { select: { id: true, question: true, expiresAt: true, options: { select: { id: true, label: true, voteCount: true }, orderBy: { sortOrder: "asc" } } } },
+              group: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
     ])
 
   const experienceItems: ExperienceItem[] = experiences.map((e) => ({
@@ -220,6 +251,43 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     isSelf: f.id === viewerId,
     viewerFollows: viewerFollowing.has(f.id),
   }))
+
+  const BORDER_MAP: Record<string, BorderType> = {
+    premium: "darkBlue", life: "gold", student: "green", associate: "blue", inactive: "grey", committee: "rgby",
+  }
+  const tagged: ProfileViewData["tagged"] = (taggedMentions as any[])
+    .filter((m) => m.post && !m.post.deletedAt && m.post.status === "visible")
+    .map((m) => {
+      const pt = m.post
+      const a = pt.author
+      const ms = (["associate","student","premium","life","inactive","committee"].includes(a.membershipStatus) ? a.membershipStatus : "associate") as FeedMembership
+      const post = {
+        id: pt.id,
+        authorId: a.id,
+        username: a.username ?? undefined,
+        name: a.displayName || a.legalName,
+        headline: a.profile?.headline ?? "",
+        batch: formatBatch(a.profile?.batch),
+        house: a.profile?.house ? { name: a.profile.house.name, color: a.profile.house.colorHex } : undefined,
+        membership: ms,
+        timestamp: relativeTime(pt.createdAt),
+        isVerified: a.isVerified,
+        content: pt.body ?? undefined,
+        poll: pt.poll ? {
+          id: pt.poll.id,
+          question: pt.poll.question,
+          options: pt.poll.options.map((o: { id: string; label: string; voteCount: number }) => ({ id: o.id, label: o.label, votes: o.voteCount })),
+          totalVotes: pt.poll.options.reduce((s: number, o: { voteCount: number }) => s + o.voteCount, 0),
+        } : undefined,
+        upvotes: pt.upvoteCount,
+        downvotes: pt.downvoteCount,
+        comments: pt.commentCount,
+        shares: pt.shareCount,
+        avatar: a.profile?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.displayName || a.legalName)}`,
+        borderType: BORDER_MAP[ms] ?? "blue",
+      }
+      return { post, isAuthor: viewerId === a.id, initialSaved: false }
+    })
 
   const p = user.profile
   const batch = p?.batch
