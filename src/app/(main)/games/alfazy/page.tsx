@@ -56,7 +56,7 @@ export default async function AlfazyHubPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white">
+        <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-brand text-white">
           <Type className="h-6 w-6" />
         </div>
         <div>
@@ -67,11 +67,11 @@ export default async function AlfazyHubPage() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Play card */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-brand-700 p-6 text-white lg:row-span-1">
+        <section className="relative overflow-hidden rounded-[5px] bg-gradient-to-br from-brand to-brand-700 p-6 text-white lg:row-span-1">
           <h2 className="font-heading text-xl font-bold">Play Alfazy</h2>
           {playedToday ? (
             <div className="mt-4 space-y-3">
-              <div className="rounded-xl bg-white/15 p-4">
+              <div className="rounded-[5px] bg-white/15 p-4">
                 <div className="flex items-center gap-2 font-semibold">
                   <CheckCircle2 className="h-5 w-5" /> Done for today
                 </div>
@@ -80,12 +80,12 @@ export default async function AlfazyHubPage() {
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {streak > 1 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
+                    <span className="inline-flex items-center gap-1 rounded-[3px] bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
                       <Flame className="h-3.5 w-3.5" /> {streak}-day streak
                     </span>
                   )}
                   {topPct != null && (
-                    <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
+                    <span className="inline-flex items-center rounded-[3px] bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
                       Top {topPct}% today
                     </span>
                   )}
@@ -97,7 +97,7 @@ export default async function AlfazyHubPage() {
             <>
               <Link
                 href="/games/alfazy/play"
-                className="mt-4 flex items-center justify-between rounded-xl bg-white/15 p-4 transition-colors hover:bg-white/25"
+                className="mt-4 flex items-center justify-between rounded-[5px] bg-white/15 p-4 transition-colors hover:bg-white/25"
               >
                 <span>
                   <span className="flex items-center gap-2 font-semibold">
@@ -118,7 +118,7 @@ export default async function AlfazyHubPage() {
         </section>
 
         {/* Today's leaderboard */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <section className="rounded-[5px] border border-gray-200 bg-white p-5">
           <h2 className="font-heading text-lg font-bold text-gray-900">Today&apos;s Leaderboard</h2>
           {top5.length === 0 ? (
             <p className="mt-4 text-[13.5px] text-gray-500">No plays yet today — be the first!</p>
@@ -127,7 +127,7 @@ export default async function AlfazyHubPage() {
               {top5.map((e) => (
                 <li key={e.key} className="flex items-center gap-3">
                   <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-md text-[13px] font-bold ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-[3px] text-[13px] font-bold ${
                       e.rank === 1 ? "bg-amber-100 text-amber-700" : e.rank === 2 ? "bg-gray-200 text-gray-700" : e.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-500"
                     }`}
                   >
@@ -147,19 +147,19 @@ export default async function AlfazyHubPage() {
         </section>
 
         {/* Your stats */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <section className="rounded-[5px] border border-gray-200 bg-white p-5">
           <h2 className="font-heading text-lg font-bold text-gray-900">Your Stats</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-brand-50 p-4">
+            <div className="rounded-[5px] bg-brand-50 p-4">
               <div className="text-[12px] font-semibold uppercase tracking-wide text-brand">Games Played</div>
               <CountUp value={gamesPlayed} className="mt-1 block text-3xl font-extrabold text-brand" />
             </div>
-            <div className="rounded-xl bg-amber-50 p-4">
+            <div className="rounded-[5px] bg-amber-50 p-4">
               <div className="text-[12px] font-semibold uppercase tracking-wide text-amber-600">Titles</div>
               <CountUp value={trophies.length} className="mt-1 block text-3xl font-extrabold text-amber-600" />
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-[13.5px] text-gray-700">
+          <div className="mt-3 flex items-center gap-2 rounded-[5px] bg-gray-50 p-3 text-[13.5px] text-gray-700">
             <Flame className="h-4 w-4 text-orange-500" />
             {myRank ? (
               <span>

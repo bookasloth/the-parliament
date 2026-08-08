@@ -35,7 +35,7 @@ export function AvatarUploader() {
         onClick={() => inputRef.current?.click()}
         disabled={busy}
         title="Change photo"
-        className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow hover:bg-brand-600 disabled:opacity-60"
+        className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-[4px] border-2 border-white bg-brand text-white shadow hover:bg-brand-600 disabled:opacity-60"
       >
         <Camera className="h-4 w-4" />
       </button>

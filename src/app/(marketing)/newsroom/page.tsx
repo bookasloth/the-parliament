@@ -83,7 +83,7 @@ export default function NewsroomPage() {
         <Reveal delay={0.12}>
           <a
             href="#"
-            className="group mt-12 grid overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_20px_48px_-20px_rgba(26,26,26,0.22)] lg:grid-cols-2"
+            className="group mt-12 grid overflow-hidden rounded-[5px] border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_20px_48px_-20px_rgba(26,26,26,0.22)] lg:grid-cols-2"
           >
             <div
               className="flex min-h-[220px] items-center justify-center p-10"
@@ -94,7 +94,7 @@ export default function NewsroomPage() {
             <div className="p-8 lg:p-10">
               <div className="flex items-center gap-3 text-xs">
                 <span
-                  className="rounded-full px-3 py-1 font-semibold"
+                  className="rounded-[3px] px-3 py-1 font-semibold"
                   style={{ backgroundColor: `${ACCENT_HEX[featured.accent]}14`, color: ACCENT_HEX[featured.accent] }}
                 >
                   {featured.category}
@@ -121,7 +121,7 @@ export default function NewsroomPage() {
             <Reveal key={p.title} delay={(i % 3) * 0.07}>
               <a
                 href="#"
-                className="group flex h-full flex-col rounded-3xl border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_16px_40px_-16px_rgba(26,26,26,0.2)]"
+                className="group flex h-full flex-col rounded-[5px] border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_16px_40px_-16px_rgba(26,26,26,0.2)]"
               >
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`font-semibold ${ACCENT_TEXT[p.accent]}`}>{p.category}</span>

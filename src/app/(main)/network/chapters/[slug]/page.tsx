@@ -47,7 +47,7 @@ export default function ChapterDetailPage() {
             <button
               onClick={() => setMuted((v) => !v)}
               aria-label={muted ? "Unmute chapter" : "Mute chapter"}
-              className="flex-shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100"
+              className="flex-shrink-0 rounded-[3px] p-2 text-gray-400 hover:bg-gray-100"
             >
               {muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
             </button>
@@ -57,7 +57,7 @@ export default function ChapterDetailPage() {
 
       <div className="mx-auto max-w-[1000px] space-y-0 px-0 py-0 sm:space-y-4 sm:px-6 sm:py-4">
         {/* Hero */}
-        <div className="overflow-hidden border-0 border-gray-200 bg-white sm:rounded-xl sm:border">
+        <div className="overflow-hidden border-0 border-gray-200 bg-white sm:rounded-[5px] sm:border">
           <div className="relative h-36 sm:h-48">
             <Image src={chapter.hero} alt="" fill sizes="100vw" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
@@ -78,14 +78,14 @@ export default function ChapterDetailPage() {
               <div className="flex flex-shrink-0 items-center gap-2">
                 <button
                   aria-label="Share chapter"
-                  className="rounded-full border border-gray-200 p-2 text-gray-400 transition-colors hover:border-brand hover:text-brand"
+                  className="rounded-[3px] border border-gray-200 p-2 text-gray-400 transition-colors hover:border-brand hover:text-brand"
                 >
                   <Share2 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setJoined((v) => !v)}
                   aria-pressed={joined}
-                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-sm font-semibold shadow-sm transition-colors ${
                     joined
                       ? "border border-gray-200 bg-gray-100 text-gray-600"
                       : "bg-brand text-white hover:bg-brand-600"
@@ -110,7 +110,7 @@ export default function ChapterDetailPage() {
               >
                 {t.label}
                 {t.count != null && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
+                  <span className={`rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
                 )}
               </button>
             ))}
@@ -122,12 +122,12 @@ export default function ChapterDetailPage() {
           {tab === "about" && (
             <div className="flex flex-col gap-4 lg:flex-row">
               <div className="min-w-0 flex-1 space-y-4">
-                <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                <section className="rounded-[5px] border border-gray-200 bg-white p-4 sm:p-5">
                   <h2 className="mb-2 text-base font-semibold text-gray-900">About this chapter</h2>
                   <p className="text-sm leading-relaxed text-gray-600">{chapter.about}</p>
                 </section>
 
-                <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                <section className="rounded-[5px] border border-gray-200 bg-white p-4 sm:p-5">
                   <h2 className="mb-2 text-base font-semibold text-gray-900">Recent Activity</h2>
                   {chapter.activity.length > 0 ? (
                     <ul className="divide-y divide-gray-50">
@@ -141,12 +141,12 @@ export default function ChapterDetailPage() {
 
               {/* Organizers rail */}
               <aside className="lg:w-72 lg:flex-shrink-0">
-                <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                <section className="rounded-[5px] border border-gray-200 bg-white p-4 sm:p-5">
                   <h2 className="mb-3 text-base font-semibold text-gray-900">Organizers</h2>
                   <ul className="space-y-3">
                     {chapter.members_list.filter((m) => m.role).map((m) => (
                       <li key={m.card.id} className="flex items-center gap-3">
-                        <Image src={m.card.image} alt={m.card.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
+                        <Image src={m.card.image} alt={m.card.name} width={40} height={40} className="h-10 w-10 rounded-[4px] object-cover" />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-gray-900">{m.card.name}</p>
                           <p className="truncate text-xs text-brand">{m.role}</p>
@@ -180,13 +180,13 @@ export default function ChapterDetailPage() {
                         <>
                           <a
                             href={`/${m.card.id}`}
-                            className="rounded-md border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all duration-300 hover:bg-brand hover:text-white"
+                            className="rounded-[3px] border border-brand bg-white px-4 py-1.5 text-sm font-medium text-brand transition-all duration-300 hover:bg-brand hover:text-white"
                           >
                             View Profile
                           </a>
                           <button
                             onClick={() => setConnected((c) => (c.includes(m.card.id) ? c.filter((x) => x !== m.card.id) : [...c, m.card.id]))}
-                            className={`flex items-center gap-1.5 rounded-md border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${
+                            className={`flex items-center gap-1.5 rounded-[3px] border px-4 py-1.5 text-sm font-medium transition-all duration-300 ${
                               isConnected ? "border-gray-200 bg-gray-100 text-gray-600" : "border-brand bg-brand text-white hover:bg-white hover:text-brand"
                             }`}
                           >
@@ -208,7 +208,7 @@ export default function ChapterDetailPage() {
                 {chapter.events.map((e) => <EventCard key={e.id} event={e} />)}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
+              <div className="rounded-[5px] border border-dashed border-gray-300 bg-white py-16 text-center">
                 <CalendarDays className="mx-auto mb-3 h-10 w-10 text-gray-200" />
                 <p className="text-sm font-medium text-gray-500">No upcoming events</p>
                 <p className="mt-1 text-xs text-gray-400">Check back soon for {chapter.city} meetups.</p>

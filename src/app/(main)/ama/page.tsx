@@ -19,7 +19,7 @@ export default async function AmaListPage() {
       <p className="mt-1 text-sm text-gray-500">Live and upcoming Ask-Me-Anything rooms. Free to attend for every member.</p>
 
       {sessions.length === 0 ? (
-        <div className="mt-8 flex flex-col items-center rounded-xl border border-gray-200 bg-white py-14 text-center">
+        <div className="mt-8 flex flex-col items-center rounded-[5px] border border-gray-200 bg-white py-14 text-center">
           <CalendarDays className="h-8 w-8 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-700">No AMAs scheduled</p>
           <p className="text-sm text-gray-400">Check back soon.</p>
@@ -30,13 +30,13 @@ export default async function AmaListPage() {
             <li key={s.id}>
               <a
                 href={`/ama/${s.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-brand hover:shadow-sm transition"
+                className="flex items-center justify-between gap-3 rounded-[5px] border border-gray-200 bg-white px-4 py-3 hover:border-brand hover:shadow-sm transition"
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-gray-900">{s.title}</p>
                   <p className="text-xs text-gray-500">{new Date(s.startsAt).toLocaleString()}</p>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${s.status === "live" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                <span className={`rounded-[3px] px-2.5 py-1 text-xs font-medium ${s.status === "live" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                   {s.status === "live" ? "● Live" : "Upcoming"}
                 </span>
               </a>

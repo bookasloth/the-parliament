@@ -91,7 +91,7 @@ export function ProfileTimeline({
           )}
         </>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="rounded-[5px] border border-gray-200 bg-white">
           <div className="px-7 py-10 text-center">
             <p className="text-sm text-gray-500">
               {isOwn ? "You haven't posted yet." : `${emptyName} hasn't posted yet.`}

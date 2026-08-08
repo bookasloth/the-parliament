@@ -39,13 +39,13 @@ export function StatCard({ label, value, delta, deltaUp, icon, accent = "indigo"
     violet: "bg-violet-950/40 text-violet-400",
   }
   return (
-    <div className="rounded-xl border border-zinc-800 bg-[#111113] p-4">
+    <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</p>
           <p className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{value}</p>
         </div>
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg flex-shrink-0 ${accents[accent]}`}>{icon}</div>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-[4px] flex-shrink-0 ${accents[accent]}`}>{icon}</div>
       </div>
       {delta && (
         <p className={`mt-2 flex items-center gap-1 text-xs font-semibold ${deltaUp ? "text-emerald-400" : "text-rose-400"}`}>
@@ -93,7 +93,7 @@ export function statusBadgeClass(status: string): string {
 
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${statusBadgeClass(status)}`}>
+    <span className={`inline-flex items-center rounded-[3px] border px-2 py-0.5 text-[11px] font-semibold capitalize ${statusBadgeClass(status)}`}>
       {status}
     </span>
   )
@@ -112,17 +112,17 @@ export function ComingSoon({ title, description, icon, planned }: {
       <a href="/admin" className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-blue-400 mb-4">
         <CaretLeft className="h-3.5 w-3.5" weight="duotone" /> Back to Dashboard
       </a>
-      <div className="rounded-2xl border border-zinc-800 bg-[#111113] p-8 sm:p-10 text-center">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white">
+      <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-8 sm:p-10 text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[5px] bg-gradient-to-br from-blue-500 to-blue-700 text-white">
           {icon}
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-950/50 border border-amber-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-300 mb-3">
+        <div className="inline-flex items-center gap-1.5 rounded-[3px] bg-amber-950/50 border border-amber-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-300 mb-3">
           <Wrench className="h-3.5 w-3.5" weight="duotone" /> Coming Soon
         </div>
         <h1 className="text-xl font-bold text-zinc-100 mb-2">{title}</h1>
         <p className="text-sm text-zinc-400 max-w-md mx-auto mb-6">{description}</p>
 
-        <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-5 text-left">
+        <div className="rounded-[5px] bg-zinc-900 border border-zinc-800 p-5 text-left">
           <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-3">Planned capabilities</p>
           <ul className="space-y-2">
             {planned.map((p, i) => (
@@ -205,7 +205,7 @@ export function Button({ children, variant = "primary", size = "md", className =
   }
   return (
     <button
-      className={`rounded-md font-medium inline-flex items-center gap-1.5 transition-colors ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`rounded-[3px] font-medium inline-flex items-center gap-1.5 transition-colors ${variants[variant]} ${sizes[size]} ${className}`}
       {...rest}
     >
       {children}
@@ -284,13 +284,13 @@ export function Modal({ open, onClose, title, children }: {
         onClick={onClose}
         className="absolute inset-0 bg-black/60"
       />
-      <div className="relative w-full max-w-lg rounded-xl border border-zinc-800 bg-[#111113] p-5 shadow-xl">
+      <div className="relative w-full max-w-lg rounded-[5px] border border-zinc-800 bg-[#111113] p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           {title && <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>}
           <button
             aria-label="Close"
             onClick={onClose}
-            className="ml-auto rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className="ml-auto rounded-[3px] p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
           >
             <X className="h-4 w-4" weight="duotone" />
           </button>

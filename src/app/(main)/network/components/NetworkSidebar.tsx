@@ -30,7 +30,7 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
       {/* Profile mini-card */}
       <Link
         href={`/${me.username}`}
-        className="block bg-white border border-gray-200 rounded-xl p-4 hover:shadow-card transition-shadow"
+        className="block bg-white border border-gray-200 rounded-[5px] p-4 hover:shadow-card transition-shadow"
       >
         <div className="flex items-center gap-3">
           <Image
@@ -38,7 +38,7 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
             alt={me.name}
             width={48}
             height={48}
-            className="h-12 w-12 rounded-full object-cover border-2 border-brand"
+            className="h-12 w-12 rounded-[4px] object-cover border-2 border-brand"
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{me.name}</p>
@@ -46,11 +46,11 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
           </div>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
+          <div className="flex items-center justify-between rounded-[4px] bg-brand-50 px-3 py-2">
             <span className="text-xs text-gray-600">Followers</span>
             <span className="text-sm font-bold text-brand tabular-nums">{me.followers}</span>
           </div>
-          <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
+          <div className="flex items-center justify-between rounded-[4px] bg-brand-50 px-3 py-2">
             <span className="text-xs text-gray-600">Following</span>
             <span className="text-sm font-bold text-brand tabular-nums">{me.following}</span>
           </div>
@@ -58,7 +58,7 @@ export function NetworkSidebar({ me }: { me: NetworkMe }) {
       </Link>
 
       {/* Manage Network */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
         <p className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
           Manage Network
         </p>

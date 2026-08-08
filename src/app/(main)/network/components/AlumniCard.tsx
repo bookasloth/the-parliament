@@ -40,7 +40,7 @@ export function AlumniCard({ alumni, followed, onFollow, onDismiss }: AlumniCard
       <button
         onClick={() => onDismiss(alumni.id)}
         aria-label={`Dismiss ${alumni.name}`}
-        className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 text-gray-500 backdrop-blur-sm transition-colors hover:bg-white hover:text-gray-700"
+        className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-[3px] bg-white/80 text-gray-500 backdrop-blur-sm transition-colors hover:bg-white hover:text-gray-700"
       >
         <X className="h-4 w-4" />
       </button>
@@ -59,13 +59,13 @@ export function AlumniCard({ alumni, followed, onFollow, onDismiss }: AlumniCard
         actions={
           <div className="flex w-full gap-2">
             {followed ? (
-              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-2 text-[13px] font-semibold text-gray-600">
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-[4px] bg-gray-100 px-3 py-2 text-[13px] font-semibold text-gray-600">
                 <Check className="h-3.5 w-3.5" /> Following
               </span>
             ) : (
               <button
                 onClick={() => onFollow(alumni.id)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-600"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-[4px] bg-brand px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-600"
               >
                 <UserPlus className="h-3.5 w-3.5" /> Follow
               </button>
@@ -73,7 +73,7 @@ export function AlumniCard({ alumni, followed, onFollow, onDismiss }: AlumniCard
             <Link
               href={`/messages/conv-${alumni.id}`}
               aria-label={`Message ${alumni.name}`}
-              className="grid w-10 flex-shrink-0 place-items-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:border-brand hover:text-brand"
+              className="grid w-10 flex-shrink-0 place-items-center rounded-[4px] border border-gray-200 bg-white text-gray-500 transition-colors hover:border-brand hover:text-brand"
             >
               <MessageSquare className="h-4 w-4" />
             </Link>

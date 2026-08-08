@@ -157,7 +157,7 @@ const MS_COLOR: Record<ProfileViewData["membership"]["tier"], string> = {
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1400&q=70"
 
-const R_CARD = "rounded-[6px]"
+const R_CARD = "rounded-[5px]"
 const R_EL = "rounded-[4px]"
 
 // ─────────────────────────────────────────────
@@ -171,7 +171,7 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
   return (
     <div className="flex items-center justify-between px-7 pt-5 pb-1">
       <h5 className="flex items-center gap-2 font-heading text-[15px] font-bold text-gray-900">
-        <span className="inline-block h-[17px] w-[6px] rounded bg-brand" />
+        <span className="inline-block h-[17px] w-[6px] rounded-[3px] bg-brand" />
         {children}
       </h5>
       {action}
@@ -234,12 +234,12 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
   // Shared header pieces — reused by the mobile (centred) and desktop (one-line) layouts.
   const avatarInner = (
-    <div className="w-fit rounded-full bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
+    <div className="w-fit rounded-[3px] bg-white p-[5px]" style={{ boxShadow: `0 0 0 4px ${msColor}` }}>
       <div className="relative">
         {data.photoUrl ? (
-          <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-full object-cover" width={118} height={118} />
+          <Image src={data.photoUrl} alt={data.name} className="h-[118px] w-[118px] rounded-[4px] object-cover" width={118} height={118} />
         ) : (
-          <div className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
+          <div className="flex h-[118px] w-[118px] items-center justify-center rounded-[3px] bg-brand-50 text-3xl font-bold text-brand-600">{data.initials}</div>
         )}
         {isOwn && <AvatarUploader />}
       </div>
@@ -372,10 +372,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                 >
                   {label}
                   {key === "posts" && data.postsCount > 0 && (
-                    <span className="ml-1 rounded-[6px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
+                    <span className="ml-1 rounded-[5px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
                   )}
                   {key === "followers" && data.followersCount > 0 && (
-                    <span className="ml-1 rounded-[6px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
+                    <span className="ml-1 rounded-[5px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
                   )}
                 </button>
               ))}
@@ -473,7 +473,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                         rel="noopener noreferrer"
                         aria-label={label}
                         title={label}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:border-brand hover:bg-brand hover:text-white"
+                        className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-gray-200 text-gray-600 transition-colors hover:border-brand hover:bg-brand hover:text-white"
                       >
                         <Icon className="h-4 w-4" />
                       </a>
@@ -516,7 +516,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <Card>
                     <SectionTitle>Skills</SectionTitle>
                     <div className="px-7 pb-6 pt-1 flex flex-wrap gap-2">
-                      {data.skills.map((s) => <span key={s} className="rounded-[6px] bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{s}</span>)}
+                      {data.skills.map((s) => <span key={s} className="rounded-[5px] bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{s}</span>)}
                     </div>
                   </Card>
                 )}
@@ -527,7 +527,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     {data.experiences.length === 0 && <p className="text-[13.5px] text-gray-500">No experience added yet.</p>}
                     {data.experiences.map((e, i) => (
                       <div key={i} className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0 last:border-b-0 last:pb-0">
-                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[4px] bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
                           {e.company.trim().charAt(0).toUpperCase() || "?"}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -562,7 +562,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   <div className="px-7 pb-6 pt-2">
                     {data.educations.map((e, i) => (
                       <div key={i} className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0">
-                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[4px] bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
                           {e.school.trim().charAt(0).toUpperCase() || "?"}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -579,7 +579,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     {/* Legacy single higher-education field, kept until migrated into entries. */}
                     {data.higherEducation && (
                       <div className="flex gap-3.5 border-b border-gray-100 py-4 first:pt-0">
-                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[4px] bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
                           {data.higherEducation.trim().charAt(0).toUpperCase() || "?"}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -590,7 +590,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     )}
                     {/* JNV Nagpur — always shown, the shared anchor. */}
                     <div className="flex gap-3.5 py-4 first:pt-0">
-                      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">J</span>
+                      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[4px] bg-gray-100 text-sm font-bold text-gray-500 ring-1 ring-gray-200">J</span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[15px] font-bold leading-tight text-gray-900">JNV Nagpur</div>
                         <div className="text-[13px] text-gray-700">{data.house ? `${data.house.name} House` : "Jawahar Navodaya Vidyalaya"}</div>
@@ -659,7 +659,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                             alt={f.name}
                             width={44}
                             height={44}
-                            className="h-11 w-11 rounded-full object-cover"
+                            className="h-11 w-11 rounded-[4px] object-cover"
                             style={{ boxShadow: f.houseColor ? `0 0 0 2px ${f.houseColor}` : undefined }}
                           />
                         </Link>

@@ -48,7 +48,7 @@ export function StickyNav({
         )}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[5px] bg-brand">
             <Users className="h-5 w-5 text-white" />
           </div>
           <span
@@ -83,7 +83,7 @@ export function StickyNav({
           </a>
           <a
             href="/auth/signup"
-            className="rounded bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-sm hover:shadow-md"
+            className="rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-sm hover:shadow-md"
           >
             {ctaLabel}
           </a>
@@ -91,7 +91,7 @@ export function StickyNav({
 
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden rounded p-2 text-charcoal-500 hover:bg-charcoal-100 transition-colors"
+          className="md:hidden rounded-[3px] p-2 text-charcoal-500 hover:bg-charcoal-100 transition-colors"
           aria-label="Toggle menu"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -125,7 +125,7 @@ export function StickyNav({
               </a>
               <a
                 href="/auth/signup"
-                className="block text-center rounded bg-brand px-5 py-2.5 text-sm font-semibold text-white"
+                className="block text-center rounded-[3px] bg-brand px-5 py-2.5 text-sm font-semibold text-white"
               >
                 {ctaLabel}
               </a>

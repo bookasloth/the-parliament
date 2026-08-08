@@ -373,14 +373,14 @@ export default function ChangelogPage() {
                 {/* Node */}
                 <span
                   aria-hidden
-                  className="absolute top-1 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] left-0"
+                  className="absolute top-1 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-[4px] border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] left-0"
                   style={{ borderColor: `${hex}40`, color: hex, backgroundColor: `${hex}0f` }}
                 >
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
 
                 <Reveal>
-                  <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_18px_44px_-20px_rgba(26,26,26,0.22)] sm:p-8">
+                  <div className="rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_18px_44px_-20px_rgba(26,26,26,0.22)] sm:p-8">
                     {/* Header */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                       <h2 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-[#1a1a1a]">
@@ -388,7 +388,7 @@ export default function ChangelogPage() {
                       </h2>
                       {i === 0 && (
                         <span
-                          className="rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                          className="rounded-[3px] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
                           style={{ backgroundColor: hex }}
                         >
                           Latest
@@ -417,7 +417,7 @@ export default function ChangelogPage() {
                         {r.features.map((f) => (
                           <li key={f} className="flex items-start gap-2.5 text-[15px] text-[#2b2b2b]">
                             <span
-                              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px]"
                               style={{ backgroundColor: `${hex}18`, color: hex }}
                             >
                               <Check className="h-3 w-3" strokeWidth={3} />

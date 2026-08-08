@@ -66,7 +66,12 @@
   --color-house-indira: #ff9933;
   --color-house-laxmi: #e75480;
 
-  --radius-card: 20px;
+  /* Premium radius scale — 0 to 5px max */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 5px;
+  --radius-card: 5px;
   --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
   --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 12px 24px -4px rgba(0, 0, 0, 0.04);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
@@ -109,6 +114,13 @@ h1, h2 {
 
   .soft-shadow {
     box-shadow: var(--shadow-soft);
+  }
+
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    box-shadow: 0 0 0 2px rgba(0, 154, 228, 0.3);
   }
 
   .scrollbar-none {

@@ -65,7 +65,7 @@ export default async function ChampionsPage({
 
       {/* Your trophy case */}
       {myTrophies.length > 0 && (
-        <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5">
+        <section className="rounded-[5px] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5">
           <h2 className="flex items-center gap-2 font-heading text-[15px] font-bold text-amber-800">
             <Medal className="h-4 w-4 text-amber-500" /> Your titles · {myTrophies.length}
           </h2>
@@ -73,18 +73,18 @@ export default async function ChampionsPage({
             {myTrophies.slice(0, 12).map((t) => (
               <span
                 key={`${t.scope}:${t.period}:${t.anchor}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-800 ring-1 ring-amber-200"
+                className="inline-flex items-center gap-1.5 rounded-[3px] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-800 ring-1 ring-amber-200"
                 title={`${SCOPE_LABEL[t.scope]} champion`}
               >
                 <Crown className="h-3.5 w-3.5 text-amber-500" />
                 {SCOPE_LABEL[t.scope]} · {formatAnchor(t.period, t.anchor)}
-                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                <span className="rounded-[3px] bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
                   {PERIOD_LABEL[t.period]}
                 </span>
               </span>
             ))}
             {myTrophies.length > 12 && (
-              <span className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-500 ring-1 ring-gray-200">
+              <span className="inline-flex items-center rounded-[3px] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-gray-500 ring-1 ring-gray-200">
                 +{myTrophies.length - 12} more
               </span>
             )}
@@ -96,7 +96,7 @@ export default async function ChampionsPage({
       <div className="flex flex-wrap gap-1.5">
         <Link
           href={`/games/alfazy/champions${winner ? `?winner=${winner}` : ""}`}
-          className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold ${!scopeFilter ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200"}`}
+          className={`rounded-[3px] px-3.5 py-1.5 text-[12.5px] font-semibold ${!scopeFilter ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200"}`}
         >
           All
         </Link>
@@ -106,7 +106,7 @@ export default async function ChampionsPage({
             <Link
               key={s}
               href={`/games/alfazy/champions?${q.toString()}`}
-              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold ${scopeFilter === s ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200"}`}
+              className={`rounded-[3px] px-3.5 py-1.5 text-[12.5px] font-semibold ${scopeFilter === s ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200"}`}
             >
               {SCOPE_LABEL[s]}
             </Link>
@@ -115,11 +115,11 @@ export default async function ChampionsPage({
       </div>
 
       {ordered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
+        <div className="rounded-[5px] border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
           No champions crowned yet.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-[5px] border border-gray-200 bg-white">
           <table className="w-full text-left text-[13.5px]">
             <thead className="bg-gray-50 text-[12px] uppercase tracking-wide text-gray-500">
               <tr>
@@ -134,7 +134,7 @@ export default async function ChampionsPage({
                 <tr key={`${g.period}:${g.anchor}`}>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">{formatAnchor(g.period, g.anchor)}</span>
-                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+                    <span className="ml-2 rounded-[3px] bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
                       {PERIOD_LABEL[g.period]}
                     </span>
                   </td>
@@ -149,7 +149,7 @@ export default async function ChampionsPage({
                             {winners.map((w) => (
                               <span
                                 key={w.winnerKey}
-                                className={`rounded-md px-2 py-1 text-[12.5px] font-semibold ${
+                                className={`rounded-[3px] px-2 py-1 text-[12.5px] font-semibold ${
                                   winner && w.winnerKey === winner ? "bg-amber-100 text-amber-800" : "bg-gray-50 text-gray-800"
                                 }`}
                               >

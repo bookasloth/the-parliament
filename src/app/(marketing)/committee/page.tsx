@@ -41,7 +41,7 @@ export default function CommitteePage() {
               </p>
             </Reveal>
             <Reveal delay={0.15}>
-              <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-[#5b5b5b]">
+              <div className="mt-7 inline-flex items-center gap-2 rounded-[3px] border border-black/10 bg-white px-4 py-2 text-sm text-[#5b5b5b]">
                 <ShieldCheck className="h-4 w-4 text-[#70ad47]" />
                 Elected roster · verified alumni
               </div>
@@ -52,10 +52,10 @@ export default function CommitteePage() {
           <Reveal delay={0.2} className="hidden lg:block">
             <div className="relative">
               <div
-                className="aspect-[4/3.4] w-full rounded-3xl bg-cover bg-center shadow-[0_24px_60px_-24px_rgba(26,26,26,0.32)]"
+                className="aspect-[4/3.4] w-full rounded-[5px] bg-cover bg-center shadow-[0_24px_60px_-24px_rgba(26,26,26,0.32)]"
                 style={{ backgroundImage: `url(${HERO_IMG})` }}
               />
-              <div className="absolute -bottom-5 left-6 rounded-2xl border border-black/5 bg-white px-5 py-3 shadow-lg">
+              <div className="absolute -bottom-5 left-6 rounded-[5px] border border-black/5 bg-white px-5 py-3 shadow-lg">
                 <p className="font-heading text-2xl font-semibold text-brand">11 + 11</p>
                 <p className="text-xs text-[#8a8a8a]">Executive & advisory members</p>
               </div>

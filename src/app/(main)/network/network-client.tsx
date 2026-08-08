@@ -53,15 +53,15 @@ const TAB_EMPTY: Record<DiscoveryTab, string> = {
 
 function CardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-[5px] border border-gray-200 bg-white">
       <div className="h-[60px] w-full animate-pulse bg-gray-100" />
       <div className="px-4 pb-4">
-        <div className="-mt-8 h-16 w-16 animate-pulse rounded-full border-4 border-white bg-gray-200" />
-        <div className="mt-3 h-3.5 w-2/3 animate-pulse rounded bg-gray-200" />
-        <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-gray-100" />
-        <div className="mt-3 h-3 w-full animate-pulse rounded bg-gray-100" />
-        <div className="mt-1.5 h-3 w-4/5 animate-pulse rounded bg-gray-100" />
-        <div className="mt-4 h-8 w-full animate-pulse rounded-md bg-gray-100" />
+        <div className="-mt-8 h-16 w-16 animate-pulse rounded-[4px] border-4 border-white bg-gray-200" />
+        <div className="mt-3 h-3.5 w-2/3 animate-pulse rounded-[3px] bg-gray-200" />
+        <div className="mt-2 h-3 w-1/3 animate-pulse rounded-[3px] bg-gray-100" />
+        <div className="mt-3 h-3 w-full animate-pulse rounded-[3px] bg-gray-100" />
+        <div className="mt-1.5 h-3 w-4/5 animate-pulse rounded-[3px] bg-gray-100" />
+        <div className="mt-4 h-8 w-full animate-pulse rounded-[3px] bg-gray-100" />
       </div>
     </div>
   )
@@ -109,7 +109,7 @@ export function NetworkClient({
       )}
       <div className={`fixed left-0 top-0 z-50 h-full w-80 overflow-y-auto bg-[#f3f2ef] p-4 shadow-xl transition-transform lg:hidden ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="mb-3 flex justify-end">
-          <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="rounded-lg p-1.5 hover:bg-gray-200">
+          <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="rounded-[4px] p-1.5 hover:bg-gray-200">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -119,7 +119,7 @@ export function NetworkClient({
       {/* Sticky sub-header */}
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-[52px] max-w-[1400px] items-center gap-3 px-4 sm:px-6">
-          <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" className="rounded-lg p-1.5 hover:bg-gray-100 lg:hidden">
+          <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" className="rounded-[4px] p-1.5 hover:bg-gray-100 lg:hidden">
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
           <Network className="h-5 w-5 flex-shrink-0 text-brand" />
@@ -159,7 +159,7 @@ export function NetworkClient({
 
             {/* Discovery tabs */}
             <section>
-              <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="mb-4 overflow-hidden rounded-[5px] border border-gray-200 bg-white">
                 <div className="scrollbar-none flex overflow-x-auto" role="tablist" aria-label="Discover alumni">
                   {DISCOVERY_TABS.map((t) => (
                     <button
@@ -207,7 +207,7 @@ export function NetworkClient({
                     <div className="mt-6 text-center">
                       <button
                         onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                        className="rounded-full border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-brand hover:text-brand"
+                        className="rounded-[3px] border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-brand hover:text-brand"
                       >
                         Load more
                       </button>
@@ -230,7 +230,7 @@ export function NetworkClient({
             </AlumniCarousel>
 
             {/* Recent Activity */}
-            <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+            <section className="rounded-[5px] border border-gray-200 bg-white p-4 sm:p-5">
               <h2 className="mb-2 text-base font-semibold text-gray-900">Recent Alumni Activity</h2>
               {recentActivity.length > 0 ? (
                 <ul className="divide-y divide-gray-50">
@@ -249,12 +249,12 @@ export function NetworkClient({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
-      <span className="mb-3 grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand">
+    <div className="flex flex-col items-center justify-center rounded-[5px] border border-dashed border-gray-300 bg-white py-16 text-center">
+      <span className="mb-3 grid h-14 w-14 place-items-center rounded-[3px] bg-brand-50 text-brand">
         <Compass className="h-7 w-7" />
       </span>
       <p className="max-w-xs text-sm font-medium text-gray-600">{message}</p>
-      <a href="/community" className="mt-4 rounded-full bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
+      <a href="/community" className="mt-4 rounded-[3px] bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
         Browse Directory
       </a>
     </div>

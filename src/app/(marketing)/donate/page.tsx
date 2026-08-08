@@ -94,13 +94,13 @@ export default function DonatePage() {
             <div className="mt-9 flex flex-wrap gap-4">
               <a
                 href="#give"
-                className="rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                className="rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
               >
                 Donate now
               </a>
               <a
                 href="#causes"
-                className="rounded-full border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
+                className="rounded-[3px] border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
               >
                 See where it goes
               </a>
@@ -132,9 +132,9 @@ export default function DonatePage() {
             const Icon = c.icon
             return (
               <Reveal key={c.title} delay={i * 0.07}>
-                <div className="h-full rounded-2xl border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_12px_32px_-12px_rgba(26,26,26,0.18)]">
+                <div className="h-full rounded-[5px] border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_12px_32px_-12px_rgba(26,26,26,0.18)]">
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl"
+                    className="flex h-12 w-12 items-center justify-center rounded-[5px]"
                     style={{ backgroundColor: `${ACCENT_HEX[c.accent]}1a`, color: ACCENT_HEX[c.accent] }}
                   >
                     <Icon className="h-6 w-6" />
@@ -162,10 +162,10 @@ export default function DonatePage() {
             const Icon = s.icon
             return (
               <Reveal key={s.title} delay={i * 0.08}>
-                <div className="group h-full rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-18px_rgba(26,26,26,0.2)]">
+                <div className="group h-full rounded-[5px] bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-18px_rgba(26,26,26,0.2)]">
                   <div className="flex items-center justify-between">
                     <div
-                      className="flex h-14 w-14 items-center justify-center rounded-2xl transition group-hover:scale-105"
+                      className="flex h-14 w-14 items-center justify-center rounded-[5px] transition group-hover:scale-105"
                       style={{ backgroundColor: `${ACCENT_HEX[i % 4]}1a`, color: ACCENT_HEX[i % 4] }}
                     >
                       <Icon className="h-7 w-7" strokeWidth={1.75} />
@@ -185,9 +185,9 @@ export default function DonatePage() {
         {/* Give options: online + bank */}
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <Reveal>
-            <div className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+            <div className="flex h-full flex-col rounded-[5px] border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
                   <Smartphone className="h-5 w-5" />
                 </span>
                 <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">
@@ -200,7 +200,7 @@ export default function DonatePage() {
               </p>
               <a
                 href="/auth/signup"
-                className="mt-6 inline-flex w-fit rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+                className="mt-6 inline-flex w-fit rounded-[3px] bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
               >
                 Donate with Razorpay
               </a>
@@ -208,16 +208,16 @@ export default function DonatePage() {
           </Reveal>
 
           <Reveal delay={0.08}>
-            <div className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+            <div className="flex h-full flex-col rounded-[5px] border border-black/5 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e8503a]/10 text-[#e8503a]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-[#e8503a]/10 text-[#e8503a]">
                   <Landmark className="h-5 w-5" />
                 </span>
                 <h3 className="font-heading text-xl font-semibold text-[#1a1a1a]">
                   Bank transfer
                 </h3>
               </div>
-              <dl className="mt-5 divide-y divide-black/5 rounded-2xl border border-black/5 bg-[#faf9f6]">
+              <dl className="mt-5 divide-y divide-black/5 rounded-[5px] border border-black/5 bg-[#faf9f6]">
                 {ACCOUNT.map((a) => (
                   <div key={a.label} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                     <dt className="text-[13px] font-medium text-[#8a8a8a]">{a.label}</dt>
@@ -231,7 +231,7 @@ export default function DonatePage() {
 
         {/* 80G note */}
         <Reveal delay={0.1}>
-          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#70ad47]/30 bg-[#eef6e8] p-5">
+          <div className="mt-6 flex items-start gap-3 rounded-[5px] border border-[#70ad47]/30 bg-[#eef6e8] p-5">
             <ReceiptText className="mt-0.5 h-5 w-5 shrink-0 text-[#70ad47]" />
             <p className="text-sm leading-relaxed text-[#3a3a3a]">
               Donations to NNAWCA are eligible for tax deduction under Section 80G. Your

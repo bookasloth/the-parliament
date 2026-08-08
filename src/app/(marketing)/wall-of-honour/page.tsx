@@ -68,11 +68,11 @@ export default function WallOfHonourPage() {
             return (
               <Reveal key={i} delay={(i % 3) * 0.07}>
                 <div
-                  className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1.5 hover:border-transparent hover:shadow-[0_28px_56px_-20px_rgba(26,26,26,0.32)]"
+                  className="group relative flex h-full flex-col overflow-hidden rounded-[5px] border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1.5 hover:border-transparent hover:shadow-[0_28px_56px_-20px_rgba(26,26,26,0.32)]"
                 >
                   {/* Accent ring on hover */}
                   <span
-                    className="pointer-events-none absolute inset-0 rounded-3xl opacity-0 ring-2 ring-inset transition-opacity duration-300 group-hover:opacity-100"
+                    className="pointer-events-none absolute inset-0 rounded-[5px] opacity-0 ring-2 ring-inset transition-opacity duration-300 group-hover:opacity-100"
                     style={{ color: accent }}
                   />
 
@@ -82,7 +82,7 @@ export default function WallOfHonourPage() {
                     style={{ background: `linear-gradient(135deg, ${accent}1f, ${accent}05)` }}
                   >
                     <span
-                      className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
+                      className="inline-flex items-center rounded-[3px] px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
                       style={{ backgroundColor: `${accent}1f`, color: accent }}
                     >
                       {h.category}
@@ -96,7 +96,7 @@ export default function WallOfHonourPage() {
                   {/* Avatar overlapping the band */}
                   <div className="px-6">
                     <span
-                      className="-mt-9 flex h-16 w-16 items-center justify-center rounded-2xl font-heading text-xl font-semibold text-white shadow-md ring-4 ring-white"
+                      className="-mt-9 flex h-16 w-16 items-center justify-center rounded-[5px] font-heading text-xl font-semibold text-white shadow-md ring-4 ring-white"
                       style={{ backgroundColor: accent }}
                     >
                       {initials(h.name)}

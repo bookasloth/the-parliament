@@ -85,14 +85,14 @@ export default function MembershipClient({
         description="Track revenue, plan distribution, and transactions"
         actions={
           <button onClick={() => sendActivation()} disabled={blasting}
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+            className="flex items-center gap-1.5 rounded-[3px] bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
             <Envelope className="h-3.5 w-3.5" weight="duotone" /> {blasting ? "Sending…" : "Send activation emails"}
           </button>
         }
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-rose-900 bg-rose-950/40 px-4 py-2.5 text-xs font-semibold text-rose-300">{error}</div>
+        <div className="mb-4 rounded-[4px] border border-rose-900 bg-rose-950/40 px-4 py-2.5 text-xs font-semibold text-rose-300">{error}</div>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -103,7 +103,7 @@ export default function MembershipClient({
       </div>
 
       {/* Plan distribution */}
-      <div className="rounded-xl border border-zinc-800 bg-[#111113] p-4 sm:p-5 mb-5">
+      <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4 sm:p-5 mb-5">
         <h2 className="text-sm font-bold text-zinc-100 mb-4">Active Plan Distribution</h2>
         {plans.length === 0 ? (
           <p className="text-xs text-zinc-500">No active memberships yet.</p>
@@ -123,17 +123,17 @@ export default function MembershipClient({
       </div>
 
       {/* Transactions */}
-      <div className="rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
         <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-zinc-800">
           <h2 className="text-sm font-bold text-zinc-100 self-center mr-auto px-1">Orders</h2>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border border-zinc-800 bg-[#111113] text-zinc-200 px-2.5 py-2 text-xs outline-none focus:border-blue-500 capitalize">
+            className="rounded-[3px] border border-zinc-800 bg-[#111113] text-zinc-200 px-2.5 py-2 text-xs outline-none focus:border-blue-500 capitalize">
             {statuses.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s}</option>)}
           </select>
           <div className="relative sm:w-64">
             <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, ID…"
-              className="w-full rounded-md border border-zinc-800 bg-[#0a0a0a] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500" />
+              className="w-full rounded-[3px] border border-zinc-800 bg-[#0a0a0a] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500" />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -162,7 +162,7 @@ export default function MembershipClient({
                     <td className="px-4 py-3">
                       {t.refundable && !isRefunded && (
                         <button onClick={() => refund(t)} disabled={pending} title="Issue refund"
-                          className="flex items-center gap-1 rounded-md border border-amber-800 bg-amber-950/40 px-2.5 py-1.5 text-[11px] font-semibold text-amber-300 hover:bg-amber-950 disabled:opacity-50">
+                          className="flex items-center gap-1 rounded-[3px] border border-amber-800 bg-amber-950/40 px-2.5 py-1.5 text-[11px] font-semibold text-amber-300 hover:bg-amber-950 disabled:opacity-50">
                           <ArrowCounterClockwise className="h-3 w-3" weight="duotone" /> Refund
                         </button>
                       )}

@@ -25,7 +25,7 @@ export default function PasswordForm({ hasPassword }: { hasPassword: boolean }) 
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900 mb-1">{hasPassword ? "Change password" : "Set a password"}</h2>
       {!hasPassword && (
         <p className="text-sm text-gray-500 mb-4">You signed in with Google. Set a password to also sign in with email.</p>
@@ -40,7 +40,7 @@ export default function PasswordForm({ hasPassword }: { hasPassword: boolean }) 
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            className="rounded-[4px] bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {pending ? "Saving…" : hasPassword ? "Change password" : "Set password"}
           </button>
@@ -64,7 +64,7 @@ function Field({
         value={value}
         autoComplete={autoComplete}
         onChange={e => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+        className="w-full rounded-[4px] border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
       />
     </label>
   )

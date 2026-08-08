@@ -36,7 +36,7 @@ export default async function AdminEventReportsPage() {
         <StatCard label="Feedback" value={totals.feedback.toLocaleString()} icon={<Star className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
       </div>
 
-      <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
@@ -51,7 +51,7 @@ export default async function AdminEventReportsPage() {
                 <Tr key={r.id}>
                   <Td className="max-w-[240px]">
                     <span className="text-xs font-semibold text-zinc-200">{r.title}</span>
-                    {r.isPast && <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">past</span>}
+                    {r.isPast && <span className="ml-2 rounded-[3px] bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">past</span>}
                   </Td>
                   <Td className="whitespace-nowrap text-xs text-zinc-400">
                     {new Date(r.startsAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}

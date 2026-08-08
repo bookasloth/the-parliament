@@ -41,16 +41,16 @@ export function StepIntro({
         value={text}
         onChange={(e) => set({ text: e.target.value })}
         rows={9}
-        className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm leading-relaxed outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+        className="w-full resize-none rounded-[4px] border border-gray-300 px-4 py-3 text-sm leading-relaxed outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
       />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex items-center gap-3">
-        <button onClick={() => done("skip")} disabled={!!busy} className="rounded-lg px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-60">
+        <button onClick={() => done("skip")} disabled={!!busy} className="rounded-[4px] px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-60">
           {busy === "skip" ? "Finishing…" : "Skip & finish"}
         </button>
-        <button onClick={() => done("share")} disabled={!!busy || !text.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand py-3 text-base font-semibold text-white hover:bg-brand-600 disabled:opacity-60">
+        <button onClick={() => done("share")} disabled={!!busy || !text.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-brand py-3 text-base font-semibold text-white hover:bg-brand-600 disabled:opacity-60">
           <Send className="h-4 w-4" /> {busy === "share" ? "Sharing…" : "Share to feed"}
         </button>
       </div>

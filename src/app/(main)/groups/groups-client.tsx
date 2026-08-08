@@ -91,11 +91,11 @@ export default function GroupsClient({
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-[52px] max-w-[1400px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-[4px] hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
             <span className="text-base font-bold text-gray-900">Groups</span>
           </div>
           <a href="/groups/create"
-            className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm">
+            className="flex items-center gap-1.5 rounded-[3px] bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm">
             <Plus className="h-3.5 w-3.5" /> Create Group
           </a>
         </div>
@@ -109,11 +109,11 @@ export default function GroupsClient({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search groups…"
-            className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all" />
+            className="w-full rounded-[3px] border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all" />
         </div>
 
         {/* Tabs */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
           <div className="flex border-b border-gray-100">
             {[
               { key: "my", label: "My Groups", count: joinedGroups.length },
@@ -122,7 +122,7 @@ export default function GroupsClient({
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold border-b-2 transition-colors ${tab === t.key ? "border-brand text-brand" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                 {t.label}
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
+                <span className={`rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold ${tab === t.key ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>{t.count}</span>
               </button>
             ))}
           </div>
@@ -131,7 +131,7 @@ export default function GroupsClient({
           <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-none border-b border-gray-50">
             {CATEGORIES.map(c => (
               <button key={c} onClick={() => setCategory(c)}
-                className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${category === c ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                className={`flex-shrink-0 rounded-[3px] px-3 py-1 text-xs font-medium transition-colors ${category === c ? "bg-brand text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {c}
               </button>
             ))}
@@ -140,7 +140,7 @@ export default function GroupsClient({
 
         {/* Featured Group (only in discover) */}
         {tab === "discover" && (
-          <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-brand">
+          <div className="relative overflow-hidden rounded-[5px] border border-gray-200 bg-brand">
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=900&h=200&fit=crop')] bg-cover bg-center opacity-20" />
             <div className="relative p-5 flex items-center gap-4">
               <div className="text-3xl flex-shrink-0">🏫</div>
@@ -154,7 +154,7 @@ export default function GroupsClient({
               </div>
               <button
                 onClick={() => toggleJoin("1")}
-                className="flex-shrink-0 rounded-full bg-white px-4 py-2 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors">
+                className="flex-shrink-0 rounded-[3px] bg-white px-4 py-2 text-xs font-semibold text-brand hover:bg-brand-50 transition-colors">
                 {joinedGroups.includes("1") ? "Joined ✓" : "Join"}
               </button>
             </div>
@@ -165,7 +165,7 @@ export default function GroupsClient({
         {filtered.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(g => (
-              <div key={g.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden group hover:shadow-md transition-shadow">
+              <div key={g.id} className="bg-white border border-gray-200 rounded-[5px] overflow-hidden group hover:shadow-md transition-shadow">
                 {/* Cover */}
                 <div className="relative h-24 overflow-hidden">
                   <Image src={g.cover} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -174,9 +174,9 @@ export default function GroupsClient({
                     <span className="text-xl">{g.icon}</span>
                   </div>
                   <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                    {g.isNew && <span className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white">NEW</span>}
+                    {g.isNew && <span className="rounded-[3px] bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white">NEW</span>}
                     {g.privacy === "private" && <Lock className="h-3.5 w-3.5 text-white/80" />}
-                    {g.isFeatured && <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-0.5"><Sparkles className="h-3 w-3" />Featured</span>}
+                    {g.isFeatured && <span className="rounded-[3px] bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-0.5"><Sparkles className="h-3 w-3" />Featured</span>}
                   </div>
                 </div>
 
@@ -196,17 +196,17 @@ export default function GroupsClient({
                     {joinedGroups.includes(g.id) ? (
                       <>
                         <a href={`/groups/${g.slug}`}
-                          className="flex-1 rounded-full border border-brand bg-brand-50 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors text-center">
+                          className="flex-1 rounded-[3px] border border-brand bg-brand-50 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors text-center">
                           View Group
                         </a>
                         <button onClick={() => toggleMute(g.id)}
-                          className="p-2 rounded-full border border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-200 transition-colors">
+                          className="p-2 rounded-[3px] border border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-200 transition-colors">
                           {mutedGroups.includes(g.id) ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                         </button>
                       </>
                     ) : (
                       <button onClick={() => toggleJoin(g.id)}
-                        className="flex-1 rounded-full bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
+                        className="flex-1 rounded-[3px] bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
                         {g.privacy === "private" ? "Request to Join" : "Join Group"}
                       </button>
                     )}
@@ -216,14 +216,14 @@ export default function GroupsClient({
             ))}
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl py-16 text-center">
+          <div className="bg-white border border-gray-200 rounded-[5px] py-16 text-center">
             <Users className="h-10 w-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-500">{tab === "my" ? "You haven't joined any groups yet" : "No groups found"}</p>
             <p className="text-xs text-gray-400 mt-1">
               {tab === "my" ? "Discover and join groups to see them here" : "Try a different search or category"}
             </p>
             {tab === "my" && (
-              <button onClick={() => setTab("discover")} className="mt-4 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
+              <button onClick={() => setTab("discover")} className="mt-4 rounded-[3px] bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
                 Discover Groups
               </button>
             )}

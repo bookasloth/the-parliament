@@ -86,7 +86,7 @@ export function Homepage({
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
           <div>
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand">
+              <span className="inline-flex items-center gap-2 rounded-[3px] border border-black/10 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                 The JNV Nagpur alumni network
               </span>
@@ -107,13 +107,13 @@ export function Homepage({
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   href="/auth/signup"
-                  className="inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                  className="inline-flex items-center gap-2 rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
                 >
                   Join the community <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/community"
-                  className="rounded-full border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
+                  className="rounded-[3px] border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
                 >
                   Explore directory
                 </Link>
@@ -150,9 +150,9 @@ export function Homepage({
               <Reveal key={f.title} delay={i * 0.07}>
                 <Link
                   href={f.href}
-                  className="group flex h-full flex-col rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
+                  className="group flex h-full flex-col rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/15">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand/10 text-brand ring-1 ring-brand/15">
                     <Icon className="h-6 w-6" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-5 font-heading text-lg font-semibold text-[#1a1a1a]">
@@ -189,7 +189,7 @@ export function Homepage({
               <Reveal key={e.id} delay={i * 0.07}>
                 <Link
                   href={`/events/${e.slug}`}
-                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
+                  className="group flex h-full flex-col overflow-hidden rounded-[5px] border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
                 >
                   <div
                     className="h-36 bg-cover bg-center"
@@ -233,10 +233,10 @@ export function Homepage({
               <Reveal key={g.id} delay={i * 0.07}>
                 <Link
                   href={`/groups/${g.slug}`}
-                  className="group flex h-full flex-col rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
+                  className="group flex h-full flex-col rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_14px_36px_-16px_rgba(26,26,26,0.2)]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-2xl">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand/10 text-2xl">
                       {g.icon || "👥"}
                     </div>
                     <div className="min-w-0">
@@ -279,7 +279,7 @@ function ModeBadge({ mode }: { mode: EventItem["mode"] }) {
   const label = mode === "virtual" ? "Online" : mode === "hybrid" ? "Hybrid" : "In person"
   const Icon = mode === "virtual" ? Video : MapPin
   return (
-    <span className="inline-flex w-max items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand">
+    <span className="inline-flex w-max items-center gap-1.5 rounded-[3px] bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand">
       <Icon className="h-3 w-3" /> {label}
     </span>
   )
@@ -291,23 +291,23 @@ function HeroPreview() {
   const faces = [0, 1, 2, 3]
   return (
     <div className="relative">
-      <div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-[0_30px_80px_-30px_rgba(26,26,26,0.3)]">
+      <div className="rounded-[5px] border border-black/[0.06] bg-white p-5 shadow-[0_30px_80px_-30px_rgba(26,26,26,0.3)]">
         {/* faux search bar */}
-        <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-[#f7f6f4] px-3.5 py-2.5">
+        <div className="flex items-center gap-2 rounded-[5px] border border-black/10 bg-[#f7f6f4] px-3.5 py-2.5">
           <Search className="h-4 w-4 text-[#a3a3a3]" />
           <span className="text-sm text-[#a3a3a3]">Search alumni, batches, cities…</span>
         </div>
         {/* faux alumni cards */}
         <div className="mt-4 grid grid-cols-2 gap-3">
           {faces.map((i) => (
-            <div key={i} className="rounded-2xl border border-black/5 bg-white p-4">
+            <div key={i} className="rounded-[5px] border border-black/5 bg-white p-4">
               <div
-                className="h-10 w-10 rounded-full"
+                className="h-10 w-10 rounded-[4px]"
                 style={{ backgroundColor: ACCENT_HEX[i % 4] }}
               />
-              <div className="mt-3 h-2.5 w-3/4 rounded-full bg-black/10" />
-              <div className="mt-2 h-2 w-1/2 rounded-full bg-black/[0.06]" />
-              <div className="mt-3 h-6 w-16 rounded-full bg-brand-50" />
+              <div className="mt-3 h-2.5 w-3/4 rounded-[3px] bg-black/10" />
+              <div className="mt-2 h-2 w-1/2 rounded-[3px] bg-black/[0.06]" />
+              <div className="mt-3 h-6 w-16 rounded-[3px] bg-brand-50" />
             </div>
           ))}
         </div>

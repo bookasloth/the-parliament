@@ -39,13 +39,13 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
   }, [])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col hover:shadow-card transition-shadow">
+    <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden flex flex-col hover:shadow-card transition-shadow">
       {/* Image + badge */}
       <div className="relative">
         <a href={`/events/${event.slug}`} className="relative block h-36">
           <Image src={event.cover} alt={event.title} fill sizes="(max-width: 768px) 100vw, 400px" className="w-full h-36 object-cover" />
         </a>
-        <span className={`absolute top-2 right-2 rounded-md px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
+        <span className={`absolute top-2 right-2 rounded-[3px] px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
           {event.isFree ? "Free" : `₹${event.price}`}
         </span>
       </div>
@@ -55,7 +55,7 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
         {/* Mode tag overlapping the image */}
         <a
           href={`/events/${event.slug}`}
-          className="inline-flex items-center gap-1 self-start -mt-3 mb-2 rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
+          className="inline-flex items-center gap-1 self-start -mt-3 mb-2 rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
         >
           <ModeIcon className="h-3 w-3" /> {MODE_LABEL[event.mode]}
         </a>
@@ -71,7 +71,7 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
         <div className="flex items-center gap-2 mt-3">
           <button
             onClick={() => onToggle(event.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-semibold transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-[4px] border py-1.5 text-xs font-semibold transition-colors ${
               event.interested
                 ? "border-green-500 bg-green-500 text-white"
                 : "border-green-500 bg-white text-green-600 hover:bg-green-50"
@@ -84,12 +84,12 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
           <div className="relative" ref={ref}>
             <button
               onClick={() => setShareOpen(!shareOpen)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
             >
               <Share2 className="h-3.5 w-3.5" />
             </button>
             {shareOpen && (
-              <div className="absolute right-0 bottom-full mb-1 z-20 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 bottom-full mb-1 z-20 w-44 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
                 {[
                   { icon: <Share2 className="h-3.5 w-3.5" />, label: "Share on Facebook" },
                   { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "Share on WhatsApp" },
@@ -205,11 +205,11 @@ export default function EventsClient({
 
         {/* Upcoming event alert */}
         {alertOpen && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-[5px] border border-green-200 bg-green-50 px-4 py-3">
             <p className="text-sm text-green-800 flex-1">
               <strong>Upcoming event:</strong> JNV Nagpur Alumni Reunion 2026 on Oct 15, 2026
             </p>
-            <a href="/events/alumni-reunion-2026" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors text-center">
+            <a href="/events/alumni-reunion-2026" className="rounded-[4px] bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors text-center">
               View event
             </a>
             <button onClick={() => setAlertOpen(false)} className="text-green-600 hover:text-green-800 self-end sm:self-center">
@@ -219,13 +219,13 @@ export default function EventsClient({
         )}
 
         {/* Card */}
-        <div className="bg-white border border-gray-200 rounded-xl">
+        <div className="bg-white border border-gray-200 rounded-[5px]">
           {/* Card header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 pt-4">
             <h1 className="text-lg font-bold text-gray-900">Discover Events</h1>
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand/10 px-3 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 rounded-[4px] bg-brand/10 px-3 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Create event
             </button>
@@ -233,19 +233,19 @@ export default function EventsClient({
 
           {/* Tabs + search */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 sm:px-5 py-3">
-            <div className="flex gap-1 rounded-lg bg-gray-100 p-1 overflow-x-auto">
+            <div className="flex gap-1 rounded-[4px] bg-gray-100 p-1 overflow-x-auto">
               {tabs.map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${tab === t.key ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                  className={`flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${tab === t.key ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                   {t.label}
-                  <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === t.key ? "bg-brand/10 text-brand" : "bg-gray-200 text-gray-500"}`}>{t.count}</span>
+                  <span className={`rounded-[3px] px-1.5 text-[10px] font-bold ${tab === t.key ? "bg-brand/10 text-brand" : "bg-gray-200 text-gray-500"}`}>{t.count}</span>
                 </button>
               ))}
             </div>
             <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events…"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors" />
+                className="w-full rounded-[4px] border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors" />
             </div>
           </div>
 
@@ -274,7 +274,7 @@ export default function EventsClient({
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div role="presentation" className="absolute inset-0 bg-black/50" onClick={() => setCreateOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-[5px] bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <h5 className="text-base font-bold text-gray-900">Create Event</h5>
               <button onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
@@ -285,7 +285,7 @@ export default function EventsClient({
                 <input
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                   placeholder="e.g. Batch 2015 Meetup"
                 />
               </div>
@@ -296,7 +296,7 @@ export default function EventsClient({
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
                   />
                 </div>
                 <div>
@@ -305,7 +305,7 @@ export default function EventsClient({
                     type="time"
                     value={form.time}
                     onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand"
                   />
                 </div>
               </div>
@@ -319,7 +319,7 @@ export default function EventsClient({
                         key={m}
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, mode: m }))}
-                        className={`flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-colors ${
+                        className={`flex-1 rounded-[4px] border py-2 text-xs font-medium capitalize transition-colors ${
                           active
                             ? "border-brand bg-brand text-white"
                             : "border-gray-200 text-gray-600 hover:border-brand hover:text-brand"
@@ -337,7 +337,7 @@ export default function EventsClient({
                   <input
                     value={form.venue}
                     onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                     placeholder="e.g. JNV Nagpur campus, Navegaon Khairi"
                   />
                 </div>
@@ -351,7 +351,7 @@ export default function EventsClient({
                   type="url"
                   value={form.eventUrl}
                   onChange={(e) => setForm((f) => ({ ...f, eventUrl: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                   placeholder="https://…"
                 />
               </div>
@@ -365,18 +365,18 @@ export default function EventsClient({
                   min={0}
                   value={form.priceRupees}
                   onChange={(e) => setForm((f) => ({ ...f, priceRupees: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  className="w-full rounded-[4px] border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                   placeholder="0"
                 />
               </div>
               {createErr && <p className="text-xs font-medium text-rose-600">{createErr}</p>}
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">
-              <button onClick={() => setCreateOpen(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setCreateOpen(false)} className="rounded-[4px] border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
               <button
                 onClick={submitCreate}
                 disabled={creating}
-                className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60"
+                className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60"
               >
                 {creating ? "Creating…" : "Create"}
               </button>

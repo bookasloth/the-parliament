@@ -48,11 +48,11 @@ export default function ContactPage() {
               const Icon = it.icon
               const inner = (
                 <div
-                  className="group h-full rounded-2xl border p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-18px_rgba(26,26,26,0.2)]"
+                  className="group h-full rounded-[5px] border p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-18px_rgba(26,26,26,0.2)]"
                   style={{ backgroundColor: `${ACCENT_HEX[it.accent]}0a`, borderColor: `${ACCENT_HEX[it.accent]}22` }}
                 >
                   <div
-                    className="flex h-11 w-11 items-center justify-center rounded-xl transition group-hover:scale-105"
+                    className="flex h-11 w-11 items-center justify-center rounded-[5px] transition group-hover:scale-105"
                     style={{ backgroundColor: `${ACCENT_HEX[it.accent]}1f`, color: ACCENT_HEX[it.accent] }}
                   >
                     <Icon className="h-5 w-5" />

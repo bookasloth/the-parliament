@@ -74,7 +74,7 @@ function EndorseModal({ req, onClose }: { req: VReq; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-[#111113] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-[5px] border border-zinc-800 bg-[#111113] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
           <div>
             <h2 className="text-sm font-bold text-zinc-100">Ask peers to endorse</h2>
@@ -85,7 +85,7 @@ function EndorseModal({ req, onClose }: { req: VReq; onClose: () => void }) {
 
         <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
           {loading && <p className="py-8 text-center text-xs text-zinc-500">Finding peers…</p>}
-          {loadErr && <p className="rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-xs text-rose-300">{loadErr}</p>}
+          {loadErr && <p className="rounded-[3px] border border-rose-900 bg-rose-950/40 px-3 py-2 text-xs text-rose-300">{loadErr}</p>}
           {list && list.length === 0 && !loading && (
             <p className="py-8 text-center text-xs text-zinc-500">No verified peers found for this candidate&apos;s batch or house.</p>
           )}
@@ -93,12 +93,12 @@ function EndorseModal({ req, onClose }: { req: VReq; onClose: () => void }) {
             const isAsked = asked.has(s.userId)
             const endorsed = s.endorsementStatus === "endorsed"
             return (
-              <div key={s.userId} className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5">
+              <div key={s.userId} className="flex items-center gap-3 rounded-[4px] border border-zinc-800 bg-zinc-900/40 p-2.5">
                 {s.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                  <img src={s.photoUrl} alt="" className="h-9 w-9 rounded-[4px] object-cover" />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-[3px] bg-blue-600 text-[11px] font-bold text-white">
                     {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                   </div>
                 )}
@@ -116,7 +116,7 @@ function EndorseModal({ req, onClose }: { req: VReq; onClose: () => void }) {
                   <button
                     onClick={() => ask(s.userId)}
                     disabled={busyId === s.userId}
-                    className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-[3px] bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50"
                   >
                     <PaperPlaneTilt className="h-3 w-3" weight="duotone" /> {busyId === s.userId ? "Sending…" : "Ask"}
                   </button>
@@ -192,14 +192,14 @@ export default function VerificationClient({
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-rose-900 bg-rose-950/40 px-4 py-2.5 text-xs font-semibold text-rose-300">
+        <div className="mb-4 rounded-[4px] border border-rose-900 bg-rose-950/40 px-4 py-2.5 text-xs font-semibold text-rose-300">
           {error}
         </div>
       )}
 
       <div className="space-y-3">
         {list.length === 0 && (
-          <div className="rounded-lg border border-zinc-800 bg-[#111113] py-16 text-center">
+          <div className="rounded-[4px] border border-zinc-800 bg-[#111113] py-16 text-center">
             <ShieldCheck className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
             <p className="text-sm font-medium text-zinc-400">Queue is clear</p>
             <p className="text-xs text-zinc-500 mt-1">No pending verification requests</p>
@@ -209,9 +209,9 @@ export default function VerificationClient({
         {list.map((req) => {
           const isOpen = expanded === req.id
           return (
-            <div key={req.id} className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden transition-colors">
+            <div key={req.id} className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden transition-colors">
               <button onClick={() => setExpanded(isOpen ? null : req.id)} className="flex w-full items-center gap-3 p-4 text-left hover:bg-zinc-900/60 transition-colors">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white flex-shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[3px] bg-blue-600 text-xs font-bold text-white flex-shrink-0">
                   {req.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -227,7 +227,7 @@ export default function VerificationClient({
               {isOpen && (
                 <div className="border-t border-zinc-800 p-4 sm:p-5">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                    <div className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-4">
+                    <div className="rounded-[4px] bg-zinc-900/50 border border-zinc-800 p-4">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 mb-3">Applicant</p>
                       <ul className="space-y-2 text-xs text-zinc-300">
                         <li className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-zinc-500" weight="duotone" /> {req.name} {req.username && <span className="text-zinc-500">@{req.username}</span>}</li>
@@ -240,11 +240,11 @@ export default function VerificationClient({
                       </ul>
                     </div>
 
-                    <div className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-4">
+                    <div className="rounded-[4px] bg-zinc-900/50 border border-zinc-800 p-4">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 mb-3">Submitted evidence</p>
                       {req.evidenceUrl ? (
                         <a href={req.evidenceUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2 rounded-md bg-[#111113] border border-zinc-800 px-2.5 py-2 hover:border-blue-700">
+                          className="flex items-center gap-2 rounded-[3px] bg-[#111113] border border-zinc-800 px-2.5 py-2 hover:border-blue-700">
                           <FileText className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" weight="duotone" />
                           <span className="flex-1 text-xs text-zinc-300 truncate">View uploaded document</span>
                           <Eye className="h-3.5 w-3.5 text-blue-400" weight="duotone" />
@@ -256,7 +256,7 @@ export default function VerificationClient({
                   </div>
 
                   {rejectFor === req.id ? (
-                    <div className="rounded-lg border border-rose-900 bg-rose-950/30 p-4">
+                    <div className="rounded-[4px] border border-rose-900 bg-rose-950/30 p-4">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-bold text-rose-300">Rejection reason (sent to applicant)</p>
                         <button onClick={() => setRejectFor(null)} className="text-rose-500 hover:text-rose-300"><X className="h-4 w-4" weight="duotone" /></button>
@@ -266,7 +266,7 @@ export default function VerificationClient({
                         onChange={(e) => setRejectReason(e.target.value)}
                         rows={2}
                         placeholder="e.g. Documents do not match the claimed batch year. Please re-submit with a valid transfer certificate."
-                        className="w-full rounded-lg border border-rose-900 bg-[#111113] px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-rose-600 focus:ring-2 focus:ring-rose-950 resize-none"
+                        className="w-full rounded-[4px] border border-rose-900 bg-[#111113] px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-rose-600 focus:ring-2 focus:ring-rose-950 resize-none"
                       />
                       <div className="mt-2 flex gap-2">
                         <Button variant="danger" size="sm" onClick={() => reject(req.id)} disabled={pending || rejectReason.trim().length < 3}>
@@ -278,15 +278,15 @@ export default function VerificationClient({
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
                       <button onClick={() => approve(req.id)} disabled={pending}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
+                        className="flex items-center gap-1.5 rounded-[4px] bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
                         <CheckCircle className="h-3.5 w-3.5" weight="duotone" /> {pending ? "Working…" : "Approve & Verify"}
                       </button>
                       <button onClick={() => setRejectFor(req.id)} disabled={pending}
-                        className="flex items-center gap-1.5 rounded-lg border border-rose-800 bg-[#111113] px-4 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/40 disabled:opacity-50">
+                        className="flex items-center gap-1.5 rounded-[4px] border border-rose-800 bg-[#111113] px-4 py-2 text-xs font-bold text-rose-400 hover:bg-rose-950/40 disabled:opacity-50">
                         <XCircle className="h-3.5 w-3.5" weight="duotone" /> Reject
                       </button>
                       <button onClick={() => setEndorseFor(req)} disabled={pending}
-                        className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-[#111113] px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 disabled:opacity-50">
+                        className="flex items-center gap-1.5 rounded-[4px] border border-zinc-700 bg-[#111113] px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 disabled:opacity-50">
                         <UsersThree className="h-3.5 w-3.5" weight="duotone" /> Endorsements
                       </button>
                       {req.endorsements.asked > 0 && (

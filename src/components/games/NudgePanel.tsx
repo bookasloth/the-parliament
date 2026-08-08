@@ -41,7 +41,7 @@ export default function NudgePanel({
 
   if (connections.length === 0) {
     return (
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <section className="rounded-[5px] border border-gray-200 bg-white p-5">
         <h2 className="font-heading text-lg font-bold text-gray-900">Nudge friends to play</h2>
         <p className="mt-2 text-[13.5px] text-gray-500">
           Follow some alumni first — you can nudge your connections to jump on the board.
@@ -51,7 +51,7 @@ export default function NudgePanel({
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section className="rounded-[5px] border border-gray-200 bg-white p-5">
       <h2 className="font-heading text-lg font-bold text-gray-900">{title}</h2>
       <p className="mt-0.5 text-[13px] text-gray-500">{subtitle}</p>
 
@@ -62,7 +62,7 @@ export default function NudgePanel({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Find connections to nudge"
           aria-label="Find connections to nudge"
-          className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-[14px] text-gray-900 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
+          className="w-full rounded-[3px] border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-[14px] text-gray-900 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
         />
       </div>
 
@@ -73,13 +73,13 @@ export default function NudgePanel({
           filtered.map((c) => {
             const done = nudged.has(c.userId);
             return (
-              <li key={c.userId} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-gray-50">
+              <li key={c.userId} className="flex items-center gap-3 rounded-[5px] px-2 py-2 hover:bg-gray-50">
                 <Image
                   src={c.avatar}
                   alt=""
                   width={40}
                   height={40}
-                  className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                  className="h-10 w-10 flex-shrink-0 rounded-[4px] object-cover"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-semibold text-gray-900">{c.name}</p>
@@ -88,7 +88,7 @@ export default function NudgePanel({
                 <button
                   onClick={() => nudge(c.userId)}
                   disabled={done}
-                  className={`flex h-9 min-w-[92px] items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition-colors ${
+                  className={`flex h-9 min-w-[92px] items-center justify-center gap-1.5 rounded-[3px] px-4 text-[13px] font-semibold transition-colors ${
                     done
                       ? "bg-emerald-50 text-emerald-600"
                       : "border border-gray-300 text-gray-700 hover:border-brand hover:bg-brand-50 hover:text-brand"

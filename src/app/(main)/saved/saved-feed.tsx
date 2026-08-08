@@ -26,7 +26,7 @@ export default function SavedFeed({
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+      <div className="rounded-[5px] border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
         No saved posts yet. Tap the bookmark on any post to save it here.
       </div>
     )

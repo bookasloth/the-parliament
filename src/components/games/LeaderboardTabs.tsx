@@ -28,7 +28,7 @@ export default function LeaderboardTabs({
             key={s}
             href={`${base}/${s}/${period}${q}`}
             prefetch
-            className={`rounded-lg px-4 py-2 text-[13.5px] font-semibold transition-all active:scale-95 ${
+            className={`rounded-[4px] px-4 py-2 text-[13.5px] font-semibold transition-all active:scale-95 ${
               s === scope ? "bg-brand text-white shadow-sm" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
             }`}
           >
@@ -42,7 +42,7 @@ export default function LeaderboardTabs({
             key={p}
             href={`${base}/${scope}/${p}${q}`}
             prefetch
-            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-all active:scale-95 ${
+            className={`rounded-[3px] px-3.5 py-1.5 text-[12.5px] font-semibold transition-all active:scale-95 ${
               p === period ? "bg-gray-900 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50"
             }`}
           >

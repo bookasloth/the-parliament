@@ -33,13 +33,13 @@ export default function EmojiPicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        className="inline-flex items-center rounded-[3px] p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
         aria-label="Add emoji"
       >
         <Smile className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 z-30 mb-1 grid w-56 grid-cols-6 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+        <div className="absolute bottom-full right-0 z-30 mb-1 grid w-56 grid-cols-6 gap-1 rounded-[5px] border border-gray-200 bg-white p-2 shadow-lg">
           {EMOJIS.map((e) => (
             <button
               key={e}
@@ -49,7 +49,7 @@ export default function EmojiPicker({
                 ev.preventDefault()
                 onPick(e)
               }}
-              className="rounded p-1 text-lg hover:bg-gray-100"
+              className="rounded-[3px] p-1 text-lg hover:bg-gray-100"
             >
               {e}
             </button>

@@ -96,7 +96,7 @@ function SidebarContent({
     <div className="flex h-full flex-col bg-[#0a0a0a]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-zinc-800 flex-shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+        <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-blue-600">
           <Bank className="h-4.5 w-4.5 text-white" weight="fill" />
         </div>
         <div>
@@ -118,7 +118,7 @@ function SidebarContent({
                     <a
                       href={item.href}
                       onClick={onNavigate}
-                      className={`relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                      className={`relative flex items-center gap-2.5 rounded-[3px] px-2.5 py-2 text-[13px] font-medium transition-colors ${
                         active
                           ? "bg-blue-950/40 text-zinc-100"
                           : item.soon
@@ -126,14 +126,14 @@ function SidebarContent({
                             : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
                       }`}
                     >
-                      {active && <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-blue-500" />}
+                      {active && <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-[3px] bg-blue-500" />}
                       {item.icon}
                       <span className="flex-1">{item.label}</span>
                       {item.badge !== undefined && (
-                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white min-w-[18px] text-center">{item.badge}</span>
+                        <span className="rounded-[3px] bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white min-w-[18px] text-center">{item.badge}</span>
                       )}
                       {item.soon && (
-                        <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Soon</span>
+                        <span className="rounded-[3px] bg-zinc-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Soon</span>
                       )}
                     </a>
                   </li>
@@ -146,12 +146,12 @@ function SidebarContent({
 
       {/* Footer */}
       <div className="border-t border-zinc-800 p-3 flex-shrink-0 space-y-1">
-        <Link href="/feed" className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors">
+        <Link href="/feed" className="flex items-center gap-2.5 rounded-[3px] px-2.5 py-2 text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors">
           <ArrowSquareOut className="h-4 w-4 text-zinc-600" /> View Live Site
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium text-zinc-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+          className="flex w-full items-center gap-2.5 rounded-[3px] px-2.5 py-2 text-[13px] font-medium text-zinc-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
         >
           <SignOut className="h-4 w-4 text-zinc-600" /> Sign Out
         </button>
@@ -189,7 +189,7 @@ export default function AdminShell({
 
       {/* Sidebar — mobile offcanvas */}
       <aside className={`fixed top-0 left-0 z-50 h-full w-[220px] transition-transform lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <button onClick={() => setSidebarOpen(false)} className="absolute top-4 -right-10 rounded-full bg-white/10 p-1.5 text-white">
+        <button onClick={() => setSidebarOpen(false)} className="absolute top-4 -right-10 rounded-[3px] bg-white/10 p-1.5 text-white">
           <X className="h-5 w-5" />
         </button>
         <SidebarContent pathname={pathname} onNavigate={() => setSidebarOpen(false)} />
@@ -204,7 +204,7 @@ export default function AdminShell({
       <div className="lg:pl-[220px] flex flex-col min-h-screen">
         {/* Top bar */}
         <header className="sticky top-0 z-20 h-16 border-b border-zinc-800 bg-[#0a0a0a] flex items-center gap-3 px-4 sm:px-6">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-md hover:bg-zinc-900 text-zinc-400">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-[3px] hover:bg-zinc-900 text-zinc-400">
             <List className="h-5 w-5" />
           </button>
 
@@ -218,25 +218,25 @@ export default function AdminShell({
           <div className="flex-1" />
 
           {/* Search affordance (non-functional) */}
-          <button className="hidden sm:flex items-center gap-2 rounded-md border border-zinc-800 bg-[#111113] px-3 py-1.5 text-sm text-zinc-500 hover:border-zinc-700 transition-colors w-56">
+          <button className="hidden sm:flex items-center gap-2 rounded-[3px] border border-zinc-800 bg-[#111113] px-3 py-1.5 text-sm text-zinc-500 hover:border-zinc-700 transition-colors w-56">
             <MagnifyingGlass className="h-4 w-4" />
             <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-[10px] font-mono text-zinc-600 border border-zinc-800 rounded px-1 py-0.5">⌘K</kbd>
+            <kbd className="text-[10px] font-mono text-zinc-600 border border-zinc-800 rounded-[3px] px-1 py-0.5">⌘K</kbd>
           </button>
-          <button className="sm:hidden p-2 rounded-md hover:bg-zinc-900 text-zinc-500">
+          <button className="sm:hidden p-2 rounded-[3px] hover:bg-zinc-900 text-zinc-500">
             <MagnifyingGlass className="h-5 w-5" />
           </button>
 
           <div className="flex items-center gap-2">
-            <button className="relative p-2 rounded-md hover:bg-zinc-900 text-zinc-500">
+            <button className="relative p-2 rounded-[3px] hover:bg-zinc-900 text-zinc-500">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-[3px] bg-rose-500" />
             </button>
 
             {/* Profile */}
             <div className="relative">
-              <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-zinc-900 transition-colors">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{admin.initials}</div>
+              <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 rounded-[3px] px-2 py-1.5 hover:bg-zinc-900 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-[3px] bg-blue-600 text-xs font-bold text-white">{admin.initials}</div>
                 <div className="hidden md:block text-left">
                   <p className="text-xs font-semibold text-zinc-100 leading-tight">{admin.name}</p>
                   <p className="text-[10px] text-zinc-500">{admin.email}</p>
@@ -244,7 +244,7 @@ export default function AdminShell({
                 <CaretDown className="h-3.5 w-3.5 text-zinc-500 hidden md:block" />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-md border border-zinc-800 bg-[#111113] py-1 shadow-lg">
+                <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-[3px] border border-zinc-800 bg-[#111113] py-1 shadow-lg">
                   <a href="/admin/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100">
                     <Gear className="h-4 w-4" /> Admin Settings
                   </a>

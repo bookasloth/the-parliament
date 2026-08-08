@@ -109,7 +109,7 @@ export default function EventRegister({
 
   if (!loggedIn) {
     return (
-      <a href="/auth/signin" className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+      <a href="/auth/signin" className="flex items-center justify-center gap-1.5 w-full rounded-[4px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
         Sign in to register
       </a>
     )
@@ -119,14 +119,14 @@ export default function EventRegister({
     <div className="space-y-2">
       {/* Primary: Register (pay if priced) */}
       {registered ? (
-        <div className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-sm font-semibold text-green-700">
+        <div className="flex items-center justify-center gap-1.5 w-full rounded-[4px] bg-green-50 border border-green-200 px-4 py-2.5 text-sm font-semibold text-green-700">
           <Check className="h-4 w-4" /> You&apos;re registered
         </div>
       ) : (
         <button
           onClick={paid ? payAndRegister : registerFree}
           disabled={busy || isPast}
-          className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 w-full rounded-[4px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
           <Ticket className="h-4 w-4" />
           {isPast ? "Registration closed" : paid ? `Register — ${rupees(priceInPaise)}` : "Register free"}
@@ -138,7 +138,7 @@ export default function EventRegister({
         <button
           onClick={toggleInterest}
           disabled={busy}
-          className={`flex items-center justify-center gap-1.5 w-full rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+          className={`flex items-center justify-center gap-1.5 w-full rounded-[4px] border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
             interested
               ? "border-brand-300 bg-brand-50 text-brand-700"
               : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"

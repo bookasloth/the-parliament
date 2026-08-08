@@ -92,7 +92,7 @@ export function StepProfile({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow ring-1 ring-gray-200"
+          className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-[4px] border-4 border-white bg-gray-100 shadow ring-1 ring-gray-200"
         >
           {uploading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             : data.photoUrl ? <Image src={data.photoUrl} alt="" fill sizes="80px" className="h-full w-full object-cover" />
@@ -115,7 +115,7 @@ export function StepProfile({
             value={data.username}
             onChange={(e) => set({ username: e.target.value })}
             placeholder="yourname"
-            className="w-full rounded-lg border border-gray-300 py-2.5 pl-7 pr-9 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+            className="w-full rounded-[4px] border border-gray-300 py-2.5 pl-7 pr-9 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2">
             {uname.state === "checking" && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
@@ -131,7 +131,7 @@ export function StepProfile({
         <textarea
           value={data.bio} onChange={(e) => set({ bio: e.target.value })} rows={3} maxLength={160}
           placeholder="Tell fellow Navodayans a little about yourself…"
-          className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+          className="w-full resize-none rounded-[4px] border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
         />
         <p className="mt-1 text-[11px] text-gray-400">{160 - data.bio.length} left</p>
       </div>
@@ -141,7 +141,7 @@ export function StepProfile({
         <input
           value={data.location} onChange={(e) => set({ location: e.target.value })}
           placeholder="City, Country"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+          className="w-full rounded-[4px] border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
         />
       </div>
 
@@ -149,7 +149,7 @@ export function StepProfile({
 
       <button
         onClick={submit} disabled={!canContinue}
-        className={`w-full rounded-lg py-3 text-base font-semibold text-white transition-colors ${canContinue ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-300"}`}
+        className={`w-full rounded-[4px] py-3 text-base font-semibold text-white transition-colors ${canContinue ? "bg-brand hover:bg-brand-600" : "cursor-not-allowed bg-gray-300"}`}
       >
         {saving ? "Saving…" : "Continue"}
       </button>

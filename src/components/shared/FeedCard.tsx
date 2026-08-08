@@ -197,7 +197,7 @@ export function FeedCard({
   return (
     <div
       onClick={post.isSponsored || disableCardNav ? undefined : handleCardClick}
-      className={`bg-white border border-[#E5E7EB] rounded-[6px] transition-shadow hover:shadow-card${
+      className={`bg-white border border-[#E5E7EB] rounded-[5px] transition-shadow hover:shadow-card${
         post.isSponsored || disableCardNav ? "" : " cursor-pointer"
       }`}
     >
@@ -212,7 +212,7 @@ export function FeedCard({
                 alt={post.name}
                 width={40}
                 height={40}
-                className="h-9 w-9 rounded-full object-cover ring-1 ring-gray-200 sm:h-10 sm:w-10"
+                className="h-9 w-9 rounded-[4px] object-cover ring-1 ring-gray-200 sm:h-10 sm:w-10"
               />
             </a>
             {/* Info */}
@@ -254,7 +254,7 @@ export function FeedCard({
             {post.isSponsored && (
               <a
                 href="mailto:sndatarkar@gmail.com?subject=Advertise%20on%20NNAWCA"
-                className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-200 transition-colors whitespace-nowrap"
+                className="rounded-[3px] bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-200 transition-colors whitespace-nowrap"
                 title="Advertise here"
               >
                 Ad
@@ -282,13 +282,13 @@ export function FeedCard({
           <div className="relative" ref={actionRef}>
             <button
               onClick={() => setActionOpen(!actionOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               aria-label="More options"
             >
               <MoreHorizontal className="h-5 w-5" />
             </button>
             {actionOpen && (
-              <div className="absolute right-0 top-full z-40 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg">
+              <div className="absolute right-0 top-full z-40 mt-1 w-48 rounded-[4px] border border-gray-200 bg-white py-1.5 shadow-lg">
                 {/* Follow — mobile only (desktop shows it in the header) */}
                 {!isAuthor && !following && (
                   <button
@@ -324,7 +324,7 @@ export function FeedCard({
         {post.content && !post.isSponsored && !post.quote && !post.question && !post.poll && (
           post.textBg && TEXT_BG[post.textBg] ? (
             <div
-              className="flex min-h-[180px] items-center justify-center rounded-lg p-6"
+              className="flex min-h-[180px] items-center justify-center rounded-[4px] p-6"
               style={{ background: TEXT_BG[post.textBg].bg }}
             >
               <p
@@ -349,14 +349,14 @@ export function FeedCard({
             {post.image && (
               // External OG image — plain <img> avoids next/image remote-host config.
               // eslint-disable-next-line @next/next/no-img-element
-              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-t-lg border border-gray-100">
+              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-t-[4px] border border-gray-100">
                 <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
               </a>
             )}
             {/* Facebook-style: text left, CTA right on desktop; stacked with a
                 full-width CTA on mobile. min-w-0 + shrink-0 keep the button from
                 squishing the headline in the narrow column. */}
-            <div className="rounded-b-lg border border-t-0 border-gray-100 bg-gray-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="rounded-b-[4px] border border-t-0 border-gray-100 bg-gray-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 {post.headline && <p className="text-sm font-semibold text-gray-900">{post.headline}</p>}
                 {post.content && <p className="mt-0.5 text-xs text-gray-500">{post.content}</p>}
@@ -366,7 +366,7 @@ export function FeedCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 style={post.sponsorAccent ? { backgroundColor: post.sponsorAccent } : undefined}
-                className={`block w-full sm:w-auto shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
+                className={`block w-full sm:w-auto shrink-0 whitespace-nowrap rounded-[3px] px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
               >
                 {post.sponsorCta ?? "Learn more"}
               </a>
@@ -379,9 +379,9 @@ export function FeedCard({
         {post.quote && <QuoteBlock quote={post.quote} />}
 
         {post.question && (
-          <div className="relative flex min-h-[150px] items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-brand to-brand-700 px-5 pb-6 pt-12">
+          <div className="relative flex min-h-[150px] items-center justify-center overflow-hidden rounded-[4px] bg-gradient-to-br from-brand to-brand-700 px-5 pb-6 pt-12">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.12),transparent_70%)]" />
-            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-[3px] bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
               <HelpCircle className="h-3 w-3" />
               Question
             </div>
@@ -394,7 +394,7 @@ export function FeedCard({
         {post.mediaItems && post.mediaItems.length > 0 && !post.isSponsored ? (
           <MediaGallery items={post.mediaItems} />
         ) : post.images && !post.isSponsored ? (
-          <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg overflow-hidden">
+          <div className="mt-3 grid grid-cols-2 gap-1 rounded-[4px] overflow-hidden">
             {post.images.map((img, i) => (
               <Image
                 key={i}

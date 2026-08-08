@@ -38,7 +38,7 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
   const overflow = totalBadges - shown.length
 
   return (
-    <div className="rounded-[6px] border border-gray-200/80 bg-white soft-shadow overflow-hidden">
+    <div className="rounded-[5px] border border-gray-200/80 bg-white soft-shadow overflow-hidden">
       <div className="px-7 pt-5 pb-1">
         <h5 className="font-heading text-[15px] font-bold text-gray-900">
           {ownerFirstName}&apos;s Achievements
@@ -53,14 +53,14 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
             <div
               key={b.key}
               title={b.label}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-gray-200"
+              className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 ring-1 ring-gray-200"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="h-6 w-6 object-contain" />
             </div>
           ))}
           {overflow > 0 && (
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-xs font-bold text-brand ring-1 ring-gray-200">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 text-xs font-bold text-brand ring-1 ring-gray-200">
               +{overflow}
             </div>
           )}
@@ -83,7 +83,7 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
 
 function Collectable({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+    <div className="flex items-center gap-2.5 rounded-[5px] border border-gray-200 bg-white px-3 py-2.5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={icon} alt="" className="h-8 w-8 flex-shrink-0 object-contain" />
       <div className="min-w-0">

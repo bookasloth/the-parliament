@@ -233,7 +233,7 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-black/5 bg-white/80 p-4 backdrop-blur",
+        "rounded-[5px] border border-black/5 bg-white/80 p-4 backdrop-blur",
         "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_60px_-24px_rgba(26,26,26,0.28)]",
         className,
       )}
@@ -271,14 +271,14 @@ export function CtaBand({
         <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
           <a
             href={primary.href}
-            className="rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+            className="rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
           >
             {primary.label}
           </a>
           {secondary && (
             <a
               href={secondary.href}
-              className="rounded-full border border-white/25 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="rounded-[3px] border border-white/25 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               {secondary.label}
             </a>

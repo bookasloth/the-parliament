@@ -20,14 +20,14 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6">
       <Link href="/business" className="text-sm text-brand hover:underline">← All businesses</Link>
 
-      <div className="relative mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="relative mt-3 overflow-hidden rounded-[5px] border border-gray-200 bg-white">
         {b.bannerUrl && <Image src={b.bannerUrl} alt="" width={0} height={0} sizes="100vw" className="h-40 w-full object-cover" />}
         <div className="p-6">
           <div className="flex items-start gap-4">
             {b.logoUrl ? (
-              <Image src={b.logoUrl} alt="" className="h-16 w-16 rounded-lg object-cover" width={64} height={64} />
+              <Image src={b.logoUrl} alt="" className="h-16 w-16 rounded-[4px] object-cover" width={64} height={64} />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-brand-50 text-brand"><Building2 className="h-8 w-8" /></div>
+              <div className="flex h-16 w-16 items-center justify-center rounded-[4px] bg-brand-50 text-brand"><Building2 className="h-8 w-8" /></div>
             )}
             <div className="min-w-0 flex-1">
               <h1 className="font-heading text-2xl font-bold text-gray-900">{b.name}</h1>
@@ -57,7 +57,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
       </div>
 
       {b.reviews.length > 0 && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
+        <div className="mt-6 rounded-[5px] border border-gray-200 bg-white p-6">
           <h2 className="mb-4 font-heading text-lg font-bold text-gray-900">Reviews</h2>
           <div className="space-y-4">
             {b.reviews.map((r) => (

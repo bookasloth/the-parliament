@@ -48,7 +48,7 @@ export function NetworkPanel({
           {stats.map((s) => (
             <div
               key={s.label}
-              className="min-w-[104px] rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
+              className="min-w-[104px] rounded-[5px] border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
             >
               {s.icon && <div className="mb-2">{s.icon}</div>}
               <div className="font-heading text-2xl font-extrabold leading-none text-white">{s.value}</div>

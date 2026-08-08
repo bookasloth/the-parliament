@@ -525,7 +525,7 @@ export function EditProfileClient({ initial, facets, experiences, educations }: 
             <p className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
               <Sparkles className="h-4 w-4 text-brand" /> Profile Strength
             </p>
-            <span className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: strength.tier.color }}>{strength.tier.label}</span>
+            <span className="mt-1 inline-block rounded-[3px] px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: strength.tier.color }}>{strength.tier.label}</span>
           </div>
         </div>
         {strength.next.length > 0 ? (
@@ -572,7 +572,7 @@ export function EditProfileClient({ initial, facets, experiences, educations }: 
             ) : autoStatus === "error" ? (
               <span className="flex items-center gap-1.5 text-red-600"><AlertCircle className="h-3 w-3" /> {autoErr || "Autosave failed"}</span>
             ) : dirty ? (
-              <span className="flex items-center gap-1.5 text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes</span>
+              <span className="flex items-center gap-1.5 text-amber-600"><span className="h-1.5 w-1.5 rounded-[3px] bg-amber-500" /> Unsaved changes</span>
             ) : null}
           </div>
         </div>
@@ -658,7 +658,7 @@ export function EditProfileClient({ initial, facets, experiences, educations }: 
           </div>
         )}
 
-        <button disabled={!canDelete || busy} onClick={del} className="mt-4 rounded-lg bg-red-500 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <button disabled={!canDelete || busy} onClick={del} className="mt-4 rounded-[4px] bg-red-500 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
           {busy ? "Deleting…" : "Delete my account"}
         </button>
       </Card>
@@ -781,7 +781,7 @@ function MiniHero({
           type="button"
           onClick={() => photo.inputRef.current?.click()}
           disabled={photo.busy}
-          className="group relative -mt-10 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-sm sm:h-28 sm:w-28"
+          className="group relative -mt-10 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[4px] border-4 border-white bg-gray-100 shadow-sm sm:h-28 sm:w-28"
         >
           <Image src={photoUrl} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="h-full w-full object-cover" />
           <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -846,23 +846,23 @@ function ExperienceEditor({ rows, onChanged }: { rows: ExpRow[]; onChanged: () =
       <div className="space-y-3">
         {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No work experience added yet.</p>}
         {rows.map((e) => (
-          <div key={e.id} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
-            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-white text-gray-400 ring-1 ring-gray-200"><Briefcase className="h-4 w-4" /></span>
+          <div key={e.id} className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
+            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><Briefcase className="h-4 w-4" /></span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold text-gray-900">{e.title}</div>
               <div className="text-[13px] text-gray-600">{e.company}{e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}</div>
               <div className="text-xs text-gray-400">{expDates(e)}</div>
             </div>
             <div className="flex flex-shrink-0 gap-1">
-              <button onClick={() => setEditing(e)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
-              <button onClick={() => remove(e.id)} disabled={busy} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => setEditing(e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+              <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
             </div>
           </div>
         ))}
       </div>
 
       {editing ? (
-        <div className="mt-4 rounded-lg border border-gray-200 p-4">
+        <div className="mt-4 rounded-[4px] border border-gray-200 p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Job title *"><input className={input} placeholder="Senior Product Manager" value={editing.title} onChange={(e) => upd({ title: e.target.value })} /></Field>
             <Field label="Organization *"><input className={input} placeholder="Microsoft" value={editing.company} onChange={(e) => upd({ company: e.target.value })} /></Field>
@@ -920,12 +920,12 @@ function ExperienceEditor({ rows, onChanged }: { rows: ExpRow[]; onChanged: () =
           </div>
           <div className="mt-4 flex items-center justify-end gap-3">
             {err && <span className="text-xs text-red-600">{err}</span>}
-            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-lg px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
-            <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
+            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-[4px] px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
+            <button onClick={save} disabled={busy} className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setEditing(EmptyExp())} className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
+        <button onClick={() => setEditing(EmptyExp())} className="mt-4 flex items-center gap-2 rounded-[4px] border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
           <Plus className="h-4 w-4" /> Add experience
         </button>
       )}
@@ -956,23 +956,23 @@ function EducationEditor({ rows, onChanged }: { rows: EduRow[]; onChanged: () =>
       <div className="space-y-3">
         {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No education added yet.</p>}
         {rows.map((e) => (
-          <div key={e.id} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
-            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-white text-gray-400 ring-1 ring-gray-200"><School className="h-4 w-4" /></span>
+          <div key={e.id} className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
+            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><School className="h-4 w-4" /></span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold text-gray-900">{e.school}</div>
               {(e.degree || e.fieldOfStudy) && <div className="text-[13px] text-gray-600">{[e.degree, e.fieldOfStudy].filter(Boolean).join(", ")}</div>}
               {(e.startYear || e.endYear) && <div className="text-xs text-gray-400">{[e.startYear, e.endYear].filter(Boolean).join(" — ")}</div>}
             </div>
             <div className="flex flex-shrink-0 gap-1">
-              <button onClick={() => setEditing(e)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
-              <button onClick={() => remove(e.id)} disabled={busy} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => setEditing(e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+              <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
             </div>
           </div>
         ))}
       </div>
 
       {editing ? (
-        <div className="mt-4 rounded-lg border border-gray-200 p-4">
+        <div className="mt-4 rounded-[4px] border border-gray-200 p-4">
           <Field label="School *"><input className={input} placeholder="VNIT Nagpur" value={editing.school} onChange={(e) => upd({ school: e.target.value })} /></Field>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Degree"><input className={input} placeholder="Bachelor of Technology" value={editing.degree} onChange={(e) => upd({ degree: e.target.value })} /></Field>
@@ -992,12 +992,12 @@ function EducationEditor({ rows, onChanged }: { rows: EduRow[]; onChanged: () =>
           </div>
           <div className="mt-4 flex items-center justify-end gap-3">
             {err && <span className="text-xs text-red-600">{err}</span>}
-            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-lg px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
-            <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
+            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-[4px] px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
+            <button onClick={save} disabled={busy} className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setEditing(EmptyEdu())} className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
+        <button onClick={() => setEditing(EmptyEdu())} className="mt-4 flex items-center gap-2 rounded-[4px] border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
           <Plus className="h-4 w-4" /> Add education
         </button>
       )}

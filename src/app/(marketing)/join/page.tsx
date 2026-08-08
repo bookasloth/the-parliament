@@ -208,11 +208,11 @@ export default function JoinPage() {
             return (
               <Reveal key={w.title} delay={i * 0.08}>
                 <div
-                  className="group h-full rounded-2xl border p-7 transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_44px_-18px_rgba(26,26,26,0.22)]"
+                  className="group h-full rounded-[5px] border p-7 transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_44px_-18px_rgba(26,26,26,0.22)]"
                   style={{ backgroundColor: `${ACCENT_HEX[i]}0a`, borderColor: `${ACCENT_HEX[i]}22` }}
                 >
                   <div
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl ring-1 transition group-hover:scale-105"
+                    className="flex h-14 w-14 items-center justify-center rounded-[5px] ring-1 transition group-hover:scale-105"
                     style={{ backgroundColor: `${ACCENT_HEX[i]}1f`, color: ACCENT_HEX[i], boxShadow: `inset 0 0 0 1px ${ACCENT_HEX[i]}33` }}
                   >
                     <Icon className="h-7 w-7" strokeWidth={1.75} />
@@ -240,7 +240,7 @@ export default function JoinPage() {
           {TIERS.map((t, i) => (
             <Reveal key={t.name} delay={i * 0.07}>
               <div
-                className={`tier-card group relative flex h-full flex-col overflow-hidden rounded-3xl bg-white p-7 transition duration-300 hover:-translate-y-1.5 ${
+                className={`tier-card group relative flex h-full flex-col overflow-hidden rounded-[5px] bg-white p-7 transition duration-300 hover:-translate-y-1.5 ${
                   t.featured
                     ? "shadow-[0_24px_60px_-24px_rgba(26,26,26,0.28)] ring-2 lg:scale-[1.04] hover:shadow-[0_32px_70px_-28px_rgba(26,26,26,0.36)]"
                     : "border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_22px_50px_-22px_rgba(26,26,26,0.24)]"
@@ -251,7 +251,7 @@ export default function JoinPage() {
                 <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: ACCENT_HEX[t.accent] }} />
                 {t.featured && (
                   <span
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white"
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[3px] px-3 py-1 text-xs font-semibold text-white"
                     style={{ backgroundColor: ACCENT_HEX[t.accent] }}
                   >
                     Most popular
@@ -271,7 +271,7 @@ export default function JoinPage() {
                 <p className="mt-3 text-sm leading-relaxed text-[#5b5b5b]">{t.tagline}</p>
                 <a
                   href="/auth/signup"
-                  className="tier-cta mt-6 rounded-full border px-5 py-3 text-center text-sm font-semibold transition duration-200 hover:-translate-y-0.5"
+                  className="tier-cta mt-6 rounded-[3px] border px-5 py-3 text-center text-sm font-semibold transition duration-200 hover:-translate-y-0.5"
                   style={{
                     color: t.featured ? "#fff" : ACCENT_HEX[t.accent],
                     backgroundColor: t.featured ? ACCENT_HEX[t.accent] : "transparent",

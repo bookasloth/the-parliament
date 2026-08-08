@@ -328,16 +328,16 @@ export function FeedContent({
           {/* Feed Column */}
           <div className="flex-1 min-w-0 space-y-3">
             {viewerId && (
-              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 text-sm font-semibold">
+              <div className="flex items-center gap-1 rounded-[5px] border border-gray-200 bg-white p-1 text-sm font-semibold">
                 <a
                   href="/feed"
-                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${!followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                  className={`flex-1 rounded-[4px] py-2 text-center transition-colors ${!followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
                 >
                   For You
                 </a>
                 <a
                   href="/feed?tab=following"
-                  className={`flex-1 rounded-lg py-2 text-center transition-colors ${followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                  className={`flex-1 rounded-[4px] py-2 text-center transition-colors ${followingOnly ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50"}`}
                 >
                   Following
                 </a>
@@ -347,7 +347,7 @@ export function FeedContent({
               <div className="sticky top-16 z-20 flex justify-center">
                 <button
                   onClick={showNewPosts}
-                  className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/5 hover:bg-brand-600"
+                  className="rounded-[3px] bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/5 hover:bg-brand-600"
                 >
                   {newCount} new post{newCount > 1 ? "s" : ""} · tap to refresh
                 </button>
@@ -362,14 +362,14 @@ export function FeedContent({
             />
 
             {caughtUp && (
-              <div className="flex items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
+              <div className="flex items-center gap-2 rounded-[5px] border border-brand-100 bg-brand-50 px-4 py-2.5 text-sm text-brand-700">
                 <Sparkles className="h-4 w-4 flex-shrink-0" />
                 You&rsquo;re all caught up — showing recent posts you may want to revisit.
               </div>
             )}
 
             {localPosts.length === 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+              <div className="bg-white border border-gray-200 rounded-[5px] p-8 text-center">
                 {followingOnly ? (
                   <p className="text-sm text-gray-500">
                     Nothing here yet. Follow more alumni to fill your Following feed —{" "}
@@ -410,7 +410,7 @@ export function FeedContent({
                 ) : (
                   <button
                     onClick={loadMore}
-                    className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                    className="w-full rounded-[5px] border border-gray-200 bg-white py-3 text-sm font-medium text-brand-700 hover:bg-brand-50"
                   >
                     Load more posts
                   </button>
@@ -421,7 +421,7 @@ export function FeedContent({
             {/* Premium CTA — only for tiers below premium (premium/life/committee
                 are already at/above it, so don't upsell them). */}
             {!["premium", "life", "committee"].includes(viewer?.membership ?? "") && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+              <div className="bg-white border border-gray-200 rounded-[4px] p-4 text-center">
                 <p className="text-sm font-medium text-gray-700">
                   <Sparkles className="inline h-4 w-4 text-brand mr-1" />
                   Unlock more with Premium Membership
@@ -440,11 +440,11 @@ export function FeedContent({
           <div className="w-full lg:w-[340px] flex-shrink-0">
             <div className="sticky top-20 space-y-3">
               {/* Sticky Ad */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
                 <div className="p-4">
                   <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Sponsored</span>
                   <a href="https://www.google.com" target="_blank" className="relative mt-2 block">
-                    <Image src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop" alt="Ad" width={600} height={400} className="w-full h-auto rounded object-cover" />
+                    <Image src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop" alt="Ad" width={600} height={400} className="w-full h-auto rounded-[3px] object-cover" />
                   </a>
                   <p className="mt-1.5 text-xs text-gray-400 text-center">Advertisement</p>
                 </div>
@@ -452,7 +452,7 @@ export function FeedContent({
 
               {/* Connections Widget */}
               {(suggestions.length > 0 ? suggestions : connections).length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <h5 className="text-sm font-semibold text-gray-900">Throw 1 Egg to Poke Them</h5>
                   </div>
@@ -479,7 +479,7 @@ export function FeedContent({
                       const thrown = targetUsername ? eggedUsernames.has(targetUsername) : false
                       return (
                         <div key={c.key} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors">
-                          <a href={c.href ?? "#"} className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full">
+                          <a href={c.href ?? "#"} className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-[4px]">
                             <Image src={c.avatar} alt={c.name} className="h-full w-full object-cover" fill sizes="36px" />
                           </a>
                           <div className="min-w-0 flex-1">
@@ -489,7 +489,7 @@ export function FeedContent({
                           <button
                             onClick={() => targetUsername && handleThrowEgg(targetUsername)}
                             disabled={!targetUsername || thrown}
-                            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
+                            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[3px] transition-colors ${
                               thrown ? "bg-amber-100 text-amber-600 opacity-60 cursor-default" : "bg-amber-50 text-amber-500 hover:bg-amber-100"
                             }`}
                             title={thrown ? "Egg thrown" : "Throw egg"}
@@ -511,7 +511,7 @@ export function FeedContent({
 
               {/* Alumni News — pinned posts */}
               {news.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-white border border-gray-200 rounded-[4px] overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <h5 className="text-sm font-semibold text-gray-900">Alumni News</h5>
                   </div>

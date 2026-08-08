@@ -75,10 +75,10 @@ export default function GovernancePage() {
             </Reveal>
             <Reveal delay={0.15}>
               <div className="mt-7 flex flex-wrap gap-3 text-sm">
-                <a href="/moa" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-white transition hover:bg-brand-600">
+                <a href="/moa" className="rounded-[3px] bg-brand px-5 py-2.5 font-semibold text-white transition hover:bg-brand-600">
                   Read the Memorandum
                 </a>
-                <a href="/rules" className="rounded-full border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
+                <a href="/rules" className="rounded-[3px] border border-black/10 bg-white px-5 py-2.5 font-semibold text-[#1a1a1a] transition hover:border-black/20">
                   Read the Rules
                 </a>
               </div>
@@ -93,8 +93,8 @@ export default function GovernancePage() {
                 { icon: FileText, title: "Two governing documents", body: "A Memorandum of Association and a set of Rules & Regulations.", accent: "#e8503a" },
                 { icon: Scale, title: "Member-run & accountable", body: "An elected committee, an AGM, and transparent, audited accounts.", accent: "#3a6b23" },
               ].map((c) => (
-                <div key={c.title} className="flex items-start gap-4 rounded-2xl border border-black/5 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${c.accent}1a`, color: c.accent }}>
+                <div key={c.title} className="flex items-start gap-4 rounded-[5px] border border-black/5 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[5px]" style={{ backgroundColor: `${c.accent}1a`, color: c.accent }}>
                     <c.icon className="h-5 w-5" />
                   </span>
                   <div>
@@ -111,7 +111,7 @@ export default function GovernancePage() {
       {/* ── Registered entity ── */}
       <Section width="6xl" className="pt-0">
         <Reveal>
-          <div className="grid gap-4 rounded-3xl border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:grid-cols-3">
+          <div className="grid gap-4 rounded-[5px] border border-black/5 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:grid-cols-3">
             {[
               { label: "Legal entity", value: "Nagpur Navodaya Alumni Welfare and Charitable Association" },
               { label: "Registration no.", value: "{{Registration number}}" },
@@ -131,7 +131,7 @@ export default function GovernancePage() {
       {/* ── MOA ── */}
       <Section id="moa" width="6xl" className="bg-[#f4f1ea]">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
             <Landmark className="h-6 w-6" />
           </div>
           <SectionHeading
@@ -143,7 +143,7 @@ export default function GovernancePage() {
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {MOA_OBJECTS.map((o, i) => (
             <Reveal key={o} delay={(i % 2) * 0.06}>
-              <div className="flex gap-3 rounded-2xl border border-black/5 bg-white p-5">
+              <div className="flex gap-3 rounded-[5px] border border-black/5 bg-white p-5">
                 <span className="font-heading text-lg font-semibold text-brand">
                   {String(i + 1).padStart(2, "0")}
                 </span>
@@ -155,7 +155,7 @@ export default function GovernancePage() {
         <Reveal delay={0.1}>
           <a
             href="{{MOA_PDF_URL}}"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+            className="mt-8 inline-flex items-center gap-2 rounded-[3px] bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
           >
             <Download className="h-4 w-4" /> Download the full Memorandum (PDF)
           </a>
@@ -165,7 +165,7 @@ export default function GovernancePage() {
       {/* ── Rules ── */}
       <Section id="rules" width="6xl">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e8503a]/10 text-[#e8503a]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[5px] bg-[#e8503a]/10 text-[#e8503a]">
             <Scale className="h-6 w-6" />
           </div>
           <SectionHeading
@@ -178,7 +178,7 @@ export default function GovernancePage() {
         <div className="mt-10 space-y-4">
           {RULES.map((r, i) => (
             <Reveal key={r.title} delay={(i % 3) * 0.05}>
-              <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+              <div className="rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <h3 className="font-heading text-lg font-semibold text-[#1a1a1a]">{r.title}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-[#4a4a4a]">{r.body}</p>
               </div>
@@ -188,7 +188,7 @@ export default function GovernancePage() {
         <Reveal delay={0.1}>
           <a
             href="{{RULES_PDF_URL}}"
-            className="mt-8 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
+            className="mt-8 inline-flex items-center gap-2 rounded-[3px] border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
           >
             <FileText className="h-4 w-4" /> Download the full Rules (PDF)
           </a>

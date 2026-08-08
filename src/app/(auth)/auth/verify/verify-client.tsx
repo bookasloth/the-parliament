@@ -100,7 +100,7 @@ export function VerifyClient() {
             onKeyDown={(e) => onKey(i, e)}
             inputMode="text"
             maxLength={1}
-            className="h-14 w-full rounded-xl border border-gray-300 text-center text-xl font-bold uppercase outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+            className="h-14 w-full rounded-[5px] border border-gray-300 text-center text-xl font-bold uppercase outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
           />
         ))}
       </div>
@@ -110,7 +110,7 @@ export function VerifyClient() {
 
       <button
         onClick={submit} disabled={busy}
-        className="mt-6 w-full rounded-xl bg-brand py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-600 disabled:opacity-60"
+        className="mt-6 w-full rounded-[5px] bg-brand py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-600 disabled:opacity-60"
       >
         {busy ? "Verifying…" : "Verify and continue"}
       </button>

@@ -32,7 +32,7 @@ export function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
           <button
             key={c}
             onClick={() => { setFilter(c); setOpen(null) }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-[3px] px-4 py-2 text-sm font-semibold transition ${
               filter === c ? "bg-brand text-white" : "border border-black/10 bg-white text-[#5b5b5b] hover:border-black/20"
             }`}
           >
@@ -47,7 +47,7 @@ export function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
           <button
             key={p.src}
             onClick={() => setOpen(i)}
-            className="group mb-4 block w-full break-inside-avoid overflow-hidden rounded-2xl border border-black/5 bg-gray-100 text-left"
+            className="group mb-4 block w-full break-inside-avoid overflow-hidden rounded-[5px] border border-black/5 bg-gray-100 text-left"
           >
             <div className="relative overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -70,12 +70,12 @@ export function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
           <button className="absolute right-5 top-5 text-white/80 hover:text-white" aria-label="Close" onClick={() => setOpen(null)}>
             <X className="h-7 w-7" />
           </button>
-          <button className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="Previous" onClick={(e) => { e.stopPropagation(); move(-1) }}>
+          <button className="absolute left-3 top-1/2 -translate-y-1/2 rounded-[3px] bg-white/10 p-2 text-white hover:bg-white/20" aria-label="Previous" onClick={(e) => { e.stopPropagation(); move(-1) }}>
             <ChevronLeft className="h-6 w-6" />
           </button>
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={active.src} alt={active.title} className="max-h-[75vh] w-auto rounded-xl object-contain" />
+            <img src={active.src} alt={active.title} className="max-h-[75vh] w-auto rounded-[5px] object-contain" />
             <div className="mt-3 text-center">
               <p className="font-heading text-lg font-semibold text-white">{active.title}</p>
               <p className="mt-0.5 flex items-center justify-center gap-1.5 text-sm text-white/60">
@@ -83,7 +83,7 @@ export function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
               </p>
             </div>
           </div>
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="Next" onClick={(e) => { e.stopPropagation(); move(1) }}>
+          <button className="absolute right-3 top-1/2 -translate-y-1/2 rounded-[3px] bg-white/10 p-2 text-white hover:bg-white/20" aria-label="Next" onClick={(e) => { e.stopPropagation(); move(1) }}>
             <ChevronRight className="h-6 w-6" />
           </button>
         </div>

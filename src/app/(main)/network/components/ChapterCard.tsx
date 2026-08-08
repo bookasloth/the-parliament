@@ -10,7 +10,7 @@ export function ChapterCard({ chapter }: { chapter: Chapter }) {
   const [joined, setJoined] = useState(chapter.joined)
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-card">
+    <div className="flex h-full flex-col overflow-hidden rounded-[5px] border border-gray-200 bg-white transition-shadow hover:shadow-card">
       <Link href={`/network/chapters/${chapter.slug}`} className="relative block">
         <Image src={chapter.cover} alt={chapter.name} fill sizes="(max-width: 768px) 100vw, 400px" className="h-20 w-full object-cover" />
       </Link>
@@ -23,7 +23,7 @@ export function ChapterCard({ chapter }: { chapter: Chapter }) {
         <button
           onClick={() => setJoined((v) => !v)}
           aria-pressed={joined}
-          className={`mt-3 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
+          className={`mt-3 flex items-center justify-center gap-1.5 rounded-[3px] px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
             joined
               ? "border border-gray-200 bg-gray-100 text-gray-600"
               : "border border-brand bg-brand text-white hover:bg-white hover:text-brand"

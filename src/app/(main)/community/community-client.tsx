@@ -153,7 +153,7 @@ export function CommunityClient({
   ].filter(Boolean) as { key: string; label: string }[]
 
   // 4px controls throughout, brand focus.
-  const sel = "rounded border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-brand hover:border-gray-300"
+  const sel = "rounded-[3px] border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-brand hover:border-gray-300"
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4">
@@ -164,7 +164,7 @@ export function CommunityClient({
           <h1 className="font-heading text-xl font-bold text-gray-900 sm:text-2xl">Community</h1>
           <p className="text-xs text-gray-500 sm:text-sm">Search and filter the alumni network.</p>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded border border-gray-200 bg-white px-4 py-2 sm:justify-start">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[3px] border border-gray-200 bg-white px-4 py-2 sm:justify-start">
           {[
             { label: "Alumni", value: stats.totalActive.toLocaleString(), icon: <Users className="h-4 w-4 text-brand" /> },
             { label: "Verified", value: stats.verifiedCount.toLocaleString(), icon: <VerifiedTick size={16} /> },
@@ -191,7 +191,7 @@ export function CommunityClient({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search alumni by name or username…"
-            className="w-full rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
+            className="w-full rounded-[3px] border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
           />
         </form>
         {/* 5 filters, equal columns — grid-cols-5 on lg fills the row with no ragged gap. */}
@@ -221,7 +221,7 @@ export function CommunityClient({
 
       {/* Verified toggle + view switch */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className={`flex cursor-pointer items-center gap-1.5 rounded border px-2.5 py-1.5 text-sm transition-colors ${current.verified === "1" ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}>
+        <label className={`flex cursor-pointer items-center gap-1.5 rounded-[3px] border px-2.5 py-1.5 text-sm transition-colors ${current.verified === "1" ? "border-brand bg-brand-50 text-brand" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"}`}>
           <input type="checkbox" checked={current.verified === "1"} onChange={(e) => go({ verified: e.target.checked ? "1" : undefined })} className="h-3.5 w-3.5 accent-brand" />
           Verified only
         </label>
@@ -232,9 +232,9 @@ export function CommunityClient({
           </select>
         </label>
         <div className="flex-1" />
-        <div className="flex items-center gap-1 rounded border border-gray-200 bg-white p-1">
-          <button aria-label="Grid view" onClick={() => setView("grid")} className={`rounded p-1.5 transition-colors ${view === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><Grid className="h-4 w-4" /></button>
-          <button aria-label="List view" onClick={() => setView("list")} className={`rounded p-1.5 transition-colors ${view === "list" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><List className="h-4 w-4" /></button>
+        <div className="flex items-center gap-1 rounded-[3px] border border-gray-200 bg-white p-1">
+          <button aria-label="Grid view" onClick={() => setView("grid")} className={`rounded-[3px] p-1.5 transition-colors ${view === "grid" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><Grid className="h-4 w-4" /></button>
+          <button aria-label="List view" onClick={() => setView("list")} className={`rounded-[3px] p-1.5 transition-colors ${view === "list" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}><List className="h-4 w-4" /></button>
         </div>
       </div>
 
@@ -242,7 +242,7 @@ export function CommunityClient({
       {chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((c) => (
-            <span key={c.key} className="flex items-center gap-1 rounded bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand">
+            <span key={c.key} className="flex items-center gap-1 rounded-[3px] bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand">
               {c.label}
               <button aria-label={`Remove ${c.label} filter`} onClick={() => go({ [c.key]: undefined })}><X className="h-3 w-3" /></button>
             </span>
@@ -254,7 +254,7 @@ export function CommunityClient({
       <p className="text-xs text-gray-500">{total.toLocaleString()} alumni found{current.q && ` for "${current.q}"`}</p>
 
       {items.length === 0 ? (
-        <div className="rounded border border-gray-200 bg-white py-16 text-center">
+        <div className="rounded-[3px] border border-gray-200 bg-white py-16 text-center">
           <Search className="mx-auto mb-3 h-10 w-10 text-gray-200" />
           <p className="text-sm font-medium text-gray-500">No alumni found</p>
           <p className="mt-1 text-xs text-gray-400">Try a different search or clear filters</p>
@@ -276,7 +276,7 @@ export function CommunityClient({
                         <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} />
                       </div>
                     )}
-                    <a href={`/${r.username}`} className="flex-1 rounded border border-gray-200 px-4 py-2 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
+                    <a href={`/${r.username}`} className="flex-1 rounded-[3px] border border-gray-200 px-4 py-2 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
                   </div>
                 }
               />
@@ -286,15 +286,15 @@ export function CommunityClient({
       ) : (
         <div className="space-y-2">
           {items.map((r) => (
-            <div key={r.id} className="flex items-center gap-4 rounded border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm">
+            <div key={r.id} className="flex items-center gap-4 rounded-[3px] border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm">
               <a href={`/${r.username}`} className="flex-shrink-0">
-                <Image src={r.photoUrl || colorAvatar(r.id)} alt={r.legalName} className="h-12 w-12 rounded-full object-cover" style={{ boxShadow: r.house ? `0 0 0 2.5px ${r.house.colorHex}` : undefined }} width={48} height={48} />
+                <Image src={r.photoUrl || colorAvatar(r.id)} alt={r.legalName} className="h-12 w-12 rounded-[4px] object-cover" style={{ boxShadow: r.house ? `0 0 0 2.5px ${r.house.colorHex}` : undefined }} width={48} height={48} />
               </a>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <a href={`/${r.username}`} className="text-sm font-semibold text-gray-900 hover:text-brand">{r.displayName || r.legalName}</a>
                   {r.isVerified && <VerifiedTick size={15} color={tierAccent(r.membershipStatus)} />}
-                  {r.house && <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: r.house.colorHex, color: r.house.name === "Udaigiri" ? "#666" : "#fff" }}>{r.house.name}</span>}
+                  {r.house && <span className="flex-shrink-0 rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: r.house.colorHex, color: r.house.name === "Udaigiri" ? "#666" : "#fff" }}>{r.house.name}</span>}
                 </div>
                 {r.headline && <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{r.headline}</p>}
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-gray-400">

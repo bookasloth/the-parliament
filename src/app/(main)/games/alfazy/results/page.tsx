@@ -62,8 +62,8 @@ export default async function AlfazyResultsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-brand-700 p-7 text-center text-white">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
+      <section className="relative overflow-hidden rounded-[5px] bg-gradient-to-br from-brand to-brand-700 p-7 text-center text-white">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[5px] bg-white/15">
           <PartyPopper className="h-7 w-7" />
         </div>
         <p className="mt-3 text-[13px] font-semibold uppercase tracking-wide text-white/80">
@@ -78,7 +78,7 @@ export default async function AlfazyResultsPage() {
         </div>
 
         {topPct != null && (
-          <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[13px] font-semibold">
+          <p className="mt-4 inline-flex items-center gap-1.5 rounded-[3px] bg-white/15 px-3 py-1.5 text-[13px] font-semibold">
             <Trophy className="h-4 w-4" /> Top {topPct}% of today&apos;s players
             {myRank && <span className="text-white/70">· #{myRank}</span>}
           </p>
@@ -88,7 +88,7 @@ export default async function AlfazyResultsPage() {
           <ShareResult text={shareText} className="flex-1 bg-white text-brand hover:bg-white/90" />
           <Link
             href="/games/alfazy/leaderboard/individual/daily"
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+            className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25"
           >
             <Trophy className="h-4 w-4" /> Leaderboard
           </Link>
@@ -99,7 +99,7 @@ export default async function AlfazyResultsPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
           href="/games/alfazy/champions"
-          className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-colors hover:bg-amber-100"
+          className="flex items-center justify-between rounded-[5px] border border-amber-200 bg-amber-50 p-4 transition-colors hover:bg-amber-100"
         >
           <span className="flex items-center gap-2.5 text-[14px] font-semibold text-amber-800">
             <Crown className="h-5 w-5 text-amber-500" /> Hall of Champions
@@ -108,7 +108,7 @@ export default async function AlfazyResultsPage() {
         </Link>
         <Link
           href="/games/alfazy"
-          className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand hover:bg-brand-50"
+          className="flex items-center justify-between rounded-[5px] border border-gray-200 bg-white p-4 transition-colors hover:border-brand hover:bg-brand-50"
         >
           <span className="flex items-center gap-2.5 text-[14px] font-semibold text-gray-800">
             <RotateCcw className="h-5 w-5 text-brand" /> Come back tomorrow
@@ -127,12 +127,12 @@ export default async function AlfazyResultsPage() {
       )}
 
       {/* Next-game cross-sell */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <section className="rounded-[5px] border border-gray-200 bg-white p-5">
         <h2 className="font-heading text-lg font-bold text-gray-900">More games coming</h2>
         <p className="mt-0.5 text-[13px] text-gray-500">New ways to compete with your batch and house.</p>
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {UPCOMING.map((name) => (
-            <div key={name} className="rounded-xl border border-dashed border-gray-200 p-3 text-center">
+            <div key={name} className="rounded-[5px] border border-dashed border-gray-200 p-3 text-center">
               <Gamepad2 className="mx-auto h-5 w-5 text-gray-300" />
               <p className="mt-1.5 text-[12px] font-semibold text-gray-500">{name}</p>
               <p className="text-[10px] font-bold uppercase tracking-wide text-gray-300">Soon</p>
@@ -149,7 +149,7 @@ export default async function AlfazyResultsPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/15 py-3">
+    <div className="rounded-[5px] bg-white/15 py-3">
       <div className="text-2xl font-extrabold tabular-nums">{value}</div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{label}</div>
     </div>

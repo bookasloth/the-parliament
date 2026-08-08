@@ -94,7 +94,7 @@ export default function SponsorshipPage() {
             <Reveal delay={0.15}>
               <a
                 href="/contact"
-                className="mt-9 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                className="mt-9 inline-flex items-center gap-2 rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
               >
                 <Handshake className="h-4 w-4" /> Talk to the committee
               </a>
@@ -103,8 +103,8 @@ export default function SponsorshipPage() {
 
           {/* Sponsor spotlight — fills the space, previews the value */}
           <Reveal delay={0.2} className="hidden lg:block">
-            <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-[0_20px_60px_-24px_rgba(26,26,26,0.25)]">
-              <div className="flex h-40 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-[#f4f1ea] text-center">
+            <div className="rounded-[5px] border border-black/5 bg-white p-6 shadow-[0_20px_60px_-24px_rgba(26,26,26,0.25)]">
+              <div className="flex h-40 flex-col items-center justify-center rounded-[5px] bg-gradient-to-br from-brand-50 to-[#f4f1ea] text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Presented by</p>
                 <p className="mt-1.5 font-heading text-2xl font-semibold text-[#1a1a1a]">Your Brand</p>
                 <p className="mt-1 text-xs text-[#8a8a8a]">at NNAWCA Annual Reunion 2026</p>
@@ -123,7 +123,7 @@ export default function SponsorshipPage() {
       </Section>
 
       {/* ── Reach stats ── */}
-      <Section dark width="6xl" className="relative rounded-t-[2.5rem] text-center lg:rounded-t-[3rem]">
+      <Section dark width="6xl" className="relative rounded-t-[5px] text-center lg:rounded-t-[5px]">
         <Reveal>
           <Eyebrow accent={2}>Your reach</Eyebrow>
         </Reveal>
@@ -134,7 +134,7 @@ export default function SponsorshipPage() {
               <Reveal key={s.label} delay={i * 0.1}>
                 <div className="flex flex-col items-center">
                   <div
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl border"
+                    className="flex h-14 w-14 items-center justify-center rounded-[5px] border"
                     style={{
                       color: ACCENT_HEX[s.accent],
                       borderColor: `${ACCENT_HEX[s.accent]}55`,
@@ -187,7 +187,7 @@ export default function SponsorshipPage() {
           {PACKAGES.map((p, i) => (
             <Reveal key={p.name} delay={i * 0.08}>
               <div
-                className={`relative flex h-full flex-col rounded-3xl bg-white p-7 ${
+                className={`relative flex h-full flex-col rounded-[5px] bg-white p-7 ${
                   p.featured
                     ? "shadow-[0_24px_60px_-24px_rgba(26,26,26,0.28)] ring-2"
                     : "border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
@@ -196,7 +196,7 @@ export default function SponsorshipPage() {
               >
                 {p.featured && (
                   <span
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white"
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[3px] px-3 py-1 text-xs font-semibold text-white"
                     style={{ backgroundColor: ACCENT_HEX[p.accent] }}
                   >
                     Most chosen
@@ -218,7 +218,7 @@ export default function SponsorshipPage() {
                 </ul>
                 <a
                   href="/contact"
-                  className={`mt-6 rounded-full px-5 py-3 text-center text-sm font-semibold transition ${
+                  className={`mt-6 rounded-[3px] px-5 py-3 text-center text-sm font-semibold transition ${
                     p.featured ? "text-white hover:opacity-90" : "border border-black/10 text-[#1a1a1a] hover:border-black/20"
                   }`}
                   style={p.featured ? { backgroundColor: ACCENT_HEX[p.accent] } : undefined}

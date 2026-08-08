@@ -48,7 +48,7 @@ export function ProfileSidebarView({
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
         {/* Cover */}
         {viewer?.coverUrl ? (
           <div className="relative h-[68px]">
@@ -62,7 +62,7 @@ export function ProfileSidebarView({
             {/* z-10 so avatar paints above the absolutely-positioned cover */}
             <div className="relative z-10 -mt-9 mb-2 flex justify-center">
               <Image
-                className="h-16 w-16 rounded-full border-[3px] border-white object-cover shadow-sm"
+                className="h-16 w-16 rounded-[4px] border-[3px] border-white object-cover shadow-sm"
                 src={photo}
                 alt=""
                 width={64}
@@ -101,7 +101,7 @@ export function ProfileSidebarView({
             <a
               key={label}
               href={href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand transition-colors"
+              className="flex items-center gap-3 rounded-[4px] px-3 py-2 text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand transition-colors"
             >
               <Icon className="h-[18px] w-[18px] flex-shrink-0 text-gray-400" />
               {label}
@@ -128,19 +128,19 @@ export function ProfileSidebarView({
 export function ProfileSidebarSkeleton({ navRows = 4 }: { navRows?: number }) {
   return (
     <div className="space-y-3">
-      <div className="animate-pulse bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="animate-pulse bg-white border border-gray-200 rounded-[5px] overflow-hidden">
         <div className="h-[68px] bg-gray-100" />
         <div className="px-4 pb-3">
           <div className="relative z-10 -mt-9 mb-2 flex justify-center">
-            <div className="h-16 w-16 rounded-full border-[3px] border-white bg-gray-200" />
+            <div className="h-16 w-16 rounded-[4px] border-[3px] border-white bg-gray-200" />
           </div>
-          <div className="mx-auto h-3.5 w-28 rounded bg-gray-200" />
-          <div className="mx-auto mt-2 h-2.5 w-40 rounded bg-gray-100" />
+          <div className="mx-auto h-3.5 w-28 rounded-[3px] bg-gray-200" />
+          <div className="mx-auto mt-2 h-2.5 w-40 rounded-[3px] bg-gray-100" />
           <div className="mt-3 flex items-stretch">
             {[0, 1, 2].map((i) => (
               <div key={i} className={`flex-1 ${i > 0 ? "border-l border-gray-100" : ""}`}>
-                <div className="mx-auto h-3 w-8 rounded bg-gray-200" />
-                <div className="mx-auto mt-1.5 h-2 w-10 rounded bg-gray-100" />
+                <div className="mx-auto h-3 w-8 rounded-[3px] bg-gray-200" />
+                <div className="mx-auto mt-1.5 h-2 w-10 rounded-[3px] bg-gray-100" />
               </div>
             ))}
           </div>
@@ -148,13 +148,13 @@ export function ProfileSidebarSkeleton({ navRows = 4 }: { navRows?: number }) {
         <div className="border-t border-gray-100 p-2 space-y-1">
           {Array.from({ length: navRows }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-2">
-              <div className="h-[18px] w-[18px] flex-shrink-0 rounded bg-gray-200" />
-              <div className="h-2.5 w-24 rounded bg-gray-100" />
+              <div className="h-[18px] w-[18px] flex-shrink-0 rounded-[3px] bg-gray-200" />
+              <div className="h-2.5 w-24 rounded-[3px] bg-gray-100" />
             </div>
           ))}
         </div>
         <div className="border-t border-gray-100 py-2.5 text-center">
-          <div className="mx-auto h-2.5 w-20 rounded bg-gray-200" />
+          <div className="mx-auto h-2.5 w-20 rounded-[3px] bg-gray-200" />
         </div>
       </div>
     </div>

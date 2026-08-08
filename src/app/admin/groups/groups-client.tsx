@@ -60,12 +60,12 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
         <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
           <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search groups..."
-            className="w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
+            className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
         </div>
       </div>
 
       {/* Groups table */}
-      <div className="rounded-lg border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
@@ -101,11 +101,11 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
                   <Td className="text-xs text-zinc-500 whitespace-nowrap">{g.lastActivity}</Td>
                   <Td className="relative">
                     <button onClick={() => setActiveMenu(activeMenu === g.id ? null : g.id)}
-                      className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
+                      className="p-1.5 rounded-[3px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
                       <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                     </button>
                     {activeMenu === g.id && (
-                      <div className="absolute right-4 top-10 z-20 w-48 rounded-lg border border-zinc-800 bg-[#111113] py-1 shadow-xl">
+                      <div className="absolute right-4 top-10 z-20 w-48 rounded-[4px] border border-zinc-800 bg-[#111113] py-1 shadow-xl">
                         {[
                           { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View group" },
                           { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },

@@ -32,15 +32,15 @@ export function CommitteeTabs({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`relative -mb-px flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+              className={`relative -mb-px flex items-center gap-2 rounded-t-[4px] px-4 py-2.5 text-sm font-semibold transition ${
                 on ? "text-brand" : "text-[#8a8a8a] hover:text-[#1a1a1a]"
               }`}
             >
               {t.label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${on ? "bg-brand-50 text-brand" : "bg-black/5 text-[#a3a3a3]"}`}>
+              <span className={`rounded-[3px] px-1.5 py-0.5 text-[11px] font-bold ${on ? "bg-brand-50 text-brand" : "bg-black/5 text-[#a3a3a3]"}`}>
                 {t.members.length}
               </span>
-              {on && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
+              {on && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-[3px] bg-brand" />}
             </button>
           )
         })}
@@ -60,9 +60,9 @@ function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 
   const placeholder = isPlaceholder(member.name)
   const initial = placeholder ? null : member.name.replace(/^(Shri\.|Smt\.|Dr\.)\s*/i, "").charAt(0)
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
+    <div className="flex flex-col items-center rounded-[5px] border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
       <div
-        className="flex h-16 w-16 items-center justify-center rounded-full font-heading text-2xl font-semibold text-white"
+        className="flex h-16 w-16 items-center justify-center rounded-[4px] font-heading text-2xl font-semibold text-white"
         style={{ backgroundColor: ACCENT_HEX[accent] }}
       >
         {initial ?? <Users className="h-6 w-6" />}

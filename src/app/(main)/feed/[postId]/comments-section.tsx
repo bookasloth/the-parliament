@@ -29,7 +29,7 @@ function ComposerTools({
         disabled={imageDisabled}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onImageClick}
-        className="inline-flex items-center rounded p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+        className="inline-flex items-center rounded-[3px] p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
       >
         <ImageIcon className="h-4 w-4" />
       </button>
@@ -182,7 +182,7 @@ function Avatar({ c }: { c: CommentView }) {
       <Image
         src={c.author.avatarUrl}
         alt={c.author.displayName}
-        className="h-8 w-8 rounded-full border-[0.5px] border-gray-300 object-cover sm:h-9 sm:w-9"
+        className="h-8 w-8 rounded-[4px] border-[0.5px] border-gray-300 object-cover sm:h-9 sm:w-9"
         width={36}
         height={36}
       />
@@ -224,7 +224,7 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
                 <VerifiedBadge membership={c.author.membershipStatus as FeedMembership} />
               )}
               {c.isAuthor && (
-                <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
+                <span className="rounded-[3px] bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
                   Author
                 </span>
               )}
@@ -250,7 +250,7 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
             <img
               src={c.imageUrl}
               alt="Comment attachment"
-              className="max-h-80 w-auto max-w-full rounded-lg border border-gray-200 object-cover"
+              className="max-h-80 w-auto max-w-full rounded-[4px] border border-gray-200 object-cover"
             />
           </a>
         )}
@@ -284,13 +284,13 @@ function CommentMenu({
     <div className="relative ml-1" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        className="rounded-[3px] p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
         aria-label="More"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute left-0 top-full z-20 mt-1 w-32 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
           {c.isAuthor ? (
             <button
               onClick={() => { setOpen(false); onDelete(c) }}
@@ -333,7 +333,7 @@ function VoteRow({
       <button
         onClick={() => onVote(c, "upvote")}
         disabled={disabled}
-        className={`inline-flex items-center rounded p-0.5 hover:bg-gray-100 disabled:opacity-40 ${
+        className={`inline-flex items-center rounded-[3px] p-0.5 hover:bg-gray-100 disabled:opacity-40 ${
           c.myReaction === "upvote" ? "text-brand" : "text-gray-500"
         }`}
         aria-label="Upvote"
@@ -348,7 +348,7 @@ function VoteRow({
       <button
         onClick={() => onVote(c, "downvote")}
         disabled={disabled}
-        className={`inline-flex items-center rounded p-0.5 hover:bg-gray-100 disabled:opacity-40 ${
+        className={`inline-flex items-center rounded-[3px] p-0.5 hover:bg-gray-100 disabled:opacity-40 ${
           c.myReaction === "downvote" ? "text-red-500" : "text-gray-500"
         }`}
         aria-label="Downvote"
@@ -416,12 +416,12 @@ function CommentItem({
             onEnter={send}
             placeholder="Write a reply…"
             autoFocus
-            className="w-full rounded-full border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
+            className="w-full rounded-[3px] border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
           />
           <button
             onClick={send}
             disabled={!text.trim()}
-            className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:bg-gray-200"
+            className="rounded-[3px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:bg-gray-200"
           >
             Reply
           </button>
@@ -596,13 +596,13 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
   }
 
   return (
-    <section className={embedded ? "" : "bg-white border border-gray-200 rounded-xl"}>
+    <section className={embedded ? "" : "bg-white border border-gray-200 rounded-[5px]"}>
       {viewer && (() => {
         const expanded = focused || text.trim().length > 0 || !!image || uploading
         const canPost = (text.trim().length > 0 || !!image) && !uploading
         return (
           <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
-            <Image src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover flex-shrink-0" width={36} height={36} />
+            <Image src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-[4px] object-cover flex-shrink-0" width={36} height={36} />
             <div className="flex-1">
               <input
                 ref={fileInputRef}
@@ -611,7 +611,7 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
                 className="hidden"
                 onChange={onPickImage}
               />
-              <div className={expanded ? "rounded-2xl border border-gray-300 px-3 py-2" : "relative"}>
+              <div className={expanded ? "rounded-[5px] border border-gray-300 px-3 py-2" : "relative"}>
                 <MentionInput
                   value={text}
                   onChange={setText}
@@ -624,7 +624,7 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
                   className={
                     expanded
                       ? "w-full resize-none bg-transparent text-sm outline-none"
-                      : "w-full resize-none rounded-full border border-gray-200 py-2.5 pl-4 pr-24 text-sm outline-none focus:border-brand"
+                      : "w-full resize-none rounded-[3px] border border-gray-200 py-2.5 pl-4 pr-24 text-sm outline-none focus:border-brand"
                   }
                 />
 
@@ -632,11 +632,11 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
                 {image && (
                   <div className="relative mt-2 inline-block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image} alt="Attachment preview" className="max-h-40 rounded-lg border border-gray-200" />
+                    <img src={image} alt="Attachment preview" className="max-h-40 rounded-[4px] border border-gray-200" />
                     <button
                       type="button"
                       onClick={() => setImage(null)}
-                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-white hover:bg-gray-900"
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-[3px] bg-gray-900/80 text-white hover:bg-gray-900"
                       aria-label="Remove image"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -664,7 +664,7 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
                       type="button"
                       onClick={submitTop}
                       disabled={!canPost}
-                      className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                      className="rounded-[3px] bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
                     >
                       Comment
                     </button>

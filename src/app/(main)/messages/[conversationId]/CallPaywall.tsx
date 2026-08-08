@@ -85,9 +85,9 @@ export default function CallPaywall({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-[5px] bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-start justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
             <Video className="h-5 w-5" />
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -102,13 +102,13 @@ export default function CallPaywall({
         <button
           onClick={buy}
           disabled={busy}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-[5px] bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
         >
           {busy ? "Please wait…" : "Buy 30-min pass · ₹30"}
         </button>
         <a
           href="/membership"
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand/30 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[5px] border border-brand/30 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5"
         >
           <Sparkles className="h-4 w-4" /> Upgrade membership
         </a>

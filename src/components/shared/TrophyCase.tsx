@@ -50,7 +50,7 @@ export default function TrophyCase({ userId }: { userId: string }) {
             <div
               key={`${t.scope}-${t.period}-${t.anchor}`}
               title={`${def.label} — ${formatAnchor(t.period, t.anchor)}${t.scope !== "individual" ? ` (${t.label})` : ""}`}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${TROPHY_TONE_CLASS[def.tone]}`}
+              className={`flex h-11 w-11 items-center justify-center rounded-[5px] ring-1 ${TROPHY_TONE_CLASS[def.tone]}`}
             >
               <Icon className="h-5 w-5" />
             </div>
@@ -59,7 +59,7 @@ export default function TrophyCase({ userId }: { userId: string }) {
         {more > 0 && (
           <Link
             href={`/games/alfazy/champions?winner=${userId}`}
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-xs font-bold text-gray-500 ring-1 ring-gray-200 hover:bg-gray-100"
+            className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gray-50 text-xs font-bold text-gray-500 ring-1 ring-gray-200 hover:bg-gray-100"
           >
             +{more}
           </Link>

@@ -46,7 +46,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
 
   return (
     <>
-      <div className={`mt-3 grid gap-1 overflow-hidden rounded-lg ${n === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+      <div className={`mt-3 grid gap-1 overflow-hidden rounded-[4px] ${n === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
         {shown.map((m, i) => (
           <button
             key={i}
@@ -59,7 +59,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
               <>
                 <video src={m.url} className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} muted preload="metadata" />
                 <span className="absolute inset-0 flex items-center justify-center">
-                  <span className="rounded-full bg-black/50 p-2.5">
+                  <span className="rounded-[4px] bg-black/50 p-2.5">
                     <Play className="h-5 w-5 text-white" fill="white" />
                   </span>
                 </span>
@@ -90,7 +90,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
         >
           <button
             onClick={() => setOpen(false)}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            className="absolute right-4 top-4 rounded-[4px] bg-white/10 p-2 text-white hover:bg-white/20"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -99,7 +99,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
           {n > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); go(-1) }}
-              className="absolute left-3 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+              className="absolute left-3 rounded-[4px] bg-white/10 p-2 text-white hover:bg-white/20"
               aria-label="Previous"
             >
               <ChevronLeft className="h-6 w-6" />
@@ -120,7 +120,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
           {n > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); go(1) }}
-              className="absolute right-3 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+              className="absolute right-3 rounded-[4px] bg-white/10 p-2 text-white hover:bg-white/20"
               aria-label="Next"
             >
               <ChevronRight className="h-6 w-6" />
@@ -128,7 +128,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
           )}
 
           {n > 1 && (
-            <span className="absolute bottom-4 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
+            <span className="absolute bottom-4 rounded-[3px] bg-black/50 px-3 py-1 text-sm text-white">
               {idx + 1} / {n}
             </span>
           )}

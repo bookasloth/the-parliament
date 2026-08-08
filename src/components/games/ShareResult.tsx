@@ -32,7 +32,7 @@ export default function ShareResult({ text, className = "" }: { text: string; cl
   return (
     <button
       onClick={share}
-      className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${className}`}
+      className={`flex items-center justify-center gap-2 rounded-[4px] px-4 py-2.5 text-sm font-semibold transition-colors ${className}`}
     >
       {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
       {copied ? "Copied!" : "Share result"}
