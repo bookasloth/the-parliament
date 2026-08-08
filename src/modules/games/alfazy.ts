@@ -3,6 +3,7 @@
  * directly); getDailyWord() is the thin DB wrapper over the AlfazyWord dictionary.
  */
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { puzzleNumber } from "./periods";
 
@@ -92,7 +93,7 @@ export interface DailyPuzzle {
 }
 
 /** Today's (or a given date's) puzzle: word read from the DB dictionary. */
-export async function getDailyPuzzle(date: Date = new Date()): Promise<DailyPuzzle> {
+async function fetchDailyPuzzle(date: Date): Promise<DailyPuzzle> {
   const puzzleNo = puzzleNumber(date);
   const count = await prisma.alfazyWord.count({ where: { isActive: true } });
   const idx = pickIndex(puzzleNo, count);
@@ -101,4 +102,17 @@ export async function getDailyPuzzle(date: Date = new Date()): Promise<DailyPuzz
   });
   if (!row) throw new Error(`no active word at idx ${idx}`);
   return { puzzleNo, word: row.word.toUpperCase() };
+}
+
+// Cached for the whole day — puzzle number is the cache key, so the DB is hit
+// once per day instead of once per guess.
+const getDailyPuzzleCached = unstable_cache(
+  (puzzleNo: number) => fetchDailyPuzzle(new Date()),
+  ["alfazy-daily-puzzle"],
+  { revalidate: 3600 },
+);
+
+export async function getDailyPuzzle(date: Date = new Date()): Promise<DailyPuzzle> {
+  const pn = puzzleNumber(date);
+  return getDailyPuzzleCached(pn);
 }

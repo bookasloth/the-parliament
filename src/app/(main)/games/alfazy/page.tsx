@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getDailyPuzzle } from "@/modules/games/alfazy";
 import { leaderboardCached, alfazyGameId, currentStreak } from "@/modules/games/leaderboard";
 import { trophiesForUser } from "@/modules/games/champions";
-import { getFollowData } from "@/modules/connections/service";
+import { colorAvatar } from "@/lib/avatar";
 import { env } from "@/config/env";
 import CountUp from "@/components/games/CountUp";
 import NudgePanel from "@/components/games/NudgePanel";
@@ -24,7 +24,7 @@ export default async function AlfazyHubPage() {
   const gameId = await alfazyGameId();
   const { puzzleNo } = await getDailyPuzzle();
 
-  const [playedToday, gamesPlayed, board, trophies, follow, streak] = await Promise.all([
+  const [playedToday, gamesPlayed, board, trophies, streak, viewerProfile] = await Promise.all([
     prisma.gameScore.findUnique({
       where: { gameId_userId_puzzleDate: { gameId, userId: user.id, puzzleDate: todayUtc() } },
       select: { score: true, solved: true, levelReached: true },
@@ -32,15 +32,38 @@ export default async function AlfazyHubPage() {
     prisma.gameScore.count({ where: { gameId, userId: user.id } }),
     leaderboardCached("individual", "daily"),
     trophiesForUser(user.id),
-    getFollowData(user.id),
     currentStreak(user.id),
+    prisma.profile.findUnique({
+      where: { userId: user.id },
+      select: { houseId: true, batchId: true },
+    }),
   ]);
 
-  const nudgeTargets = follow.following.map((c) => ({
-    userId: c.userId ?? c.id,
-    name: c.name,
-    avatar: c.avatar,
-    headline: c.headline,
+  // Nudge list: housemates + batchmates (not all connections)
+  const orClauses: object[] = [];
+  if (viewerProfile?.houseId) orClauses.push({ houseId: viewerProfile.houseId });
+  if (viewerProfile?.batchId) orClauses.push({ batchId: viewerProfile.batchId });
+  const peers = orClauses.length > 0
+    ? await prisma.user.findMany({
+        where: {
+          status: "active",
+          id: { not: user.id },
+          profile: { OR: orClauses },
+        },
+        take: 30,
+        select: {
+          id: true,
+          displayName: true,
+          legalName: true,
+          profile: { select: { photoUrl: true, headline: true } },
+        },
+      })
+    : [];
+  const nudgeTargets = peers.map((p) => ({
+    userId: p.id,
+    name: p.displayName || p.legalName,
+    avatar: p.profile?.photoUrl || colorAvatar(p.id),
+    headline: p.profile?.headline ?? undefined,
   }));
 
   const top5 = board.entries.slice(0, 5);
@@ -65,9 +88,9 @@ export default async function AlfazyHubPage() {
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* Play card */}
-        <section className="relative overflow-hidden rounded-[5px] bg-gradient-to-br from-brand to-brand-700 p-6 text-white lg:row-span-1">
+      {/* Play card (left) + How to play (right) */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="relative overflow-hidden rounded-[5px] bg-gradient-to-br from-brand to-brand-700 p-6 text-white">
           <h2 className="font-heading text-xl font-bold">Play Alfazy</h2>
           {playedToday ? (
             <div className="mt-4 space-y-3">
@@ -117,62 +140,62 @@ export default async function AlfazyHubPage() {
           </Link>
         </section>
 
-        {/* Today's leaderboard */}
-        <section className="rounded-[5px] border border-gray-200 bg-white p-5">
-          <h2 className="font-heading text-lg font-bold text-gray-900">Today&apos;s Leaderboard</h2>
-          {top5.length === 0 ? (
-            <p className="mt-4 text-[13.5px] text-gray-500">No plays yet today — be the first!</p>
-          ) : (
-            <ol className="mt-3 space-y-2">
-              {top5.map((e) => (
-                <li key={e.key} className="flex items-center gap-3">
-                  <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-[3px] text-[13px] font-bold ${
-                      e.rank === 1 ? "bg-amber-100 text-amber-700" : e.rank === 2 ? "bg-gray-200 text-gray-700" : e.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-500"
-                    }`}
-                  >
-                    {e.rank}
-                  </span>
-                  <span className={`flex-1 truncate text-[14px] ${e.key === user.id ? "font-bold text-brand" : "font-medium text-gray-800"}`}>
-                    {e.key === user.id ? "You" : e.label}
-                  </span>
-                  <span className="text-[13px] font-semibold text-gray-500">{e.total} pts</span>
-                </li>
-              ))}
-            </ol>
-          )}
-          <Link href="/games/alfazy/leaderboard/individual/daily" className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
-            Full leaderboard →
-          </Link>
-        </section>
-
-        {/* Your stats */}
-        <section className="rounded-[5px] border border-gray-200 bg-white p-5">
-          <h2 className="font-heading text-lg font-bold text-gray-900">Your Stats</h2>
+        <section className="rounded-[5px] border border-gray-200 bg-white p-6">
+          <h2 className="font-heading text-lg font-bold text-gray-900">How to play</h2>
+          <ol className="mt-3 space-y-2.5 text-[14px] text-gray-700">
+            <li className="flex gap-2.5"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-brand-50 text-[12px] font-bold text-brand">1</span> Guess the 5-letter word in 6 tries.</li>
+            <li className="flex gap-2.5"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-emerald-50 text-[12px] font-bold text-emerald-600">2</span> <span><span className="inline-block h-4 w-4 rounded-[2px] bg-emerald-500 align-text-bottom" /> = correct spot, <span className="inline-block h-4 w-4 rounded-[2px] bg-amber-400 align-text-bottom" /> = wrong spot, <span className="inline-block h-4 w-4 rounded-[2px] bg-gray-400 align-text-bottom" /> = not in word.</span></li>
+            <li className="flex gap-2.5"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-amber-50 text-[12px] font-bold text-amber-600">3</span> Fewer guesses = higher score. Keep your streak alive!</li>
+          </ol>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-[5px] bg-brand-50 p-4">
-              <div className="text-[12px] font-semibold uppercase tracking-wide text-brand">Games Played</div>
-              <CountUp value={gamesPlayed} className="mt-1 block text-3xl font-extrabold text-brand" />
+            <div className="rounded-[5px] bg-brand-50 p-3 text-center">
+              <CountUp value={gamesPlayed} className="block text-2xl font-extrabold text-brand" />
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-brand/70">Games</div>
             </div>
-            <div className="rounded-[5px] bg-amber-50 p-4">
-              <div className="text-[12px] font-semibold uppercase tracking-wide text-amber-600">Titles</div>
-              <CountUp value={trophies.length} className="mt-1 block text-3xl font-extrabold text-amber-600" />
+            <div className="rounded-[5px] bg-amber-50 p-3 text-center">
+              <CountUp value={trophies.length} className="block text-2xl font-extrabold text-amber-600" />
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-600/70">Titles</div>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 rounded-[5px] bg-gray-50 p-3 text-[13.5px] text-gray-700">
-            <Flame className="h-4 w-4 text-orange-500" />
-            {myRank ? (
-              <span>
-                You&apos;re <span className="font-bold text-gray-900">#{myRank}</span> on today&apos;s board
-              </span>
-            ) : (
-              <span>Play today to get ranked</span>
-            )}
-          </div>
+          {myRank && (
+            <p className="mt-3 flex items-center gap-2 text-[13px] text-gray-500">
+              <Flame className="h-4 w-4 text-orange-500" />
+              You&apos;re <span className="font-bold text-gray-900">#{myRank}</span> on today&apos;s board
+            </p>
+          )}
         </section>
       </div>
 
-      <NudgePanel connections={nudgeTargets} />
+      {/* Today's leaderboard */}
+      <section className="rounded-[5px] border border-gray-200 bg-white p-5">
+        <h2 className="font-heading text-lg font-bold text-gray-900">Today&apos;s Leaderboard</h2>
+        {top5.length === 0 ? (
+          <p className="mt-4 text-[13.5px] text-gray-500">No plays yet today — be the first!</p>
+        ) : (
+          <ol className="mt-3 space-y-2">
+            {top5.map((e) => (
+              <li key={e.key} className="flex items-center gap-3">
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-[3px] text-[13px] font-bold ${
+                    e.rank === 1 ? "bg-amber-100 text-amber-700" : e.rank === 2 ? "bg-gray-200 text-gray-700" : e.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-500"
+                  }`}
+                >
+                  {e.rank}
+                </span>
+                <span className={`flex-1 truncate text-[14px] ${e.key === user.id ? "font-bold text-brand" : "font-medium text-gray-800"}`}>
+                  {e.key === user.id ? "You" : e.label}
+                </span>
+                <span className="text-[13px] font-semibold text-gray-500">{e.total} pts</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Link href="/games/alfazy/leaderboard/individual/daily" className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
+          Full leaderboard →
+        </Link>
+      </section>
+
+      <NudgePanel connections={nudgeTargets} title="Nudge your batchmates & housemates" subtitle="A nudge lands as a notification. One per person per day." />
     </div>
   );
 }
