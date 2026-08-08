@@ -31,7 +31,6 @@ export function FollowButton({
       >
         {following ? (
           <>
-            {/* following = green user-tick; on hover = red user-minus (unfollow) */}
             <UserCheck className="h-5 w-5 group-hover:hidden" />
             <UserMinus className="hidden h-5 w-5 group-hover:block" />
           </>
@@ -47,7 +46,7 @@ export function FollowButton({
       <button
         onClick={toggle}
         disabled={busy}
-        className="group flex items-center gap-1.5 rounded-[3px] border border-gray-200 bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-600 transition-all duration-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+        className="group flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-gray-200 bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-600 transition-all duration-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
       >
         <Check className="h-3.5 w-3.5 group-hover:hidden" />
         <span className="hidden group-hover:inline">Unfollow</span>
@@ -60,7 +59,7 @@ export function FollowButton({
     <button
       onClick={toggle}
       disabled={busy}
-      className="flex items-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60"
+      className="group isolate relative flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60 before:pointer-events-none before:absolute before:inset-[-2px] before:rounded-[5px] before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100 before:bg-[conic-gradient(#4285F4_0deg,#4285F4_90deg,#EA4335_90deg,#EA4335_180deg,#FBBC05_180deg,#FBBC05_270deg,#34A853_270deg,#34A853_360deg)] before:-z-10"
     >
       <UserPlus className="h-3.5 w-3.5" /> {busy ? "…" : "Follow"}
     </button>
