@@ -10,6 +10,32 @@ const BORDER_MAP: Record<string, BorderType> = {
   premium: "darkBlue", life: "gold", student: "green", associate: "blue", inactive: "grey", committee: "rgby",
 }
 
+const postSelect = {
+  id: true, body: true, media: true, status: true, deletedAt: true,
+  createdAt: true,
+  upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true,
+  author: {
+    select: {
+      id: true, username: true, legalName: true, displayName: true,
+      isVerified: true, membershipStatus: true,
+      profile: {
+        select: {
+          photoUrl: true,
+          headline: true,
+          house: { select: { name: true, colorHex: true } },
+          batch: { select: { startYear: true, endYear: true, label: true } },
+        },
+      },
+    },
+  },
+  poll: {
+    select: {
+      id: true, question: true, expiresAt: true,
+      options: { select: { id: true, label: true, voteCount: true }, orderBy: { sortOrder: "asc" as const } },
+    },
+  },
+} as const
+
 export default async function HashtagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = await params
   const normTag = tag.toLowerCase()
@@ -21,47 +47,40 @@ export default async function HashtagPage({ params }: { params: Promise<{ tag: s
     select: { id: true, tag: true, useCount: true },
   })
 
-  if (!hashtag) notFound()
+  // Primary path: join-table query when Hashtag record exists
+  // Fallback: body-text search for posts containing #tag (handles old posts where sync failed)
+  let rawPosts: any[]
+  let useCount: number
 
-  const rows = await prisma.postHashtag.findMany({
-    where: { hashtagId: hashtag.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: {
-      post: {
-        select: {
-          id: true, body: true, media: true, status: true, deletedAt: true,
-          createdAt: true,
-          upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true,
-          author: {
-            select: {
-              id: true, username: true, legalName: true, displayName: true,
-              isVerified: true, membershipStatus: true,
-              profile: {
-                select: {
-                  photoUrl: true,
-                  headline: true,
-                  house: { select: { name: true, colorHex: true } },
-                  batch: { select: { startYear: true, endYear: true, label: true } },
-                },
-              },
-            },
-          },
-          poll: {
-            select: {
-              id: true, question: true, expiresAt: true,
-              options: { select: { id: true, label: true, voteCount: true }, orderBy: { sortOrder: "asc" } },
-            },
-          },
-        },
+  if (hashtag) {
+    const rows = await prisma.postHashtag.findMany({
+      where: { hashtagId: hashtag.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { post: { select: postSelect } },
+    })
+    rawPosts = rows.map((r) => (r as any).post)
+    useCount = hashtag.useCount
+  } else {
+    // Fallback: search post body text directly
+    const found = await prisma.post.findMany({
+      where: {
+        body: { contains: `#${normTag}`, mode: "insensitive" },
+        status: "visible",
+        deletedAt: null,
       },
-    },
-  })
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: postSelect,
+    })
+    if (found.length === 0) notFound()
+    rawPosts = found
+    useCount = found.length
+  }
 
-  const posts = (rows as any[])
-    .filter((r) => r.post && !r.post.deletedAt && r.post.status === "visible")
-    .map((r) => {
-      const pt = r.post
+  const posts = rawPosts
+    .filter((pt) => pt && !pt.deletedAt && pt.status === "visible")
+    .map((pt) => {
       const a = pt.author
       const ms = (["associate","student","premium","life","inactive","committee"].includes(a.membershipStatus)
         ? a.membershipStatus : "associate") as FeedMembership
@@ -103,8 +122,8 @@ export default async function HashtagPage({ params }: { params: Promise<{ tag: s
           <Hash className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">#{hashtag.tag}</h1>
-          <p className="text-sm text-gray-500">{hashtag.useCount} {hashtag.useCount === 1 ? "post" : "posts"}</p>
+          <h1 className="text-xl font-bold text-gray-900">#{normTag}</h1>
+          <p className="text-sm text-gray-500">{useCount} {useCount === 1 ? "post" : "posts"}</p>
         </div>
       </div>
       <HashtagFeed posts={posts} />
