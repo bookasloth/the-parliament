@@ -241,21 +241,6 @@ export function movementMap(current: LeaderEntry[], prior: LeaderEntry[]): Map<s
   return out;
 }
 
-/** Leaderboard + movement arrows vs the prior window (empty when no prior/all). */
-export async function leaderboardWithMovement(
-  scope: Scope,
-  period: Period,
-  anchor?: string,
-  now: Date = new Date(),
-): Promise<{ anchor: string; entries: LeaderEntry[]; movement: Map<string, Movement> }> {
-  const cur = await leaderboard(scope, period, anchor, now);
-  if (period === "all") return { ...cur, movement: new Map() };
-  const prevA = priorAnchor(period, cur.anchor);
-  if (!prevA) return { ...cur, movement: new Map() };
-  const prev = await leaderboard(scope, period, prevA, now);
-  return { ...cur, entries: cur.entries, movement: movementMap(cur.entries, prev.entries) };
-}
-
 // ── Cached variants ──────────────────────────────────────────────────────────
 // The heavy work (window scan + aggregate) is memoized in Next's Data Cache,
 // keyed by (scope, period, resolvedAnchor) with a 60s revalidate and a shared

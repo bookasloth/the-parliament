@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
-import { Search, SlidersHorizontal, PenSquare } from "lucide-react"
+import { Search, PenSquare } from "lucide-react"
 import { colorAvatar } from "@/lib/avatar"
 import type { ConversationSummary } from "@/modules/messaging/types"
 
@@ -110,15 +110,3 @@ export function ChatSidebar({ conversations }: { conversations: ConversationSumm
   )
 }
 
-/** Mobile-only header strip with the filter/title, mirrors the template's
- *  "offcanvas toggler" row but adapted for the master-detail flow. */
-export function ChatSidebarMobileHint() {
-  return (
-    <div className="flex items-center gap-2 px-4 py-3 lg:hidden">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
-        <SlidersHorizontal className="h-4 w-4" />
-      </span>
-      <span className="text-base font-bold text-gray-900">Chats</span>
-    </div>
-  )
-}
