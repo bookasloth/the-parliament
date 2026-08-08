@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { relativeTime } from "@/lib/relative-time"
+import { getDefaultSchoolId } from "@/lib/school"
 
 /** Group shape consumed by the groups list client page. */
 export interface GroupListItem {
@@ -317,6 +318,46 @@ export async function listGroups(
   if (!userId) return shared
   const joined = await myGroupIds(userId)
   return shared.map((g) => (joined.has(g.id) ? { ...g, isJoined: true } : g))
+}
+
+/**
+ * Auto-assign a user to groups matching their batch, house, gender, and blood
+ * group. Idempotent — safe to call on every profile save. Uses refBatchId /
+ * refHouseId for batch/house groups, and type+refDepartment for gender/blood.
+ */
+export async function autoAssignGroups(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { gender: true, schoolId: true, profile: { select: { batchId: true, houseId: true, bloodGroup: true } } },
+  })
+  if (!user) return
+  const schoolId = user.schoolId ?? await getDefaultSchoolId()
+  if (!schoolId) return
+
+  const conditions: Array<Record<string, unknown>> = []
+  if (user.profile?.batchId) conditions.push({ schoolId, refBatchId: user.profile.batchId })
+  if (user.profile?.houseId) conditions.push({ schoolId, refHouseId: user.profile.houseId })
+  if (user.gender) conditions.push({ schoolId, type: "gender", refDepartment: user.gender.toLowerCase() })
+  if (user.profile?.bloodGroup) conditions.push({ schoolId, type: "blood", refDepartment: user.profile.bloodGroup })
+
+  if (conditions.length === 0) return
+
+  const groups = await prisma.group.findMany({
+    where: { OR: conditions },
+    select: { id: true },
+  })
+
+  if (groups.length === 0) return
+
+  await Promise.all(
+    groups.map((g) =>
+      prisma.groupMember.upsert({
+        where: { groupId_userId: { groupId: g.id, userId } },
+        update: {},
+        create: { groupId: g.id, userId, role: "member", status: "active" },
+      }),
+    ),
+  )
 }
 
 export async function joinGroup(userId: string, groupId: string): Promise<void> {

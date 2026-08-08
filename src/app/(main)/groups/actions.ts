@@ -5,6 +5,7 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { joinGroup, leaveGroup } from "@/modules/groups/service"
 import { groupRequestSchema, type SubmitGroupRequestInput } from "@/modules/groups/request-schema"
+import { sendEmail } from "@/lib/email"
 
 export type { SubmitGroupRequestInput }
 
@@ -25,7 +26,33 @@ export async function submitGroupRequestAction(
 
   await prisma.groupRequest.create({ data: { groupId, userId: user.id, category, body } })
   revalidatePath(`/groups/${groupId}`)
+
+  // Email all active group members about the request (fire-and-forget).
+  notifyGroupMembers(groupId, user.id, category, body).catch(() => {})
+
   return { ok: true }
+}
+
+async function notifyGroupMembers(groupId: string, authorId: string, category: string, body: string) {
+  const [group, author, members] = await Promise.all([
+    prisma.group.findUnique({ where: { id: groupId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: authorId }, select: { displayName: true, legalName: true } }),
+    prisma.groupMember.findMany({
+      where: { groupId, status: "active", userId: { not: authorId } },
+      select: { user: { select: { id: true, email: true } } },
+    }),
+  ])
+  if (!group || !author || members.length === 0) return
+
+  const fromName = author.displayName || author.legalName
+  const baseUrl = process.env.AUTH_URL || "https://nnawca.org"
+  const groupUrl = `${baseUrl}/groups/${groupId}`
+
+  await Promise.all(
+    members.map((m) =>
+      sendEmail("group_request", m.user.email, { fromName, groupName: group.name, category, body, groupUrl }, m.user.id),
+    ),
+  )
 }
 
 export async function joinGroupAction(groupId: string) {

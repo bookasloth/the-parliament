@@ -29,6 +29,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   upsell_unlock: { firstName: "Shubham", membershipUrl: "https://x/membership" },
   upsell_upgrade: { firstName: "Shubham", planName: "Alumni Premium", upgradeUrl: "https://x/membership" },
   endorsement_request: { endorserName: "Neha Gupta", candidateName: "Shubham", endorseUrl: "https://x/endorse/tok" },
+  group_request: { fromName: "Neha Gupta", groupName: "Batch 2005-2012", category: "emergency", body: "Need blood donation help in Nagpur", groupUrl: "https://x/groups/g1" },
 }
 
 describe("email-layout shell", () => {
@@ -66,7 +67,7 @@ describe("email-layout shell", () => {
 
 describe("lib/email templates", () => {
   it("covers all 22 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(22)
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(23)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
