@@ -14,6 +14,14 @@ declare global {
 
 const TIER_ICON: Record<SponsorTier, typeof Crown> = { platinum: Crown, gold: Medal, silver: Award }
 
+// Quick-amount chips (rupees), kept INSIDE each tier's band so no value spills
+// into the next tier (silver stays < ₹500, gold < ₹2,500).
+const PRESET_RUPEES: Record<SponsorTier, number[]> = {
+  silver: [100, 250, 400],
+  gold: [500, 1000, 2000],
+  platinum: [2500, 5000, 10000],
+}
+
 function loadRazorpay(): Promise<boolean> {
   return new Promise((resolve) => {
     if (window.Razorpay) return resolve(true)
@@ -231,7 +239,7 @@ function ContributeModal({ tier: initialTier, presetRupees, onClose }: { tier: T
       onClick={onClose}
     >
       <motion.div
-        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-[8px] bg-white shadow-2xl"
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-[8px] bg-white text-gray-900 shadow-2xl"
         initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
@@ -294,9 +302,9 @@ function ContributeModal({ tier: initialTier, presetRupees, onClose }: { tier: T
               <input type="number" min={tier.minPaise / 100} value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-transparent px-2 py-2.5 text-sm outline-none" />
             </div>
             <div className="mt-2 flex gap-1.5">
-              {[1, 2, 5].map((m) => (
-                <button key={m} onClick={() => setAmount(String((tier.minPaise / 100) * m))} className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 transition hover:border-gray-400">
-                  {rupees(tier.minPaise * m)}
+              {PRESET_RUPEES[tier.id].map((r) => (
+                <button key={r} onClick={() => setAmount(String(r))} className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 transition hover:border-gray-400">
+                  ₹{r.toLocaleString("en-IN")}
                 </button>
               ))}
             </div>
