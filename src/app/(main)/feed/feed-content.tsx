@@ -172,7 +172,10 @@ export function FeedContent({
   // Reset when server sends fresh posts (e.g., after revalidation).
   useEffect(() => {
     setLocalPosts(posts)
-    setRemovedIds(new Set())
+    // Keep optimistic removals for ids the server STILL returns (read-replica lag
+    // after a delete); drop them once the server stops returning the row. Blanket-
+    // clearing here is what made a just-deleted post flash back in.
+    setRemovedIds((prev) => new Set([...prev].filter((id) => posts.some((p) => p.id === id))))
     setPage(2)
     setHasMore(initialHasMore)
     seenIds.current = new Set(posts.map((p) => p.id))
@@ -194,13 +197,20 @@ export function FeedContent({
     })
   }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp])
 
-  // Eagerly prefetch next page after current batch arrives (Instagram-style).
-  // The loadMore guard (`!hasMore || loadingMore`) prevents concurrent fetches.
+  // Load the next page only as the reader approaches the end (Google-Maps style:
+  // fetch what's about to enter view, not the whole feed up front). The old 300ms
+  // chained timer prefetched every page back-to-back regardless of scroll, burning
+  // data for content the user never reached.
   useEffect(() => {
-    if (!hasMore || loadingMore) return
-    const t = setTimeout(loadMore, 300)
-    return () => clearTimeout(t)
-  }, [hasMore, loadingMore, loadMore])
+    const el = sentinelRef.current
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore() },
+      { rootMargin: "600px" }, // start ~one screen early so it feels seamless
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, loadMore])
 
   // Seen-tracking: record each real post once it's ~half on screen, batched and
   // debounced. Fire-and-forget — getFeed uses these to never repeat a post.

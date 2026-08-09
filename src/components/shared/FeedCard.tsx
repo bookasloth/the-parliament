@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
-import { VerifiedBadge, PollCard, RichText, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
+import { VerifiedBadge, PollCard, RichText, RichTextInline, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
 import { VerifiedTick } from "./VerifiedTick"
 import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
@@ -348,7 +348,7 @@ export function FeedCard({
                 className="relative z-[1] whitespace-pre-line text-center text-xl font-bold leading-snug text-white"
                 style={TEXT_BG[post.textBg].fg ? { color: TEXT_BG[post.textBg].fg } : undefined}
               >
-                {post.content}
+                <RichTextInline text={post.content} onBg />
               </p>
             </div>
           ) : (
@@ -433,8 +433,14 @@ export function FeedCard({
         ) : null}
       </div>
 
-      {/* Reaction Bar */}
-      <div className="mx-4 mt-[15px] mb-[30px] py-0.5 border-t-[0.5px] border-b-[0.5px] border-[#bfbfc4]">
+      {/* Reaction Bar — stop clicks here (incl. gaps/padding between buttons) from
+          bubbling to handleCardClick, which would open the full post page. This is
+          why tapping near "Comments" sometimes loaded the detail page instead of
+          expanding the inline thread. */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mx-4 mt-[15px] mb-[30px] py-0.5 border-t-[0.5px] border-b-[0.5px] border-[#bfbfc4]"
+      >
         <ReactionBar
           postId={post.id}
           isAuthor={isAuthor}

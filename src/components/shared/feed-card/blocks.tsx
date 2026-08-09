@@ -7,15 +7,49 @@ import { Eye, Clock, Quote } from "lucide-react"
 import type { FeedPost, FeedMembership } from "./types"
 import { truncateForPreview } from "@/lib/text-preview"
 
-const G_COLORS = ["#4285F4", "#EA4335", "#FBBC05", "#34A853"] as const
+const G_GRADIENT = "linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)"
 function GoogleColoredMention({ handle }: { handle: string }) {
   return (
-    <Link href={`/${handle.slice(1)}`} className="inline font-semibold hover:underline">
-      {[...handle].map((ch, i) => (
-        <span key={i} style={{ color: G_COLORS[i % G_COLORS.length] }}>{ch}</span>
-      ))}
+    <Link
+      href={`/${handle.slice(1)}`}
+      className="inline font-semibold hover:underline"
+      style={{ backgroundImage: G_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
+    >
+      {handle}
     </Link>
   )
+}
+
+// Shared token renderer for post body text: @mentions, #hashtags, links. `onBg`
+// = rendered over a colored text-background post, where gradient-fill text would
+// be unreadable — mentions/tags stay solid + underlined and inherit the bg's fg.
+function renderTokens(text: string, onBg = false) {
+  return text.split(/(@\w+|#\w+|https?:\/\/\S+)/g).map((part, i) => {
+    if (part.startsWith("@")) {
+      return onBg ? (
+        <Link key={i} href={`/${part.slice(1)}`} className="font-bold underline underline-offset-2 hover:opacity-80">{part}</Link>
+      ) : (
+        <GoogleColoredMention key={i} handle={part} />
+      )
+    }
+    if (part.startsWith("#")) {
+      return (
+        <Link key={i} href={`/hashtag/${part.slice(1)}`} className={onBg ? "font-bold underline underline-offset-2 hover:opacity-80" : "text-brand font-medium hover:underline"}>{part}</Link>
+      )
+    }
+    if (part.startsWith("http")) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={onBg ? "underline hover:opacity-80" : "text-brand hover:underline"}>{part}</a>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
+// Inline (no wrapping <p>) variant — used inside the text-background post's own
+// styled <p> so mentions/tags/links are clickable there too.
+export function RichTextInline({ text, onBg = false }: { text: string; onBg?: boolean }) {
+  return <>{renderTokens(text, onBg)}</>
 }
 
 // Scalloped verified seal (Twitter-style 24pt burst) + check, styled per tier:
@@ -150,29 +184,9 @@ export function RichText({ text, collapsible = false }: { text: string; collapsi
   const { shown, truncated } = collapsible && !expanded
     ? truncateForPreview(text)
     : { shown: text, truncated: false }
-  const parts = shown.split(/(@\w+|#\w+|https?:\/\/\S+)/g)
   return (
     <p className="text-sm md:text-[15px] text-[#374151] leading-[1.7] whitespace-pre-line">
-      {parts.map((part, i) => {
-        if (part.startsWith("@")) {
-          return <GoogleColoredMention key={i} handle={part} />
-        }
-        if (part.startsWith("#")) {
-          return (
-            <Link key={i} href={`/hashtag/${part.slice(1)}`} className="text-brand font-medium hover:underline">
-              {part}
-            </Link>
-          )
-        }
-        if (part.startsWith("http")) {
-          return (
-            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-              {part}
-            </a>
-          )
-        }
-        return <span key={i}>{part}</span>
-      })}
+      {renderTokens(shown)}
       {truncated && (
         <button
           onClick={() => setExpanded(true)}

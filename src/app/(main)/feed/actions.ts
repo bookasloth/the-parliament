@@ -210,7 +210,8 @@ export async function deletePostAction(postId: string) {
   const user = await requireUser()
   await deletePost({ postId, userId: user.id })
   revalidatePath("/feed")
-  redirect("/feed")
+  // No redirect: callers handle navigation. A server redirect here forces a feed
+  // re-nav that (under read-replica lag) re-streams the just-deleted row.
 }
 
 export async function sharePostAction(postId: string, comment?: string) {
