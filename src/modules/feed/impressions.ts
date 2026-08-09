@@ -29,13 +29,18 @@ export function planExclusions(hiddenIds: string[], seenIds: string[]): string[]
   return [...set]
 }
 
-/** True when the viewer has seen everything on the first page and we should fall
- *  back to the full (seen-inclusive) set rather than show an empty feed. Fallback
- *  is first-page only — deeper pages legitimately reach the end. */
+/** True when page 1 came back UNDER-FULL because the viewer has already seen most
+ *  or all fresh posts — top the page up from the full (seen-inclusive) set rather
+ *  than show a near-empty feed. Fires whenever fewer than a full page of unseen
+ *  posts remain (not only at exactly zero), which is what left heavy readers with
+ *  just 1–2 posts. Requires a seen history so a genuinely small/new feed isn't
+ *  mislabelled "caught up". Fallback is first-page only — deeper pages legitimately
+ *  reach the end. */
 export function shouldServeCaughtUp(opts: {
   page: number
   unseenRowCount: number
   seenCount: number
+  pageSize: number
 }): boolean {
-  return opts.page === 1 && opts.unseenRowCount === 0 && opts.seenCount > 0
+  return opts.page === 1 && opts.unseenRowCount < opts.pageSize && opts.seenCount > 0
 }

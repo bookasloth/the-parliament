@@ -153,7 +153,7 @@ export async function getFeed(filters: FeedFilters) {
   // seen exclusion (hidden/blocked still enforced) so the feed is never blank —
   // they simply re-browse recent posts.
   let caughtUp = false
-  if (!usesCursor && shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length })) {
+  if (!usesCursor && shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length, pageSize })) {
     caughtUp = true
     where.id = hiddenIds.length > 0 ? { notIn: hiddenIds } : undefined
     rows = await prisma.post.findMany({
