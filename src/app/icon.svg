@@ -1,0 +1,13 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NNAWCA">
+  <!-- Keep in sync with src/components/shared/Logo.tsx (LogoMark). -->
+  <defs>
+    <linearGradient id="d" x1="10.5" y1="12" x2="37.5" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EA4335"/>
+      <stop offset="0.55" stop-color="#FBBC05"/>
+      <stop offset="1" stop-color="#F9AB00"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="8" width="9" height="32" rx="4.5" fill="#4285F4"/>
+  <rect x="33" y="8" width="9" height="32" rx="4.5" fill="#34A853"/>
+  <path d="M10.5 12 L37.5 36" stroke="url(#d)" stroke-width="9" stroke-linecap="round"/>
+</svg>

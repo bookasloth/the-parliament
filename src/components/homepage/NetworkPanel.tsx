@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NetworkArt } from "./NetworkArt";
+import { LogoMark } from "@/components/shared/Logo";
 
 const FOOTER_LINKS = [
   { label: "About", href: "/about" },
@@ -37,6 +38,10 @@ export function NetworkPanel({
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0b1020] via-[#0b1020]/25 to-[#0b1020]" />
 
       <Link href="/" className="relative">
+        <span className="mb-6 inline-flex items-center gap-2.5">
+          <LogoMark className="h-9 w-9" />
+          <span className="text-lg font-bold tracking-tight text-white">NNAWCA</span>
+        </span>
         <h1 className="font-heading text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
           {heading}
         </h1>

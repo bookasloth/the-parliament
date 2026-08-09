@@ -11,8 +11,9 @@ self.addEventListener("push", (event) => {
   const title = data.title || "NNAWCA"
   const options = {
     body: data.body || "",
-    icon: data.icon || "/icon-192.png",
-    badge: "/icon-192.png",
+    // NNAWCA mark on the CDN (same asset as email). /icon-192.png never existed.
+    icon: data.icon || "https://website-assets.shubhamdatarkar.in/nnawca/logo-mark.png",
+    badge: "https://website-assets.shubhamdatarkar.in/nnawca/logo-mark.png",
     tag: data.tag,
     data: { url: data.url || "/" },
     // Calls should feel urgent: re-alert even if a same-tag one exists.

@@ -4,12 +4,13 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { LogoMark } from "@/components/shared/Logo"
 import {
   House, ChartBar, Users, ShieldCheck, UsersThree, CalendarDots,
   Flag, Megaphone, CreditCard, Storefront, Briefcase, Sparkle,
   Palette, Trophy, GameController, ChatsCircle, Gear, Scroll,
   List, X, MagnifyingGlass, Bell, CaretDown, SignOut,
-  ArrowSquareOut, Bank, VideoCamera,
+  ArrowSquareOut, VideoCamera,
 } from "@phosphor-icons/react"
 
 export interface AdminIdentity {
@@ -96,9 +97,7 @@ function SidebarContent({
     <div className="flex h-full flex-col bg-[#0a0a0a]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-zinc-800 flex-shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-blue-600">
-          <Bank className="h-4.5 w-4.5 text-white" weight="fill" />
-        </div>
+        <LogoMark className="h-8 w-8" />
         <div>
           <p className="text-sm font-bold text-zinc-100 leading-tight">NNAWCA</p>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Admin Console</p>

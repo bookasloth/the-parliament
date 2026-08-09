@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { Menu, X, Users } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { colorAvatar } from "@/lib/avatar";
+import { LogoMark } from "@/components/shared/Logo";
 
 interface StickyNavProps {
   logoLabel?: string;
@@ -52,9 +53,7 @@ export function StickyNav({
         )}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[5px] bg-brand">
-            <Users className="h-5 w-5 text-white" />
-          </div>
+          <LogoMark className="h-9 w-9" />
           <span
             className={cn(
               "font-body font-semibold tracking-tight transition-all duration-300",

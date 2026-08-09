@@ -13,6 +13,7 @@ import {
   FileText, UsersRound, Building2, Clock, TrendingUp, ChevronRight,
   ArrowUpRight,
 } from "lucide-react"
+import { LogoMark } from "@/components/shared/Logo"
 
 /* ---------------- Membership system ----------------
  * The membership button supports all 6 tiers (colors match the
@@ -320,9 +321,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
 
         {/* Logo */}
         <a href="/feed" className="flex items-center gap-2 flex-shrink-0 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-gradient-to-br from-brand to-brand-700 shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3">
-            <Users className="h-4 w-4 text-white" />
-          </div>
+          <LogoMark className="h-8 w-8 transition-transform group-hover:scale-110" />
           <span className="hidden md:inline text-sm font-bold text-gray-900 group-hover:text-brand transition-colors">NNAWCA</span>
         </a>
 

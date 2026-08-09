@@ -1,5 +1,6 @@
-import { Users, Mail, ExternalLink } from "lucide-react";
+import { Mail, ExternalLink } from "lucide-react";
 import type { FooterColumn } from "@/lib/homepage-data";
+import { LogoMark } from "@/components/shared/Logo";
 
 interface FooterProps {
   columns?: FooterColumn[];
@@ -18,9 +19,7 @@ export function Footer({
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[5px] bg-white/10">
-                <Users className="h-5 w-5 text-white" />
-              </div>
+              <LogoMark className="h-10 w-10" />
               <span className="font-bold text-sm">NNAWCA</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs">
