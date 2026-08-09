@@ -1057,6 +1057,7 @@ model Event {
   priceInPaise    Int       @default(0) @map("price_paise") // 0 = free
   visibility      EventVisibility @default(school)
   status          EventStatus @default(published)
+  reminderSentAt  DateTime? @map("reminder_sent_at") @db.Timestamptz // T-24h RSVP reminder fan-out marker
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   school     School            @relation(fields: [schoolId], references: [id])
@@ -1347,6 +1348,24 @@ model CommitteeInvite {
   @@index([userId, status])
   @@index([status, expiresAt])
   @@map("committee_invites")
+}
+
+// Email routing list for the functional committees (Alumni-Student, Sports &
+// Culture, Tech & Media, Executive). Stored by email — members rotate and need
+// not be app users — so relevant platform events reach each person's personal
+// inbox instead of one shared official address. `committee` is a config key
+// (src/config/committees.ts), not an FK, so adding a committee needs no migration.
+model CommitteeMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  committee String   @db.VarChar(40)
+  email     String   @db.VarChar(254)
+  name      String?  @db.VarChar(120)
+  role      String   @default("member") @db.VarChar(20) // chair | member
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([committee, email])
+  @@index([committee])
+  @@map("committee_members")
 }
 
 model PollEligibility {

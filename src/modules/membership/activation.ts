@@ -6,6 +6,7 @@ import { PLANS, type PlanCode } from "@/config/membership"
 import { nextRenewalDate } from "@/lib/membership-cycle"
 import { queueEmail } from "@/modules/email/service"
 import { sendEmail } from "@/lib/email"
+import { notifyCommittee } from "@/modules/committees/service"
 
 export interface ActivateInput {
   userId: string
@@ -110,6 +111,9 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
       // Fire the tier welcome email AFTER the tx commits — never inside it, and
       // never let a mail failure fail a paid activation.
       await sendWelcomeEmail(input, result)
+      await notifyExecutiveOfActivation(input, result).catch((e) =>
+        console.error("committee notify (activation) failed", e),
+      )
       return result
     })
 }
@@ -132,6 +136,24 @@ export function welcomeTemplateFor(
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+/** Alert the Executive committee to a new paid Life/Premium membership (not routine renewals). */
+async function notifyExecutiveOfActivation(input: ActivateInput, result: ActivateResult): Promise<void> {
+  if (input.source === "renewal") return
+  if (input.planCode !== "life" && input.planCode !== "premium") return
+  const u = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { legalName: true, email: true },
+  })
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  const amount = (input.amountPaise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+  await notifyCommittee("executive", {
+    title: `New ${PLANS[input.planCode].displayName} member`,
+    detail: `${u?.legalName || "A member"} (${u?.email || "—"}) just became a ${PLANS[input.planCode].displayName} member — ₹${amount}.`,
+    actionUrl: `${base}/admin/membership`,
+    actionLabel: "View membership",
+  })
 }
 
 async function sendWelcomeEmail(input: ActivateInput, result: ActivateResult): Promise<void> {

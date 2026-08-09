@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/modules/auth/session"
 import { sendNotification } from "@/modules/notifications/service"
+import { notifyCommittee } from "@/modules/committees/service"
 import { audit } from "@/lib/audit"
 
 export type VerificationMethod = "id_upload" | "alumni_vouch" | "institute_email"
@@ -35,6 +36,19 @@ export async function submitVerification(input: SubmitInput) {
     entityId: submission.id,
     payload: { method: input.method },
   })
+
+  // Alert the Alumni-Student Relation committee to review the new submission.
+  const applicant = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { legalName: true, email: true },
+  })
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  await notifyCommittee("alumni_student", {
+    title: "New alumni verification to review",
+    detail: `${applicant?.legalName || "A member"} (${applicant?.email || "—"}) submitted a ${input.method.replace("_", " ")} verification. Please review it in the admin queue.`,
+    actionUrl: `${base}/admin/verification`,
+    actionLabel: "Review verification",
+  }).catch((e) => console.error("committee notify (verification) failed", e))
 
   return submission
 }

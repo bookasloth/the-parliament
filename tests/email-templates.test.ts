@@ -30,6 +30,13 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   upsell_upgrade: { firstName: "Shubham", planName: "Alumni Premium", upgradeUrl: "https://x/membership" },
   endorsement_request: { endorserName: "Neha Gupta", candidateName: "Shubham", endorseUrl: "https://x/endorse/tok" },
   group_request: { fromName: "Neha Gupta", groupName: "Batch 2005-2012", category: "emergency", body: "Need blood donation help in Nagpur", groupUrl: "https://x/groups/g1" },
+  welcome: { firstName: "Shubham", feedUrl: "https://x/feed" },
+  onboarding_incomplete: { firstName: "Shubham", resumeUrl: "https://x/onboarding/profile" },
+  event_reminder: { firstName: "Shubham", eventTitle: "Reunion 2026", eventWhen: "22 Aug 2026, 5:00 pm", eventUrl: "https://x/e/1" },
+  event_cancelled: { firstName: "Shubham", eventTitle: "Reunion 2026", eventsUrl: "https://x/events" },
+  membership_expiring: { firstName: "Shubham", planName: "Alumni Premium", daysLeft: "7", expiresOn: "31 Jul 2026", renewUrl: "https://x/membership" },
+  membership_expired: { firstName: "Shubham", renewUrl: "https://x/membership" },
+  committee_alert: { committeeLabel: "Executive", title: "New Life member", detail: "Shubham just became a Life member.", actionUrl: "https://x/admin/membership", actionLabel: "View membership" },
 }
 
 describe("email-layout shell", () => {
@@ -66,8 +73,8 @@ describe("email-layout shell", () => {
 })
 
 describe("lib/email templates", () => {
-  it("covers all 22 keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(23)
+  it("covers all keys, each mapped to a category", () => {
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(30)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
