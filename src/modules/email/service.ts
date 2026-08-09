@@ -63,7 +63,7 @@ const CAPPED_CATEGORIES = new Set<EmailCategory>([
 
 let cachedTransport: nodemailer.Transporter | null = null
 
-function getTransport(): nodemailer.Transporter {
+export function getTransport(): nodemailer.Transporter {
   if (cachedTransport) return cachedTransport
   cachedTransport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,

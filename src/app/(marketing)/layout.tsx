@@ -22,6 +22,7 @@ const FOOTER_COLUMNS = [
       { label: "Governance", href: "/governance" },
       { label: "Newsroom", href: "/newsroom" },
       { label: "Changelog", href: "/changelog" },
+      { label: "Development", href: "/development" },
       { label: "Contact", href: "/contact" },
     ],
   },

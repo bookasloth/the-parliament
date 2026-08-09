@@ -1419,6 +1419,49 @@ model Donation {
   @@map("donations")
 }
 
+/// Public "Support NNAWCA" contributions + the /development sponsor wall.
+/// Money is collected for NNAWCA (the association). No account required —
+/// contributors may stay anonymous or opt into public recognition. The wall
+/// shows rows where status="paid" AND showOnWall AND approved AND NOT isAnonymous.
+/// Tiers/minimums live in src/config/sponsor.ts. No FK relations (plain optional
+/// userId, app-layer join) so anonymous givers need no User row.
+model Contribution {
+  id                String    @id @default(uuid()) @db.Uuid
+  amountPaise       Int       @map("amount_paise")
+  currency          String    @default("INR") @db.VarChar(3)
+  tier              String    @db.VarChar(16) // silver | gold | platinum (derived from amount+kind)
+  kind              String    @default("individual") @db.VarChar(16) // individual | company
+
+  userId            String?   @map("user_id") @db.Uuid // set when a logged-in alumnus contributes
+
+  // Wall display (opt-in)
+  showOnWall        Boolean   @default(false) @map("show_on_wall")
+  isAnonymous       Boolean   @default(false) @map("is_anonymous")
+  displayName       String?   @map("display_name") @db.VarChar(80)
+  websiteUrl        String?   @map("website_url") @db.VarChar(200) // personal/company external link
+  logoUrl           String?   @map("logo_url") @db.VarChar(300)    // company logo (platinum)
+  message           String?   @db.VarChar(280)
+
+  email             String?   @db.VarChar(200) // private — for receipts, never shown on the wall
+
+  // Payment (Razorpay). Recipient: NNAWCA.
+  status            String    @default("pending") @db.VarChar(12) // pending | paid | failed
+  razorpayOrderId   String?   @unique @map("razorpay_order_id") @db.VarChar(64)
+  razorpayPaymentId String?   @map("razorpay_payment_id") @db.VarChar(64)
+
+  // Moderation — public names approved before they surface
+  approved          Boolean   @default(false)
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz
+  approvedById      String?   @map("approved_by_id") @db.Uuid
+
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  paidAt            DateTime? @map("paid_at") @db.Timestamptz
+
+  @@index([status, approved, showOnWall])
+  @@index([createdAt])
+  @@map("contributions")
+}
+
 // ─────────────────────────────────────────────
 // MODULES: Karma Store & Badges
 // ─────────────────────────────────────────────
