@@ -169,6 +169,17 @@ h1, h2 {
   50% { stroke-opacity: 0.6; stroke-width: 1.5; }
 }
 
+/* ---- /development funding bar fill (animate on load, no JS) ---- */
+@keyframes sponsor-fill {
+  from { width: 0; }
+  to   { width: var(--pct, 0%); }
+}
+
+/* ---- Certificate print: show only the certificate ---- */
+@media print {
+  .no-print { display: none !important; }
+}
+
 /* ---- Festive chat-theme decorations ---- */
 @keyframes festive-snowfall {
   0%   { transform: translateY(-10%) translateX(0); opacity: 0; }
