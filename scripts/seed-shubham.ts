@@ -59,7 +59,9 @@ async function main() {
       verificationStatus: "approved",
       status: "active",
       passOutYear: 2013,
-      membershipStatus: "premium",
+      // Must match the active life Membership row created below, else the
+      // denormalized column drifts from the ledger (premium col vs life rows).
+      membershipStatus: "life",
       benefitTier: "premium",
       membershipCycleStart: verifiedOn,
       onboardingStep: "complete",

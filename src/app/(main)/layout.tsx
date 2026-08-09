@@ -4,6 +4,7 @@ import { PushRegistrar } from "@/components/shared/PushRegistrar"
 import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
+import { getCurrent } from "@/modules/membership/service"
 
 const TIERS = ["student", "associate", "premium", "life", "inactive", "committee"] as const
 type Tier = (typeof TIERS)[number]
@@ -15,8 +16,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     const u = await loadViewer(session.id)
     if (u) {
       const name = u.displayName || u.legalName
-      const tier = (TIERS as readonly string[]).includes(u.membershipStatus)
-        ? (u.membershipStatus as Tier)
+      // Resolve tier from active Membership rows (same source as /membership),
+      // NOT the denormalized User.membershipStatus column, which can drift and
+      // made the navbar show "premium" while /membership showed "life".
+      const resolvedPlan = (await getCurrent(session.id)).planCode
+      const tier = (TIERS as readonly string[]).includes(resolvedPlan)
+        ? (resolvedPlan as Tier)
         : "associate"
       viewer = {
         name,

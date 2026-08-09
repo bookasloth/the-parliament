@@ -8,6 +8,7 @@ import {
 } from "@/config/membership"
 import { activateMembership, expireMembership } from "@/modules/membership/activation"
 import { createRefund } from "@/lib/razorpay"
+import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
 import { sendNotification } from "@/modules/notifications/service"
 
@@ -32,6 +33,51 @@ export async function adminGrant(input: GrantInput) {
     amountPaise: 0,
     grantedByUserId: input.adminId,
   })
+}
+
+/**
+ * Set a user's tier from the admin users panel, THROUGH the membership ledger so
+ * the `Membership` rows and the denormalized `User.membershipStatus` column never
+ * diverge. (The old path wrote the column directly, producing the "premium column
+ * vs life rows" split.) Paid tiers go via activateMembership; student/free clears
+ * all active rows; committee/inactive are rejected — they have dedicated flows.
+ */
+export async function adminSetTier(input: { adminId: string; targetUserId: string; tier: string }) {
+  const { adminId, targetUserId, tier } = input
+
+  if (tier === "committee") {
+    throw new ForbiddenError("Use the Committee invite flow to grant Committee membership")
+  }
+  if (tier === "inactive") {
+    throw new ForbiddenError("Deactivate the account via account status — 'inactive' is not a grantable tier")
+  }
+
+  if (tier === "associate" || tier === "premium" || tier === "life") {
+    await adminGrant({ adminId, targetUserId, planCode: tier })
+    return
+  }
+
+  if (tier === "student" || tier === "free") {
+    // Hard downgrade: supersede EVERY active row (incl. life) and reset the column.
+    // Not expireMembership() — its committee→life reactivation would fight us here.
+    await prisma.$transaction(async (tx) => {
+      await tx.membership.updateMany({
+        where: { userId: targetUserId, status: "active" },
+        data: { status: "superseded" },
+      })
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: { membershipStatus: tier, benefitTier: "base" },
+      })
+      await tx.membershipEvent.create({
+        data: { userId: targetUserId, type: "expired", newPlan: tier, actorUserId: adminId },
+      })
+    })
+    await invalidateSession(targetUserId)
+    return
+  }
+
+  throw new ForbiddenError(`Unsupported tier: ${tier}`)
 }
 
 export async function adminExtend(input: { adminId: string; membershipId: string; newEndsAt: Date; reason: string }) {

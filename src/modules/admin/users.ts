@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit"
 import { createResetToken, resetUrl } from "@/lib/password-reset"
 import { sendEmail } from "@/lib/email"
 import { colorAvatar } from "@/lib/avatar"
+import { adminSetTier } from "@/modules/membership/admin"
 import type { AdminRole } from "@/generated/prisma/enums"
 
 // Actions an admin can take on a single user account.
@@ -162,7 +163,8 @@ export async function editUser(
     userData.legalName = v
   }
   if (input.displayName !== undefined) userData.displayName = input.displayName?.trim() || null
-  if (input.membershipStatus !== undefined) userData.membershipStatus = input.membershipStatus
+  // NOTE: membershipStatus is NOT written to the column here — it's routed through
+  // adminSetTier (below) so the Membership ledger stays in sync with the column.
   if (input.email !== undefined) {
     const email = input.email.trim().toLowerCase()
     if (!email) throw new BadActionError("email cannot be empty")
@@ -188,12 +190,23 @@ export async function editUser(
     }
   })
 
+  // Membership tier goes through the ledger (keeps rows + column in sync).
+  if (input.membershipStatus !== undefined) {
+    await adminSetTier({ adminId: actorId, targetUserId: targetId, tier: input.membershipStatus })
+  }
+
   await audit({
     actorId,
     action: "admin.user.edit",
     entityType: "user",
     entityId: targetId,
-    payload: { fields: [...Object.keys(userData), ...Object.keys(profileData)] },
+    payload: {
+      fields: [
+        ...Object.keys(userData),
+        ...Object.keys(profileData),
+        ...(input.membershipStatus !== undefined ? ["membershipStatus"] : []),
+      ],
+    },
     ipInet: ip,
   })
 
