@@ -16,7 +16,6 @@ interface StickyNavProps {
 }
 
 export function StickyNav({
-  logoLabel = "Nagpur Navodaya Alumni Network",
   centerLinks = [
     { label: "About", href: "#" },
     { label: "Events", href: "#" },
@@ -60,8 +59,7 @@ export function StickyNav({
               scrolled ? "text-sm" : "text-base"
             )}
           >
-            <span className="hidden sm:inline">{logoLabel}</span>
-            <span className="sm:hidden">NNAWCA</span>
+            NNAWCA
           </span>
         </div>
 
