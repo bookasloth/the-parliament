@@ -523,7 +523,7 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
                     { icon: Award, label: "Achievements", href: "/achievements" },
                     { icon: Star, label: "Karma Points", href: "/karma" },
                     { icon: UserPlus, label: "Refer an Alumni", href: "/refer" },
-                    { icon: Zap, label: "Try NNAWCA Pro", href: "https://www.nnawca.com/pro", external: true },
+                    { icon: Zap, label: "Try NNAWCA Pro", href: "https://www.nnawca.org/pro", external: true },
                     { icon: Settings, label: "Settings & Privacy", href: "/settings" },
                     { icon: HelpCircle, label: "Help and Support", href: "/help" },
                   ].map(item => (
