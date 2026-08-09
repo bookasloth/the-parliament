@@ -138,6 +138,49 @@ export async function cancelRsvp(userId: string, eventId: string) {
   return prisma.eventRsvp.deleteMany({ where: { eventId, userId } })
 }
 
+/**
+ * Email a "your event is tomorrow" reminder to every "going" attendee of any
+ * published event starting in the next ~24–48h. Idempotent per event via
+ * `reminderSentAt` — the marker is claimed atomically before the fan-out, so a
+ * second cron tick (hourly GH Actions + daily Vercel) can't double-send. Called
+ * from the event-invites cron.
+ */
+export async function sendEventReminders(now: Date = new Date()): Promise<{ events: number; emails: number }> {
+  const windowStart = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+  const events = await prisma.event.findMany({
+    where: { status: "published", reminderSentAt: null, startsAt: { gte: windowStart, lt: windowEnd } },
+    select: { id: true, title: true, startsAt: true },
+  })
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  let emails = 0
+  for (const e of events) {
+    // Claim the event first; skip if another tick already claimed it (count 0).
+    const claim = await prisma.event.updateMany({
+      where: { id: e.id, reminderSentAt: null },
+      data: { reminderSentAt: now },
+    })
+    if (claim.count === 0) continue
+
+    const rsvps = await prisma.eventRsvp.findMany({
+      where: { eventId: e.id, status: "going" },
+      select: { userId: true, user: { select: { email: true, legalName: true } } },
+    })
+    const when = e.startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+    for (const r of rsvps) {
+      if (!r.user.email) continue
+      await sendEmail(
+        "event_reminder",
+        r.user.email,
+        { firstName: r.user.legalName?.split(" ")[0] || "there", eventTitle: e.title, eventWhen: when, eventUrl: `${base}/events/${e.id}` },
+        r.userId,
+      ).catch((err) => console.error(`event_reminder email failed for ${r.userId}`, err))
+      emails++
+    }
+  }
+  return { events: events.length, emails }
+}
+
 // ── Admin reporting ──
 
 export interface EventReportRow {

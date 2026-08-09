@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthorizedCron } from "@/lib/cron-auth"
 import { processDueInviteWaves } from "@/modules/events/invites"
+import { sendEventReminders } from "@/modules/events/service"
 
 // Sends any due event-invite waves. Waves are staggered by membership tier
 // (Life now, Premium +2h, Associate +4h, Student +6h), so this wants an hourly
@@ -19,5 +20,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const results = await processDueInviteWaves()
-  return NextResponse.json({ ok: true, results })
+  const reminders = await sendEventReminders()
+  return NextResponse.json({ ok: true, results, reminders })
 }

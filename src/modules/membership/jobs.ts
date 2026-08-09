@@ -4,7 +4,6 @@ import { QUEUE } from "@/lib/jobs"
 import { MEMBERSHIP_GRACE_DAYS, COMMITTEE_INVITE_TTL_DAYS, PLANS, type PlanCode } from "@/config/membership"
 import { expireMembership } from "@/modules/membership/activation"
 import { sendNotification } from "@/modules/notifications/service"
-import { queueEmail } from "@/modules/email/service"
 import { sendEmail } from "@/lib/email"
 import { processDueInviteWaves } from "@/modules/events/invites"
 import { audit } from "@/lib/audit"
@@ -71,9 +70,25 @@ async function expireHandler() {
     select: { id: true, userId: true, planCode: true },
   })
 
+  const base = process.env.AUTH_URL || "https://nnawca.org"
   for (const m of expired) {
     try {
       await expireMembership(m.id)
+      // Committee reverts to Life (still active) — no "expired" notice there.
+      if (m.planCode !== "committee") {
+        const u = await prisma.user.findUnique({
+          where: { id: m.userId },
+          select: { email: true, legalName: true },
+        })
+        if (u?.email) {
+          await sendEmail(
+            "membership_expired",
+            u.email,
+            { firstName: u.legalName?.split(" ")[0] || "there", renewUrl: `${base}/membership` },
+            m.userId,
+          )
+        }
+      }
     } catch (e) {
       console.error(`expireMembership failed for ${m.id}`, e)
     }
@@ -124,8 +139,9 @@ async function reminderHandler() {
         sendEmail: false,
       })
 
-      // Only the 7-day window has a mail template; other windows stay in-app.
-      if (w.days === 7 && r.endsAt) {
+      // Email every window in the ladder (was: 7-day only). Code template →
+      // typed + tested, no DB-seed dependency.
+      if (r.endsAt) {
         try {
           const u = await prisma.user.findUnique({
             where: { id: r.userId },
@@ -133,20 +149,21 @@ async function reminderHandler() {
           })
           if (u?.email) {
             const base = process.env.AUTH_URL || "https://nnawca.org"
-            await queueEmail({
-              templateCode: "membership.expiry_t_minus_7",
-              toAddress: u.email,
-              userId: r.userId,
-              variables: {
+            await sendEmail(
+              "membership_expiring",
+              u.email,
+              {
                 firstName: u.legalName?.split(" ")[0] || "there",
                 planName: PLANS[r.planCode as PlanCode]?.displayName ?? r.planCode,
+                daysLeft: String(w.days),
                 expiresOn: r.endsAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
                 renewUrl: `${base}/membership`,
               },
-            })
+              r.userId,
+            )
           }
         } catch (e) {
-          console.error(`expiry_t_minus_7 email failed for ${r.userId}`, e)
+          console.error(`membership_expiring email failed for ${r.userId}`, e)
         }
       }
 

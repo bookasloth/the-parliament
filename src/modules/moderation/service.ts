@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/modules/auth/session"
+import { notifyCommittee } from "@/modules/committees/service"
 import { audit } from "@/lib/audit"
 
 export type ReportableEntity = "post" | "comment" | "profile" | "business" | "message"
@@ -13,6 +14,16 @@ export interface ReportInput {
 }
 
 export async function fileReport(input: ReportInput) {
+  const existed = await prisma.contentReport.findUnique({
+    where: {
+      reporterId_entityType_entityId: {
+        reporterId: input.reporterId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+      },
+    },
+    select: { id: true },
+  })
   const report = await prisma.contentReport.upsert({
     where: {
       reporterId_entityType_entityId: {
@@ -51,6 +62,17 @@ export async function fileReport(input: ReportInput) {
     entityId: input.entityId,
     payload: { reason: input.reason },
   })
+
+  // Alert the Tech & Media committee on a genuinely new report (not a re-file).
+  if (!existed) {
+    const base = process.env.AUTH_URL || "https://nnawca.org"
+    await notifyCommittee("tech_media", {
+      title: `New ${input.entityType} report`,
+      detail: `A ${input.entityType} was reported for "${input.reason}". Review it in the moderation queue.`,
+      actionUrl: `${base}/admin/moderation`,
+      actionLabel: "Open moderation",
+    }).catch((e) => console.error("committee notify (report) failed", e))
+  }
 
   return report
 }

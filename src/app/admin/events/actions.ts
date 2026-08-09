@@ -5,6 +5,26 @@ import { z } from "zod"
 import { requireAdmin } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { prisma } from "@/lib/prisma"
+import { sendEmail } from "@/lib/email"
+import { notifyCommittee } from "@/modules/committees/service"
+
+/** Email every "going" attendee that an event was cancelled. Best-effort, sequential. */
+async function notifyRsvpsOfCancellation(eventId: string, title: string): Promise<void> {
+  const rsvps = await prisma.eventRsvp.findMany({
+    where: { eventId, status: "going" },
+    select: { userId: true, user: { select: { email: true, legalName: true } } },
+  })
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  for (const r of rsvps) {
+    if (!r.user.email) continue
+    await sendEmail(
+      "event_cancelled",
+      r.user.email,
+      { firstName: r.user.legalName?.split(" ")[0] || "there", eventTitle: title, eventsUrl: `${base}/events` },
+      r.userId,
+    ).catch((e) => console.error(`event_cancelled email failed for ${r.userId}`, e))
+  }
+}
 
 const schema = z.object({
   title: z.string().min(2).max(200),
@@ -55,6 +75,15 @@ export async function createAdminEventAction(input: CreateEventInput) {
   updateTag("events")
   revalidatePath("/admin/events")
   revalidatePath("/events")
+
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  await notifyCommittee("sports_culture", {
+    title: `New event: ${parsed.title}`,
+    detail: `A new event "${parsed.title}" was scheduled for ${startsAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}. Review it and schedule the invite waves.`,
+    actionUrl: `${base}/admin/events`,
+    actionLabel: "Open events",
+  }).catch((e) => console.error("committee notify (event) failed", e))
+
   return { id: event.id, isPaid: parsed.isPaid }
 }
 
@@ -78,9 +107,15 @@ export async function cancelEventAction(
   eventId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin()
-  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } })
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, status: true } })
   if (!event) return { ok: false, error: "Event not found" }
-  await prisma.event.update({ where: { id: eventId }, data: { status: "cancelled" } })
+  if (event.status !== "cancelled") {
+    await prisma.event.update({ where: { id: eventId }, data: { status: "cancelled" } })
+    // Notify everyone with a live RSVP — once (guarded on the status flip above).
+    await notifyRsvpsOfCancellation(eventId, event.title).catch((e) =>
+      console.error("event cancellation emails failed", { eventId }, e),
+    )
+  }
   updateTag("events")
   revalidatePath("/admin/events")
   revalidatePath("/events")

@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
     if (!user || !(await verifyEmailCode(user.id, code))) {
       return NextResponse.json({ error: "Invalid or expired code" }, { status: 400 })
     }
+    // First-time verification (guarded above: emailVerifiedAt was null) → welcome.
+    const base = process.env.AUTH_URL || "https://nnawca.org"
+    try {
+      await sendEmail(
+        "welcome",
+        email,
+        { firstName: user.legalName?.split(" ")[0] || "there", feedUrl: `${base}/feed` },
+        user.id,
+      )
+    } catch {}
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

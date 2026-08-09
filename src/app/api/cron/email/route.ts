@@ -3,6 +3,7 @@ import { isAuthorizedCron } from "@/lib/cron-auth"
 import { drainEmailOutbox } from "@/modules/email/service"
 import { sendProfileViewDigests } from "@/modules/profile/view-digest"
 import { sendDailyDigests } from "@/modules/engagement/daily-digest"
+import { sendOnboardingNudges } from "@/modules/engagement/onboarding-nudge"
 
 // Vercel Cron hits this to flush the email outbox — mail that deliver() deferred
 // during quiet hours (22:00–07:00 IST) and any future enqueue-for-later sends.
@@ -30,5 +31,8 @@ export async function GET(req: NextRequest) {
   // only reaches users with a personal signal (unread messages / new followers).
   const digest = await sendDailyDigests()
 
-  return NextResponse.json({ ok: true, results, profileViews, digest })
+  // Nudge users who verified but never finished onboarding (~2-day-old cohort).
+  const onboarding = await sendOnboardingNudges()
+
+  return NextResponse.json({ ok: true, results, profileViews, digest, onboarding })
 }

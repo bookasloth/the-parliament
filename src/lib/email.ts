@@ -32,6 +32,13 @@ export type EmailTemplates = {
   upsell_upgrade: { firstName: string; planName: string; upgradeUrl: string }
   endorsement_request: { endorserName: string; candidateName: string; endorseUrl: string }
   group_request: { fromName: string; groupName: string; category: string; body: string; groupUrl: string }
+  welcome: { firstName: string; feedUrl: string }
+  onboarding_incomplete: { firstName: string; resumeUrl: string }
+  event_reminder: { firstName: string; eventTitle: string; eventWhen: string; eventUrl: string }
+  event_cancelled: { firstName: string; eventTitle: string; eventsUrl: string }
+  membership_expiring: { firstName: string; planName: string; daysLeft: string; expiresOn: string; renewUrl: string }
+  membership_expired: { firstName: string; renewUrl: string }
+  committee_alert: { committeeLabel: string; title: string; detail: string; actionUrl: string; actionLabel: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -454,6 +461,136 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         reason: "You're getting this because an admin asked you to help verify a fellow alumnus.",
       }),
   },
+  welcome: {
+    subject: () => "Welcome to NNAWCA — you're in",
+    text: (d) =>
+      `Hi ${d.firstName},\n\nWelcome to NNAWCA — the JNV Nagpur alumni network. Your account is live.\n\nNext: complete your profile, find your batchmates in the directory, and say hello in the feed.\n\nGet started: ${d.feedUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Welcome",
+        eyebrow: "NNAWCA · Getting started",
+        heading: `Welcome, <em>${d.firstName}</em>`,
+        body:
+          p(`You're in — welcome to NNAWCA, the JNV Nagpur alumni network. Here's how to make the most of it:`) +
+          bullets([
+            "Complete your profile so batchmates can find you",
+            "Search the directory for people from your batch & house",
+            "Say hello in the feed",
+          ]) +
+          button("Open NNAWCA", d.feedUrl, "blue"),
+        reason: "You're getting this because you just joined NNAWCA.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  onboarding_incomplete: {
+    subject: (d) => `Finish setting up your NNAWCA profile, ${d.firstName}`,
+    text: (d) =>
+      `Hi ${d.firstName},\n\nYou started signing up for NNAWCA but haven't finished. It takes under two minutes — add your batch, house, and a photo so fellow alumni recognise you.\n\nPick up where you left off: ${d.resumeUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Almost there",
+        eyebrow: "NNAWCA · Finish onboarding",
+        heading: `You're <em>almost</em> set up`,
+        body:
+          p(`Hi ${d.firstName}, you started joining NNAWCA but haven't finished. It takes under two minutes — add your batch, house, and a photo so fellow alumni recognise you.`) +
+          button("Finish setting up", d.resumeUrl, "navy"),
+        reason: "You're getting this because you have an unfinished NNAWCA signup.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  event_reminder: {
+    subject: (d) => `Reminder: ${d.eventTitle} is tomorrow`,
+    text: (d) =>
+      `Hi ${d.firstName},\n\nQuick reminder — you're going to ${d.eventTitle}.\nWhen: ${d.eventWhen}\n\nDetails: ${d.eventUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "emerald",
+        pill: "Reminder",
+        eyebrow: "Event · Coming up",
+        heading: `<em>${d.eventTitle}</em> is almost here`,
+        body:
+          p(`Hi ${d.firstName}, a quick reminder that you're going to this event.`) +
+          details([["When", d.eventWhen]], "emerald") +
+          button("View event & details", d.eventUrl, "emerald") +
+          small("Can't make it anymore? You can cancel your RSVP from the event page."),
+        reason: "You're getting this because you RSVP'd to this event.",
+      }),
+  },
+  event_cancelled: {
+    subject: (d) => `Cancelled: ${d.eventTitle}`,
+    text: (d) =>
+      `Hi ${d.firstName},\n\nWe're sorry — ${d.eventTitle} has been cancelled. Your RSVP has been released.\n\nSee other upcoming events: ${d.eventsUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Cancelled",
+        eyebrow: "Event · Cancelled",
+        heading: `<em>${d.eventTitle}</em> has been cancelled`,
+        body:
+          p(`Hi ${d.firstName}, we're sorry to say that <strong>${d.eventTitle}</strong> has been cancelled. Nothing more is needed from you — your RSVP has been released.`) +
+          button("See upcoming events", d.eventsUrl, "navy"),
+        reason: "You're getting this because you RSVP'd to this event.",
+      }),
+  },
+  membership_expiring: {
+    subject: (d) => `Your NNAWCA membership expires in ${d.daysLeft} day${d.daysLeft === "1" ? "" : "s"}`,
+    text: (d) =>
+      `Hi ${d.firstName},\n\nYour ${d.planName} membership expires on ${d.expiresOn} (${d.daysLeft} day${d.daysLeft === "1" ? "" : "s"} away).\n\nRenew now: ${d.renewUrl}\n\nIf you don't renew, you'll enter a 30-day grace period before reverting to Student.`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Renewal",
+        eyebrow: `Membership · ${d.daysLeft} day${d.daysLeft === "1" ? "" : "s"} left`,
+        heading: `Renew before <em>${d.expiresOn}</em>`,
+        body:
+          p(`Hi ${d.firstName}, your ${d.planName} membership expires in ${d.daysLeft} day${d.daysLeft === "1" ? "" : "s"}. Renew now to keep directory access, mentorship, and your highlighted profile.`) +
+          details([["Plan", d.planName], ["Expires on", d.expiresOn]], "navy") +
+          button("Renew now", d.renewUrl, "navy") +
+          small("Miss the date and you enter a 30-day grace period before reverting to Student."),
+        reason: "You're getting this reminder about your NNAWCA membership.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  membership_expired: {
+    subject: () => "Your NNAWCA membership has expired",
+    text: (d) =>
+      `Hi ${d.firstName},\n\nYour NNAWCA membership has expired and your account has reverted to the free Student tier. Directory access, groups, and event discounts are paused.\n\nRenew anytime to pick up exactly where you left off: ${d.renewUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Expired",
+        eyebrow: "Membership · Expired",
+        heading: `Your membership has <em>expired</em>`,
+        body:
+          p(`Hi ${d.firstName}, your NNAWCA membership has expired and your account is back on the free Student tier. Directory access, private groups, and event discounts are paused for now.`) +
+          button("Renew your membership", d.renewUrl, "navy") +
+          small("Renew anytime — you'll pick up exactly where you left off."),
+        reason: "You're getting this because your NNAWCA membership lapsed.",
+        manageUrl: MANAGE_URL,
+        unsubscribeUrl: MANAGE_URL,
+      }),
+  },
+  committee_alert: {
+    subject: (d) => `[${d.committeeLabel}] ${d.title}`,
+    text: (d) =>
+      `${d.committeeLabel} committee\n\n${d.title}\n\n${d.detail}\n\n${d.actionLabel}: ${d.actionUrl}`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Committee",
+        eyebrow: `${d.committeeLabel} · Action`,
+        heading: d.title,
+        body:
+          p(d.detail) +
+          button(d.actionLabel, d.actionUrl, "navy"),
+        reason: `You're getting this because you're on the NNAWCA ${d.committeeLabel} committee.`,
+      }),
+  },
 }
 
 /** Render a template to its subject/text/html without sending. Pure — for tests + previews. */
@@ -494,6 +631,13 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   upsell_upgrade: "marketing",
   endorsement_request: "transactional",
   group_request: "engagement",
+  welcome: "lifecycle",
+  onboarding_incomplete: "lifecycle",
+  event_reminder: "transactional",
+  event_cancelled: "transactional",
+  membership_expiring: "reminder",
+  membership_expired: "lifecycle",
+  committee_alert: "admin",
 }
 
 /**
