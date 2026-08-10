@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { FeedContent, type ViewerCard, type SuggestedConnection, type NewsItem } from "./feed-content"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
+import type { FeedCursor } from "@/modules/feed/cursor"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
@@ -20,6 +21,7 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
+  let nextCursor: FeedCursor | null = null
   let caughtUp = false
   let viewerCard: ViewerCard | null = null
   let suggestions: SuggestedConnection[] = []
@@ -27,7 +29,7 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
   let eggedUsernames: string[] = []
 
   if (schoolId) {
-    const [{ rows, caughtUp: cu }, u, [users, pinned]] = await Promise.all([
+    const [{ rows, caughtUp: cu, nextCursor: nc }, u, [users, pinned]] = await Promise.all([
       getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
       viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
       Promise.all([
@@ -81,6 +83,8 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
     }
 
     hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
+    // Student tier can't load more, so no cursor is handed out.
+    nextCursor = tier === "student" ? null : nc
     caughtUp = cu
 
     if (u) {
@@ -140,6 +144,7 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
       viewerId={viewer?.id ?? null}
       posts={mappedReal}
       initialHasMore={hasMore}
+      initialCursor={nextCursor}
       pageSize={FIRST_PAGE_SIZE}
       suggestions={suggestions}
       news={news}

@@ -23,6 +23,7 @@ import {
   recordImpressionsAction,
 } from "./actions"
 import { prepareImpressionBatch } from "@/modules/feed/impressions"
+import type { FeedCursor } from "@/modules/feed/cursor"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
 import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard"
@@ -133,6 +134,7 @@ export function FeedContent({
   viewerId = null,
   posts = [],
   initialHasMore = false,
+  initialCursor = null,
   pageSize = 15,
   suggestions = [],
   news = [],
@@ -146,6 +148,8 @@ export function FeedContent({
   viewerId?: string | null
   posts?: FeedPost[]
   initialHasMore?: boolean
+  /** Keyset cursor after the server-rendered first page (null in caught-up mode). */
+  initialCursor?: FeedCursor | null
   pageSize?: number
   suggestions?: SuggestedConnection[]
   news?: NewsItem[]
@@ -164,6 +168,7 @@ export function FeedContent({
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
+  const [cursor, setCursor] = useState<FeedCursor | null>(initialCursor)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [loadingMore, startLoadMore] = useTransition()
   const seenIds = useRef<Set<string>>(new Set(posts.map((p) => p.id)))
@@ -177,25 +182,27 @@ export function FeedContent({
     // clearing here is what made a just-deleted post flash back in.
     setRemovedIds((prev) => new Set([...prev].filter((id) => posts.some((p) => p.id === id))))
     setPage(2)
+    setCursor(initialCursor)
     setHasMore(initialHasMore)
     seenIds.current = new Set(posts.map((p) => p.id))
-  }, [posts, initialHasMore])
+  }, [posts, initialHasMore, initialCursor])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
-        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
         setHasMore(r.hasMore && fresh.length > 0)
         setPage(r.nextPage)
+        setCursor(r.nextCursor)
       } catch {
         // Silent — user can retry via button.
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor])
 
   // Load the next page only as the reader approaches the end (Google-Maps style:
   // fetch what's about to enter view, not the whole feed up front). The old 300ms

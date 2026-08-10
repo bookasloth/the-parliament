@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight, Play, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { VideoThumb } from "./VideoThumb"
 
 export interface MediaItem {
   url: string
@@ -56,14 +57,7 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
             aria-label="Open media"
           >
             {m.type === "video" ? (
-              <>
-                <video src={m.url} className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} muted preload="metadata" />
-                <span className="absolute inset-0 flex items-center justify-center">
-                  <span className="rounded-[4px] bg-black/50 p-2.5">
-                    <Play className="h-5 w-5 text-white" fill="white" />
-                  </span>
-                </span>
-              </>
+              <VideoThumb src={m.url} className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} />
             ) : (
               <Image
                 src={m.url}

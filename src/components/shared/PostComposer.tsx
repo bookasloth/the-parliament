@@ -21,6 +21,8 @@ import {
   Trash2,
 } from "lucide-react"
 import MentionInput from "@/components/shared/MentionInput"
+import { VideoThumb } from "@/components/shared/VideoThumb"
+import { validateComposerMedia } from "@/modules/feed/media-limits"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 import { TEXT_BACKGROUNDS, STUDENT_BG_PICKER, DEFAULT_BG_PICKER } from "@/config/text-backgrounds"
@@ -158,7 +160,13 @@ export default function PostComposer({
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue
+        // Validate mime + size up front (images and videos are equal citizens),
+        // so an oversized/unsupported file never wastes a presigned round-trip.
+        const check = validateComposerMedia(file)
+        if (!check.ok) {
+          setUploadErr(check.reason)
+          continue
+        }
         const ext = file.name.split(".").pop() || "jpg"
         const signRes = await fetch("/api/uploads/sign", {
           method: "POST",
@@ -492,7 +500,7 @@ export default function PostComposer({
                 {media.map((m, i) => (
                   <div key={m.key || i} className={`relative aspect-square overflow-hidden ${R_EL} border border-gray-200`}>
                     {m.type === "video" ? (
-                      <video src={m.url} className="h-full w-full object-cover" muted />
+                      <VideoThumb src={m.url} className="h-full w-full object-cover" />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={m.url} alt="" className="h-full w-full object-cover" />

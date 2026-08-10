@@ -1,6 +1,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import crypto from "node:crypto"
+import { POST_MEDIA_MAX_BYTES, POST_MEDIA_MIME_TYPES } from "@/modules/feed/media-limits"
 
 let cachedClient: S3Client | null = null
 
@@ -39,7 +40,7 @@ const PREFIX: Record<UploadKind, string> = {
 const MAX_BYTES: Record<UploadKind, number> = {
   verification: 10 * 1024 * 1024,
   avatar: 4 * 1024 * 1024,
-  post: 64 * 1024 * 1024,
+  post: POST_MEDIA_MAX_BYTES, // shared with the client composer
   business: 4 * 1024 * 1024,
   event_banner: 6 * 1024 * 1024,
 }
@@ -47,7 +48,7 @@ const MAX_BYTES: Record<UploadKind, number> = {
 const ALLOWED_MIME: Record<UploadKind, string[]> = {
   verification: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
   avatar: ["image/jpeg", "image/png", "image/webp"],
-  post: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm", "video/quicktime"],
+  post: [...POST_MEDIA_MIME_TYPES], // shared with the client composer
   business: ["image/jpeg", "image/png", "image/webp"],
   event_banner: ["image/jpeg", "image/png", "image/webp"],
 }
