@@ -12,6 +12,8 @@ import { mapRowToFeedPost, batchOrdinal, formatBatch, relativeTime } from "../fe
 import type { FeedMembership, BorderType } from "@/components/shared/feed-card/types"
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
+import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
+import { RestrictedProfile } from "./restricted-profile"
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "Present"
@@ -90,6 +92,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
           linkedinUrl: true,
           socialLinks: true,
           headline: true,
+          visibility: true,
+          contactAlwaysShare: true,
           house: { select: { name: true, colorHex: true } },
           batch: { select: { startYear: true, endYear: true, label: true } },
         },
@@ -114,6 +118,55 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   // pooler latency on a top-traffic page).
   const viewerId = session?.user?.id
   const isOwnProfile = viewerId === user.id
+
+  // ── Privacy gate (Profile.visibility) ──────────────────────────────────────
+  // Enforce the whole-profile visibility BEFORE any heavy fetch or view-logging:
+  // a viewer who can't see the profile gets a slim public-safe stub and we never
+  // load — or send — the private payload. Field-level redaction (below) handles
+  // the finer "member vs public vs owner" cut for viewers who ARE allowed in.
+  const visibility = (user.profile?.visibility ?? "alumni") as ProfileVisibility
+  const contactAlwaysShare = user.profile?.contactAlwaysShare ?? false
+
+  // A connection check is only needed for `connections`-gated profiles.
+  let isConnected = false
+  if (!isOwnProfile && visibility === "connections" && viewerId) {
+    isConnected =
+      (await prisma.follow.findFirst({
+        where: {
+          OR: [
+            { followerId: viewerId, followingId: user.id },
+            { followerId: user.id, followingId: viewerId },
+          ],
+        },
+        select: { id: true },
+      })) !== null
+  }
+
+  const privacy = resolveProfilePrivacy({
+    isOwner: isOwnProfile,
+    isLoggedIn: !!viewerId,
+    isConnected,
+    visibility,
+    contactAlwaysShare,
+  })
+
+  if (privacy.blocked) {
+    const p0 = user.profile
+    return (
+      <RestrictedProfile
+        reason={privacy.blocked}
+        name={user.legalName}
+        username={user.username ?? username}
+        photoUrl={p0?.photoUrl || colorAvatar(user.id)}
+        headline={p0?.headline ?? p0?.designation ?? p0?.profession ?? null}
+        batchLabel={
+          p0?.batch ? p0.batch.label || `${p0.batch.startYear}–${p0.batch.endYear}` : null
+        }
+        house={p0?.house ? { name: p0.house.name, color: p0.house.colorHex } : null}
+        isVerified={user.isVerified}
+      />
+    )
+  }
 
   // Record "who viewed your profile" (feeds the weekly re-engagement email).
   // Fire-and-forget past the response so it never slows the profile render; one
@@ -316,18 +369,21 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     headline: p?.headline ?? p?.designation ?? p?.profession ?? null,
     profession: p?.profession ?? null,
     company: p?.company ?? null,
-    city: p?.city ?? null,
-    homeTown: p?.homeTown ?? null,
-    correspondenceAddress: p?.correspondenceAddress ?? null,
-    bloodGroup: p?.bloodGroup ?? null,
+    // ── Field-level redaction (server-side; nulled fields never reach the
+    //    client). Member fields need a logged-in viewer; contact needs the
+    //    owner's opt-in; DOB + blood group are owner-only-hard. ──
+    city: privacy.canSeeMemberFields ? (p?.city ?? null) : null,
+    homeTown: privacy.canSeeMemberFields ? (p?.homeTown ?? null) : null,
+    correspondenceAddress: privacy.canSeeContact ? (p?.correspondenceAddress ?? null) : null,
+    bloodGroup: isOwnProfile ? (p?.bloodGroup ?? null) : null,
     bio: p?.bio ?? null,
     house: p?.house ? { name: p.house.name, color: p.house.colorHex } : null,
     batchLabel: batch ? batch.label || `${batch.startYear}–${batch.endYear}` : null,
     yearsSince,
     memberSince: formatDate(user.verifiedAt ?? user.createdAt),
-    dateOfBirth: formatDate(user.dateOfBirth),
-    gender: user.gender ?? null,
-    currentStatus: user.currentStatus ?? null,
+    dateOfBirth: isOwnProfile ? formatDate(user.dateOfBirth) : null,
+    gender: privacy.canSeeMemberFields ? (user.gender ?? null) : null,
+    currentStatus: privacy.canSeeMemberFields ? (user.currentStatus ?? null) : null,
     membership,
     isVerified: user.isVerified,
     verificationStatus: user.verificationStatus,
