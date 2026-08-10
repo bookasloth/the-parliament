@@ -54,6 +54,20 @@ describe("injectFeedAds tiering", () => {
     expect(isAd(out[10])).toBe(true)
   })
 
+  it("shows every ad even when the feed is too short to space them (all 3 visible)", () => {
+    const three = [ad("a"), ad("b"), ad("c")]
+    // associate spaces ads every 5 posts, but only 2 posts here — all 3 ads
+    // must still appear (appended after the posts).
+    const out = injectFeedAds(posts(2), "associate", three)
+    const adIds = out.filter(isAd).map((p) => p.id)
+    expect(adIds).toEqual(["a", "b", "c"])
+  })
+
+  it("student also surfaces the full ad rotation", () => {
+    const out = injectFeedAds(posts(3), "student", [ad("a"), ad("b"), ad("c")])
+    expect(out.filter(isAd).map((p) => p.id)).toEqual(["a", "b", "c"])
+  })
+
   it("does not mutate the original array", () => {
     const ps = posts(2)
     injectFeedAds(ps, "associate", [ad("x")])

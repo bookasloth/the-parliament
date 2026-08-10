@@ -109,15 +109,17 @@ export function injectFeedAds(
   if (ads.length === 0 || posts.length === 0) return posts
   if (tier === "committee") return posts // internal tier: ad-free
 
-  // Student: exactly 5 items — post, ad, post, post, ad (3 real posts max).
+  // Student: capped teaser feed — up to 3 real posts, with ads woven in and any
+  // remaining ads appended so the full rotation still shows (post, ad, post,
+  // post, ad, …leftover ads).
   if (tier === "student") {
     const real = posts.slice(0, 3)
     const out: FeedPost[] = []
     if (real[0]) out.push(real[0])
-    out.push(ads[0 % ads.length])
+    if (ads[0]) out.push(ads[0])
     if (real[1]) out.push(real[1])
     if (real[2]) out.push(real[2])
-    out.push(ads[1 % ads.length])
+    for (let i = 1; i < ads.length; i++) out.push(ads[i])
     return out
   }
 
@@ -128,6 +130,9 @@ export function injectFeedAds(
     out.push(posts[i])
     if ((i + 1) % everyN === 0 && adIdx < ads.length) out.push(ads[adIdx++])
   }
-  if (adIdx === 0) out.push(ads[0])
+  // Every ad gets shown even when the feed is shorter than the spacing needs —
+  // append any not-yet-placed ads at the end so a short feed still surfaces the
+  // full rotation instead of just the first one or two.
+  while (adIdx < ads.length) out.push(ads[adIdx++])
   return out
 }
