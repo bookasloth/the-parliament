@@ -38,7 +38,7 @@ export function buildCsp(isDev: boolean): string {
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline' ${devEval}https://checkout.razorpay.com`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https://*.razorpay.com https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.livekit.cloud wss://*.livekit.cloud",
     "frame-src https://*.razorpay.com",

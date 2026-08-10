@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: "Gallery", href: "/gallery" },
   { label: "Membership", href: "/join" },
   { label: "Donate", href: "/donate" },
+  { label: "Get App", href: "/download" },
   { label: "Contact", href: "/contact" },
 ]
 
