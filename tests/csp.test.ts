@@ -26,6 +26,10 @@ describe("CSP policy", () => {
     expect(prod).toContain("wss://*.livekit.cloud")
   })
 
+  it("allows blob: images (else composer object-URL previews are blocked)", () => {
+    expect(prod).toMatch(/img-src[^;]*\bblob:/)
+  })
+
   it("keeps report-uri so violations are logged even while enforcing", () => {
     expect(prod).toContain("report-uri /api/csp-report")
   })
