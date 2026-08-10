@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { normalizeHashtag } from "@/lib/rich-text"
 
 const HASHTAG_RE = /(?<!\w)#([a-zA-Z]\w{0,49})/g
 
@@ -6,7 +7,7 @@ export function extractHashtags(body: string | null | undefined, max = 10): stri
   if (!body) return []
   const tags = new Set<string>()
   for (const m of body.matchAll(HASHTAG_RE)) {
-    tags.add(m[1].toLowerCase())
+    tags.add(normalizeHashtag(m[1]))
     if (tags.size >= max) break
   }
   return [...tags]

@@ -298,6 +298,8 @@ export async function loadMoreFeedAction(
   pageSize = 15,
   followingOnly = false,
   caughtUp = false,
+  trending = false,
+  hashtag?: string,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -311,6 +313,8 @@ export async function loadMoreFeedAction(
     page,
     pageSize,
     followingOnly,
+    trending,
+    hashtag,
     skipSeenExclusion: caughtUp,
   })
   const followingIds = viewer?.id

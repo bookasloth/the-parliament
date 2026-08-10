@@ -8,15 +8,19 @@ import { loadViewer } from "@/lib/viewer"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
+import { normalizeHashtag, postHashtagWhere } from "@/lib/rich-text"
 import FeedLoading from "./loading"
 
 export const dynamic = "force-dynamic"
 
 const FIRST_PAGE_SIZE = 15
 
-async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: string }) {
+async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?: string; tag?: string }) {
   const [schoolId, viewer] = await Promise.all([getDefaultSchoolId(), optionalUser()])
-  const followingOnly = tab === "following" && !!viewer?.id
+  // Tag view ignores the tab split (it's a cross-cutting filter).
+  const hashtag = tag ? normalizeHashtag(tag) : undefined
+  const followingOnly = !hashtag && tab === "following" && !!viewer?.id
+  const trending = !hashtag && tab === "trending"
 
   let mappedReal: FeedPost[] = []
   let hasMore = false
@@ -25,10 +29,11 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
   let suggestions: SuggestedConnection[] = []
   let news: NewsItem[] = []
   let eggedUsernames: string[] = []
+  let tagCount = 0
 
   if (schoolId) {
     const [{ rows, caughtUp: cu }, u, [users, pinned]] = await Promise.all([
-      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly }),
+      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly, trending, hashtag }),
       viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
       Promise.all([
         prisma.user.findMany({
@@ -82,6 +87,12 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
 
     hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
     caughtUp = cu
+
+    if (hashtag) {
+      tagCount = await prisma.post.count({
+        where: { schoolId, deletedAt: null, status: "visible", hashtags: postHashtagWhere(hashtag) },
+      })
+    }
 
     if (u) {
       const name = u.displayName || u.legalName
@@ -145,7 +156,9 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
       news={news}
       initialEgged={eggedUsernames}
       loadedAt={new Date().toISOString()}
-      activeTab={followingOnly ? "following" : "forYou"}
+      activeTab={hashtag ? "forYou" : trending ? "trending" : followingOnly ? "following" : "forYou"}
+      tag={hashtag ?? null}
+      tagCount={tagCount}
       caughtUp={caughtUp}
     />
   )
@@ -154,13 +167,13 @@ async function FeedData({ tab, pinnedNewId }: { tab?: string; pinnedNewId?: stri
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; new?: string }>
+  searchParams: Promise<{ tab?: string; new?: string; tag?: string }>
 }) {
   const params = await searchParams
 
   return (
     <Suspense fallback={<FeedLoading />}>
-      <FeedData tab={params.tab} pinnedNewId={params.new} />
+      <FeedData tab={params.tab} pinnedNewId={params.new} tag={params.tag} />
     </Suspense>
   )
 }

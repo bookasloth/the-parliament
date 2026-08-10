@@ -2,6 +2,8 @@ import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
 import { recencyCursorWhere, type FeedCursor } from "./cursor"
+import { trendingWindowStart } from "./trending"
+import { postHashtagWhere } from "@/lib/rich-text"
 
 export { recencyCursorWhere, type FeedCursor } from "./cursor"
 
@@ -19,6 +21,10 @@ export interface FeedFilters {
   viewerId?: string
   /** "Following" feed: only posts from users the viewer follows (+ their own). */
   followingOnly?: boolean
+  /** "Trending" feed: rankingScore desc, windowed to the last 48h ("hot now"). */
+  trending?: boolean
+  /** Restrict to posts carrying this hashtag (case-insensitive). */
+  hashtag?: string
   /**
    * Keyset pagination cursor — the last row of the previous page. ONLY honoured
    * on the recency feed (rankerName === "recency"), whose (createdAt, id) key is
@@ -44,6 +50,8 @@ export async function getFeed(filters: FeedFilters) {
   if (filters.format) where.format = filters.format
   if (filters.authorId) where.authorId = filters.authorId
   if (filters.groupId !== undefined) where.groupId = filters.groupId
+  if (filters.trending) where.createdAt = { gte: trendingWindowStart() }
+  if (filters.hashtag) where.hashtags = postHashtagWhere(filters.hashtag)
 
   if (filters.categoryKey) {
     const cat = await prisma.postCategory.findUnique({
@@ -126,9 +134,14 @@ export async function getFeed(filters: FeedFilters) {
   // isPinned float (a "for you" concept) which would otherwise re-surface a
   // pinned post on later keyset pages (a duplicate).
   const isRecency = filters.rankerName === "recency"
+  const isTrending = !!filters.trending
+  // Trending drops the isPinned float (pinning is a "for you" concept) and sorts
+  // purely by hot score within the recent window — offset pagination like ranked.
   const orderBy: Prisma.PostOrderByWithRelationInput[] = isRecency
     ? [{ createdAt: "desc" }, { id: "desc" }]
-    : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+    : isTrending
+      ? [{ rankingScore: "desc" }, { createdAt: "desc" }, { id: "desc" }]
+      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
 
   // Recency + cursor → keyset (no offset drift). Everything else keeps offset.
   const usesCursor = isRecency && !!filters.cursor
@@ -168,7 +181,7 @@ export async function getFeed(filters: FeedFilters) {
   // Affinity: on the "For You" feed, float posts by followed authors up within
   // the page (stable — keeps hot-score order inside each group). ponytail: an
   // in-page boost; a full cross-page windowed re-rank is a later refinement.
-  if (!filters.followingOnly && filters.rankerName !== "recency" && followingSet.size > 0) {
+  if (!filters.followingOnly && !isTrending && filters.rankerName !== "recency" && followingSet.size > 0) {
     rows.sort((a, b) => {
       const ap = a.isPinned ? 1 : 0
       const bp = b.isPinned ? 1 : 0
