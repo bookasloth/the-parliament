@@ -8,6 +8,19 @@
 //   2. Field-level scope    → which fields survive redaction.
 
 export type ProfileVisibility = "public" | "alumni" | "connections" | "private"
+
+/** The four visibility values, in display order (most → least open). */
+export const PROFILE_VISIBILITIES: readonly ProfileVisibility[] = [
+  "public",
+  "alumni",
+  "connections",
+  "private",
+] as const
+
+/** Trust-boundary guard for user-submitted visibility (settings form). */
+export function isProfileVisibility(v: unknown): v is ProfileVisibility {
+  return typeof v === "string" && (PROFILE_VISIBILITIES as readonly string[]).includes(v)
+}
 export type ProfileScope = "owner" | "member" | "public"
 /** Non-null → render the restricted stub instead of the full profile. */
 export type BlockReason = "private" | "connections" | "alumni-guest"

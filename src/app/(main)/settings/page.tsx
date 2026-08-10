@@ -3,6 +3,7 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import EmailPrefsForm from "./email-prefs-form"
 import PasswordForm from "./password-form"
+import PrivacyForm from "./privacy-form"
 import { EMAIL_PREF_KEYS, type EmailPrefKey } from "./prefs"
 
 export const dynamic = "force-dynamic"
@@ -26,6 +27,10 @@ export default async function SettingsPage() {
           bio: true,
           city: true,
           profession: true,
+          visibility: true,
+          contactAlwaysShare: true,
+          isPublicIndexed: true,
+          showOnMap: true,
         },
       },
     },
@@ -88,6 +93,17 @@ export default async function SettingsPage() {
                 <Row label="Bio" value={user.profile.bio ?? "—"} />
               </dl>
             </section>
+          )}
+
+          {user.profile && (
+            <PrivacyForm
+              initial={{
+                visibility: user.profile.visibility,
+                contactAlwaysShare: user.profile.contactAlwaysShare,
+                isPublicIndexed: user.profile.isPublicIndexed,
+                showOnMap: user.profile.showOnMap,
+              }}
+            />
           )}
 
           <EmailPrefsForm initial={initialPrefs} />

@@ -6,6 +6,39 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { enforceRateLimit, RateLimitedError } from "@/lib/rate-limit"
 import { sanitizeEmailPrefs, validateNewPassword } from "./prefs"
+import { isProfileVisibility } from "@/modules/profile/privacy"
+
+export interface PrivacyInput {
+  visibility: string
+  contactAlwaysShare: boolean
+  isPublicIndexed: boolean
+  showOnMap: boolean
+}
+
+/** Save the viewer's own profile privacy settings. Visibility is validated
+ *  against the enum (trust boundary); the booleans are coerced. */
+export async function updateProfilePrivacyAction(
+  input: PrivacyInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser()
+  if (!isProfileVisibility(input.visibility)) {
+    return { ok: false, error: "Invalid visibility option." }
+  }
+  // updateMany (not update) so a user without a Profile row no-ops instead of
+  // throwing; the settings form only renders when a profile exists anyway.
+  await prisma.profile.updateMany({
+    where: { userId: user.id },
+    data: {
+      visibility: input.visibility,
+      contactAlwaysShare: !!input.contactAlwaysShare,
+      isPublicIndexed: !!input.isPublicIndexed,
+      showOnMap: !!input.showOnMap,
+    },
+  })
+  revalidatePath("/settings")
+  if (user.username) revalidatePath(`/${user.username}`)
+  return { ok: true }
+}
 
 export async function updateEmailPrefsAction(
   input: Record<string, boolean>,
