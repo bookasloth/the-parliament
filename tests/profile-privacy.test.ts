@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveProfilePrivacy, type PrivacyInput } from "@/modules/profile/privacy"
+import { resolveProfilePrivacy, isProfileVisibility, type PrivacyInput } from "@/modules/profile/privacy"
 
 const base: PrivacyInput = {
   isOwner: false,
@@ -54,5 +54,18 @@ describe("resolveProfilePrivacy", () => {
     // A logged-out viewer on a public profile never gets contact even with the opt-in.
     const guest = resolveProfilePrivacy({ ...base, isLoggedIn: false, visibility: "public", contactAlwaysShare: true })
     expect(guest.canSeeContact).toBe(false)
+  })
+})
+
+describe("isProfileVisibility", () => {
+  it("accepts the four valid values", () => {
+    for (const v of ["public", "alumni", "connections", "private"]) {
+      expect(isProfileVisibility(v)).toBe(true)
+    }
+  })
+  it("rejects anything else (tampered/empty/wrong type)", () => {
+    for (const v of ["", "PUBLIC", "friends", "hidden", null, undefined, 3, {}]) {
+      expect(isProfileVisibility(v)).toBe(false)
+    }
   })
 })
