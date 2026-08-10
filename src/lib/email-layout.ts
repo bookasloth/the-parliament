@@ -17,8 +17,6 @@
 // ponytail: not full VML-bulletproofed — audience is Gmail/Apple-heavy. Add VML
 // button fallbacks only if Outlook-on-Windows turns out to matter.
 
-// Swap this to the exact NNAWCA asset path once confirmed on the CDN.
-export const LOGO_URL = "https://website-assets.shubhamdatarkar.in/nnawca/logo-mark.png"
 export const CONTACT_EMAIL = "alumnijnvnagpur@gmail.com"
 export const LEGAL_NAME = "Nagpur Navodaya Alumni Welfare and Charitable Association"
 const SITE = process.env.AUTH_URL || "https://nnawca.org"
@@ -56,8 +54,8 @@ export const small = (html: string): string =>
 /** Full-width, category-coloured CTA. Table-based for Outlook. */
 export function button(label: string, href: string, accent: Accent): string {
   const a = ACCENTS[accent]
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 10px"><tr><td align="center" bgcolor="${a.btnBg}" style="border-radius:12px">
-  <a href="${href}" style="display:block;font-family:${FONT};font-size:15px;font-weight:600;color:${a.btnText};text-decoration:none;padding:15px 20px;border-radius:12px">${label}</a>
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 10px"><tr><td align="center" bgcolor="${a.btnBg}" style="border-radius:2px">
+  <a href="${href}" style="display:block;font-family:${FONT};font-size:15px;font-weight:600;color:${a.btnText};text-decoration:none;padding:15px 20px;border-radius:2px">${label}</a>
 </td></tr></table>`
 }
 
@@ -70,12 +68,12 @@ export function details(rows: [string, string][], accent: Accent): string {
       return `<tr><td style="padding:11px 0;${b}font-family:${FONT};font-size:14px;color:#8A94A6;width:40%">${k}</td><td style="padding:11px 0;${b}font-family:${FONT};font-size:14px;font-weight:600;color:#0C1D3D;text-align:right">${v}</td></tr>`
     })
     .join("")
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F8FA;border-left:3px solid ${a.bar};border-radius:0 10px 10px 0;margin:6px 0 22px"><tr><td style="padding:2px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${trs}</table></td></tr></table>`
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F8FA;border-left:3px solid ${a.bar};border-radius:0 2px 2px 0;margin:6px 0 22px"><tr><td style="padding:2px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${trs}</table></td></tr></table>`
 }
 
 /** Big letter-spaced OTP / code block. */
 export function codeBox(code: string): string {
-  return `<div style="font-family:${FONT};font-size:32px;font-weight:700;letter-spacing:.28em;color:#0C1D3D;background:#F7F8FA;border:1px solid #EAEDF2;border-radius:12px;padding:20px;text-align:center;margin:4px 0 18px">${code}</div>`
+  return `<div style="font-family:${FONT};font-size:32px;font-weight:700;letter-spacing:.28em;color:#0C1D3D;background:#F7F8FA;border:1px solid #EAEDF2;border-radius:2px;padding:20px;text-align:center;margin:4px 0 18px">${code}</div>`
 }
 
 /** Gold-dotted benefit list. */
@@ -120,12 +118,12 @@ export function emailShell(o: ShellOpts): string {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${stripTags(o.heading)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EDEFF3">
 <tr><td align="center" style="padding:28px 12px">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #E1E5EC;border-radius:16px;overflow:hidden">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #E1E5EC;border-radius:2px;overflow:hidden">
 <tr><td style="height:4px;background:${a.bar};font-size:0;line-height:0">&nbsp;</td></tr>
 <tr><td style="padding:18px 32px;border-bottom:1px solid #EEF1F6">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td align="left" style="font-family:${FONT}"><img src="${LOGO_URL}" width="30" height="30" alt="NNAWCA" style="vertical-align:middle;border-radius:8px;border:0"><span style="vertical-align:middle;margin-left:9px;font-weight:700;font-size:15px;color:#0C1D3D">NNAWCA</span></td>
-<td align="right"><span style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:${a.pillText};background:${a.pillBg};padding:6px 13px;border-radius:20px">${o.pill}</span></td>
+<td align="left" style="font-family:${FONT}"><span style="vertical-align:middle;font-weight:700;font-size:16px;letter-spacing:.02em;color:#0C1D3D">NNAWCA</span></td>
+<td align="right"><span style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:${a.pillText};background:${a.pillBg};padding:6px 13px;border-radius:2px">${o.pill}</span></td>
 </tr></table>
 </td></tr>
 <tr><td style="padding:26px 32px 28px">
@@ -135,7 +133,7 @@ ${o.body}
 </td></tr>
 <tr><td style="font-size:0;line-height:0"><div style="display:flex;height:2px"><span style="flex:45;background:#009AE4">&nbsp;</span><span style="flex:25;background:#E5484D">&nbsp;</span><span style="flex:20;background:#2E9E5B">&nbsp;</span><span style="flex:20;background:#D4A017">&nbsp;</span></div></td></tr>
 <tr><td align="center" style="background:#FBFBFC;padding:22px 32px 24px;font-family:${FONT}">
-<img src="${LOGO_URL}" width="24" height="24" alt="" style="border-radius:7px;border:0">
+<p style="margin:0 0 8px;font-family:${FONT};font-weight:700;font-size:14px;letter-spacing:.02em;color:#0C1D3D">NNAWCA</p>
 <p style="margin:10px 0 3px;font-family:${FONT};font-size:12.5px;font-weight:600;color:#6b7280">${LEGAL_NAME}</p>
 <p style="margin:0 0 12px;font-family:${FONT};font-size:11.5px;color:#9aa3b2">Nagpur, Maharashtra, India · <a href="mailto:${CONTACT_EMAIL}" style="color:#9aa3b2">${CONTACT_EMAIL}</a></p>
 <p style="margin:0 0 10px;font-family:${FONT};font-size:11.5px;color:#9aa3b2;line-height:1.9"><a href="${SITE}/about" style="color:#6b7280;text-decoration:none">About</a> · <a href="mailto:${CONTACT_EMAIL}" style="color:#6b7280;text-decoration:none">Contact</a> · <a href="${SITE}/privacy" style="color:#6b7280;text-decoration:none">Privacy</a> · <a href="${SITE}/terms" style="color:#6b7280;text-decoration:none">Terms</a>${manage}</p>
