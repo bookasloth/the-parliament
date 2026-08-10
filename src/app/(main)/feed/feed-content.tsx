@@ -17,6 +17,7 @@ import {
   reportPostAction,
   hidePostAction,
   loadMoreFeedAction,
+  togglePinAction,
   votePollAction,
   countNewPostsAction,
   loadPostCommentsAction,
@@ -67,14 +68,17 @@ export type ViewerCard = {
 const FeedRow = memo(function FeedRow({
   post,
   isAuthor,
+  canPin = false,
   setRemovedIds,
   commentViewer,
 }: {
   post: FeedPost
   isAuthor: boolean
+  canPin?: boolean
   setRemovedIds: Dispatch<SetStateAction<Set<string>>>
   commentViewer?: { id: string; displayName: string; avatarUrl: string } | null
 }) {
+  const router = useRouter()
   const optimisticRemove = () => setRemovedIds((s) => new Set(s).add(post.id))
   const restore = () =>
     setRemovedIds((s) => {
@@ -87,6 +91,8 @@ const FeedRow = memo(function FeedRow({
       <FeedCard
         post={post}
         isAuthor={isAuthor}
+        canPin={canPin}
+        onPin={canPin ? () => void togglePinAction(post.id).then(() => router.refresh()) : undefined}
         initialSaved={post.savedByViewer}
         commentsLoader={loadPostCommentsAction}
         commentViewer={commentViewer}
@@ -146,6 +152,8 @@ export function FeedContent({
   tag = null,
   tagCount = 0,
   caughtUp = false,
+  initialShuffleSeed = null,
+  canPin = false,
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -165,6 +173,10 @@ export function FeedContent({
   tagCount?: number
   /** Viewer has seen every fresh post — feed is re-showing recent posts. */
   caughtUp?: boolean
+  /** Caught-up shuffle seed from page 1 — passed to load-more so pages share order. */
+  initialShuffleSeed?: number | null
+  /** Viewer may pin/unpin posts (admin/owner) — shows the pin action on cards. */
+  canPin?: boolean
 }) {
   const commentViewer = viewerId && viewer
     ? { id: viewerId, displayName: viewer.name, avatarUrl: viewer.photoUrl }
@@ -177,6 +189,7 @@ export function FeedContent({
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
   const [cursor, setCursor] = useState<FeedCursor | null>(initialCursor)
+  const [shuffleSeed, setShuffleSeed] = useState<number | null>(initialShuffleSeed)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [loadMoreError, setLoadMoreError] = useState(false)
   const [loadingMore, startLoadMore] = useTransition()
@@ -192,28 +205,30 @@ export function FeedContent({
     setRemovedIds((prev) => new Set([...prev].filter((id) => posts.some((p) => p.id === id))))
     setPage(2)
     setCursor(initialCursor)
+    setShuffleSeed(initialShuffleSeed)
     setHasMore(initialHasMore)
     seenIds.current = new Set(posts.map((p) => p.id))
-  }, [posts, initialHasMore, initialCursor])
+  }, [posts, initialHasMore, initialCursor, initialShuffleSeed])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
         setLoadMoreError(false)
-        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined, trending, tag ?? undefined)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined, trending, tag ?? undefined, shuffleSeed ?? undefined)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
         setHasMore(r.hasMore && fresh.length > 0)
         setPage(r.nextPage)
         setCursor(r.nextCursor)
+        setShuffleSeed(r.shuffleSeed)
       } catch {
         // Surface an inline retry instead of failing silently.
         setLoadMoreError(true)
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, trending, tag])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag])
 
   // Load the next page only as the reader approaches the end (Google-Maps style:
   // fetch what's about to enter view, not the whole feed up front). The old 300ms
@@ -427,7 +442,7 @@ export function FeedContent({
               }
 
               return (
-                <FeedRow key={post.id} post={post} isAuthor={isAuthor} setRemovedIds={setRemovedIds} commentViewer={commentViewer} />
+                <FeedRow key={post.id} post={post} isAuthor={isAuthor} canPin={canPin} setRemovedIds={setRemovedIds} commentViewer={commentViewer} />
               )
             })}
 

@@ -57,3 +57,42 @@ export function shouldServeCaughtUp(opts: {
 }): boolean {
   return opts.page === 1 && opts.unseenRowCount < opts.pageSize && opts.seenCount > 0
 }
+
+/** Candidate pool size for the caught-up recycle — recent posts we shuffle over.
+ *  Bounds the id fetch; older posts fall off ("recent posts you may want to revisit"). */
+export const CAUGHT_UP_POOL = 300
+
+// Deterministic PRNG (mulberry32): a given seed reproduces the same order across
+// a visit's pages, while a fresh seed each visit reshuffles the recycle.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function shuffleInPlace<T>(arr: T[], rand: () => number): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/** Caught-up ("all caught up") recycle order: never-seen posts first (shuffled),
+ *  then already-seen (shuffled). Seeded so a visit's later pages stay consistent;
+ *  a new seed per visit reshuffles so each visit surfaces different posts. Pure. */
+export function planCaughtUpOrder(
+  candidateIds: string[],
+  seenIds: Iterable<string>,
+  seed: number,
+): string[] {
+  const seen = new Set(seenIds)
+  const rand = mulberry32(seed)
+  const unseen = shuffleInPlace(candidateIds.filter((id) => !seen.has(id)), rand)
+  const already = shuffleInPlace(candidateIds.filter((id) => seen.has(id)), rand)
+  return [...unseen, ...already]
+}

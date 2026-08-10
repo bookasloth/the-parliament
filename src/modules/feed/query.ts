@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
-import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
+import { planExclusions, shouldServeCaughtUp, planCaughtUpOrder, CAUGHT_UP_POOL, SEEN_EXCLUSION_WINDOW } from "./impressions"
 import { recencyCursorWhere, rankedCursorWhere, isRankedCursor, type FeedCursor } from "./cursor"
 import { organizeCommentThread } from "./comment-thread"
 import { trendingWindowStart } from "./trending"
@@ -37,6 +37,12 @@ export interface FeedFilters {
   /** Skip seen-post exclusion (hidden posts are still excluded). Used for
    *  load-more when page 1 was served in caught-up mode. */
   skipSeenExclusion?: boolean
+  /** Force the caught-up recycle path (used by load-more once page 1 was caught
+   *  up) instead of re-detecting it — page ≥ 2 never auto-detects. */
+  caughtUp?: boolean
+  /** Seed for the caught-up shuffle. Page 1 mints one; load-more passes it back
+   *  so a visit's pages share one order. A fresh visit → fresh seed → reshuffle. */
+  shuffleSeed?: number
 }
 
 export async function getFeed(filters: FeedFilters) {
@@ -173,26 +179,42 @@ export async function getFeed(filters: FeedFilters) {
     select: postSelect(filters.viewerId),
   })
 
-  // "Caught up": the viewer has seen everything on page 1. Re-run without the
-  // seen exclusion (hidden/blocked still enforced) so the feed is never blank —
-  // they simply re-browse recent posts.
-  let caughtUp = false
-  if (!usesCursor && shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length, pageSize })) {
+  // "Caught up": the viewer has seen everything on page 1. Recycle recent posts
+  // (hidden/blocked still enforced) so the feed is never blank — but shuffled,
+  // unseen-first, and re-seeded each visit so every return shows something
+  // different. Load-more forces this path (filters.caughtUp) since page ≥ 2
+  // never auto-detects.
+  let caughtUp = filters.caughtUp ?? false
+  let shuffleSeed = filters.shuffleSeed
+  if (
+    !usesCursor &&
+    (caughtUp || shouldServeCaughtUp({ page, unseenRowCount: rows.length, seenCount: seenIds.length, pageSize }))
+  ) {
     caughtUp = true
+    shuffleSeed = shuffleSeed ?? Math.floor(Math.random() * 0x7fffffff)
     where.id = hiddenIds.length > 0 ? { notIn: hiddenIds } : undefined
-    rows = await prisma.post.findMany({
+    const pool = await prisma.post.findMany({
       where,
-      orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: postSelect(filters.viewerId),
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: CAUGHT_UP_POOL,
+      select: { id: true },
     })
+    const ordered = planCaughtUpOrder(pool.map((p) => p.id), seenIds, shuffleSeed)
+    const slice = ordered.slice((page - 1) * pageSize, page * pageSize)
+    const byId = slice.length
+      ? new Map(
+          (
+            await prisma.post.findMany({ where: { id: { in: slice } }, select: postSelect(filters.viewerId) })
+          ).map((r) => [r.id, r]),
+        )
+      : new Map()
+    rows = slice.map((id) => byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r)
   }
 
   // Affinity: on the "For You" feed, float posts by followed authors up within
   // the page (stable — keeps hot-score order inside each group). ponytail: an
   // in-page boost; a full cross-page windowed re-rank is a later refinement.
-  if (!filters.followingOnly && !isTrending && filters.rankerName !== "recency" && followingSet.size > 0) {
+  if (!caughtUp && !filters.followingOnly && !isTrending && filters.rankerName !== "recency" && followingSet.size > 0) {
     rows.sort((a, b) => {
       const ap = a.isPinned ? 1 : 0
       const bp = b.isPinned ? 1 : 0
@@ -243,6 +265,7 @@ export async function getFeed(filters: FeedFilters) {
     rankerUsed: filters.rankerName === "recency" ? "recency" : "ranking",
     caughtUp,
     nextCursor,
+    shuffleSeed,
   }
 }
 
