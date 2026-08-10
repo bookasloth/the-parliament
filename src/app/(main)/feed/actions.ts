@@ -344,6 +344,8 @@ export async function loadMoreFeedAction(
   followingOnly = false,
   caughtUp = false,
   cursor?: FeedCursor,
+  trending = false,
+  hashtag?: string,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
@@ -357,6 +359,8 @@ export async function loadMoreFeedAction(
     page,
     pageSize,
     followingOnly,
+    trending,
+    hashtag,
     skipSeenExclusion: caughtUp,
     // Keyset the ranked/recency feed when we have a cursor; the caught-up backfill
     // has no cursor and falls back to page-offset.

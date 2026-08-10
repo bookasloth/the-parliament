@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Eye, Clock, Quote, Globe } from "lucide-react"
 import type { FeedPost, FeedMembership } from "./types"
 import { truncateForPreview } from "@/lib/text-preview"
+import { splitRichText, hashtagHref } from "@/lib/rich-text"
 
 const G_GRADIENT = "linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)"
 function GoogleColoredMention({ handle }: { handle: string }) {
@@ -24,25 +25,25 @@ function GoogleColoredMention({ handle }: { handle: string }) {
 // = rendered over a colored text-background post, where gradient-fill text would
 // be unreadable — mentions/tags stay solid + underlined and inherit the bg's fg.
 function renderTokens(text: string, onBg = false) {
-  return text.split(/(@\w+|#\w+|https?:\/\/\S+)/g).map((part, i) => {
-    if (part.startsWith("@")) {
+  return splitRichText(text).map((tok, i) => {
+    if (tok.type === "mention") {
       return onBg ? (
-        <Link key={i} href={`/${part.slice(1)}`} className="font-bold underline underline-offset-2 hover:opacity-80">{part}</Link>
+        <Link key={i} href={`/${tok.value.slice(1)}`} className="font-bold underline underline-offset-2 hover:opacity-80">{tok.value}</Link>
       ) : (
-        <GoogleColoredMention key={i} handle={part} />
+        <GoogleColoredMention key={i} handle={tok.value} />
       )
     }
-    if (part.startsWith("#")) {
+    if (tok.type === "hashtag") {
       return (
-        <Link key={i} href={`/hashtag/${part.slice(1)}`} className={onBg ? "font-bold underline underline-offset-2 hover:opacity-80" : "text-brand font-medium hover:underline"}>{part}</Link>
+        <Link key={i} href={hashtagHref(tok.value)} className={onBg ? "font-bold underline underline-offset-2 hover:opacity-80" : "text-brand font-medium hover:underline"}>{tok.value}</Link>
       )
     }
-    if (part.startsWith("http")) {
+    if (tok.type === "url") {
       return (
-        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={onBg ? "underline hover:opacity-80" : "text-brand hover:underline"}>{part}</a>
+        <a key={i} href={tok.value} target="_blank" rel="noopener noreferrer" className={onBg ? "underline hover:opacity-80" : "text-brand hover:underline"}>{tok.value}</a>
       )
     }
-    return <span key={i}>{part}</span>
+    return <span key={i}>{tok.value}</span>
   })
 }
 

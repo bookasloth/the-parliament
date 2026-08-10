@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
 import { recencyCursorWhere, rankedCursorWhere, isRankedCursor, type FeedCursor } from "./cursor"
 import { organizeCommentThread } from "./comment-thread"
+import { trendingWindowStart } from "./trending"
+import { postHashtagWhere } from "@/lib/rich-text"
 
 export { recencyCursorWhere, rankedCursorWhere, type FeedCursor } from "./cursor"
 
@@ -20,6 +22,10 @@ export interface FeedFilters {
   viewerId?: string
   /** "Following" feed: only posts from users the viewer follows (+ their own). */
   followingOnly?: boolean
+  /** "Trending" feed: rankingScore desc, windowed to the last 48h ("hot now"). */
+  trending?: boolean
+  /** Restrict to posts carrying this hashtag (case-insensitive). */
+  hashtag?: string
   /**
    * Keyset pagination cursor — the last row of the previous page. Honoured on
    * BOTH feeds: recency keys on (createdAt, id), ranked on (rankingScore, id).
@@ -46,6 +52,8 @@ export async function getFeed(filters: FeedFilters) {
   if (filters.format) where.format = filters.format
   if (filters.authorId) where.authorId = filters.authorId
   if (filters.groupId !== undefined) where.groupId = filters.groupId
+  if (filters.trending) where.createdAt = { gte: trendingWindowStart() }
+  if (filters.hashtag) where.hashtags = postHashtagWhere(filters.hashtag)
 
   if (filters.categoryKey) {
     const cat = await prisma.postCategory.findUnique({
@@ -130,11 +138,18 @@ export async function getFeed(filters: FeedFilters) {
   // itself on every later page (the duplicate the score-mutation drift caused).
   const isRecency = filters.rankerName === "recency"
   const usesCursor = !!filters.cursor
+  const isTrending = !!filters.trending
+  // Trending drops the isPinned float (pinning is a "for you" concept) and sorts
+  // purely by hot score within the recent window — offset paginated (no cursor).
+  // Ranked default keys on (rankingScore, id) so page 1 (offset) and later cursor
+  // pages share one total order — the tiebreak must match rankedCursorWhere.
   const orderBy: Prisma.PostOrderByWithRelationInput[] = isRecency
     ? [{ createdAt: "desc" }, { id: "desc" }]
-    : usesCursor
-      ? [{ rankingScore: "desc" }, { id: "desc" }]
-      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { id: "desc" }]
+    : isTrending
+      ? [{ rankingScore: "desc" }, { createdAt: "desc" }, { id: "desc" }]
+      : usesCursor
+        ? [{ rankingScore: "desc" }, { id: "desc" }]
+        : [{ isPinned: "desc" }, { rankingScore: "desc" }, { id: "desc" }]
 
   if (usesCursor) {
     const keyset =
@@ -177,7 +192,7 @@ export async function getFeed(filters: FeedFilters) {
   // Affinity: on the "For You" feed, float posts by followed authors up within
   // the page (stable — keeps hot-score order inside each group). ponytail: an
   // in-page boost; a full cross-page windowed re-rank is a later refinement.
-  if (!filters.followingOnly && filters.rankerName !== "recency" && followingSet.size > 0) {
+  if (!filters.followingOnly && !isTrending && filters.rankerName !== "recency" && followingSet.size > 0) {
     rows.sort((a, b) => {
       const ap = a.isPinned ? 1 : 0
       const bp = b.isPinned ? 1 : 0
@@ -209,7 +224,7 @@ export async function getFeed(filters: FeedFilters) {
   // on (createdAt, id).
   const last = rows[rows.length - 1]
   const nextCursor: FeedCursor | null =
-    !caughtUp && last && rows.length === pageSize
+    !caughtUp && !isTrending && last && rows.length === pageSize
       ? isRecency
         ? { createdAt: last.createdAt.toISOString(), id: last.id }
         : // rankingScore is a Prisma Decimal — coerce to a plain number so the
