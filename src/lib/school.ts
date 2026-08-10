@@ -7,6 +7,12 @@ import { prisma } from "@/lib/prisma"
  * of each firing its own round-trip (the value never changes within a request).
  */
 export const getDefaultSchoolId = cache(async (): Promise<string | null> => {
-  const school = await prisma.school.findFirst({ select: { id: true } })
+  // Deterministic: oldest school is the canonical default. Without orderBy,
+  // a future 2nd school could make Postgres return an arbitrary row, silently
+  // scoping /community to the wrong school and hiding every other school's users.
+  const school = await prisma.school.findFirst({
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  })
   return school?.id ?? null
 })
