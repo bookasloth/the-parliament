@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { renderEmail, EMAIL_TEMPLATE_KEYS, EMAIL_CATEGORY, type EmailTemplates } from "@/lib/email"
-import { emailShell, button, details, LOGO_URL, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
+import { emailShell, button, details, LEGAL_NAME, CONTACT_EMAIL } from "@/lib/email-layout"
 import { SEED_TEMPLATES } from "@/modules/email/templates"
 import { welcomeTemplateFor } from "@/modules/membership/activation"
 import { extractMentionHandles } from "@/modules/feed/mentions"
@@ -49,8 +49,8 @@ describe("email-layout shell", () => {
     reason: "Transactional receipt.",
   })
 
-  it("includes brand chrome: logo, legal name, contact, signature bar", () => {
-    expect(html).toContain(LOGO_URL)
+  it("includes brand chrome: wordmark, legal name, contact, signature bar", () => {
+    expect(html).toContain("NNAWCA")
     expect(html).toContain(LEGAL_NAME)
     expect(html).toContain(CONTACT_EMAIL)
     expect(html).toContain("#E5484D") // the red band in the 45/25/20/20 signature rule
@@ -83,7 +83,7 @@ describe("lib/email templates", () => {
       const { subject, text, html } = renderEmail(key, SAMPLE[key])
       expect(subject.length).toBeGreaterThan(0)
       expect(text.length).toBeGreaterThan(0)
-      expect(html).toContain(LOGO_URL)
+      expect(html).toContain("NNAWCA")
       expect(html).toContain(LEGAL_NAME)
       // No unresolved interpolation or stringified objects leaking through.
       expect(html).not.toContain("undefined")
@@ -104,7 +104,7 @@ describe("modules/email seed templates", () => {
     it(`${t.code} is well-formed`, () => {
       expect(t.subject.length).toBeGreaterThan(0)
       expect(t.text.length).toBeGreaterThan(0)
-      expect(t.html).toContain(LOGO_URL)
+      expect(t.html).toContain("NNAWCA")
       expect(t.html).toContain(LEGAL_NAME)
       // Author-time JS interpolation must be fully resolved — only {{vars}} remain.
       expect(t.html).not.toContain("${")
