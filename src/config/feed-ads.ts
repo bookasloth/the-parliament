@@ -31,6 +31,32 @@ export const FEED_ADS: FeedPost[] = [
     shares: 0,
   },
   {
+    id: "ad-nnawca-advertise",
+    name: "NNAWCA",
+    headline: "Advertise to the JNV Nagpur alumni network",
+    membership: "premium",
+    timestamp: "",
+    isSponsored: true,
+    sponsorName: "NNAWCA",
+    sponsorSubhead: "House ad · advertise with us",
+    // Internal advertise/sponsorship page.
+    sponsorUrl: "/sponsorship",
+    sponsorTagline: "Put your business in front of JNV Nagpur alumni.",
+    content:
+      "Your ad here, seen across the alumni feed — just ₹3,650 per year, one flat rate. Support NNAWCA and grow your business.",
+    sponsorCta: "Advertise Here",
+    // Member brand blue for the CTA + verified tick.
+    sponsorAccent: "#009ae4",
+    // Self-contained SVG banner (shapes/colours, no photo) in /public.
+    image: "/nnawca-ad.svg",
+    avatar: "/icon-192.png",
+    borderType: "darkBlue",
+    upvotes: 0,
+    downvotes: 0,
+    comments: 0,
+    shares: 0,
+  },
+  {
     id: "ad-hostinger",
     name: "Hostinger",
     headline: "Web hosting that just works",
@@ -62,12 +88,13 @@ export const FEED_ADS: FeedPost[] = [
 //   student   — capped feed of 5 items, positions 2 & 5 are ads (3 real posts)
 //   associate — an ad after every 5 posts
 //   premium   — an ad after every 10 posts
-//   life/committee — never any feed ads
+//   life      — an ad after every 10 posts (top-paying tier: least intrusive cadence)
+//   committee — never any feed ads (internal office-bearer tier)
 export type AdTier = "student" | "associate" | "premium" | "life" | "committee" | string
 
 function everyNFor(tier: AdTier): number | null {
-  if (tier === "life" || tier === "committee") return null // no ads
-  if (tier === "premium") return 10
+  if (tier === "committee") return null // internal tier: no ads
+  if (tier === "premium" || tier === "life") return 10
   if (tier === "associate") return 5
   return 5 // student handled separately below; default = every 5
 }
@@ -80,7 +107,7 @@ export function injectFeedAds(
   ads: FeedPost[] = FEED_ADS,
 ): FeedPost[] {
   if (ads.length === 0 || posts.length === 0) return posts
-  if (tier === "life" || tier === "committee") return posts // ad-free
+  if (tier === "committee") return posts // internal tier: ad-free
 
   // Student: exactly 5 items — post, ad, post, post, ad (3 real posts max).
   if (tier === "student") {

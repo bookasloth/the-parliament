@@ -26,9 +26,14 @@ describe("injectFeedAds tiering", () => {
     expect(injectFeedAds([], "associate", [ad("x")])).toEqual([])
   })
 
-  it("life & committee never see feed ads", () => {
-    expect(injectFeedAds(posts(20), "life", [ad("x"), ad("y")]).some(isAd)).toBe(false)
+  it("committee never sees feed ads", () => {
     expect(injectFeedAds(posts(20), "committee", [ad("x")]).some(isAd)).toBe(false)
+  })
+
+  it("life sees ads at the premium cadence (every 10 posts)", () => {
+    const out = injectFeedAds(posts(10), "life", [ad("x")])
+    expect(isAd(out[5])).toBe(false)
+    expect(isAd(out[10])).toBe(true)
   })
 
   it("student: capped 5-item feed with ads at positions 2 & 5", () => {

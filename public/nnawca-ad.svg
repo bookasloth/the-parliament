@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" font-family="Poppins, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="nn-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00b0f0"/>
+      <stop offset="0.55" stop-color="#009ae4"/>
+      <stop offset="1" stop-color="#063a5e"/>
+    </linearGradient>
+    <radialGradient id="nn-glow" cx="0.82" cy="0.2" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="500" fill="url(#nn-bg)"/>
+  <rect width="1200" height="500" fill="url(#nn-glow)"/>
+
+  <!-- decorative rings -->
+  <circle cx="1010" cy="120" r="150" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="26"/>
+  <circle cx="150" cy="440" r="110" fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="20"/>
+
+  <!-- sponsor wordmark -->
+  <text x="90" y="110" fill="#ffffff" fill-opacity="0.9" font-size="30" font-weight="700" letter-spacing="3">NNAWCA</text>
+  <rect x="90" y="128" width="120" height="4" rx="2" fill="#ffffff" fill-opacity="0.55"/>
+
+  <!-- headline -->
+  <text x="90" y="235" fill="#ffffff" font-size="86" font-weight="800">Advertise Here</text>
+  <text x="92" y="300" fill="#ffffff" fill-opacity="0.92" font-size="36" font-weight="500">Reach the JNV Nagpur alumni network.</text>
+
+  <!-- price chip -->
+  <g>
+    <rect x="90" y="345" width="360" height="86" rx="20" fill="#ffffff"/>
+    <text x="118" y="402" fill="#063a5e" font-size="52" font-weight="800">&#8377;3,650</text>
+    <text x="330" y="402" fill="#009ae4" font-size="30" font-weight="600">/ year</text>
+  </g>
+
+  <!-- supporting note -->
+  <text x="92" y="470" fill="#ffffff" fill-opacity="0.85" font-size="24" font-weight="500">One flat yearly rate. Your business, in front of the whole network.</text>
+
+  <!-- price seal -->
+  <g transform="translate(980,300)">
+    <circle r="120" fill="#ffffff" fill-opacity="0.10"/>
+    <circle r="92" fill="#ffffff"/>
+    <text y="-6" text-anchor="middle" fill="#009ae4" font-size="30" font-weight="700">FROM</text>
+    <text y="42" text-anchor="middle" fill="#063a5e" font-size="58" font-weight="800">&#8377;3650</text>
+  </g>
+</svg>
