@@ -21,8 +21,10 @@ import {
   countNewPostsAction,
   loadPostCommentsAction,
   recordImpressionsAction,
+  refreshPostCountsAction,
 } from "./actions"
 import { prepareImpressionBatch } from "@/modules/feed/impressions"
+import { mergePostCounts } from "@/modules/feed/live-counts"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
 import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard"
@@ -165,6 +167,7 @@ export function FeedContent({
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
   const [hasMore, setHasMore] = useState(initialHasMore)
+  const [loadMoreError, setLoadMoreError] = useState(false)
   const [loadingMore, startLoadMore] = useTransition()
   const seenIds = useRef<Set<string>>(new Set(posts.map((p) => p.id)))
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -185,6 +188,7 @@ export function FeedContent({
     if (!hasMore || loadingMore) return
     startLoadMore(async () => {
       try {
+        setLoadMoreError(false)
         const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
@@ -192,7 +196,8 @@ export function FeedContent({
         setHasMore(r.hasMore && fresh.length > 0)
         setPage(r.nextPage)
       } catch {
-        // Silent — user can retry via button.
+        // Surface an inline retry instead of failing silently.
+        setLoadMoreError(true)
       }
     })
   }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp])
@@ -203,14 +208,16 @@ export function FeedContent({
   // data for content the user never reached.
   useEffect(() => {
     const el = sentinelRef.current
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return
+    // Stop auto-loading after a failure — the reader retries via the button, so
+    // we don't silently hammer a failing action while the sentinel stays in view.
+    if (!el || !hasMore || loadMoreError || typeof IntersectionObserver === "undefined") return
     const io = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) loadMore() },
       { rootMargin: "600px" }, // start ~one screen early so it feels seamless
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [hasMore, loadMore])
+  }, [hasMore, loadMore, loadMoreError])
 
   // Seen-tracking: record each real post once it's ~half on screen, batched and
   // debounced. Fire-and-forget — getFeed uses these to never repeat a post.
@@ -266,7 +273,10 @@ export function FeedContent({
     })
   }, [localPosts])
 
-  // Poll for posts created since this page was rendered → "N new posts" pill.
+  // Poll every 30s for (a) newly-created posts → "N new posts" pill, and (b)
+  // fresh engagement counters for the posts currently on screen → live reaction/
+  // comment/share counts. mergePostCounts only touches the four counters, so the
+  // acting user's optimistic vote/save state is preserved.
   useEffect(() => {
     if (!loadedAt) return
     setNewCount(0)
@@ -275,6 +285,16 @@ export function FeedContent({
       try {
         const r = await countNewPostsAction(loadedAt)
         if (active) setNewCount(r.count)
+      } catch {
+        /* ignore — retried next tick */
+      }
+      try {
+        const visibleIds = [...seenIds.current].slice(0, 50)
+        if (visibleIds.length === 0) return
+        const counts = await refreshPostCountsAction(visibleIds)
+        if (active && counts.length > 0) {
+          setLocalPosts((cur) => mergePostCounts(cur, counts))
+        }
       } catch {
         /* ignore — retried next tick */
       }
@@ -386,6 +406,16 @@ export function FeedContent({
                     <PostSkeleton />
                     <PostSkeleton />
                   </>
+                ) : loadMoreError ? (
+                  <div className="flex flex-col items-center gap-2 rounded-[5px] border border-gray-200 bg-white py-4 text-sm">
+                    <span className="text-gray-500">Couldn&rsquo;t load more posts.</span>
+                    <button
+                      onClick={loadMore}
+                      className="rounded-[4px] bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-600"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={loadMore}

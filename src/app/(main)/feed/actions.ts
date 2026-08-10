@@ -23,7 +23,7 @@ import {
 } from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
 import { getFeed, listPostComments } from "@/modules/feed/query"
-import { prepareImpressionBatch } from "@/modules/feed/impressions"
+import { prepareImpressionBatch, newImpressionIds } from "@/modules/feed/impressions"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { mapRowToFeedPost } from "./map-row"
@@ -59,6 +59,27 @@ export async function countNewPostsAction(sinceIso: string) {
     },
   })
   return { count }
+}
+
+export interface PostCounts {
+  id: string
+  upvoteCount: number
+  downvoteCount: number
+  commentCount: number
+  shareCount: number
+}
+
+/** Fresh engagement counters for the currently-visible posts — drives the live
+ *  count refresh on the feed's 30s poll. Batch is capped so a tampered/huge id
+ *  list can't fan out an unbounded query. */
+export async function refreshPostCountsAction(postIds: string[]): Promise<PostCounts[]> {
+  const ids = prepareImpressionBatch(postIds, 50)
+  if (ids.length === 0) return []
+  const rows = await prisma.post.findMany({
+    where: { id: { in: ids }, deletedAt: null },
+    select: { id: true, upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true },
+  })
+  return rows
 }
 
 export async function votePollAction(postId: string, pollId: string, optionId: string) {
@@ -279,12 +300,32 @@ export async function recordImpressionsAction(postIds: string[]) {
     select: { id: true },
   })
   if (existing.length === 0) return { recorded: 0 }
+  const validIds = existing.map((p) => p.id)
 
-  await prisma.postImpression.createMany({
-    data: existing.map((p) => ({ userId: viewer.id, postId: p.id })),
-    skipDuplicates: true,
+  // Only genuinely-new impressions bump viewCount. Diff against already-recorded
+  // rows so a re-impression (skipDuplicates would drop it anyway) can't inflate
+  // the count. ponytail: tiny race — two concurrent flushes of the same unseen
+  // post could double-count once; skipDuplicates keeps the impression row unique,
+  // and a stray +1 on a view counter is harmless. Tighten with a DB trigger on
+  // post_impressions INSERT only if exactness ever matters.
+  const seen = await prisma.postImpression.findMany({
+    where: { userId: viewer.id, postId: { in: validIds } },
+    select: { postId: true },
   })
-  return { recorded: existing.length }
+  const fresh = newImpressionIds(validIds, seen.map((s) => s.postId))
+  if (fresh.length === 0) return { recorded: 0 }
+
+  await prisma.$transaction([
+    prisma.postImpression.createMany({
+      data: fresh.map((id) => ({ userId: viewer.id, postId: id })),
+      skipDuplicates: true,
+    }),
+    prisma.post.updateMany({
+      where: { id: { in: fresh } },
+      data: { viewCount: { increment: 1 } },
+    }),
+  ])
+  return { recorded: fresh.length }
 }
 
 export interface LoadMoreResult {

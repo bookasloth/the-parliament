@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Eye, Clock, Quote } from "lucide-react"
+import { Eye, Clock, Quote, Globe } from "lucide-react"
 import type { FeedPost, FeedMembership } from "./types"
 import { truncateForPreview } from "@/lib/text-preview"
 
@@ -224,6 +224,61 @@ export function MediaSection({ image, mediaCount, videoDuration }: { image: stri
         </div>
       )}
     </div>
+  )
+}
+
+// --- Link Preview (OG) Card ---
+export function LinkPreviewCard({ link }: { link: NonNullable<FeedPost["link"]> }) {
+  let host = link.url
+  try {
+    host = new URL(link.url).hostname.replace(/^www\./, "")
+  } catch {
+    /* keep raw url as the host label */
+  }
+  const hasMeta = !!(link.title || link.description || link.image)
+  // No OG metadata → degrade to a plain, bare link chip (today's behaviour).
+  if (!hasMeta) {
+    return (
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex items-center gap-3 rounded-[4px] border border-gray-200 bg-gray-50 p-3 hover:bg-gray-100 transition-colors"
+      >
+        <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[4px] bg-brand-50 text-brand">
+          <Globe className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-semibold text-gray-800">{host}</div>
+          <div className="truncate text-xs text-gray-500">{link.url}</div>
+        </div>
+      </a>
+    )
+  }
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 block overflow-hidden rounded-[4px] border border-gray-200 hover:border-gray-300 transition-colors"
+    >
+      {link.image && (
+        // External OG image — plain <img> avoids next/image remote-host config.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={link.image} alt="" className="max-h-[260px] w-full object-cover" loading="lazy" />
+      )}
+      <div className="bg-gray-50 px-4 py-3">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+          {link.siteName || host}
+        </div>
+        {link.title && (
+          <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-gray-900">{link.title}</div>
+        )}
+        {link.description && (
+          <div className="mt-1 line-clamp-2 text-xs text-gray-500">{link.description}</div>
+        )}
+      </div>
+    </a>
   )
 }
 

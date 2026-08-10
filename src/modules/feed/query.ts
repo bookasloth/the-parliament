@@ -340,6 +340,7 @@ function postSelect(viewerId?: string) {
     body: true,
     media: true,
     linkUrl: true,
+    linkPreview: true,
     quoteSource: true,
     isAnonymous: true,
     textBg: true,

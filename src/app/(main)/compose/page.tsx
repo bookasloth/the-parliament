@@ -1,7 +1,7 @@
 "use client"
 
 import PostComposer from "@/components/shared/PostComposer"
-import { createPostAction } from "./actions"
+import { createPostAction, autosaveDraftAction } from "./actions"
 
 export default function ComposePage() {
   return (
@@ -10,10 +10,7 @@ export default function ComposePage() {
         await createPostAction(data)
         // createPostAction redirects to /feed on success.
       }}
-      onSaveDraft={async (data) => {
-        await createPostAction({ ...data, asDraft: true })
-        // Redirects to /compose/drafts on success.
-      }}
+      onAutosaveDraft={(data, draftId) => autosaveDraftAction(data, draftId ?? undefined)}
     />
   )
 }

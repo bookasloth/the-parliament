@@ -126,6 +126,12 @@ function ShareDropdown({
   const { open, setOpen, ref } = useDropdown()
   const [shares, setShares] = useState(initialShares)
   const [copied, setCopied] = useState(false)
+  // Live count refresh: sync from props unless the viewer has an optimistic
+  // reshare pending (don't clobber their +1).
+  const userShared = useRef(false)
+  useEffect(() => {
+    if (!userShared.current) setShares(initialShares)
+  }, [initialShares])
 
   const postUrl =
     typeof window !== "undefined" ? `${window.location.origin}/feed/${postId}` : `/feed/${postId}`
@@ -133,6 +139,7 @@ function ShareDropdown({
 
   function reshare() {
     // One-click, no quote prompt.
+    userShared.current = true
     setShares((s) => s + 1)
     setOpen(false)
     if (onShare) {
@@ -243,7 +250,24 @@ export function ReactionBar({
   const [commentText, setCommentText] = useState("")
   const [commentCount, setCommentCount] = useState(comments)
 
+  // Live count refresh (feed's 30s poll) feeds new counts down as props. Sync
+  // them into local state, but never clobber the acting user's own optimistic
+  // vote/comment: once they interact we stop overwriting that control.
+  const userVoted = useRef(false)
+  useEffect(() => {
+    if (userVoted.current) return
+    setUpvotes(initialUpvotes)
+    setDownvotes(initialDownvotes)
+    setVoteState(initialVote)
+  }, [initialUpvotes, initialDownvotes, initialVote])
+
+  const userCommented = useRef(false)
+  useEffect(() => {
+    if (!userCommented.current) setCommentCount(comments)
+  }, [comments])
+
   const handleUpvote = () => {
+    userVoted.current = true
     if (voteState === "up") {
       setUpvotes((v) => v - 1)
       setVoteState(null)
@@ -258,6 +282,7 @@ export function ReactionBar({
   const handleSubmitComment = () => {
     const body = commentText.trim()
     if (!body) return
+    userCommented.current = true
     onComment?.(body)
     setCommentCount((c) => c + 1)
     setCommentText("")
@@ -265,6 +290,7 @@ export function ReactionBar({
   }
 
   const handleDownvote = () => {
+    userVoted.current = true
     if (voteState === "down") {
       setDownvotes((v) => v - 1)
       setVoteState(null)

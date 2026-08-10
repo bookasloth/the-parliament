@@ -4,7 +4,8 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
-import { createPost, publishDraft, deletePost, type PostFormat } from "@/modules/feed/posts"
+import { createPost, publishDraft, deletePost, updateDraft, type PostFormat } from "@/modules/feed/posts"
+import { draftSaveMode } from "@/modules/feed/draft-autosave"
 import { getCurrent } from "@/modules/membership/service"
 import { publicUrlFor, validatePostMedia } from "@/lib/r2"
 
@@ -78,6 +79,71 @@ export async function createPostAction(input: {
   }
   revalidatePath("/feed")
   redirect(`/feed?new=${post.id}`)
+}
+
+/**
+ * Autosave the composer draft: create the draft on first save (returns its id),
+ * then update that same row on every later save so typing doesn't spawn a new
+ * draft per keystroke. Non-redirecting — the composer keeps the returned id.
+ */
+export async function autosaveDraftAction(
+  input: {
+    body: string
+    categoryKey: string
+    format?: string
+    linkUrl?: string
+    media?: { key: string; type: "image" | "video" }[]
+    poll?: { question: string; options: string[] }
+    textBg?: string
+    quoteSource?: string
+    audience?: string
+  },
+  draftId?: string,
+): Promise<{ id: string }> {
+  const user = await requireUser()
+  const schoolId = await getDefaultSchoolId()
+  if (!schoolId) throw new Error("No school configured")
+
+  const format = (VALID_FORMATS.includes(input.format as PostFormat)
+    ? (input.format as PostFormat)
+    : "text") as PostFormat
+
+  await validatePostMedia(user.id, (input.media ?? []).map((m) => m.key))
+  const media = (input.media ?? []).map((m) => ({
+    key: m.key,
+    type: m.type,
+    url: publicUrlFor(m.key),
+  }))
+
+  if (draftId && draftSaveMode(draftId) === "update") {
+    const r = await updateDraft({
+      postId: draftId,
+      authorId: user.id,
+      body: input.body,
+      media,
+      linkUrl: format === "link" ? input.linkUrl : undefined,
+      quoteSource: format === "quote" ? input.quoteSource : undefined,
+      textBg: format === "text" ? input.textBg ?? "" : undefined,
+    })
+    revalidatePath("/compose/drafts")
+    return r
+  }
+
+  const post = await createPost({
+    authorId: user.id,
+    schoolId,
+    categoryKey: input.categoryKey || "career_update",
+    format,
+    body: input.body,
+    linkUrl: input.linkUrl,
+    media: media.length > 0 ? media : undefined,
+    poll: input.poll,
+    textBg: input.textBg,
+    quoteSource: input.quoteSource,
+    asDraft: true,
+  })
+  revalidatePath("/compose/drafts")
+  return { id: post.id }
 }
 
 /** Publish a saved draft. */
