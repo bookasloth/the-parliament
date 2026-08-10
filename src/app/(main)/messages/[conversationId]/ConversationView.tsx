@@ -10,7 +10,10 @@ import {
   Video, PhoneCall,
 } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import Link from "next/link"
 import { ChatDecorations } from "@/components/shared/ChatDecorations"
+import MentionInput from "@/components/shared/MentionInput"
+import { tokenizeBody } from "@/lib/mention-tokens"
 import CallHuddle from "./CallHuddle"
 import CallPaywall from "./CallPaywall"
 import { getActiveTheme } from "@/config/chat-themes"
@@ -96,7 +99,6 @@ export default function ConversationView({
   const lastTypingSentRef = useRef(0)
   const endRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const emojiRef = useRef<HTMLDivElement>(null)
   const msgMenuRef = useRef<HTMLDivElement>(null)
@@ -245,13 +247,6 @@ export default function ConversationView({
     channelRef.current?.send({ type: "broadcast", event: "typing", payload: { userId: viewerId } })
   }
 
-  function autoResize() {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = "auto"
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
-  }
-
   async function send() {
     const body = input.trim()
     if (!body) return
@@ -266,9 +261,6 @@ export default function ConversationView({
     setMessages((prev) => [...prev, optimistic])
     setInput("")
     setReplyTarget(null)
-    requestAnimationFrame(() => {
-      if (textareaRef.current) textareaRef.current.style.height = "auto"
-    })
 
     const res = await sendMessageAction(conversationId, body, [], reply?.id)
     if (res.ok) {
@@ -296,19 +288,8 @@ export default function ConversationView({
   }
 
   function insertEmoji(emoji: string) {
-    const el = textareaRef.current
-    if (!el) {
-      setInput((prev) => prev + emoji)
-      return
-    }
-    const start = el.selectionStart ?? input.length
-    const end = el.selectionEnd ?? input.length
-    const next = input.slice(0, start) + emoji + input.slice(end)
-    setInput(next)
-    requestAnimationFrame(() => {
-      el.focus()
-      el.selectionStart = el.selectionEnd = start + emoji.length
-    })
+    // MentionInput owns the textarea ref, so append to the end (no caret splice).
+    setInput((prev) => prev + emoji)
     setEmojiOpen(false)
   }
 
@@ -645,7 +626,7 @@ export default function ConversationView({
                           <span className="italic opacity-70">This message was deleted</span>
                         ) : (
                           <>
-                            {msg.body}
+                            <MessageBody text={msg.body} />
                             {msg.media.map((url) => (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img key={url} src={url} alt="" className="mt-1.5 max-h-64 rounded-[4px] object-cover" />
@@ -747,12 +728,14 @@ export default function ConversationView({
               </div>
             )}
           </div>
-          <textarea
-            ref={textareaRef} value={input} autoFocus
-            onChange={(e) => { setInput(e.target.value); autoResize(); signalTyping() }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
-            rows={1} placeholder="Type a message"
-            className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-gray-700 outline-none placeholder:text-gray-400 max-h-[120px]"
+          <MentionInput
+            value={input}
+            onChange={(v) => { setInput(v); signalTyping() }}
+            onEnter={send}
+            multiline enterSubmits autoGrow dropUp hideEmoji autoFocus
+            rows={1}
+            placeholder="Type a message"
+            className="w-full resize-none bg-transparent px-2 py-1.5 text-sm text-gray-700 outline-none placeholder:text-gray-400 max-h-[120px]"
           />
           <button onClick={send} disabled={!input.trim()} className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] transition-colors ${input.trim() ? "bg-brand text-white hover:bg-brand-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             <Send className="h-4 w-4" />
@@ -765,6 +748,32 @@ export default function ConversationView({
 }
 
 // ── helpers ──────────────────────────────────────────────
+
+// Render @mentions as profile links and bare URLs as links. Colour is inherited
+// (currentColor) so links stay legible on any themed bubble background.
+function MessageBody({ text }: { text: string }) {
+  return (
+    <>
+      {tokenizeBody(text).map((tok, i) => {
+        if (tok.type === "mention") {
+          return (
+            <Link key={i} href={`/${tok.handle}`} className="font-medium underline underline-offset-2">
+              {tok.value}
+            </Link>
+          )
+        }
+        if (tok.type === "url") {
+          return (
+            <a key={i} href={tok.value} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 break-all">
+              {tok.value}
+            </a>
+          )
+        }
+        return tok.value
+      })}
+    </>
+  )
+}
 
 function MessageMenu({
   msg, isMe, openId, setOpenId, menuRef, onReact, onReply, onEdit, onDelete,

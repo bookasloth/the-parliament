@@ -22,6 +22,12 @@ interface Props {
   hideEmoji?: boolean
   maxLength?: number
   style?: React.CSSProperties
+  /** Fire onEnter on Enter even when multiline (Shift+Enter still inserts a newline). For chat-style send-on-enter. */
+  enterSubmits?: boolean
+  /** Grow a multiline textarea with its content, capped at 120px. */
+  autoGrow?: boolean
+  /** Open the suggestion list upward (composer pinned to the viewport bottom). */
+  dropUp?: boolean
 }
 
 const TOKEN_RE = /(^|\s)@(\w{0,20})$/
@@ -41,6 +47,9 @@ export default function MentionInput({
   hideEmoji = false,
   maxLength,
   style,
+  enterSubmits = false,
+  autoGrow = false,
+  dropUp = false,
 }: Props) {
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null)
   const [caret, setCaret] = useState(0)
@@ -94,6 +103,14 @@ export default function MentionInput({
     setCaret(ref.current?.selectionStart ?? 0)
   }
 
+  // Grow with content (chat composer), capped so it never eats the viewport.
+  useEffect(() => {
+    if (!autoGrow || !multiline || !ref.current) return
+    const el = ref.current
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [value, autoGrow, multiline])
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (open) {
       if (e.key === "ArrowDown") {
@@ -116,7 +133,7 @@ export default function MentionInput({
         return
       }
     }
-    if (e.key === "Enter" && !e.shiftKey && !multiline && onEnter) {
+    if (e.key === "Enter" && !e.shiftKey && onEnter && (!multiline || enterSubmits)) {
       e.preventDefault()
       onEnter()
     }
@@ -158,7 +175,7 @@ export default function MentionInput({
       )}
 
       {open && (
-        <ul className="absolute left-0 top-full z-20 mt-1 w-72 max-h-72 overflow-auto rounded-[5px] border border-gray-200 bg-white py-1 shadow-lg">
+        <ul className={`absolute left-0 z-20 w-72 max-h-72 overflow-auto rounded-[5px] border border-gray-200 bg-white py-1 shadow-lg ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
           {items.map((t, i) => (
             <li key={t.id}>
               <button
