@@ -43,6 +43,10 @@ export function buildCommentViews(
 ): CommentView[] {
   return rows.map((r) => ({
     ...toView(r, postAuthorId, followingIds),
-    replies: r.replies.map((rep) => ({ ...toView(rep, postAuthorId, followingIds), replies: [] })),
+    replies: r.replies.map((rep) => ({
+      ...toView(rep, postAuthorId, followingIds),
+      replies: [],
+      replyingTo: rep.replyingTo,
+    })),
   }))
 }

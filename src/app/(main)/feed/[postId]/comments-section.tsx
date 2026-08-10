@@ -57,6 +57,9 @@ export interface CommentView {
     isFollowedByViewer: boolean
   }
   replies: CommentView[]
+  /** For a reply-to-a-reply: the @handle of the comment it actually replied to
+   *  (null for top-level comments and replies straight to the top-level). */
+  replyingTo?: string | null
   /** Stable client-side key that survives the optimistic→committed id swap, so
    *  the replayed optimistic overlay doesn't double-add the comment. */
   clientKey?: string
@@ -121,13 +124,19 @@ function relativeTime(iso: string): string {
   })
 }
 
-function makeView(body: string, viewer: Viewer, imageUrl: string | null = null): CommentView {
+function makeView(
+  body: string,
+  viewer: Viewer,
+  imageUrl: string | null = null,
+  replyingTo: string | null = null,
+): CommentView {
   const key = `optimistic-${Date.now()}-${Math.round(performance.now())}`
   return {
     id: key,
     clientKey: key,
     body,
     imageUrl,
+    replyingTo,
     createdAt: new Date().toISOString(),
     score: 0,
     myReaction: null,
@@ -238,6 +247,11 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
           </div>
           {canFollow && <CommentFollow authorId={c.author.id} initialFollowing={c.author.isFollowedByViewer} />}
         </div>
+        {c.replyingTo && (
+          <div className="mt-0.5 text-[11px] text-gray-400">
+            Replying to <span className="font-medium text-brand">@{c.replyingTo}</span>
+          </div>
+        )}
         {c.body && (
           <div className="mt-1">
             <Body text={c.body} />
@@ -375,7 +389,7 @@ function CommentItem({
 }: {
   comment: CommentView
   viewer: Viewer | null
-  onReply: (parentId: string, body: string) => void
+  onReply: (rootId: string, body: string, targetId?: string, replyingTo?: string | null) => void
   onVote: (c: CommentView, type: "upvote" | "downvote") => void
   onDelete: (c: CommentView) => void
   onReport: (c: CommentView) => void
@@ -383,13 +397,22 @@ function CommentItem({
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
   const [showReplies, setShowReplies] = useState(false)
+  // Which comment the composer is replying to: null = the top-level comment, a
+  // reply = parent to that reply (true parentId) so its author shows as the target.
+  const [replyTarget, setReplyTarget] = useState<{ id: string; handle: string | null } | null>(null)
+
+  function openReplyTo(target: { id: string; handle: string | null } | null) {
+    setReplyTarget(target)
+    setOpen(true)
+  }
 
   function send() {
     const body = text.trim()
     if (!body) return
-    onReply(comment.id, body)
+    onReply(comment.id, body, replyTarget?.id, replyTarget?.handle ?? null)
     setText("")
     setOpen(false)
+    setReplyTarget(null)
     setShowReplies(true)
   }
 
@@ -403,13 +426,19 @@ function CommentItem({
         c={comment}
         viewer={viewer}
         onVote={onVote}
-        onReplyClick={() => setOpen((o) => !o)}
+        onReplyClick={() => (open ? setOpen(false) : openReplyTo(null))}
         onDelete={onDelete}
         onReport={onReport}
       />
 
       {open && viewer && (
-        <div className="ml-9 sm:ml-12 mt-2 flex items-center gap-2">
+        <div className="ml-9 sm:ml-12 mt-2">
+          {replyTarget?.handle && (
+            <div className="mb-1 text-[11px] text-gray-400">
+              Replying to <span className="font-medium text-brand">@{replyTarget.handle}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
           <MentionInput
             value={text}
             onChange={setText}
@@ -425,6 +454,7 @@ function CommentItem({
           >
             Reply
           </button>
+          </div>
         </div>
       )}
 
@@ -448,7 +478,7 @@ function CommentItem({
                 c={r}
                 viewer={viewer}
                 onVote={onVote}
-                onReplyClick={() => setOpen(true)}
+                onReplyClick={() => openReplyTo({ id: r.id, handle: r.author.username ?? r.author.displayName })}
                 onDelete={onDelete}
                 onReport={onReport}
               />
@@ -535,14 +565,23 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
     })
   }
 
-  function handleReply(parentId: string, body: string) {
+  // `rootId` is the top-level comment the reply renders under (one visual level);
+  // `targetId` is the true parentId stored in the DB (the reply, when replying to
+  // a reply). They differ only for reply-to-reply, which is what surfaces the
+  // "replying to @handle" target.
+  function handleReply(
+    rootId: string,
+    body: string,
+    targetId?: string,
+    replyingTo?: string | null,
+  ) {
     if (!viewer) return
-    const draft = makeView(body, viewer)
+    const draft = makeView(body, viewer, null, replyingTo ?? null)
     startTransition(async () => {
-      applyOptimistic({ type: "reply", parentId, comment: draft })
+      applyOptimistic({ type: "reply", parentId: rootId, comment: draft })
       try {
-        const { id } = await commentOnPost(postId, body, parentId)
-        setBase((s) => applyCommentAction(s, { type: "reply", parentId, comment: { ...draft, id } }))
+        const { id } = await commentOnPost(postId, body, targetId ?? rootId)
+        setBase((s) => applyCommentAction(s, { type: "reply", parentId: rootId, comment: { ...draft, id } }))
       } catch {
         setError("Failed to post reply. Please try again.")
       }

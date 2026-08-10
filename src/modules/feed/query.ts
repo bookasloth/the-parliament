@@ -1,9 +1,10 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { planExclusions, shouldServeCaughtUp, SEEN_EXCLUSION_WINDOW } from "./impressions"
-import { recencyCursorWhere, type FeedCursor } from "./cursor"
+import { recencyCursorWhere, rankedCursorWhere, isRankedCursor, type FeedCursor } from "./cursor"
+import { organizeCommentThread } from "./comment-thread"
 
-export { recencyCursorWhere, type FeedCursor } from "./cursor"
+export { recencyCursorWhere, rankedCursorWhere, type FeedCursor } from "./cursor"
 
 export interface FeedFilters {
   schoolId: string
@@ -20,10 +21,11 @@ export interface FeedFilters {
   /** "Following" feed: only posts from users the viewer follows (+ their own). */
   followingOnly?: boolean
   /**
-   * Keyset pagination cursor — the last row of the previous page. ONLY honoured
-   * on the recency feed (rankerName === "recency"), whose (createdAt, id) key is
-   * stable. Prevents the offset drift (dup/skip) that `skip` suffers when posts
-   * are inserted mid-scroll. Ignored on the ranked feed (mutable rankingScore).
+   * Keyset pagination cursor — the last row of the previous page. Honoured on
+   * BOTH feeds: recency keys on (createdAt, id), ranked on (rankingScore, id).
+   * Paging by value (not offset) prevents dup/skip drift — on recency when posts
+   * are inserted mid-scroll, on ranked when rankingScore is recomputed mid-scroll.
+   * Not used for the caught-up backfill (page-1 only), which stays offset-based.
    */
   cursor?: FeedCursor
   /** Skip seen-post exclusion (hidden posts are still excluded). Used for
@@ -120,25 +122,32 @@ export async function getFeed(filters: FeedFilters) {
     ]
   }
 
-  // Order by the stored hot score (indexed) — real DB pagination over every
-  // candidate, not an in-memory re-rank of a recency window. The recency feed
-  // sorts purely by (createdAt, id) so it can keyset-paginate; it drops the
-  // isPinned float (a "for you" concept) which would otherwise re-surface a
-  // pinned post on later keyset pages (a duplicate).
+  // Both feeds keyset-paginate over a TOTAL order so pages never dup/skip:
+  //   recency → (createdAt, id) DESC
+  //   ranked  → (rankingScore, id) DESC  (id tie-break; drops createdAt tiebreak)
+  // isPinned floats pinned posts to the top of page 1 ONLY — on cursor pages we
+  // exclude pinned entirely (below) so a low-scored pinned post can't re-inject
+  // itself on every later page (the duplicate the score-mutation drift caused).
   const isRecency = filters.rankerName === "recency"
+  const usesCursor = !!filters.cursor
   const orderBy: Prisma.PostOrderByWithRelationInput[] = isRecency
     ? [{ createdAt: "desc" }, { id: "desc" }]
-    : [{ isPinned: "desc" }, { rankingScore: "desc" }, { createdAt: "desc" }]
+    : usesCursor
+      ? [{ rankingScore: "desc" }, { id: "desc" }]
+      : [{ isPinned: "desc" }, { rankingScore: "desc" }, { id: "desc" }]
 
-  // Recency + cursor → keyset (no offset drift). Everything else keeps offset.
-  const usesCursor = isRecency && !!filters.cursor
   if (usesCursor) {
-    const keyset = recencyCursorWhere(filters.cursor!)
+    const keyset =
+      isRankedCursor(filters.cursor!) && !isRecency
+        ? rankedCursorWhere(filters.cursor!)
+        : recencyCursorWhere(filters.cursor as { createdAt: string; id: string })
     where.AND = Array.isArray(where.AND)
       ? [...where.AND, keyset]
       : where.AND
         ? [where.AND, keyset]
         : [keyset]
+    // Pinned posts belong to page 1's top; never re-serve them on cursor pages.
+    if (!isRecency) where.isPinned = false
   }
 
   let rows = await prisma.post.findMany({
@@ -193,13 +202,20 @@ export async function getFeed(filters: FeedFilters) {
     viewerReactionByPostId = new Map(rx.map((r) => [r.entityId, r.type]))
   }
 
-  // Keyset cursor for the next page — recency feed only, and only when a full
-  // page came back (a short page means we hit the end → no cursor). Callers pass
-  // it straight back as `cursor` to fetch the next page with no offset drift.
+  // Keyset cursor for the next page — only when a full page came back (a short
+  // page means we hit the end → no cursor) and NOT in caught-up mode (that path
+  // stays offset-based). Callers pass it straight back as `cursor` to fetch the
+  // next page with no dup/skip drift. Ranked keys on (rankingScore, id); recency
+  // on (createdAt, id).
   const last = rows[rows.length - 1]
   const nextCursor: FeedCursor | null =
-    isRecency && last && rows.length === pageSize
-      ? { createdAt: last.createdAt.toISOString(), id: last.id }
+    !caughtUp && last && rows.length === pageSize
+      ? isRecency
+        ? { createdAt: last.createdAt.toISOString(), id: last.id }
+        : // rankingScore is a Prisma Decimal — coerce to a plain number so the
+          // cursor survives the server-action serialization boundary. Decimal(10,3)
+          // fits a JS number exactly.
+          { rankingScore: Number(last.rankingScore), id: last.id }
       : null
 
   return {
@@ -287,11 +303,15 @@ const commentSelect = {
 
 type CommentBase = Prisma.CommentGetPayload<{ select: typeof commentSelect }>
 type CommentEnriched = CommentBase & { myReaction: "upvote" | "downvote" | null }
-export type PostCommentRow = CommentEnriched & { replies: CommentEnriched[] }
+/** A reply carries the true target's @handle when it replied to another reply. */
+type ReplyEnriched = CommentEnriched & { replyingTo: string | null }
+export type PostCommentRow = CommentEnriched & { replies: ReplyEnriched[] }
 
-// Top-level comments (oldest first) each with their direct replies. One level of
-// nesting — replies to replies are stored against the same top-level parent.
-// `viewerId` attaches the viewer's own up/down vote per comment (for optimistic UI).
+// Top-level comments (oldest first) each with their replies, flattened to one
+// visual level. Replies store their TRUE parentId, so a reply-to-a-reply is
+// walked up to its top-level ancestor for display and surfaces "replying to
+// @handle" for its real target (see organizeCommentThread). `viewerId` attaches
+// the viewer's own up/down vote per comment (for optimistic UI).
 export async function listPostComments(
   postId: string,
   limit = 100,
@@ -303,17 +323,22 @@ export async function listPostComments(
     take: limit,
     select: commentSelect,
   })
-  const topIds = top.map((t) => t.id)
-  const replies = topIds.length
+  // All replies on the post (not just direct children of top) so reply-to-reply
+  // chains resolve to their ancestor instead of vanishing.
+  const replies = top.length
     ? await prisma.comment.findMany({
-        where: { postId, deletedAt: null, parentId: { in: topIds } },
+        where: { postId, deletedAt: null, parentId: { not: null } },
         orderBy: { createdAt: "asc" },
         select: commentSelect,
       })
     : []
 
+  const handleOf = (c: CommentBase): string | null =>
+    c.author.username ?? c.author.displayName ?? c.author.legalName ?? null
+  const { repliesByRoot } = organizeCommentThread([...top, ...replies], handleOf)
+
   // One lookup for the viewer's votes across every comment on this post.
-  const allIds = [...topIds, ...replies.map((r) => r.id)]
+  const allIds = [...top, ...replies].map((c) => c.id)
   const myVotes = new Map<string, "upvote" | "downvote">()
   if (viewerId && allIds.length) {
     const rx = await prisma.reaction.findMany({
@@ -329,7 +354,10 @@ export async function listPostComments(
 
   return top.map((t) => ({
     ...enrich(t),
-    replies: replies.filter((r) => r.parentId === t.id).map(enrich),
+    replies: (repliesByRoot.get(t.id) ?? []).map(({ comment, replyingTo }) => ({
+      ...enrich(comment),
+      replyingTo,
+    })),
   }))
 }
 
@@ -355,6 +383,7 @@ function postSelect(viewerId?: string) {
     viewCount: true,
     qualityScore: true,
     reportPenalty: true,
+    rankingScore: true, // ranked keyset cursor tie-break value
     createdAt: true,
     category: { select: { key: true, label: true } },
     poll: {

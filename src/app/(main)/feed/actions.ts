@@ -23,6 +23,7 @@ import {
 } from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
 import { getFeed, listPostComments } from "@/modules/feed/query"
+import type { FeedCursor } from "@/modules/feed/cursor"
 import { prepareImpressionBatch, newImpressionIds } from "@/modules/feed/impressions"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
@@ -332,6 +333,9 @@ export interface LoadMoreResult {
   posts: FeedPost[]
   hasMore: boolean
   nextPage: number
+  /** Keyset cursor for the following page; null once the offset (caught-up) path
+   *  is active or the end is reached. */
+  nextCursor: FeedCursor | null
 }
 
 export async function loadMoreFeedAction(
@@ -339,20 +343,24 @@ export async function loadMoreFeedAction(
   pageSize = 15,
   followingOnly = false,
   caughtUp = false,
+  cursor?: FeedCursor,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
     optionalUser(),
   ])
-  if (!schoolId) return { posts: [], hasMore: false, nextPage: page }
+  if (!schoolId) return { posts: [], hasMore: false, nextPage: page, nextCursor: null }
 
-  const { rows } = await getFeed({
+  const { rows, nextCursor } = await getFeed({
     schoolId,
     viewerId: viewer?.id,
     page,
     pageSize,
     followingOnly,
     skipSeenExclusion: caughtUp,
+    // Keyset the ranked/recency feed when we have a cursor; the caught-up backfill
+    // has no cursor and falls back to page-offset.
+    cursor: caughtUp ? undefined : cursor,
   })
   const followingIds = viewer?.id
     ? new Set(
@@ -365,6 +373,7 @@ export async function loadMoreFeedAction(
     posts: rows.map((r) => mapRowToFeedPost(r, followingIds)),
     hasMore: rows.length === pageSize,
     nextPage: page + 1,
+    nextCursor,
   }
 }
 
