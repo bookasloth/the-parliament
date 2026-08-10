@@ -22,6 +22,8 @@ import {
   type CommentReactionType,
 } from "@/modules/feed/comments"
 import { fileReport, type ReportableEntity } from "@/modules/moderation/service"
+import { canPinFeed } from "@/modules/feed/pin"
+import { ForbiddenError } from "@/lib/errors"
 import { getFeed, listPostComments } from "@/modules/feed/query"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { prepareImpressionBatch, newImpressionIds } from "@/modules/feed/impressions"
@@ -265,6 +267,19 @@ export async function awardPostAction(postId: string, awardKey: AwardKey) {
   }
 }
 
+/** Pin/unpin any post to the top of the feed. Restricted to admins + the owner
+ *  account (see canPinFeed). Toggles Post.isPinned. */
+export async function togglePinAction(postId: string) {
+  const user = await requireUser()
+  if (!canPinFeed(user)) throw new ForbiddenError("Not allowed to pin posts")
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { isPinned: true } })
+  if (!post) return { ok: false as const }
+  const isPinned = !post.isPinned
+  await prisma.post.update({ where: { id: postId }, data: { isPinned } })
+  revalidatePath("/feed")
+  return { ok: true as const, isPinned }
+}
+
 export async function reportPostAction(
   postId: string,
   reason: string,
@@ -336,6 +351,8 @@ export interface LoadMoreResult {
   /** Keyset cursor for the following page; null once the offset (caught-up) path
    *  is active or the end is reached. */
   nextCursor: FeedCursor | null
+  /** Caught-up shuffle seed, echoed back so subsequent pages keep one order. */
+  shuffleSeed: number | null
 }
 
 export async function loadMoreFeedAction(
@@ -346,14 +363,15 @@ export async function loadMoreFeedAction(
   cursor?: FeedCursor,
   trending = false,
   hashtag?: string,
+  shuffleSeed?: number,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
     optionalUser(),
   ])
-  if (!schoolId) return { posts: [], hasMore: false, nextPage: page, nextCursor: null }
+  if (!schoolId) return { posts: [], hasMore: false, nextPage: page, nextCursor: null, shuffleSeed: null }
 
-  const { rows, nextCursor } = await getFeed({
+  const { rows, nextCursor, shuffleSeed: seed } = await getFeed({
     schoolId,
     viewerId: viewer?.id,
     page,
@@ -361,9 +379,10 @@ export async function loadMoreFeedAction(
     followingOnly,
     trending,
     hashtag,
-    skipSeenExclusion: caughtUp,
-    // Keyset the ranked/recency feed when we have a cursor; the caught-up backfill
-    // has no cursor and falls back to page-offset.
+    // Caught-up recycle: force the shuffled path and reuse the visit's seed so
+    // pages share one order. Non-caught-up keysets via the cursor.
+    caughtUp,
+    shuffleSeed: caughtUp ? shuffleSeed : undefined,
     cursor: caughtUp ? undefined : cursor,
   })
   const followingIds = viewer?.id
@@ -378,6 +397,7 @@ export async function loadMoreFeedAction(
     hasMore: rows.length === pageSize,
     nextPage: page + 1,
     nextCursor,
+    shuffleSeed: seed ?? null,
   }
 }
 

@@ -15,6 +15,7 @@ import {
   Trash2,
   Edit3,
   UserPlus,
+  Pin,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
@@ -50,6 +51,8 @@ export function FeedCard({
   onDelete,
   onReport,
   onHide,
+  onPin,
+  canPin = false,
   onPollVote,
   commentsLoader,
   commentViewer = null,
@@ -68,6 +71,10 @@ export function FeedCard({
   onDelete?: () => void | Promise<unknown>
   onReport?: (reason: string) => void | Promise<unknown>
   onHide?: () => void | Promise<unknown>
+  /** Pin/unpin this post to the feed — only rendered when canPin. */
+  onPin?: () => void | Promise<unknown>
+  /** Viewer may pin (admin/owner) — surfaces the Pin action in the menu. */
+  canPin?: boolean
   onPollVote?: (optionId: string) => void | Promise<unknown>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
@@ -198,6 +205,18 @@ export function FeedCard({
         { icon: <Ban className="h-4 w-4" />, label: "Block Them" },
         { icon: <Flag className="h-4 w-4" />, label: "Report It", onClick: handleReport, danger: true },
       ]
+
+  // Admin/owner pin control — top of the menu, on any post.
+  if (!post.isSponsored && canPin && onPin) {
+    actionItems.unshift({
+      icon: <Pin className={`h-4 w-4 ${post.isPinned ? "fill-brand text-brand" : ""}`} />,
+      label: post.isPinned ? "Unpin from feed" : "Pin to feed",
+      onClick: () => {
+        setActionOpen(false)
+        void onPin()
+      },
+    })
+  }
 
   return (
     <div

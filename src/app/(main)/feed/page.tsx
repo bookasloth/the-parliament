@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { FeedContent, type ViewerCard, type SuggestedConnection, type NewsItem } from "./feed-content"
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
+import { canPinFeed } from "@/modules/feed/pin"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
@@ -27,6 +28,8 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
   let hasMore = false
   let nextCursor: FeedCursor | null = null
   let caughtUp = false
+  let shuffleSeed: number | null = null
+  const canPin = !!viewer && canPinFeed(viewer)
   let viewerCard: ViewerCard | null = null
   let suggestions: SuggestedConnection[] = []
   let news: NewsItem[] = []
@@ -34,7 +37,7 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
   let tagCount = 0
 
   if (schoolId) {
-    const [{ rows, caughtUp: cu, nextCursor: nc }, u, [users, pinned]] = await Promise.all([
+    const [{ rows, caughtUp: cu, nextCursor: nc, shuffleSeed: seed }, u, [users, pinned]] = await Promise.all([
       getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly, trending, hashtag }),
       viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
       Promise.all([
@@ -91,6 +94,7 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
     // Student tier can't load more, so no cursor is handed out.
     nextCursor = tier === "student" ? null : nc
     caughtUp = cu
+    shuffleSeed = seed ?? null
 
     if (hashtag) {
       tagCount = await prisma.post.count({
@@ -165,6 +169,8 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
       tag={hashtag ?? null}
       tagCount={tagCount}
       caughtUp={caughtUp}
+      initialShuffleSeed={shuffleSeed}
+      canPin={canPin}
     />
   )
 }
