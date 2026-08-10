@@ -38,6 +38,8 @@ export interface FeedPost {
   /** Typed media (image/video) — rendered via MediaGallery with a lightbox. */
   mediaItems?: MediaItem[]
   quote?: { text: string; author: string; source?: string }
+  /** Link post: the URL plus any server-fetched Open Graph metadata. */
+  link?: { url: string; title?: string; description?: string; image?: string; siteName?: string }
   question?: string
   poll?: {
     id?: string

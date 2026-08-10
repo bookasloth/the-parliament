@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma/client"
 import { ForbiddenError } from "@/lib/errors"
 import { awardKarma } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
@@ -8,6 +9,7 @@ import { syncPostHashtags } from "@/modules/feed/hashtags"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
+import { fetchLinkPreview } from "@/lib/og-preview"
 
 const APP_BASE = process.env.AUTH_URL || "https://nnawca.org"
 
@@ -163,6 +165,14 @@ export async function createPost(input: CreatePostInput) {
     }
   }
 
+  // OG preview for published link posts. Fetched before the write so it lands in
+  // the same row; SSRF-guarded and failure-tolerant (null → bare link renders).
+  // Drafts skip it — the fetch runs when the draft is published as a real post.
+  const linkPreview =
+    input.format === "link" && input.linkUrl?.trim() && !input.asDraft
+      ? await fetchLinkPreview(input.linkUrl.trim())
+      : null
+
   const post = await prisma.$transaction(async (tx) => {
     const created = await tx.post.create({
       data: {
@@ -174,6 +184,7 @@ export async function createPost(input: CreatePostInput) {
         body: input.body,
         media: input.media ?? [],
         linkUrl: input.linkUrl,
+        linkPreview: linkPreview ? (linkPreview as unknown as Prisma.InputJsonValue) : undefined,
         quoteSource: input.quoteSource,
         isAnonymous: input.isAnonymous ?? false,
         textBg: input.textBg,
@@ -256,6 +267,41 @@ export async function listDrafts(authorId: string) {
       createdAt: true,
     },
   })
+}
+
+/**
+ * Update an existing draft in place (autosave). Author-owned, draft-status only.
+ * Updates the scalar fields a draft carries; poll-option rows are left to the
+ * publish flow. ponytail: poll drafts autosave only their question (stored in
+ * body) + scalars here — wire option-row diffing if draft polls need it.
+ */
+export async function updateDraft(input: {
+  postId: string
+  authorId: string
+  body?: string
+  media?: { key: string; type: string; url?: string }[]
+  linkUrl?: string
+  quoteSource?: string
+  textBg?: string | null
+}) {
+  const post = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, authorId: true, status: true, deletedAt: true },
+  })
+  if (!post || post.deletedAt || post.status !== "draft") throw new ForbiddenError("Draft not found")
+  if (post.authorId !== input.authorId) throw new ForbiddenError("Not the author")
+
+  await prisma.post.update({
+    where: { id: input.postId },
+    data: {
+      body: input.body,
+      ...(input.media !== undefined ? { media: input.media as never } : {}),
+      linkUrl: input.linkUrl,
+      quoteSource: input.quoteSource,
+      ...(input.textBg !== undefined ? { textBg: input.textBg || null } : {}),
+    },
+  })
+  return { id: input.postId }
 }
 
 /** Publish a draft: flip it to visible, reseed its ranking, fire @mention pings. */

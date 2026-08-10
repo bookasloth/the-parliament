@@ -22,6 +22,19 @@ export function prepareImpressionBatch(
   return [...out]
 }
 
+/** Post ids that are genuinely new impressions: candidates the viewer hasn't
+ *  already been recorded as seeing. Used to increment viewCount exactly once per
+ *  (viewer, post) — re-impressions of already-seen posts don't inflate the count.
+ *  Pure — unit tested. */
+export function newImpressionIds(candidateIds: string[], seenIds: Iterable<string>): string[] {
+  const seen = new Set(seenIds)
+  const out = new Set<string>()
+  for (const id of candidateIds) {
+    if (!seen.has(id)) out.add(id)
+  }
+  return [...out]
+}
+
 /** Union of hidden + seen ids (deduped) — the posts to exclude from the feed. */
 export function planExclusions(hiddenIds: string[], seenIds: string[]): string[] {
   const set = new Set<string>(hiddenIds)

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
   Type,
@@ -21,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react"
 import MentionInput from "@/components/shared/MentionInput"
+import { shouldAutosaveDraft } from "@/modules/feed/draft-autosave"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 import { TEXT_BACKGROUNDS, STUDENT_BG_PICKER, DEFAULT_BG_PICKER } from "@/config/text-backgrounds"
@@ -101,8 +103,12 @@ export interface ComposerSubmitData {
 
 export interface PostComposerProps {
   onSubmit: (data: ComposerSubmitData) => Promise<void>
-  /** Save the current draft. When provided, the "Save draft" button is active. */
-  onSaveDraft?: (data: ComposerSubmitData) => Promise<void>
+  /** Create-or-update the draft (autosave + manual "Save draft"). Returns the
+   *  draft id so subsequent saves update the same row instead of forking a new
+   *  one. When provided, autosave-while-typing and the "Save draft" button turn on. */
+  onAutosaveDraft?: (data: ComposerSubmitData, draftId: string | null) => Promise<{ id: string }>
+  /** Where the manual "Save draft" button navigates after saving. */
+  draftsHref?: string
   /** Edit mode locks post type, category, and poll — only body/background/photos change. */
   editing?: boolean
   title?: string
@@ -122,13 +128,15 @@ export interface PostComposerProps {
 
 export default function PostComposer({
   onSubmit,
-  onSaveDraft,
+  onAutosaveDraft,
+  draftsHref = "/compose/drafts",
   editing = false,
   title = "Create a post",
   submitLabel = "Post",
   submittingLabel = "Posting…",
   initial,
 }: PostComposerProps) {
+  const router = useRouter()
   const initType: PostType = initial?.format
     ? TYPE_FOR_FORMAT[initial.format] ?? "text"
     : "text"
@@ -233,21 +241,24 @@ export default function PostComposer({
     !uploading &&
     !jobGateBlocked
 
+  // Single source of the current composer payload (shared by post/draft/autosave).
+  const collectData = (): ComposerSubmitData => ({
+    body: text.trim(),
+    categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
+    format: FORMAT_FOR_TYPE[type],
+    linkUrl: type === "link" ? linkUrl.trim() : undefined,
+    media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
+    poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
+    textBg: type === "text" && bg !== "plain" ? bg : undefined,
+    quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
+    audience: audience.key,
+  })
+
   const handlePost = async () => {
     if (!canPost || submitting) return
     setSubmitting(true)
     try {
-      await onSubmit({
-        body: text.trim(),
-        categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
-        format: FORMAT_FOR_TYPE[type],
-        linkUrl: type === "link" ? linkUrl.trim() : undefined,
-        media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
-        poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
-        textBg: type === "text" && bg !== "plain" ? bg : undefined,
-        quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
-        audience: audience.key,
-      })
+      await onSubmit(collectData())
       // onSubmit redirects on success.
     } catch (err) {
       console.error("Failed to submit post", err)
@@ -259,22 +270,41 @@ export default function PostComposer({
   // A draft only needs *something* — not the full per-type validity.
   const hasDraftContent =
     text.trim().length > 0 || media.length > 0 || linkUrl.trim().length > 0
+
+  // The draft row this composer owns (created lazily by autosave/manual save);
+  // reused so we update it instead of forking a new draft per save.
+  const draftIdRef = useRef<string | null>(null)
+  const savedSnapshotRef = useRef<string>("")
+  const [autoSaved, setAutoSaved] = useState(false)
+
+  // Debounced autosave while typing. Skips edit mode (never fork a draft off a
+  // published post) and empty composers. Creates once, then updates the same id.
+  useEffect(() => {
+    if (!onAutosaveDraft) return
+    const data = collectData()
+    const snap = JSON.stringify(data)
+    if (!shouldAutosaveDraft({ editing, hasContent: hasDraftContent, snapshot: snap, savedSnapshot: savedSnapshotRef.current })) return
+    const t = setTimeout(async () => {
+      try {
+        const r = await onAutosaveDraft(data, draftIdRef.current)
+        draftIdRef.current = r.id
+        savedSnapshotRef.current = snap
+        setAutoSaved(true)
+      } catch {
+        /* transient — next keystroke retries */
+      }
+    }, 1500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- collectData reads all these; listing the fields keeps the effect honest
+  }, [text, bg, linkUrl, quoteSource, media, category, type, audience, editing, onAutosaveDraft, hasDraftContent])
+
   const handleSaveDraft = async () => {
-    if (!onSaveDraft || savingDraft || submitting || !hasDraftContent) return
+    if (!onAutosaveDraft || savingDraft || submitting || !hasDraftContent) return
     setSavingDraft(true)
     try {
-      await onSaveDraft({
-        body: text.trim(),
-        categoryKey: category ? CATEGORY_KEYS[category] ?? "career_update" : "career_update",
-        format: FORMAT_FOR_TYPE[type],
-        linkUrl: type === "link" ? linkUrl.trim() : undefined,
-        media: type === "photo" ? media.map((m) => ({ key: m.key, type: m.type })) : undefined,
-        poll: type === "poll" ? { question: text.trim(), options: pollFilled } : undefined,
-        textBg: type === "text" && bg !== "plain" ? bg : undefined,
-        quoteSource: type === "quote" && quoteSource.trim() ? quoteSource.trim() : undefined,
-        audience: audience.key,
-      })
-      // onSaveDraft redirects to the drafts page on success.
+      const r = await onAutosaveDraft(collectData(), draftIdRef.current)
+      draftIdRef.current = r.id
+      router.push(draftsHref)
     } catch (err) {
       console.error("Failed to save draft", err)
       setSavingDraft(false)
@@ -581,14 +611,19 @@ export default function PostComposer({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {!editing && onSaveDraft && (
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={savingDraft || submitting || !hasDraftContent}
-                  className={`${R_EL} px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent`}
-                >
-                  {savingDraft ? "Saving…" : "Save draft"}
-                </button>
+              {!editing && onAutosaveDraft && (
+                <>
+                  {autoSaved && !savingDraft && (
+                    <span className="text-xs font-medium text-gray-400">Draft saved</span>
+                  )}
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={savingDraft || submitting || !hasDraftContent}
+                    className={`${R_EL} px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent`}
+                  >
+                    {savingDraft ? "Saving…" : "Save draft"}
+                  </button>
+                </>
               )}
               <button
                 onClick={handlePost}

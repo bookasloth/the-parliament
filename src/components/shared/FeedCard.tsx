@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
-import { VerifiedBadge, PollCard, RichText, RichTextInline, MediaSection, QuoteBlock, HelpCircle } from "./feed-card/blocks"
+import { VerifiedBadge, PollCard, RichText, RichTextInline, MediaSection, QuoteBlock, LinkPreviewCard, HelpCircle } from "./feed-card/blocks"
 import { VerifiedTick } from "./VerifiedTick"
 import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
@@ -394,6 +394,8 @@ export function FeedCard({
         {post.poll && <PollCard poll={post.poll} onVote={onPollVote} />}
 
         {post.quote && <QuoteBlock quote={post.quote} />}
+
+        {post.link && !post.isSponsored && <LinkPreviewCard link={post.link} />}
 
         {post.question && (
           <div className="relative flex min-h-[150px] items-center justify-center overflow-hidden rounded-[4px] bg-gradient-to-br from-brand to-brand-700 px-5 pb-6 pt-12">

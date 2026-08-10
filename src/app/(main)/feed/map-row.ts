@@ -130,6 +130,18 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): Feed
     row.format === "quote" && body ? { text: body, author: quoteSource || name } : undefined
   const question = row.format === "question" ? body : undefined
 
+  const linkUrl = (row as { linkUrl?: string | null }).linkUrl
+  const linkPreview = (row as { linkPreview?: unknown }).linkPreview
+  const link =
+    row.format === "link" && linkUrl
+      ? {
+          url: linkUrl,
+          ...(linkPreview && typeof linkPreview === "object"
+            ? (linkPreview as Record<string, unknown>)
+            : {}),
+        } as NonNullable<FeedPost["link"]>
+      : undefined
+
   const pollRow = (
     row as {
       poll?: {
@@ -173,6 +185,7 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): Feed
     // Quote/question/poll render as their own blocks; don't also show raw body as text.
     content: quote || question || poll ? undefined : body,
     quote,
+    link,
     question,
     poll,
     mediaItems: mediaItemsFrom(row.media),
