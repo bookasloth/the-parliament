@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { fetchLinkPreview } from "@/lib/og-preview"
+import { getDefaultSchoolId } from "@/lib/school"
 
 const APP_BASE = process.env.AUTH_URL || "https://nnawca.org"
 
@@ -251,6 +252,48 @@ export async function createPost(input: CreatePostInput) {
   await syncPostHashtags(post.id, input.body ?? null)
 
   return post
+}
+
+/** Announce a profile-photo change only for a real change by an onboarded user
+ *  (skips the first-ever photo set during onboarding). Pure — unit tested. */
+export function shouldAnnouncePhotoChange(hadPriorPhoto: boolean, onboardingCompleted: boolean): boolean {
+  return hadPriorPhoto && onboardingCompleted
+}
+
+/** Post "Updated my profile photo" as an image post on the member's own feed
+ *  when they change their picture. Fire-and-forget from the photo route — the
+ *  caller must swallow errors so a feed failure never breaks the upload.
+ *  ponytail: no per-user cooldown — the caller fires only on a genuine change
+ *  and photo swaps are rare; add a throttle here if it's ever abused. */
+export async function announceProfilePhotoChange(
+  userId: string,
+  photoUrl: string,
+  hadPriorPhoto: boolean,
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { schoolId: true, onboardingCompleted: true },
+  })
+  if (!user || !shouldAnnouncePhotoChange(hadPriorPhoto, user.onboardingCompleted)) return
+
+  const schoolId = user.schoolId ?? (await getDefaultSchoolId())
+  if (!schoolId) return
+  // categoryId is required on Post; none of the categories is a perfect fit, so
+  // just use any of the school's categories.
+  const cat = await prisma.postCategory.findFirst({ where: { schoolId }, select: { key: true } })
+  if (!cat) return
+
+  await createPost({
+    authorId: userId,
+    schoolId,
+    categoryKey: cat.key,
+    format: "image",
+    media: [{ key: photoUrl, type: "image/jpeg", url: photoUrl }],
+    // #newProfilePhoto is indexed by createPost's syncPostHashtags → browsable at
+    // /feed?tag=newprofilephoto.
+    body: "Updated my profile photo 📸 #newProfilePhoto",
+    visibilityScope: "public",
+  })
 }
 
 /** The current user's draft posts, newest first. */
