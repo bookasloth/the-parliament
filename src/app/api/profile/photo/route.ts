@@ -3,6 +3,7 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { uploadAvatar, isAllowedImage } from "@/lib/supabase-storage"
 import { enforceRateLimit, RateLimitedError } from "@/lib/rate-limit"
+import { announceProfilePhotoChange } from "@/modules/feed/posts"
 
 const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
@@ -22,6 +23,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Image must be under 5 MB" }, { status: 400 })
     }
 
+    // Whether they already had a photo — a *change* announces on the feed; the
+    // first-ever set (e.g. during onboarding) does not.
+    const prior = await prisma.profile.findUnique({
+      where: { userId: user.id },
+      select: { photoUrl: true },
+    })
+
     const bytes = new Uint8Array(await file.arrayBuffer())
     const photoUrl = await uploadAvatar(user.id, bytes, file.type)
 
@@ -30,6 +38,14 @@ export async function POST(req: Request) {
       update: { photoUrl },
       create: { userId: user.id, photoUrl },
     })
+
+    // Auto-post the new photo on their feed. Never let a feed failure break the
+    // upload — the photo is already saved above.
+    try {
+      await announceProfilePhotoChange(user.id, photoUrl, !!prior?.photoUrl)
+    } catch (e) {
+      console.error("[photo announce] failed", e)
+    }
 
     return NextResponse.json({ photoUrl })
   } catch (e) {
