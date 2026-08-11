@@ -45,6 +45,7 @@ interface OtherUser {
   username: string | null
   avatar: string | null
   isVerified: boolean
+  membership: string
   headline: string | null
 }
 
@@ -456,7 +457,7 @@ export default function ConversationView({
           <div className="min-w-0">
             <h6 className="flex items-center gap-1 truncate text-sm font-semibold text-gray-900">
               <span className="truncate">{otherUser.name}</span>
-              {otherUser.isVerified && <VerifiedTick size={15} />}
+              {otherUser.isVerified && <VerifiedTick size={15} membership={otherUser.membership} />}
               {muted && <BellOff className="h-3.5 w-3.5 text-gray-400" />}
             </h6>
             <p className="truncate text-[11px] leading-tight">

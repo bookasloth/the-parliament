@@ -83,7 +83,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       id: true,
       lastMessageAt: true,
       participants: {
-        select: { userId: true, lastReadAt: true, muted: true, clearedAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true } } } } },
+        select: { userId: true, lastReadAt: true, muted: true, clearedAt: true, user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, membershipStatus: true, profile: { select: { photoUrl: true } } } } },
       },
       messages: { orderBy: { createdAt: "desc" }, take: 1, where: { deletedAt: null }, select: { body: true, media: true } },
     },
@@ -118,7 +118,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     const last = c.messages[0]
     return {
       id: c.id,
-      otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified },
+      otherUser: { id: other.id, name: other.displayName || other.legalName, username: other.username, avatar: other.profile?.photoUrl ?? null, isVerified: other.isVerified, membership: other.membershipStatus },
       lastMessagePreview: last ? last.body || ((last.media as string[]).length ? "📷 Photo" : "") : "",
       lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
       unreadCount: hidden ? 0 : unreadByConv.get(c.id) ?? 0,
@@ -154,7 +154,7 @@ export async function getConversationMeta(
   viewerId: string,
   conversationId: string,
 ): Promise<{
-  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean; headline: string | null }
+  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean; membership: string; headline: string | null }
   otherLastReadAt: string | null
   muted: boolean
   blocked: boolean
@@ -169,7 +169,7 @@ export async function getConversationMeta(
       where: { conversationId, userId: { not: viewerId } },
       select: {
         lastReadAt: true,
-        user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, profile: { select: { photoUrl: true, headline: true } } } },
+        user: { select: { id: true, displayName: true, legalName: true, username: true, isVerified: true, membershipStatus: true, profile: { select: { photoUrl: true, headline: true } } } },
       },
     }),
   ])
@@ -185,6 +185,7 @@ export async function getConversationMeta(
       username: other.user.username,
       avatar: other.user.profile?.photoUrl ?? null,
       isVerified: other.user.isVerified,
+      membership: other.user.membershipStatus,
       headline: other.user.profile?.headline ?? null,
     },
     otherLastReadAt: other.lastReadAt?.toISOString() ?? null,

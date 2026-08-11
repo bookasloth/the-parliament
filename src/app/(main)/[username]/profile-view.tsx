@@ -129,6 +129,7 @@ export interface ProfileViewData {
     batchLabel: string
     houseColor: string | null
     isVerified: boolean
+    membership: string
     isSelf: boolean
     viewerFollows: boolean
   }[]
@@ -253,7 +254,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
   const nameTick = (
     <div className="flex min-w-0 items-center gap-1.5">
       <h1 className="truncate font-heading text-xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-      {data.isVerified && <VerifiedTick size={20} />}
+      {data.isVerified && <VerifiedTick size={20} membership={data.membership.tier} />}
     </div>
   )
 
@@ -644,7 +645,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                         <div className="min-w-0 flex-1">
                           <Link href={`/${f.username ?? f.userId}`} className="flex items-center gap-1.5">
                             <span className="truncate text-sm font-semibold text-gray-900 hover:text-brand">{f.name}</span>
-                            {f.isVerified && <VerifiedTick size={14} />}
+                            {f.isVerified && <VerifiedTick size={14} membership={f.membership} />}
                           </Link>
                           {f.batchLabel && <p className="text-xs text-gray-500">{f.batchLabel}</p>}
                         </div>
