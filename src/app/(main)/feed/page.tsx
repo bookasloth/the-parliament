@@ -182,8 +182,12 @@ export default async function FeedPage({
 }) {
   const params = await searchParams
 
+  // Key the boundary on tab+tag so a soft (client) navigation — e.g. clicking a
+  // #hashtag — remounts it and streams the FeedLoading skeleton immediately.
+  // Without the key, a searchParams-only nav reuses the boundary and shows no
+  // feedback for the ~1–2s the RSC fetch takes, so the click felt dead.
   return (
-    <Suspense fallback={<FeedLoading />}>
+    <Suspense key={`${params.tab ?? "forYou"}:${params.tag ?? ""}`} fallback={<FeedLoading />}>
       <FeedData tab={params.tab} pinnedNewId={params.new} tag={params.tag} />
     </Suspense>
   )
