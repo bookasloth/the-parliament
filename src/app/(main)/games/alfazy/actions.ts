@@ -7,8 +7,8 @@ import { getDailyPuzzle, checkGuess, gradeGame, isSolved, WORD_LEN, MAX_GUESSES,
 import { alfazyGameId, ALFAZY_CACHE_TAG } from "@/modules/games/leaderboard";
 import { trophiesForUser, type Trophy } from "@/modules/games/champions";
 import { isValidGuess } from "@/lib/games/valid-guesses";
-import { nudgeVerdict, NUDGE_COOLDOWN_MS, type NudgeVerdict } from "@/modules/games/nudge";
-import { sendNotification } from "@/modules/notifications/service";
+import { nudgeVerdict, NUDGE_COOLDOWN_MS, NUDGE_MESSAGE, type NudgeVerdict } from "@/modules/games/nudge";
+import { findOrCreateConversation, sendMessage } from "@/modules/messaging/service";
 
 function todayUtcDate(): Date {
   const n = new Date();
@@ -98,32 +98,43 @@ export async function submitResultAction(
 }
 
 /**
- * Nudge a connection to come play Alfazy. Sends an in-app notification (no
- * email — nudges are low-stakes). Guarded: no self-nudge, connections only
- * (follow in either direction), one nudge per person per day. Rate-limit reuses
- * the notification row itself (entityId = actor) so there's no extra table.
+ * Nudge a connection to come play Alfazy. Sends a DM and opens the conversation
+ * (no notification-bell row — nudges land in the recipient's inbox). Guarded: no
+ * self-nudge, connections only (follow in either direction), one nudge per
+ * person per day. Rate-limit reuses the nudge message itself (same body, same
+ * sender, within the cooldown) so there's no extra table.
  */
 export async function nudgePlayerAction(targetUserId: string): Promise<NudgeVerdict> {
   const actor = await requireUser();
   const targetId = (targetUserId ?? "").trim();
   if (!targetId) return { ok: false, reason: "self" };
 
+  const connection = await prisma.follow.findFirst({
+    where: {
+      OR: [
+        { followerId: actor.id, followingId: targetId },
+        { followerId: targetId, followingId: actor.id },
+      ],
+    },
+    select: { id: true },
+  });
+  // Gate connection/self BEFORE touching the conversation (findOrCreateConversation
+  // throws for non-connections; we want a clean verdict instead).
+  if (actor.id === targetId) return { ok: false, reason: "self" };
+  if (!connection) return { ok: false, reason: "not_connected" };
+
+  const conversation = await findOrCreateConversation(actor.id, targetId);
+
   const cutoff = new Date(Date.now() - NUDGE_COOLDOWN_MS);
-  const [connection, recent] = await Promise.all([
-    prisma.follow.findFirst({
-      where: {
-        OR: [
-          { followerId: actor.id, followingId: targetId },
-          { followerId: targetId, followingId: actor.id },
-        ],
-      },
-      select: { id: true },
-    }),
-    prisma.notification.findFirst({
-      where: { userId: targetId, type: "game_nudge", entityId: actor.id, createdAt: { gte: cutoff } },
-      select: { id: true },
-    }),
-  ]);
+  const recent = await prisma.message.findFirst({
+    where: {
+      conversationId: conversation.id,
+      senderId: actor.id,
+      body: NUDGE_MESSAGE,
+      createdAt: { gte: cutoff },
+    },
+    select: { id: true },
+  });
 
   const verdict = nudgeVerdict({
     actorId: actor.id,
@@ -133,22 +144,7 @@ export async function nudgePlayerAction(targetUserId: string): Promise<NudgeVerd
   });
   if (!verdict.ok) return verdict;
 
-  const me = await prisma.user.findUnique({
-    where: { id: actor.id },
-    select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
-  });
-  const fromName = me?.displayName || me?.legalName || "A fellow alum";
-
-  await sendNotification({
-    userId: targetId,
-    kind: "game_nudge",
-    title: `${fromName} nudged you to play Alfazy`,
-    body: "Today's word is waiting — beat them on the board.",
-    entityType: "user",
-    entityId: actor.id,
-    imageUrl: me?.profile?.photoUrl ?? undefined,
-    sendEmail: false,
-  });
+  await sendMessage(actor.id, conversation.id, { body: NUDGE_MESSAGE });
 
   return { ok: true };
 }
