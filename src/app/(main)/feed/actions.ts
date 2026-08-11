@@ -85,12 +85,13 @@ export async function refreshPostCountsAction(postIds: string[]): Promise<PostCo
   return rows
 }
 
-export async function votePollAction(postId: string, pollId: string, optionId: string) {
+export async function votePollAction(_postId: string, pollId: string, optionId: string) {
   const user = await requireUser()
-  const r = await votePoll({ userId: user.id, pollId, optionId })
-  revalidatePath("/feed")
-  revalidatePath(`/feed/${postId}`)
-  return r
+  // No revalidatePath: the client's PollCard is optimistic and the vote is
+  // persisted here. Revalidating re-streamed /feed and reset the whole list a
+  // few seconds after voting (felt like a random refresh). /feed is
+  // force-dynamic, so the next real navigation reflects the vote anyway.
+  return votePoll({ userId: user.id, pollId, optionId })
 }
 
 export async function commentOnPost(postId: string, body: string, parentId?: string, imageUrl?: string) {
