@@ -430,7 +430,8 @@ export function FeedCard({
         )}
 
         {post.mediaItems && post.mediaItems.length > 0 && !post.isSponsored ? (
-          <MediaGallery items={post.mediaItems} />
+          // Feed: image click opens the post. Detail page (disableCardNav): keep the lightbox.
+          <MediaGallery items={post.mediaItems} linkHref={disableCardNav ? undefined : `/feed/${post.id}`} />
         ) : post.images && !post.isSponsored ? (
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-[4px] overflow-hidden">
             {post.images.map((img, i) => (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { VideoThumb } from "./VideoThumb"
 
@@ -14,8 +15,12 @@ export interface MediaItem {
  * Post media grid + full-screen lightbox. Images open in an overlay with
  * prev/next (arrows or ← → keys); videos play inline in the lightbox.
  * Self-contained, no external deps.
+ *
+ * `linkHref` (used on the feed): tiles link to that URL and the lightbox is
+ * disabled — clicking an image just opens the post. Omit it (post-detail page)
+ * for the full lightbox.
  */
-export function MediaGallery({ items }: { items: MediaItem[] }) {
+export function MediaGallery({ items, linkHref }: { items: MediaItem[]; linkHref?: string }) {
   const [open, setOpen] = useState(false)
   const [idx, setIdx] = useState(0)
   const n = items.length
@@ -48,36 +53,43 @@ export function MediaGallery({ items }: { items: MediaItem[] }) {
   return (
     <>
       <div className={`mt-3 grid gap-1 overflow-hidden rounded-[4px] ${n === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-        {shown.map((m, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => openAt(i)}
-            className="relative block overflow-hidden bg-gray-100"
-            aria-label="Open media"
-          >
-            {m.type === "video" ? (
-              <VideoThumb src={m.url} className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} />
-            ) : (
-              <Image
-                src={m.url}
-                alt=""
-                width={0}
-                height={0}
-                sizes={n === 1 ? "(max-width: 768px) 100vw, 600px" : "(max-width: 768px) 50vw, 300px"}
-                className={`w-full h-auto object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`}
-              />
-            )}
-            {i === 3 && extra > 0 && (
-              <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white">
-                +{extra}
-              </span>
-            )}
-          </button>
-        ))}
+        {shown.map((m, i) => {
+          const tile = (
+            <>
+              {m.type === "video" ? (
+                <VideoThumb src={m.url} className={`w-full object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`} />
+              ) : (
+                <Image
+                  src={m.url}
+                  alt=""
+                  width={0}
+                  height={0}
+                  sizes={n === 1 ? "(max-width: 768px) 100vw, 600px" : "(max-width: 768px) 50vw, 300px"}
+                  className={`w-full h-auto object-cover ${n === 1 ? "max-h-[500px]" : "h-48"}`}
+                />
+              )}
+              {i === 3 && extra > 0 && (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white">
+                  +{extra}
+                </span>
+              )}
+            </>
+          )
+          const cls = "relative block overflow-hidden bg-gray-100"
+          // On the feed, clicking an image opens the post (no lightbox).
+          return linkHref ? (
+            <Link key={i} href={linkHref} className={cls} aria-label="Open post">
+              {tile}
+            </Link>
+          ) : (
+            <button key={i} type="button" onClick={() => openAt(i)} className={cls} aria-label="Open media">
+              {tile}
+            </button>
+          )
+        })}
       </div>
 
-      {open && (
+      {!linkHref && open && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
           onClick={() => setOpen(false)}
