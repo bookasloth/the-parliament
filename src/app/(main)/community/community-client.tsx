@@ -12,7 +12,6 @@ import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { FollowButton } from "@/components/shared/FollowButton"
 import { colorAvatar } from "@/lib/avatar"
-import { MEMBERSHIP_TIERS, type MembershipTier } from "@/config/membership-colors"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
@@ -33,10 +32,6 @@ const TIERS = [
   { value: "life", label: "Life" },
 ]
 
-
-function tierAccent(status: string): string {
-  return (MEMBERSHIP_TIERS[status as MembershipTier] ?? MEMBERSHIP_TIERS.associate).accent
-}
 
 function toCard(r: DirectoryRow): AlumniCard {
   return {
@@ -293,7 +288,7 @@ export function CommunityClient({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <a href={`/${r.username}`} className="text-sm font-semibold text-gray-900 hover:text-brand">{r.displayName || r.legalName}</a>
-                  {r.isVerified && <VerifiedTick size={15} color={tierAccent(r.membershipStatus)} />}
+                  {r.isVerified && <VerifiedTick size={15} membership={r.membershipStatus} />}
                   {r.house && <span className="flex-shrink-0 rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: r.house.colorHex, color: r.house.name === "Udaigiri" ? "#666" : "#fff" }}>{r.house.name}</span>}
                 </div>
                 {r.headline && <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{r.headline}</p>}

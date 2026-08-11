@@ -209,6 +209,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
                 displayName: true,
                 legalName: true,
                 isVerified: true,
+                membershipStatus: true,
                 profile: {
                   select: {
                     photoUrl: true,
@@ -301,6 +302,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       : (f.profile?.batch?.label ?? ""),
     houseColor: f.profile?.house?.colorHex ?? null,
     isVerified: f.isVerified,
+    membership: f.membershipStatus,
     isSelf: f.id === viewerId,
     viewerFollows: viewerFollowing.has(f.id),
   }))

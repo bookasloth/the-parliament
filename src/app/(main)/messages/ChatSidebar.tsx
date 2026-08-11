@@ -78,7 +78,7 @@ export function ChatSidebar({ conversations }: { conversations: ConversationSumm
                     <div className="flex items-center justify-between gap-2">
                       <h6 className={`flex items-center gap-1 truncate text-sm ${active ? "font-bold text-brand" : "font-semibold text-gray-900"}`}>
                         <span className="truncate">{c.otherUser.name}</span>
-                        {c.otherUser.isVerified && <VerifiedTick size={14} />}
+                        {c.otherUser.isVerified && <VerifiedTick size={14} membership={c.otherUser.membership} />}
                       </h6>
                       {c.unreadCount > 0 ? (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-[3px] bg-brand px-1 text-[10px] font-bold text-white">

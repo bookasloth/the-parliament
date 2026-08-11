@@ -1,6 +1,6 @@
 export interface ConversationSummary {
   id: string
-  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean }
+  otherUser: { id: string; name: string; username: string | null; avatar: string | null; isVerified: boolean; membership: string }
   lastMessagePreview: string
   lastMessageAt: string | null
   unreadCount: number

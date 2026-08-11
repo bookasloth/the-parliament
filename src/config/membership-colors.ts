@@ -21,6 +21,26 @@ export interface TierMeta {
   next: MembershipTier | null;
 }
 
+/** Verified-seal fill per membership tier — the SINGLE source shared by the feed
+ *  VerifiedBadge and the standalone VerifiedTick, so a verified member's badge is
+ *  the same colour everywhere (feed, profile, messages, cards). life = gold,
+ *  premium/associate/committee = blue, student = green. Unknown → brand blue. */
+export const VERIFIED_SEAL_COLORS: Record<string, string> = {
+  life: "#E0A400",
+  student: "#16A34A",
+  premium: "#009ae4",
+  associate: "#009ae4",
+  committee: "#009ae4",
+  inactive: "#94a3b8",
+};
+
+export const DEFAULT_SEAL_COLOR = "#009ae4";
+
+/** Verified-seal colour for a tier, falling back to brand blue. */
+export function verifiedSealColor(tier: string | null | undefined): string {
+  return (tier && VERIFIED_SEAL_COLORS[tier]) || DEFAULT_SEAL_COLOR;
+}
+
 export const MEMBERSHIP_TIERS: Record<MembershipTier, TierMeta> = {
   student: {
     label: "Student",

@@ -47,7 +47,7 @@ interface AlumniProfileCardProps {
   actions?: ReactNode
 }
 
-export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVerified, hideMembership, footer, actions }: AlumniProfileCardProps) {
+export function AlumniProfileCard({ alumni, profileHref, verified, hideMembership, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
   const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   const href = profileHref ?? `/${alumni.id}`
@@ -85,7 +85,10 @@ export function AlumniProfileCard({ alumni, profileHref, verified, tierColoredVe
             {alumni.name}
           </Link>
           {verified && (
-            <VerifiedTick color={tierColoredVerified ? tier.accent : "#009ae4"} size={16} />
+            // Always tier-coloured from the shared seal source so a life member's
+            // badge is the same gold here as in the feed/profile/messages.
+            // tierColoredVerified is now the default and kept only for callers.
+            <VerifiedTick membership={membership} size={16} />
           )}
         </h3>
 
