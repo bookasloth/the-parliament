@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-// Member-area path prefixes that require a session. Public pages (feed, events,
-// groups, business directory, /[username] profiles, /membership pricing,
-// marketing, auth) are deliberately NOT listed and fall through untouched.
+// Member-area path prefixes that require a session. Only two guest-viewable
+// surfaces are deliberately left OUT so they fall through untouched:
+// /[username] profiles and /events (both shareable/SEO pages). Everything else
+// in the member area is gated.
 //
 // This is a defense-in-depth UX backstop, NOT the authoritative gate: every
 // page/route/server-action still calls requireUser()/requireAdmin(). Middleware
@@ -14,6 +15,11 @@ import { NextResponse, type NextRequest } from "next/server"
 // requireAdmin(), and their login lives at /auth/admin (not the member signin),
 // so a presence-check here would redirect admins to the wrong page.
 const PRIVATE_PREFIXES = [
+  "/feed",
+  "/community",
+  "/groups",
+  "/business",
+  "/membership",
   "/settings",
   "/connections",
   "/notifications",
@@ -22,11 +28,9 @@ const PRIVATE_PREFIXES = [
   "/saved",
   "/network",
   "/profile", // /profile/edit — public profiles live at /[username]
-  "/business/new",
   "/ama",
   "/games",
   "/upgrade",
-  "/membership/checkout", // /membership itself is public pricing
   "/dashboard",
   "/onboarding",
 ]
