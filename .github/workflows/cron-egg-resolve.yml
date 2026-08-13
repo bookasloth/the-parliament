@@ -1,0 +1,32 @@
+name: Monthly egg resolve (1st of month)
+
+# Runs /api/cron/eggs on the 1st of each month at 00:30 IST (19:00 UTC prev day).
+# Finds the user(s) with the most eggs, notifies them to volunteer, resets all to 20.
+
+on:
+  schedule:
+    - cron: "0 19 1 * *"
+  workflow_dispatch: # manual run, for testing
+
+concurrency:
+  group: cron-egg-resolve
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve monthly eggs
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TARGET: ${{ vars.CRON_TARGET_URL || 'https://nnawca.vercel.app' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET repo secret is not set."
+            exit 1
+          fi
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${TARGET}/api/cron/eggs"
+          echo

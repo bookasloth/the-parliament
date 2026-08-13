@@ -131,6 +131,8 @@ model User {
   isSuperAdmin         Boolean   @default(false) @map("is_super_admin")
   verificationData     Json?     @map("verification_data")
   membershipData       Json?     @map("membership_data")
+  eggBalance           Int       @default(20) @map("egg_balance")
+  shellBalance         Int       @default(0) @map("shell_balance")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -200,6 +202,9 @@ model User {
   onboardingProgress       OnboardingProgress[]
   experiences              Experience[]
   educations               Education[]
+  eggThrowsSent            EggThrow[]    @relation("egg_thrower")
+  eggThrowsReceived        EggThrow[]    @relation("egg_target")
+  shellLedger              ShellLedger[]
 
   @@unique([email])
   @@index([status])
@@ -2199,4 +2204,36 @@ model AmaSession {
 
   @@index([startsAt])
   @@map("ama_sessions")
+}
+
+// ── Economy: Eggs (hot-potato) ──────────────────────────────
+
+model EggThrow {
+  id         String   @id @default(uuid()) @db.Uuid
+  throwerId  String   @map("thrower_id") @db.Uuid
+  targetId   String   @map("target_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  thrower User @relation("egg_thrower", fields: [throwerId], references: [id], onDelete: Cascade)
+  target  User @relation("egg_target", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([throwerId, createdAt])
+  @@index([targetId])
+  @@map("egg_throws")
+}
+
+// ── Economy: Shell (commercial currency) ────────────────────
+
+model ShellLedger {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  delta     Int
+  reason    String   @db.VarChar(60)
+  refId     String?  @map("ref_id") @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("shell_ledger")
 }

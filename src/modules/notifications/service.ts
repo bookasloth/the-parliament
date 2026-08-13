@@ -30,6 +30,8 @@ export type NotificationKind =
   | "endorsement_received"
   | "new_message"
   | "game_nudge"
+  | "egg_thrown"
+  | "egg_volunteer"
 
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",

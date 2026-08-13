@@ -657,13 +657,26 @@ export async function givePostAward(input: {
   if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
   if (post.authorId === input.userId) throw new ForbiddenError("Can't award own post")
 
-  const { spendKarma } = await import("@/modules/karma/ledger")
+  const { spendKarma, awardKarma } = await import("@/modules/karma/ledger")
   await spendKarma({
     userId: input.userId,
     amount: spec.cost,
     reasonCode: "post_award",
     entityType: "post",
     entityId: post.id,
+  })
+
+  // Credit the post author — balance + lifetime only, NOT earned-30d.
+  // Prevents friends awarding each other into Mentor/Poller unlocks.
+  await awardKarma({
+    userId: post.authorId,
+    actionType: "post_award_received",
+    baseValue: spec.cost,
+    counterpartyId: input.userId,
+    role: "self",
+    entityType: "post",
+    entityId: post.id,
+    excludeFromEarned: true,
   })
 
   const award = await prisma.postAward.create({

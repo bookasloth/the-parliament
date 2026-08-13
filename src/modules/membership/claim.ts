@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { activateMembership } from "./activation"
 import { issueReceiptAndInvoice } from "./receipt"
 import { awardMembershipKarma } from "@/modules/karma/ledger"
+import { creditShells, shellsForMembership } from "@/modules/economy/shells"
 import { type PlanCode } from "@/config/membership"
 
 export interface ClaimResult {
@@ -64,6 +65,12 @@ export async function claimAndActivateOrder(
   // Perks-only karma for paying. Best-effort + idempotent per order, so it can
   // never undo the grant and a webhook/verify double-fire won't double-award.
   await awardMembershipKarma(order.userId, order.planCode, order.id).catch(() => {})
+
+  // Shell grant: price ÷ 100 shells, best-effort + idempotent by order ref.
+  const shellGrant = shellsForMembership(order.amountPaise / 100)
+  if (shellGrant > 0) {
+    await creditShells(order.userId, shellGrant, "membership_purchase", order.id).catch(() => {})
+  }
 
   return {
     claimed: true,

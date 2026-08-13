@@ -1,21 +1,19 @@
 // Canonical post-award catalog — the single source of truth for award key,
-// emoji, label and karma cost. The server (modules/feed/posts.ts) and the UI
+// icon name, label and karma cost. The server (modules/feed/posts.ts) and the UI
 // (feed-card) both derive from this, so costs/keys can never drift apart.
 // `key` is also the value stored on PostAward and requested by the client.
+// `icon` is a lucide-react icon name — the UI maps it to the component.
 
 export const POST_AWARD_LIST = [
-  { key: "GOAT", emoji: "🐐", label: "GOAT", cost: 50 },
-  { key: "SHITPOST", emoji: "💩", label: "Shitpost", cost: 20 },
-  { key: "FIRE", emoji: "🔥", label: "Fire Post", cost: 30 },
-  { key: "BRAIN", emoji: "🧠", label: "Big Brain", cost: 40 },
-  { key: "LOL", emoji: "😂", label: "LOL", cost: 25 },
-  { key: "MICDROP", emoji: "🎤", label: "Mic Drop", cost: 35 },
-  { key: "SUPPORT", emoji: "💪", label: "Support", cost: 30 },
-  { key: "WTF", emoji: "🤯", label: "WTF", cost: 28 },
-  { key: "CLAP", emoji: "👏", label: "Clap", cost: 22 },
-  { key: "CROWN", emoji: "👑", label: "Crown", cost: 60 },
-  { key: "ANGEL", emoji: "😇", label: "Angel", cost: 45 },
-  { key: "ROCKET", emoji: "🚀", label: "Rocket", cost: 55 },
+  { key: "OVATION", icon: "hand-clap", label: "Standing Ovation", cost: 20 },
+  { key: "MIND_BLOWN", icon: "zap", label: "Mind Blown", cost: 30 },
+  { key: "DEAD", icon: "skull", label: "Dead", cost: 20 },
+  { key: "SALUTE", icon: "shield-check", label: "Salute", cost: 35 },
+  { key: "FEELS", icon: "heart", label: "Right in the Feels", cost: 25 },
+  { key: "FIRE", icon: "flame", label: "Fire", cost: 25 },
+  { key: "FACTS", icon: "check-check", label: "Spitting Facts", cost: 30 },
+  { key: "TAKE_MY_KARMA", icon: "wallet", label: "Take My Karma", cost: 40 },
+  { key: "CHEFS_KISS", icon: "chef-hat", label: "Chef's Kiss", cost: 50 },
 ] as const
 
 export type AwardKey = (typeof POST_AWARD_LIST)[number]["key"]

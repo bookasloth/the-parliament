@@ -23,6 +23,7 @@ export type KarmaAction =
   | "donation"
   | "admin_adjustment"
   | "redemption_spend"
+  | "post_award_received"
 
 export interface AwardKarmaInput {
   userId: string

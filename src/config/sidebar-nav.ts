@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   Sparkles,
   ArrowDownAZ,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react"
 
@@ -41,6 +42,7 @@ export const DEFAULT_SIDEBAR_NAV: SidebarNav = {
     { label: "Karma", href: "/karma", icon: Star },
     { label: "Achievements", href: "/achievements", icon: Award },
     { label: "Membership", href: "/membership", icon: CreditCard },
+    { label: "Shell Store", href: "/store", icon: ShoppingBag },
   ],
 }
 
