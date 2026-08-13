@@ -9,7 +9,7 @@ import {
   MapPin,
   Video,
 } from "lucide-react"
-import { StickyNav } from "./StickyNav"
+import { PrivateNavbar } from "@/components/shared/PrivateNavbar"
 import { Footer } from "./Footer"
 import {
   Section,
@@ -21,14 +21,6 @@ import {
 } from "@/components/marketing/primitives"
 import type { EventItem } from "@/modules/events/service"
 import type { GroupListItem } from "@/modules/groups/service"
-
-const NAV_LINKS = [
-  { label: "Directory", href: "/community" },
-  { label: "Events", href: "/events" },
-  { label: "Groups", href: "/groups" },
-  { label: "About", href: "/about" },
-  { label: "Resources", href: "/help" },
-]
 
 // Honest, real numbers for a single-school Nagpur alumni body — not inflated
 // "25K+/120 countries" template figures. Small-but-true reads as credible.
@@ -79,7 +71,7 @@ export function Homepage({
 }) {
   return (
     <div id="main-content" className="bg-white">
-      <StickyNav centerLinks={NAV_LINKS} />
+      <PrivateNavbar />
 
       {/* ── Hero ── */}
       <Section width="7xl" className="pt-28 pb-12 lg:pt-32">
