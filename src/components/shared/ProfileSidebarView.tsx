@@ -97,16 +97,19 @@ export function ProfileSidebarView({
               {nav.heading}
             </p>
           )}
-          {nav.items.map(({ label, href, icon: Icon }) => (
+          {nav.items.map(({ label, href, icon: Icon }) => {
+            const resolvedHref = href === "/karma" && viewer?.username ? `/${viewer.username}/karma` : href
+            return (
             <a
               key={label}
-              href={href}
+              href={resolvedHref}
               className="flex items-center gap-3 rounded-[4px] px-3 py-2 text-sm font-medium text-gray-700 hover:bg-brand-50 hover:text-brand transition-colors"
             >
               <Icon className="h-[18px] w-[18px] flex-shrink-0 text-gray-400" />
               {label}
             </a>
-          ))}
+            )
+          })}
         </nav>
 
         <div className="border-t border-gray-100 py-2.5 text-center">

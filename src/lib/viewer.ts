@@ -16,8 +16,6 @@ export const loadViewer = cache((id: string) =>
       displayName: true,
       legalName: true,
       membershipStatus: true,
-      eggBalance: true,
-      shellBalance: true,
       profile: {
         select: {
           photoUrl: true,
