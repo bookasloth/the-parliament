@@ -11,7 +11,6 @@ describe("isProtectedPath", () => {
       "/groups/batch-2010",
       "/business",
       "/business/new",
-      "/membership",
       "/membership/checkout",
       "/settings",
       "/settings/danger",
@@ -45,6 +44,7 @@ describe("isProtectedPath", () => {
       "/",
       "/events", // public
       "/events/reunion", // public
+      "/membership", // public pricing (only /membership/checkout is private)
       "/someusername", // public profile at /[username]
       "/auth/signin",
       "/auth/signup",
