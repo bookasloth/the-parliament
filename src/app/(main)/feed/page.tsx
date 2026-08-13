@@ -10,6 +10,7 @@ import { loadViewer } from "@/lib/viewer"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
+import { getFollowSuggestions } from "@/modules/onboarding/suggestions"
 import { normalizeHashtag, postHashtagWhere } from "@/lib/rich-text"
 import FeedLoading from "./loading"
 
@@ -121,17 +122,16 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
       }
     }
 
-    suggestions = users.map((u) => {
-      const name = u.displayName || u.legalName
-      return {
-        username: u.username ?? "",
-        name,
-        role: u.profile?.headline || u.profile?.city || "JNV Nagpur Alumni",
-        avatar:
-          u.profile?.photoUrl ??
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
-      }
-    })
+    // Ranked "people you may know" — house/batch/gender buckets w/ reason strings.
+    if (viewer?.id) {
+      suggestions = (await getFollowSuggestions(viewer.id)).map((s) => ({
+        id: s.id,
+        username: s.username,
+        name: s.name,
+        avatar: s.photoUrl,
+        reason: s.reason,
+      }))
+    }
     news = pinned.map((p) => ({
       id: p.id,
       title: (p.body ?? "Pinned post").slice(0, 80),

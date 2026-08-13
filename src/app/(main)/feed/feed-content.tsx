@@ -30,12 +30,14 @@ import type { FeedCursor } from "@/modules/feed/cursor"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
 import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard"
+import { PeopleYouMayKnow } from "./PeopleYouMayKnow"
 
 export type SuggestedConnection = {
-  username: string
+  id: string
+  username: string | null
   name: string
-  role: string
   avatar: string
+  reason: string
 }
 
 export type NewsItem = {
@@ -494,9 +496,10 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar — Timewheel ads */}
+          {/* Right Sidebar — suggestions + Timewheel ads */}
           <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
-            <div className="sticky top-20">
+            <div className="sticky top-20 space-y-4">
+              {viewerId && <PeopleYouMayKnow people={suggestions} />}
               <TimewheelAdCard />
             </div>
           </div>
