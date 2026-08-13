@@ -433,19 +433,28 @@ export function FeedContent({
               </div>
             )}
 
-            {localPosts.map((post) => {
+            {localPosts.map((post, i) => {
               if (removedIds.has(post.id)) return null
               // Real DB rows use UUIDs; mock rows use "1".."6". Sponsored ads
               // are never server-backed, so they take the handler-free branch.
               const isReal = post.id.length > 10 && !post.isSponsored
               const isAuthor = !!(viewerId && post.authorId && viewerId === post.authorId)
-              if (!isReal) {
-                return <FeedCard key={post.id} post={post} />
-              }
-
-              return (
+              const card = isReal ? (
                 <FeedRow key={post.id} post={post} isAuthor={isAuthor} canPin={canPin} setRemovedIds={setRemovedIds} commentViewer={commentViewer} />
+              ) : (
+                <FeedCard key={post.id} post={post} />
               )
+              // "People you may know" injected inline after the 3rd post
+              // (or the last, on a shorter feed).
+              if (i === Math.min(2, localPosts.length - 1) && viewerId && suggestions.length > 0) {
+                return (
+                  <div key={post.id} className="contents">
+                    {card}
+                    <PeopleYouMayKnow people={suggestions} />
+                  </div>
+                )
+              }
+              return card
             })}
 
             {/* Load-more sentinel + button */}
@@ -496,10 +505,9 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar — suggestions + Timewheel ads */}
+          {/* Right Sidebar — Timewheel ads */}
           <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
-            <div className="sticky top-20 space-y-4">
-              {viewerId && <PeopleYouMayKnow people={suggestions} />}
+            <div className="sticky top-20">
               <TimewheelAdCard />
             </div>
           </div>
