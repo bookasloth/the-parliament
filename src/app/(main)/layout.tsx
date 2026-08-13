@@ -2,6 +2,7 @@ import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNav
 import { MobileTabBar } from "@/components/shared/MobileTabBar"
 import { PushRegistrar } from "@/components/shared/PushRegistrar"
 import { FollowStoreProvider } from "@/components/shared/follow-store"
+import { redirect } from "next/navigation"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
 import { getCurrent } from "@/modules/membership/service"
@@ -11,6 +12,10 @@ type Tier = (typeof TIERS)[number]
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const session = await optionalUser()
+  // Gate the whole (main) group: guests go to sign-in. Every page in this group
+  // shows the authenticated shell (compose, follow, reactions all need a user),
+  // so there's no useful guest view here.
+  if (!session?.id) redirect("/auth/signin")
   let viewer: NavbarViewer | null = null
   if (session?.id) {
     const u = await loadViewer(session.id)

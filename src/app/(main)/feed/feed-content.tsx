@@ -444,15 +444,11 @@ export function FeedContent({
               ) : (
                 <FeedCard key={post.id} post={post} />
               )
-              // "People you may know" injected inline after the 3rd post
-              // (or the last, on a shorter feed).
+              // "People you may know" injected inline after the 3rd post (or the
+              // last, on a shorter feed). Returned as an array so both stay direct
+              // children of the space-y-3 column and get the same vertical gaps.
               if (i === Math.min(2, localPosts.length - 1) && viewerId && suggestions.length > 0) {
-                return (
-                  <div key={post.id} className="contents">
-                    {card}
-                    <PeopleYouMayKnow people={suggestions} />
-                  </div>
-                )
+                return [card, <PeopleYouMayKnow key={`pymk-${post.id}`} people={suggestions} />]
               }
               return card
             })}
