@@ -149,6 +149,7 @@ export interface ProfileViewData {
   totalBadges: number
   karma: number
   eggs: number
+  shells: number
   viewerMembershipTier: ProfileViewData["membership"]["tier"] | null
 }
 
@@ -750,6 +751,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               badges: data.badges,
               totalBadges: data.totalBadges,
               eggs: data.eggs,
+              shells: data.shells,
               karma: data.karma,
             }}
           />

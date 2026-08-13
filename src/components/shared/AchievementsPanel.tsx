@@ -25,8 +25,8 @@ export type AchievementsData = {
   userId: string
   badges: AchievementBadge[]
   totalBadges: number
-  /** No backing model yet — pass 0 until an "eggs" currency exists. */
   eggs: number
+  shells: number
   karma: number
 }
 
@@ -34,7 +34,7 @@ const fmt = (n: number) => n.toLocaleString("en-US")
 const SUBHEAD = "mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500"
 
 export function AchievementsPanel({ data }: { data: AchievementsData }) {
-  const { ownerFirstName, userId, badges, totalBadges, eggs, karma } = data
+  const { ownerFirstName, userId, badges, totalBadges, eggs, shells, karma } = data
   const shown = badges.slice(0, BADGES_SHOWN)
   const overflow = totalBadges - shown.length
 
@@ -52,7 +52,7 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
         <div className="grid grid-cols-3 gap-3">
           <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Eggs" />
           <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma" />
-          <Collectable icon={SHELL_ICON} value={fmt(0)} label="Shells" />
+          <Collectable icon={SHELL_ICON} value={fmt(shells)} label="Shells" />
         </div>
 
         {/* Trophies — existing Alfazy champion titles. Renders nothing if none. */}
