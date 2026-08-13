@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { SHELL_PACKS } from "@/modules/economy/shells"
+import { SHELL_PACKS } from "@/config/shells"
 import { ShoppingBag, Sparkles } from "lucide-react"
 
 declare global {
