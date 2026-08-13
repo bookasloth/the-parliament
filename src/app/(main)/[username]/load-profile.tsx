@@ -75,6 +75,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       verificationStatus: true,
       profileCompletion: true,
       createdAt: true,
+      eggBalance: true,
+      shellBalance: true,
       profile: {
         select: {
           photoUrl: true,
@@ -409,7 +411,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     badges: user.userBadges.map((ub) => ub.badge),
     totalBadges: user.userBadges.length,
     karma: Math.round(karma.balance),
-    eggs: 0, // ponytail: no eggs currency model yet — wire the real count here when one exists
+    eggs: user.eggBalance,
+    shells: user.shellBalance,
     viewerMembershipTier: session?.user?.membershipStatus
       ? resolveMembership(session.user.membershipStatus).tier
       : null,
