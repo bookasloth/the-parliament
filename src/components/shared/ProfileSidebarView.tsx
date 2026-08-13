@@ -197,10 +197,38 @@ export function RailColumns({
     <div className="flex flex-col lg:flex-row gap-8">
       <aside className="hidden lg:block w-[280px] flex-shrink-0">
         <div className="sticky top-20">
-          <ProfileSidebarView viewer={sidebarViewer} nav={nav} />
+          {sidebarViewer ? (
+            <ProfileSidebarView viewer={sidebarViewer} nav={nav} />
+          ) : (
+            <GuestRailCard />
+          )}
         </div>
       </aside>
       <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  )
+}
+
+// Guest sidebar card: no fake profile / member nav — just a join prompt.
+function GuestRailCard() {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 text-center">
+      <p className="text-sm font-semibold text-gray-900">Join the JNV Nagpur alumni network</p>
+      <p className="mt-1 text-xs text-gray-500">
+        Connect with alumni, RSVP to events, and follow the feed.
+      </p>
+      <a
+        href="/auth/signup"
+        className="mt-4 block rounded-[4px] bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+      >
+        Join NNAWCA
+      </a>
+      <a
+        href="/auth/signin"
+        className="mt-2 block text-xs font-medium text-gray-500 hover:text-brand transition-colors"
+      >
+        Already a member? Log in
+      </a>
     </div>
   )
 }

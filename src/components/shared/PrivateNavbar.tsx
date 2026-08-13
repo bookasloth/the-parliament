@@ -52,14 +52,6 @@ export type NavbarViewer = {
   username: string
 }
 
-const FALLBACK_VIEWER: NavbarViewer = {
-  name: "Guest",
-  batch: "—",
-  avatar: "https://ui-avatars.com/api/?name=Guest",
-  membership: "associate",
-  username: "",
-}
-
 /* ---------------- Search scopes (Quora-style) ---------------- */
 const SEARCH_SCOPES = [
   { key: "profiles", label: "Profiles", icon: Users, href: "/community" },
@@ -188,8 +180,15 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
 }
 
 /* ---------------- Private Navbar ---------------- */
+// Guests (no session) see a slimmed guest bar; members see the full navbar.
+// Split so the authed hooks (notification polling, realtime) never run for
+// logged-out visitors on the public pages (/[username], /events).
 export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {}) {
-  const currentUser = viewer ?? FALLBACK_VIEWER
+  return viewer ? <MemberNavbar viewer={viewer} /> : <GuestNavbar />
+}
+
+function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
+  const currentUser = viewer
   const profileHref = currentUser.username ? `/${currentUser.username}` : "/profile/edit"
   const pathname = usePathname()
   const [query, setQuery] = useState("")
@@ -573,6 +572,40 @@ export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {})
           <SearchPanel query={query} />
         </div>
       )}
+    </header>
+  )
+}
+
+/* ---------------- Guest Navbar ---------------- */
+// Logged-out visitors on the public pages (/[username] profiles, /events).
+// No search/notifications/messages/profile — just brand + sign-in CTAs.
+function GuestNavbar() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
+        <a href="/" className="flex items-center gap-2 flex-shrink-0 group">
+          <LogoMark className="h-8 w-8 transition-transform group-hover:scale-110" />
+          <span className="hidden md:inline text-sm font-bold text-gray-900 group-hover:text-brand transition-colors">NNAWCA</span>
+        </a>
+        <a href="/events" className="ml-3 hidden sm:inline text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+          Events
+        </a>
+        <div className="flex-1" />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <a
+            href="/auth/signin"
+            className="rounded-[3px] px-3.5 py-1.5 text-sm font-semibold text-gray-600 hover:text-brand transition-colors"
+          >
+            Log in
+          </a>
+          <a
+            href="/auth/signup"
+            className="rounded-[3px] bg-brand px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+          >
+            Join
+          </a>
+        </div>
+      </nav>
     </header>
   )
 }
