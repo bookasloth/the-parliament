@@ -86,25 +86,18 @@ export const FEED_ADS: FeedPost[] = [
 
 // Ad frequency by membership tier:
 //   student   — capped feed of 5 items, positions 2 & 5 are ads (3 real posts)
-//   associate — an ad after every 5 posts
-//   premium   — an ad after every 10 posts
-//   life      — an ad after every 10 posts (top-paying tier: least intrusive cadence)
 //   committee — never any feed ads (internal office-bearer tier)
+//   everyone else — the ad rotation repeats through the whole feed: an ad after
+//                   every random 5–10 posts, cycling ads[] so all three recur.
 export type AdTier = "student" | "associate" | "premium" | "life" | "committee" | string
 
-function everyNFor(tier: AdTier): number | null {
-  if (tier === "committee") return null // internal tier: no ads
-  if (tier === "premium" || tier === "life") return 10
-  if (tier === "associate") return 5
-  return 5 // student handled separately below; default = every 5
-}
-
 // Splice ads into a feed page according to the viewer's tier. Returns a new
-// array (original untouched).
+// array (original untouched). `rand` is injectable for deterministic tests.
 export function injectFeedAds(
   posts: FeedPost[],
   tier: AdTier,
   ads: FeedPost[] = FEED_ADS,
+  rand: () => number = Math.random,
 ): FeedPost[] {
   if (ads.length === 0 || posts.length === 0) return posts
   if (tier === "committee") return posts // internal tier: ad-free
@@ -123,16 +116,21 @@ export function injectFeedAds(
     return out
   }
 
-  const everyN = everyNFor(tier)!
+  // A fresh random gap of 5–10 posts between each ad.
+  const gap = () => 5 + Math.floor(rand() * 6) // 5..10 inclusive
   const out: FeedPost[] = []
+  let sinceAd = 0
+  let next = gap()
   let adIdx = 0
   for (let i = 0; i < posts.length; i++) {
     out.push(posts[i])
-    if ((i + 1) % everyN === 0 && adIdx < ads.length) out.push(ads[adIdx++])
+    if (++sinceAd >= next) {
+      out.push(ads[adIdx++ % ads.length]) // cycle so ads recur
+      sinceAd = 0
+      next = gap()
+    }
   }
-  // Every ad gets shown even when the feed is shorter than the spacing needs —
-  // append any not-yet-placed ads at the end so a short feed still surfaces the
-  // full rotation instead of just the first one or two.
-  while (adIdx < ads.length) out.push(ads[adIdx++])
+  // Short feed that never reached the first gap still surfaces the rotation.
+  if (!out.some((p) => p.isSponsored)) for (const a of ads) out.push(a)
   return out
 }
