@@ -15,6 +15,7 @@ import type { FeedCursor } from "@/modules/feed/query"
 /** One rendered post in a profile timeline. */
 export type ProfileTimelinePost = { post: FeedPost; isAuthor: boolean; initialSaved: boolean }
 import { startConversationAction } from "../messages/actions"
+import { throwEggAction } from "../feed/egg-actions"
 import {
   Briefcase, MapPin, Building2, MoreHorizontal,
   Award, Droplet, Cake, Home, Users, Pencil, Share2,
@@ -201,6 +202,8 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
   }
   const [copied, setCopied] = useState(false)
   const [messagingLoading, setMessagingLoading] = useState(false)
+  const [eggThrowing, setEggThrowing] = useState(false)
+  const [eggMsg, setEggMsg] = useState<string | null>(null)
 
   const isOwn = !!data.owner
   const houseColor = data.house?.color ?? "#1a3a6b"
@@ -234,6 +237,20 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       alert("Failed to start conversation")
     } finally {
       setMessagingLoading(false)
+    }
+  }
+
+  async function handleThrowEgg() {
+    setEggThrowing(true)
+    setEggMsg(null)
+    try {
+      const r = await throwEggAction(data.userId)
+      setEggMsg(r.ok ? "🥚 Egg thrown!" : r.error)
+    } catch {
+      setEggMsg("Failed to throw egg")
+    } finally {
+      setEggThrowing(false)
+      setTimeout(() => setEggMsg(null), 3000)
     }
   }
 
@@ -289,6 +306,15 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       >
         <MessageSquare className="h-5 w-5" />
       </button>
+      <button
+        onClick={handleThrowEgg}
+        disabled={eggThrowing}
+        aria-label="Throw Egg"
+        title="Throw an egg 🥚"
+        className={`${R_EL} flex h-11 w-11 items-center justify-center border border-amber-200 text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        <span className="text-lg">🥚</span>
+      </button>
       {moreMenu}
     </>
   )
@@ -309,6 +335,9 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
       <FollowButton userId={data.userId} initialFollowing={data.viewerFollows} iconOnly />
       <button onClick={openConversation} disabled={messagingLoading} aria-label="Message" title="Message" className={`${ICON_BTN} disabled:opacity-50 disabled:cursor-not-allowed`}>
         <MessageSquare className="h-5 w-5" />
+      </button>
+      <button onClick={handleThrowEgg} disabled={eggThrowing} aria-label="Throw Egg" title="Throw an egg 🥚" className={`${ICON_BTN} !border-amber-200 !text-amber-600 hover:!bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed`}>
+        <span className="text-lg">🥚</span>
       </button>
       {moreMenu}
     </>
@@ -347,6 +376,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <div className="mt-3 flex justify-center">{nameTick}</div>
               {data.headline && <p className="mx-auto mt-1 max-w-[560px] truncate text-[13.5px] text-gray-600">{data.headline}</p>}
               <div className="mt-4 flex items-center justify-center gap-2.5">{actionsCompact}</div>
+              {eggMsg && <p className="mt-2 text-center text-xs font-medium text-amber-600">{eggMsg}</p>}
               {metaRow && (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-x-[18px] gap-y-1.5 border-t border-gray-100 pt-3 text-[13px] text-gray-600">{metaRow}</div>
               )}
@@ -362,6 +392,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     {data.headline && <p className="mt-1 truncate text-[13.5px] text-gray-700">{data.headline}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">{actions}</div>
+                  {eggMsg && <p className="mt-1 text-right text-xs font-medium text-amber-600">{eggMsg}</p>}
                 </div>
               </div>
               {metaRow && (

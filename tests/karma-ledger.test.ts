@@ -122,6 +122,22 @@ describe("payment / membership karma config", () => {
   })
 })
 
+describe("post award received (peer transfer)", () => {
+  it("classifies as 'other' — bypasses like/comment/share caps", () => {
+    expect(classifyKind("post_award_received")).toBe("other")
+  })
+  it("credits full value when counterparty differs from recipient", () => {
+    // role "self" + self false (different counterparty) → falls through to
+    // publisher branch: baseValue * giverWeight. giverWeight defaults to 1.
+    expect(computeApplied("other", 50, ctx({ role: "self", self: false }))).toBe(50)
+    expect(computeApplied("other", 60, ctx({ role: "self", self: false }))).toBe(60)
+  })
+  it("self-award blocked: same user awarding own post → 0", () => {
+    // givePostAward already blocks this, but computeApplied also returns 0.
+    expect(computeApplied("other", 50, ctx({ role: "self", self: true }))).toBe(0)
+  })
+})
+
 describe("negative daily floor", () => {
   it("zeroes further negatives once at/below the floor", () => {
     expect(computeApplied("downvote_post", -0.5, ctx({ netKarma: KARMA.NEGATIVE_DAILY_FLOOR }))).toBe(0)

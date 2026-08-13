@@ -11,7 +11,7 @@ import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
   FileText, UsersRound, Building2, Clock, TrendingUp, ChevronRight,
-  ArrowUpRight,
+  ArrowUpRight, ShoppingBag,
 } from "lucide-react"
 import { LogoMark } from "@/components/shared/Logo"
 
@@ -50,6 +50,8 @@ export type NavbarViewer = {
   avatar: string
   membership: MembershipTier
   username: string
+  eggBalance: number
+  shellBalance: number
 }
 
 /* ---------------- Search scopes (Quora-style) ---------------- */
@@ -406,6 +408,16 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
             )
           })}
 
+          {/* Economy chips */}
+          <li className="hidden md:flex items-center gap-1.5">
+            <span className="flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700" title="Eggs — throw them at friends!">
+              🥚 {currentUser.eggBalance}
+            </span>
+            <span className="flex items-center gap-0.5 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700" title="Shells — spend on events & perks">
+              🐚 {currentUser.shellBalance}
+            </span>
+          </li>
+
           {/* Notifications */}
           <li className="relative" ref={notifRef}>
             <button
@@ -511,6 +523,16 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
 
                   {/* Membership button — all 6 tier colours, upgrade flow enforced */}
                   <MembershipButton tier={currentUser.membership} />
+
+                  {/* Economy balances */}
+                  <div className="mt-2 flex items-center justify-center gap-3 text-xs">
+                    <span className="flex items-center gap-1 text-amber-700" title="Eggs — throw them at friends!">
+                      🥚 {currentUser.eggBalance}
+                    </span>
+                    <span className="flex items-center gap-1 text-sky-700" title="Shells — spend on events & perks">
+                      🐚 {currentUser.shellBalance}
+                    </span>
+                  </div>
                 </div>
 
                 <hr className="border-gray-100" />
@@ -521,6 +543,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                     { icon: FileText, label: "Drafts", href: "/compose/drafts" },
                     { icon: Award, label: "Achievements", href: "/achievements" },
                     { icon: Star, label: "Karma Points", href: "/karma" },
+                    { icon: ShoppingBag, label: "Shell Store", href: "/store" },
                     { icon: UserPlus, label: "Refer an Alumni", href: "/refer" },
                     { icon: Zap, label: "Try NNAWCA Pro", href: "https://www.nnawca.org/pro", external: true },
                     { icon: Settings, label: "Settings & Privacy", href: "/settings" },

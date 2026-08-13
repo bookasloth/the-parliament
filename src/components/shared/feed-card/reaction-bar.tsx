@@ -13,9 +13,31 @@ import {
   Share2,
   Newspaper,
   BarChart2,
+  Hand,
+  Zap,
+  Skull,
+  ShieldCheck,
+  Heart,
+  Flame,
+  CheckCheck,
+  Wallet,
+  ChefHat,
+  type LucideIcon,
 } from "lucide-react"
 import { useDropdown } from "./use-dropdown"
 import { awards } from "./types"
+
+const AWARD_ICONS: Record<string, LucideIcon> = {
+  "hand-clap": Hand,
+  "zap": Zap,
+  "skull": Skull,
+  "shield-check": ShieldCheck,
+  "heart": Heart,
+  "flame": Flame,
+  "check-check": CheckCheck,
+  "wallet": Wallet,
+  "chef-hat": ChefHat,
+}
 // Lazy-loaded: the emoji picker only mounts inside the award modal (opened on
 // tap), so keep it out of the feed bundle that every post ships.
 const EmojiPicker = dynamic(() => import("@/components/shared/EmojiPicker"))
@@ -76,22 +98,25 @@ function AwardModal({
         </div>
         <div className="px-5 py-4">
           <p className="mb-4 text-xs text-gray-500">Each award costs karma points. Choose one to reward this post.</p>
-          <div className="grid grid-cols-4 gap-2">
-            {awards.map((a) => (
-              <button
-                key={a.key}
-                onClick={() => setSelected(a.key)}
-                className={`flex flex-col items-center rounded-[4px] p-2.5 transition-all ${
-                  selected === a.key
-                    ? "bg-brand-50 ring-1 ring-brand"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                <span className="text-xl">{a.emoji}</span>
-                <span className="mt-0.5 text-[10px] font-semibold text-gray-700">{a.label}</span>
-                <span className="text-[9px] text-gray-400">{a.cost}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-2">
+            {awards.map((a) => {
+              const Icon = AWARD_ICONS[(a as { icon?: string }).icon ?? ""] ?? Award
+              return (
+                <button
+                  key={a.key}
+                  onClick={() => setSelected(a.key)}
+                  className={`flex flex-col items-center rounded-[4px] p-3 transition-all ${
+                    selected === a.key
+                      ? "bg-brand-50 ring-1 ring-brand"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  <Icon className={`h-6 w-6 ${selected === a.key ? "text-brand" : "text-gray-500"}`} />
+                  <span className="mt-1 text-[10px] font-semibold text-gray-700">{a.label}</span>
+                  <span className="text-[9px] text-gray-400">{a.cost}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">

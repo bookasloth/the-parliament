@@ -34,6 +34,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         membership: tier,
         username: u.username ?? "",
+        eggBalance: u.eggBalance,
+        shellBalance: u.shellBalance,
       }
     }
   }
