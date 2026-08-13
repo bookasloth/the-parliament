@@ -27,5 +27,10 @@ export function nudgeVerdict(f: NudgeFacts): NudgeVerdict {
 /** One nudge per (actor → target) per day. */
 export const NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000
 
-/** DM body a nudge sends. Also the rate-limit marker (same sender + body + window). */
-export const NUDGE_MESSAGE = "👋 Come play today's Alfazy — the word's waiting. Beat me on the board!"
+/**
+ * DM body a nudge sends. Also the rate-limit marker (same sender + body +
+ * window). The URL is linkified by tokenizeBody so recipients tap straight into
+ * the game.
+ */
+export const NUDGE_MESSAGE =
+  "👋 Come play today's Alfazy — the word's waiting. Beat me on the board! https://nnawca.org/games/alfazy"

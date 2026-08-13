@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { nudgeVerdict, type NudgeFacts } from "@/modules/games/nudge";
+import { nudgeVerdict, NUDGE_MESSAGE, type NudgeFacts } from "@/modules/games/nudge";
+import { tokenizeBody } from "@/lib/mention-tokens";
 
 const base: NudgeFacts = {
   actorId: "a",
@@ -33,5 +34,10 @@ describe("nudgeVerdict", () => {
       ok: false,
       reason: "self",
     });
+  });
+
+  it("nudge DM carries a clickable game link", () => {
+    const url = tokenizeBody(NUDGE_MESSAGE).find((t) => t.type === "url");
+    expect(url?.value).toMatch(/^https:\/\/.*\/games\/alfazy/);
   });
 });
