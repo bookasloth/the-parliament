@@ -43,6 +43,13 @@ export interface GameStats {
   tournaments: number
   champions: number
 }
+export interface EngagementRow {
+  key: string
+  title: string
+  plays: number
+  solved: number
+  solvedPct: number
+}
 
 function GamesTable({ games: initial }: { games: GameRow[] }) {
   const { run, isBusy } = useRowAction()
@@ -104,10 +111,11 @@ function GamesTable({ games: initial }: { games: GameRow[] }) {
 }
 
 export default function GamesClient({
-  stats, games, tournaments, champions,
+  stats, games, engagement, tournaments, champions,
 }: {
   stats: GameStats
   games: GameRow[]
+  engagement: EngagementRow[]
   tournaments: TournamentRow[]
   champions: ChampionRow[]
 }) {
@@ -124,6 +132,34 @@ export default function GamesClient({
         <StatCard label="Plays" value={stats.plays.toLocaleString()} icon={<Confetti className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
         <StatCard label="Tournaments" value={stats.tournaments.toLocaleString()} icon={<Trophy className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
         <StatCard label="Champions" value={stats.champions.toLocaleString()} icon={<Crown className="h-4.5 w-4.5" weight="duotone" />} accent="violet" />
+      </div>
+
+      <div className="rounded-[5px] border border-gray-200 bg-white p-4 mb-6">
+        <SectionHeader title="Today's Live Games" />
+        {engagement.length === 0 ? (
+          <EmptyState icon={<PlayCircle className="h-8 w-8" weight="duotone" />} title="No live games" description="Daily-puzzle games appear here once they go live." />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <Thead>
+                <Tr><Th>Game</Th><Th className="text-right">Plays today</Th><Th className="text-right">Solved</Th><Th className="text-right">Win rate</Th></Tr>
+              </Thead>
+              <Tbody>
+                {engagement.map((e) => (
+                  <Tr key={e.key}>
+                    <Td>
+                      <div className="font-medium text-gray-900">{e.title}</div>
+                      <div className="font-mono text-[11px] text-gray-500">{e.key}</div>
+                    </Td>
+                    <Td className="text-right tabular-nums">{e.plays.toLocaleString()}</Td>
+                    <Td className="text-right tabular-nums">{e.solved.toLocaleString()}</Td>
+                    <Td className="text-right tabular-nums">{e.solvedPct}%</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <div className="rounded-[5px] border border-gray-200 bg-white p-4 mb-6">

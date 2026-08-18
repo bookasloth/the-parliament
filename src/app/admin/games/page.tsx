@@ -1,10 +1,16 @@
 import { requireAdmin } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import GamesClient, { type GameRow, type TournamentRow, type ChampionRow } from "./games-client"
+import { LIVE_GAMES } from "@/config/games"
+import GamesClient, { type GameRow, type TournamentRow, type ChampionRow, type EngagementRow } from "./games-client"
 
 export const dynamic = "force-dynamic"
 
 const dateFmt = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+
+function todayUtc(): Date {
+  const n = new Date()
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()))
+}
 
 export default async function AdminGamesPage() {
   await requireAdmin()
@@ -56,6 +62,21 @@ export default async function AdminGamesPage() {
     ends: dateFmt(t.endsAt),
   }))
 
+  // Today's engagement for each live daily game (source='daily' = the live puzzle).
+  const liveKeys = new Set<string>(LIVE_GAMES.map((g) => g.key))
+  const today = todayUtc()
+  const engagement: EngagementRow[] = await Promise.all(
+    games
+      .filter((g) => liveKeys.has(g.key))
+      .map(async (g) => {
+        const [plays, solved] = await Promise.all([
+          prisma.gameScore.count({ where: { gameId: g.id, source: "daily", puzzleDate: today } }),
+          prisma.gameScore.count({ where: { gameId: g.id, source: "daily", puzzleDate: today, solved: true } }),
+        ])
+        return { key: g.key, title: g.title, plays, solved, solvedPct: plays ? Math.round((solved / plays) * 100) : 0 }
+      }),
+  )
+
   const championRows: ChampionRow[] = champions.map((c) => ({
     game: c.game?.title ?? null,
     scope: c.scope,
@@ -70,6 +91,7 @@ export default async function AdminGamesPage() {
     <GamesClient
       stats={{ games: totalGames, active: activeGames, plays: totalPlays, tournaments: totalTournaments, champions: totalChampions }}
       games={gameRows}
+      engagement={engagement}
       tournaments={tournamentRows}
       champions={championRows}
     />
