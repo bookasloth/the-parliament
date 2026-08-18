@@ -23,6 +23,10 @@ export interface GameConfig {
   /** Puzzle #1 date, UTC calendar date YYYY-MM-DD. This game's epoch. */
   launchISO: string;
   status: "live" | "coming_soon";
+  /** Landing-page "how to play" bullets. */
+  howTo: string[];
+  /** Noun for one puzzle instance, e.g. "word", "code", "equation". */
+  unit: string;
 }
 
 export const GAMES: GameConfig[] = [
@@ -35,6 +39,12 @@ export const GAMES: GameConfig[] = [
     code: "alfz",
     launchISO: "2026-07-01", // preserves current puzzle numbering; do not change post-launch
     status: "live",
+    unit: "word",
+    howTo: [
+      "Guess the 5-letter word in 6 tries.",
+      "Green = right letter, right spot · amber = right letter, wrong spot · grey = not in the word.",
+      "Fewer guesses = higher score. Keep your streak alive!",
+    ],
   },
   {
     key: "hit_and_blow",
@@ -43,8 +53,14 @@ export const GAMES: GameConfig[] = [
     tag: "Crack the 4-digit code",
     tint: "from-sky-50 to-white",
     code: "htbl",
-    launchISO: "2026-09-01",
-    status: "coming_soon",
+    launchISO: "2026-08-18",
+    status: "live",
+    unit: "code",
+    howTo: [
+      "Crack the secret 4-digit code in 9 tries. All four digits are different and it never starts with 0.",
+      "After each guess: 🎯 hits = right digit in the right spot · 💨 blows = right digit, wrong spot.",
+      "Fewer guesses = higher score. Keep your streak alive!",
+    ],
   },
   {
     key: "integra",
@@ -53,8 +69,14 @@ export const GAMES: GameConfig[] = [
     tag: "Guess the hidden equation",
     tint: "from-violet-50 to-white",
     code: "intg",
-    launchISO: "2026-09-01",
+    launchISO: "2026-08-18",
     status: "coming_soon",
+    unit: "equation",
+    howTo: [
+      "Guess the hidden 7-character equation in 6 tries.",
+      "Green = right symbol, right spot · violet = right symbol, wrong spot · grey = not used.",
+      "Fewer guesses = higher score. Keep your streak alive!",
+    ],
   },
 ];
 

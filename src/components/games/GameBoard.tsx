@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Delete, CornerDownLeft, Trophy } from "lucide-react";
+import { Delete, CornerDownLeft, Trophy, Target, Wind } from "lucide-react";
 import Confetti from "@/components/games/Confetti";
 import {
   checkGuessAction,
@@ -10,7 +10,7 @@ import {
   hasPlayedTodayAction,
   startGameAction,
 } from "@/app/(main)/games/actions";
-import type { Tile } from "@/modules/games/engines";
+import type { GuessResult, Tile } from "@/modules/games/engines";
 import type { BoardTheme } from "@/config/game-themes";
 
 export type { BoardTheme };
@@ -27,13 +27,13 @@ export interface GameBoardProps {
   name: string;
   length: number;
   maxGuesses: number;
+  render: "tiles" | "count";
   keyboard: KeyDef[][];
   theme: BoardTheme;
-  /** aria labels for each tile state. */
   tileLabels?: { correct: string; present: string; absent: string };
 }
 
-type GradedRow = { chars: string[]; tiles: Tile[] };
+type GradedRow = { chars: string[]; result: GuessResult };
 const RANK: Record<Tile, number> = { correct: 3, present: 2, absent: 1 };
 
 export default function GameBoard({
@@ -42,6 +42,7 @@ export default function GameBoard({
   name,
   length,
   maxGuesses,
+  render,
   keyboard,
   theme,
   tileLabels = { correct: "correct", present: "wrong spot", absent: "not present" },
@@ -56,7 +57,6 @@ export default function GameBoard({
   const [shakeKey, setShakeKey] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Legal single-character inputs = the 1-char keys on this game's keyboard.
   const inputChars = useMemo(
     () => new Set(keyboard.flat().map((k) => k.key).filter((k) => k.length === 1)),
     [keyboard],
@@ -111,27 +111,30 @@ export default function GameBoard({
     setBusy(true);
     setError(null);
     try {
-      const { valid, tiles, solved } = await checkGuessAction(gameKey, current, rows.length);
-      if (!valid) {
+      const { valid, result: graded } = await checkGuessAction(gameKey, current, rows.length);
+      if (!valid || !graded) {
         setError("Not a valid guess");
         setShakeKey((k) => k + 1);
         setBusy(false);
         return;
       }
       const chars = current.split("");
-      const nextRows = [...rows, { chars, tiles }];
+      const nextRows = [...rows, { chars, result: graded }];
       setRows(nextRows);
-      setKeyState((prev) => {
-        const next = { ...prev };
-        chars.forEach((c, i) => {
-          const t = tiles[i];
-          if (!next[c] || RANK[t] > RANK[next[c]]) next[c] = t;
+      if (graded.kind === "tiles") {
+        const tiles = graded.tiles;
+        setKeyState((prev) => {
+          const next = { ...prev };
+          chars.forEach((c, i) => {
+            const t = tiles[i];
+            if (!next[c] || RANK[t] > RANK[next[c]]) next[c] = t;
+          });
+          return next;
         });
-        return next;
-      });
+      }
       setCurrent("");
       const allGuesses = nextRows.map((r) => r.chars.join(""));
-      if (solved) await finish(allGuesses, true);
+      if (graded.solved) await finish(allGuesses, true);
       else if (nextRows.length >= maxGuesses) await finish(allGuesses, false);
     } catch {
       setError("Something went wrong. Try again.");
@@ -200,30 +203,50 @@ export default function GameBoard({
               const graded = rows[r];
               const isActive = r === rows.length && !gameOver;
               const shake = isActive && shakeKey > 0;
+              const isCount = graded && graded.result.kind === "count";
               return (
-                <div key={shake ? `${r}-shake-${shakeKey}` : r} role="row" className={`flex gap-1.5 ${shake ? "alfazy-shake" : ""}`}>
+                <div key={shake ? `${r}-shake-${shakeKey}` : r} role="row" className={`flex items-center gap-1.5 ${shake ? "alfazy-shake" : ""}`}>
                   {Array.from({ length }).map((_, c) => {
                     const ch = graded ? graded.chars[c] : r === rows.length ? current[c] ?? "" : "";
-                    const state: Tile | "empty" | "filled" = graded ? graded.tiles[c] : ch ? "filled" : "empty";
-                    const anim = graded ? "alfazy-flip" : "";
+                    const tileState: Tile | "empty" | "filled" =
+                      graded && graded.result.kind === "tiles" ? graded.result.tiles[c] : ch ? "filled" : "empty";
+                    const anim = graded && graded.result.kind === "tiles" ? "alfazy-flip" : "";
                     const bounce = r === solvedRow ? "alfazy-bounce" : "";
-                    const label = graded ? `${ch}, ${tileLabels[graded.tiles[c]]}` : ch ? ch : "empty";
+                    const label =
+                      graded && graded.result.kind === "tiles" ? `${ch}, ${tileLabels[graded.result.tiles[c]]}` : ch ? ch : "empty";
                     return (
                       <div
                         key={graded ? c : `${c}-${ch}`}
                         role="gridcell"
                         aria-label={label}
-                        className={`flex h-14 w-14 items-center justify-center rounded-[3px] border-2 text-2xl font-bold uppercase transition-colors ${tileClass(state)} ${anim} ${bounce} ${!graded && ch ? "alfazy-pop" : ""}`}
-                        style={{ animationDelay: graded ? `${c * 0.22}s` : bounce ? `${c * 0.08}s` : undefined }}
+                        className={`flex h-14 w-14 items-center justify-center rounded-[3px] border-2 text-2xl font-bold uppercase transition-colors ${tileClass(tileState)} ${anim} ${bounce} ${!graded && ch ? "alfazy-pop" : ""}`}
+                        style={{ animationDelay: graded && graded.result.kind === "tiles" ? `${c * 0.22}s` : bounce ? `${c * 0.08}s` : undefined }}
                       >
                         {ch}
                       </div>
                     );
                   })}
+                  {isCount && graded.result.kind === "count" && (
+                    <div className="ml-2 flex items-center gap-2 text-[15px] font-bold" aria-label={`${graded.result.hits} hits, ${graded.result.blows} blows`}>
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <Target className="h-4 w-4" /> {graded.result.hits}
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <Wind className="h-4 w-4" /> {graded.result.blows}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+
+          {render === "count" && !gameOver && (
+            <p className="mt-3 text-center text-[12px] text-gray-500">
+              <Target className="mr-1 inline h-3.5 w-3.5 text-emerald-600" /> right digit &amp; spot ·{" "}
+              <Wind className="mr-1 inline h-3.5 w-3.5 text-amber-500" /> right digit, wrong spot
+            </p>
+          )}
 
           {error && (
             <p className="mt-3 text-center text-[13px] font-semibold text-rose-600" role="alert">

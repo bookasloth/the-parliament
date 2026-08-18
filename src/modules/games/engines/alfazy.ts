@@ -8,7 +8,7 @@ import {
   scorePlay,
   wordForPuzzleNo,
 } from "@/modules/games/alfazy";
-import { type GameEngine, emojiGrid } from "./types";
+import { type GameEngine } from "./types";
 
 const LETTER_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
@@ -16,6 +16,7 @@ export const alfazyEngine: GameEngine = {
   key: "alfazy",
   length: WORD_LEN,
   maxGuesses: MAX_GUESSES,
+  render: "tiles",
   keyboard: [
     LETTER_ROWS[0].split("").map((k) => ({ key: k })),
     LETTER_ROWS[1].split("").map((k) => ({ key: k })),
@@ -27,7 +28,9 @@ export const alfazyEngine: GameEngine = {
   ],
   getAnswer: (puzzleNo) => wordForPuzzleNo(puzzleNo),
   isValidGuess: (guess) => isValidAlfazyGuess(guess.toUpperCase()),
-  grade: (guess, answer) => checkGuess(guess, answer),
+  evaluate: (guess, answer) => {
+    const tiles = checkGuess(guess, answer);
+    return { kind: "tiles", tiles, solved: tiles.every((t) => t === "correct") };
+  },
   scorePlay,
-  shareGrid: emojiGrid,
 };

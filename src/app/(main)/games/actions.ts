@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { type GameKey, gameByKey, launchDate } from "@/config/games";
-import { getEngine, runGame, type Tile } from "@/modules/games/engines";
+import { getEngine, runGame, type GuessResult } from "@/modules/games/engines";
 import { puzzleNumber } from "@/modules/games/periods";
 import { gameId, cacheTag, brokenStreakLength } from "@/modules/games/leaderboard";
 import { emitGameEvent } from "@/modules/games/analytics";
@@ -58,21 +58,20 @@ export async function checkGuessAction(
   key: string,
   guess: string,
   guessIndex = 0,
-): Promise<{ valid: boolean; tiles: Tile[]; solved: boolean }> {
+): Promise<{ valid: boolean; result: GuessResult | null }> {
   const k = assertLiveKey(key);
   const user = await requireUser();
   const engine = getEngine(k);
   const g = normalize(k, guess);
-  if (!engine.isValidGuess(g)) return { valid: false, tiles: [], solved: false };
+  if (!engine.isValidGuess(g)) return { valid: false, result: null };
   const answer = await answerForToday(k);
-  const tiles = engine.grade(g, answer);
-  const solved = tiles.every((t) => t === "correct");
+  const result = engine.evaluate(g, answer);
   await emitGameEvent(user.id, k, "guess_submitted", {
     puzzleNo: puzzleNumber(todayUtc(), launchDate(k)),
     guessIndex,
     valid: true,
   });
-  return { valid: true, tiles, solved };
+  return { valid: true, result };
 }
 
 /** A user's trophy case (frozen champion rows matching their identity). Public read. */

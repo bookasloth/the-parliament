@@ -1,14 +1,16 @@
+import { notFound } from "next/navigation";
 import GameBoard from "@/components/games/GameBoard";
-import { gameByKey } from "@/config/games";
+import { gameBySlug } from "@/config/games";
 import { getBoardTheme } from "@/config/game-themes";
-import { getEngine } from "@/modules/games/engines";
+import { getEngine, hasEngine } from "@/modules/games/engines";
 
-export const metadata = { title: "Play · Alfazy" };
 export const dynamic = "force-dynamic";
 
-export default function AlfazyPlayPage() {
-  const cfg = gameByKey("alfazy")!;
-  const engine = getEngine("alfazy");
+export default async function PlayPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const cfg = gameBySlug(slug);
+  if (!cfg || cfg.status !== "live" || !hasEngine(cfg.key)) notFound();
+  const engine = getEngine(cfg.key);
   return (
     <GameBoard
       gameKey={cfg.key}
@@ -19,7 +21,6 @@ export default function AlfazyPlayPage() {
       render={engine.render}
       keyboard={engine.keyboard}
       theme={getBoardTheme(cfg.key)}
-      tileLabels={{ correct: "correct", present: "wrong spot", absent: "not in word" }}
     />
   );
 }

@@ -9,15 +9,17 @@ import { PERIOD_LABEL, SCOPE_LABEL, SCOPES, type Scope } from "@/modules/games/f
  * effectively instant — no client round-trip, no spinner.
  */
 export default function LeaderboardTabs({
+  slug,
   scope,
   period,
   anchor,
 }: {
+  slug: string;
   scope: Scope;
   period: Period;
   anchor?: string;
 }) {
-  const base = "/games/alfazy/leaderboard";
+  const base = `/games/${slug}/leaderboard`;
   const q = anchor ? `?anchor=${anchor}` : "";
 
   return (

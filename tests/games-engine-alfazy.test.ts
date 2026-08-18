@@ -5,9 +5,9 @@ import { emojiGrid, type Tile } from "@/modules/games/engines/types";
 const alfazy = getEngine("alfazy");
 
 describe("alfazy engine (via GameEngine contract)", () => {
-  it("is registered; coming_soon games are not", () => {
+  it("is registered; games without an engine are not", () => {
     expect(hasEngine("alfazy")).toBe(true);
-    expect(hasEngine("hit_and_blow")).toBe(false);
+    expect(hasEngine("integra")).toBe(false); // no engine yet (phase 3)
     expect(() => getEngine("integra")).toThrow();
   });
 
@@ -22,8 +22,16 @@ describe("alfazy engine (via GameEngine contract)", () => {
 
   it("grades duplicate letters correctly (green consumes slot before yellow)", () => {
     // answer ALLOY, guess LLAMA: positions L,L,A,M,A
-    const tiles = alfazy.grade("LLAMA", "ALLOY");
-    expect(tiles).toEqual<Tile[]>(["present", "correct", "present", "absent", "absent"]);
+    const r = alfazy.evaluate("LLAMA", "ALLOY");
+    expect(r.kind).toBe("tiles");
+    if (r.kind !== "tiles") throw new Error("expected tiles");
+    expect(r.tiles).toEqual<Tile[]>(["present", "correct", "present", "absent", "absent"]);
+    expect(r.solved).toBe(false);
+  });
+
+  it("evaluate marks a full match solved", () => {
+    const r = alfazy.evaluate("ALLOY", "ALLOY");
+    expect(r.solved).toBe(true);
   });
 
   it("scores: 1 guess = 200, 6 = 100, fail = 20", () => {
