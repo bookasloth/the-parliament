@@ -7,6 +7,8 @@ import {
   GameController,
   Coins,
   Gift,
+  ShieldCheck,
+  DownloadSimple,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { PageHeader, StatCard, SectionHeader, BarChart, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, EmptyState } from "../admin-ui"
@@ -14,6 +16,23 @@ import { PageHeader, StatCard, SectionHeader, BarChart, ProgressBar, Table, Thea
 export const dynamic = "force-dynamic"
 
 const nf = new Intl.NumberFormat("en-IN")
+
+function displayNameOf(u: { displayName: string | null; legalName: string | null; username: string | null }) {
+  return u.displayName || u.legalName || u.username || "—"
+}
+
+// Small CSV-export link styled like a subtle admin button. Server-friendly (<a>, no client JS).
+function ExportLink({ dataset }: { dataset: string }) {
+  return (
+    <a
+      href={`/api/admin/analytics/export?dataset=${dataset}`}
+      className="inline-flex items-center gap-1.5 rounded-[4px] border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+    >
+      <DownloadSimple className="h-3.5 w-3.5" weight="duotone" />
+      CSV
+    </a>
+  )
+}
 
 // Membership tier display order (unknown tiers still render, appended at the end).
 const TIER_ORDER = ["free", "student", "associate", "premium", "life", "committee"]
@@ -29,6 +48,7 @@ const TIER_COLOR: Record<string, string> = {
 export default async function AdminAnalyticsPage() {
   const now = new Date()
   const since = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
   const [
     totalUsers,
@@ -44,6 +64,12 @@ export default async function AdminAnalyticsPage() {
     redemptions,
     karmaAgg,
     recentSignups,
+    topMembers,
+    topGroups,
+    topPosts,
+    reportsResolved30d,
+    modActions30d,
+    openReports,
   ] = await Promise.all([
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { deletedAt: null, isVerified: true } }),
@@ -62,6 +88,38 @@ export default async function AdminAnalyticsPage() {
       where: { deletedAt: null, createdAt: { gte: since } },
       select: { createdAt: true },
     }),
+    prisma.user.findMany({
+      where: { deletedAt: null },
+      orderBy: { userKarma: { karmaBalance: "desc" } },
+      take: 10,
+      select: {
+        displayName: true,
+        legalName: true,
+        username: true,
+        userKarma: { select: { karmaBalance: true } },
+        _count: { select: { posts: true } },
+      },
+    }),
+    prisma.group.findMany({
+      orderBy: { members: { _count: "desc" } },
+      take: 10,
+      select: { name: true, _count: { select: { members: true } } },
+    }),
+    prisma.post.findMany({
+      where: { deletedAt: null, status: "visible" },
+      orderBy: { upvoteCount: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        body: true,
+        upvoteCount: true,
+        commentCount: true,
+        author: { select: { displayName: true, legalName: true, username: true } },
+      },
+    }),
+    prisma.contentReport.count({ where: { resolvedAt: { gte: last30d } } }),
+    prisma.moderationAction.count({ where: { createdAt: { gte: last30d } } }),
+    prisma.contentReport.count({ where: { status: "open" } }),
   ])
 
   const karmaIssued = Number(karmaAgg._sum.appliedValue ?? 0)
@@ -107,7 +165,7 @@ export default async function AdminAnalyticsPage() {
 
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4 lg:col-span-2">
-          <SectionHeader title="Sign-ups (last 12 months)" />
+          <SectionHeader title="Sign-ups (last 12 months)" action={<ExportLink dataset="signups" />} />
           {recentSignups.length ? (
             <BarChart data={signupBuckets} labels={monthLabels} color="#3b82f6" />
           ) : (
@@ -116,7 +174,7 @@ export default async function AdminAnalyticsPage() {
         </div>
 
         <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
-          <SectionHeader title="Membership tiers" />
+          <SectionHeader title="Membership tiers" action={<ExportLink dataset="tiers" />} />
           {orderedTiers.length ? (
             <div className="space-y-3">
               {orderedTiers.map((tier) => {
@@ -158,6 +216,83 @@ export default async function AdminAnalyticsPage() {
             <Tr><Td>Karma issued</Td><Td>{nf.format(karmaIssued)}</Td></Tr>
           </Tbody>
         </Table>
+      </div>
+
+      <div className="mt-3">
+        <SectionHeader title="Moderation throughput (last 30 days)" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard label="Reports resolved (30d)" value={nf.format(reportsResolved30d)} icon={<ShieldCheck className="h-5 w-5" weight="duotone" />} accent="emerald" />
+          <StatCard label="Moderation actions (30d)" value={nf.format(modActions30d)} icon={<ShieldCheck className="h-5 w-5" weight="duotone" />} accent="violet" />
+          <StatCard label="Open reports (backlog)" value={nf.format(openReports)} icon={<ShieldCheck className="h-5 w-5" weight="duotone" />} accent="amber" />
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+          <SectionHeader title="Top members (by karma)" action={<ExportLink dataset="top-members" />} />
+          {topMembers.length ? (
+            <Table>
+              <Thead>
+                <Tr><Th>Member</Th><Th>Karma</Th><Th>Posts</Th></Tr>
+              </Thead>
+              <Tbody>
+                {topMembers.map((m, i) => (
+                  <Tr key={i}>
+                    <Td>{displayNameOf(m)}</Td>
+                    <Td>{nf.format(Number(m.userKarma?.karmaBalance ?? 0))}</Td>
+                    <Td>{nf.format(m._count.posts)}</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          ) : (
+            <EmptyState title="No members yet" />
+          )}
+        </div>
+
+        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+          <SectionHeader title="Top groups (by members)" action={<ExportLink dataset="top-groups" />} />
+          {topGroups.length ? (
+            <Table>
+              <Thead>
+                <Tr><Th>Group</Th><Th>Members</Th></Tr>
+              </Thead>
+              <Tbody>
+                {topGroups.map((g, i) => (
+                  <Tr key={i}>
+                    <Td>{g.name}</Td>
+                    <Td>{nf.format(g._count.members)}</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          ) : (
+            <EmptyState title="No groups yet" />
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+        <SectionHeader title="Top posts (by upvotes)" action={<ExportLink dataset="top-posts" />} />
+        {topPosts.length ? (
+          <Table>
+            <Thead>
+              <Tr><Th>Author</Th><Th>Upvotes</Th><Th>Comments</Th><Th>Excerpt</Th></Tr>
+            </Thead>
+            <Tbody>
+              {topPosts.map((p) => (
+                <Tr key={p.id}>
+                  <Td>{displayNameOf(p.author)}</Td>
+                  <Td>{nf.format(p.upvoteCount)}</Td>
+                  <Td>{nf.format(p.commentCount)}</Td>
+                  <Td className="text-zinc-400">{(p.body ?? "").slice(0, 60)}{(p.body?.length ?? 0) > 60 ? "…" : ""}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        ) : (
+          <EmptyState title="No posts yet" />
+        )}
       </div>
     </div>
   )
