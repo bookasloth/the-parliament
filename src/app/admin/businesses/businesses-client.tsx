@@ -98,36 +98,36 @@ export default function BusinessesClient({
 
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="relative flex-1 min-w-[220px]">
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
+          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" weight="duotone" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or city…"
-            className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-600"
+            className="w-full rounded-[4px] border border-gray-200 bg-white pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600"
           />
         </div>
         <select
           value={q0.status || "All"}
           onChange={(e) => pushQuery({ status: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600 capitalize"
+          className="rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-blue-600 capitalize"
         >
           {["All", ...STATUS_OPTIONS].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <select
           value={q0.category || "All"}
           onChange={(e) => pushQuery({ category: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600"
+          className="rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-blue-600"
         >
           <option value="All">All categories</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
       </div>
 
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
-              <Tr className="border-b border-zinc-800 hover:bg-transparent">
+              <Tr className="border-b border-gray-200 hover:bg-transparent">
                 <Th>Name</Th>
                 <Th>Owner</Th>
                 <Th>Category</Th>
@@ -153,16 +153,16 @@ export default function BusinessesClient({
                 return (
                   <Tr key={r.id}>
                     <Td>
-                      <div className="font-medium text-zinc-200">{r.name}</div>
-                      {r.city && <div className="text-[11px] text-zinc-500">{r.city}</div>}
+                      <div className="font-medium text-gray-800">{r.name}</div>
+                      {r.city && <div className="text-[11px] text-gray-500">{r.city}</div>}
                     </Td>
-                    <Td className="text-zinc-400">{r.owner}</Td>
-                    <Td className="text-zinc-400">{r.category}</Td>
+                    <Td className="text-gray-600">{r.owner}</Td>
+                    <Td className="text-gray-600">{r.category}</Td>
                     <Td>
-                      <span className="inline-flex items-center gap-1 text-zinc-300">
-                        <Star className="h-3.5 w-3.5 text-amber-400" weight="fill" />
+                      <span className="inline-flex items-center gap-1 text-gray-700">
+                        <Star className="h-3.5 w-3.5 text-amber-600" weight="fill" />
                         {r.ratingAvg.toFixed(1)}
-                        <span className="text-[11px] text-zinc-500">({r.reviewCount})</span>
+                        <span className="text-[11px] text-gray-500">({r.reviewCount})</span>
                       </span>
                     </Td>
                     <Td><StatusBadge status={r.status} /></Td>
@@ -189,20 +189,20 @@ export default function BusinessesClient({
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-          <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span></p>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span></p>
           <div className="flex items-center gap-1">
-            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
               <CaretLeft className="h-4 w-4" weight="duotone" />
             </button>
             {nums.map((p) => (
               <button key={p} onClick={() => pushQuery({ page: p })}
-                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                 {p}
               </button>
             ))}
-            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
+            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
               <CaretRight className="h-4 w-4" weight="duotone" />
             </button>
           </div>

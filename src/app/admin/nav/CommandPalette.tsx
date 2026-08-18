@@ -73,10 +73,10 @@ export default function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="relative w-full max-w-lg overflow-hidden rounded-[6px] border border-zinc-800 bg-[#111113] shadow-2xl"
+        className="relative w-full max-w-lg overflow-hidden rounded-[6px] border border-gray-200 bg-white shadow-2xl"
       >
-        <div className="flex items-center gap-2.5 border-b border-zinc-800 px-4">
-          <MagnifyingGlass className="h-4.5 w-4.5 flex-shrink-0 text-zinc-500" />
+        <div className="flex items-center gap-2.5 border-b border-gray-200 px-4">
+          <MagnifyingGlass className="h-4.5 w-4.5 flex-shrink-0 text-gray-500" />
           <input
             ref={inputRef}
             autoFocus
@@ -84,14 +84,14 @@ export default function CommandPalette({
             onChange={e => { setQuery(e.target.value); setSelected(0) }}
             onKeyDown={onKeyDown}
             placeholder="Search admin…"
-            className="flex-1 bg-transparent py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none"
+            className="flex-1 bg-transparent py-3.5 text-sm text-gray-900 placeholder-gray-400 outline-none"
           />
-          <kbd className="rounded-[3px] border border-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">Esc</kbd>
+          <kbd className="rounded-[3px] border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-400">Esc</kbd>
         </div>
 
         <ul className="max-h-[50vh] overflow-y-auto p-1.5">
           {results.length === 0 && (
-            <li className="px-3 py-6 text-center text-sm text-zinc-600">No matches</li>
+            <li className="px-3 py-6 text-center text-sm text-gray-400">No matches</li>
           )}
           {results.map((entry, i) => {
             const Icon = ICONS[entry.icon]
@@ -102,12 +102,12 @@ export default function CommandPalette({
                   onMouseEnter={() => setSelected(i)}
                   onClick={() => go(entry.href)}
                   className={`flex w-full items-center gap-3 rounded-[4px] px-3 py-2 text-left transition-colors ${
-                    isActive ? "bg-zinc-800/70" : "hover:bg-zinc-900"
+                    isActive ? "bg-gray-100/70" : "hover:bg-gray-100"
                   }`}
                 >
-                  {Icon && <Icon className="h-4.5 w-4.5 flex-shrink-0 text-zinc-400" weight="regular" />}
-                  <span className="flex-1 text-sm text-zinc-100">{entry.label}</span>
-                  <span className="text-[11px] text-zinc-500">{entry.section}</span>
+                  {Icon && <Icon className="h-4.5 w-4.5 flex-shrink-0 text-gray-600" weight="regular" />}
+                  <span className="flex-1 text-sm text-gray-900">{entry.label}</span>
+                  <span className="text-[11px] text-gray-500">{entry.section}</span>
                 </button>
               </li>
             )

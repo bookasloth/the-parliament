@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Plus, Copy } from "lucide-react"
 import {
   Button, Modal, StatusBadge, Table, Thead, Tbody, Tr, Th, Td, EmptyState,
+  useToast, useRowAction,
 } from "../admin-ui"
 
 interface Row {
@@ -18,6 +19,8 @@ interface Row {
 
 export default function AmaAdmin({ rows }: { rows: Row[] }) {
   const router = useRouter()
+  const toast = useToast()
+  const { run, isBusy } = useRowAction()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
@@ -42,6 +45,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
       if (!res.ok) throw new Error(data.error ?? "Failed to schedule")
       setOpen(false)
       setForm({ title: "", description: "", startsAt: "", coHostId: "" })
+      toast.success("AMA scheduled")
       router.refresh()
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed")
@@ -50,11 +54,16 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
     }
   }
 
-  async function end(id: string) {
+  function end(id: string) {
     if (!window.confirm("End this AMA? Participants will be disconnected.")) return
-    const res = await fetch(`/api/admin/ama/${id}/end`, { method: "POST" })
-    if (res.ok) router.refresh()
-    else alert("Failed to end AMA")
+    run(id, {
+      action: async () => {
+        const res = await fetch(`/api/admin/ama/${id}/end`, { method: "POST" })
+        if (!res.ok) throw new Error("Failed to end AMA")
+        router.refresh()
+      },
+      success: "AMA ended",
+    })
   }
 
   function copyLink(id: string) {
@@ -69,7 +78,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
         </Button>
       </div>
 
-      <div className="rounded-[5px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[5px] border border-gray-200 bg-white overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState title="No AMAs yet" description="Schedule your first Ask-Me-Anything session." />
         ) : (
@@ -82,7 +91,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
             <Tbody>
               {rows.map((r) => (
                 <Tr key={r.id}>
-                  <Td className="font-medium text-zinc-100">{r.title}</Td>
+                  <Td className="font-medium text-gray-900">{r.title}</Td>
                   <Td>{r.host}</Td>
                   <Td>{r.coHost ?? "—"}</Td>
                   <Td>{new Date(r.startsAt).toLocaleString()}</Td>
@@ -96,7 +105,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
                         <Button size="sm" variant="subtle">Open</Button>
                       </a>
                       {r.status !== "ended" && (
-                        <Button size="sm" variant="danger" onClick={() => end(r.id)}>End</Button>
+                        <Button size="sm" variant="danger" onClick={() => end(r.id)} disabled={isBusy(r.id)}>End</Button>
                       )}
                     </div>
                   </Td>
@@ -113,7 +122,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
               placeholder="Career Q&A with the 2010 batch"
             />
           </Field>
@@ -122,7 +131,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
             />
           </Field>
           <Field label="Starts at">
@@ -130,18 +139,18 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
               type="datetime-local"
               value={form.startsAt}
               onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
             />
           </Field>
           <Field label="Co-host user ID (optional — they can answer/publish)">
             <input
               value={form.coHostId}
               onChange={(e) => setForm({ ...form, coHostId: e.target.value })}
-              className="w-full rounded-[3px] border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-600"
+              className="w-full rounded-[3px] border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
               placeholder="uuid"
             />
           </Field>
-          {err && <p className="text-xs text-rose-400">{err}</p>}
+          {err && <p className="text-xs text-rose-600">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={create} disabled={busy || !form.title || !form.startsAt}>
@@ -157,7 +166,7 @@ export default function AmaAdmin({ rows }: { rows: Row[] }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-zinc-400">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
       {children}
     </div>
   )

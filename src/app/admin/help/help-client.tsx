@@ -59,13 +59,13 @@ export default function HelpClient({ guides }: { guides: Guide[] }) {
       />
 
       <div className="relative mb-6">
-        <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+        <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search guides…"
-          className="w-full rounded-[3px] border border-zinc-800 bg-[#111113] py-2 pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-600 focus:outline-none"
+          className="w-full rounded-[3px] border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-600 focus:outline-none"
         />
       </div>
 
@@ -79,17 +79,17 @@ export default function HelpClient({ guides }: { guides: Guide[] }) {
         <div className="space-y-8">
           {groups.map(([section, items]) => (
             <section key={section}>
-              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500">{section}</h2>
+              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">{section}</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {items.map((g) => (
                   <button
                     key={g.slug}
                     onClick={() => openGuide(g.slug)}
-                    className="group rounded-[5px] border border-zinc-800 bg-[#111113] p-4 text-left transition-colors hover:border-zinc-700"
+                    className="group rounded-[5px] border border-gray-200 bg-white p-4 text-left transition-colors hover:border-gray-300"
                   >
-                    <p className="text-sm font-semibold text-zinc-100">{g.title}</p>
-                    <p className="mt-1 text-sm text-zinc-400">{g.summary}</p>
-                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-400">
+                    <p className="text-sm font-semibold text-gray-900">{g.title}</p>
+                    <p className="mt-1 text-sm text-gray-600">{g.summary}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
                       View steps
                       <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
                     </span>
@@ -104,14 +104,14 @@ export default function HelpClient({ guides }: { guides: Guide[] }) {
       <Modal open={active !== null} onClose={closeGuide} title={active?.title}>
         {active && (
           <div>
-            <p className="text-sm text-zinc-400">{active.summary}</p>
+            <p className="text-sm text-gray-600">{active.summary}</p>
             <ol className="mt-4 space-y-3">
               {active.steps.map((step, i) => (
                 <li key={i} className="flex gap-3">
-                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-zinc-800 text-xs font-bold text-zinc-300 tabular-nums">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-gray-100 text-xs font-bold text-gray-700 tabular-nums">
                     {i + 1}
                   </span>
-                  <span className="pt-0.5 text-sm text-zinc-200">{step}</span>
+                  <span className="pt-0.5 text-sm text-gray-800">{step}</span>
                 </li>
               ))}
             </ol>

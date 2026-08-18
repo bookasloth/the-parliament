@@ -21,6 +21,7 @@ import {
   Th,
   Td,
   EmptyState,
+  useToast,
 } from "../admin-ui"
 import {
   savePageAction,
@@ -47,15 +48,13 @@ interface VersionRow {
   createdAt: string
 }
 
-type Toast = { ok: boolean; msg: string } | null
-
 const inputCls =
-  "w-full rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600"
+  "w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600"
 
 export default function PagesClient({ pages }: { pages: PageRow[] }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [toast, setToast] = useState<Toast>(null)
+  const notify = useToast()
 
   // Editor state
   const [editorOpen, setEditorOpen] = useState(false)
@@ -70,9 +69,9 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
   const [versions, setVersions] = useState<VersionRow[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  function flash(t: Toast) {
-    setToast(t)
-    if (t) setTimeout(() => setToast(null), 4000)
+  function flash(t: { ok: boolean; msg: string }) {
+    if (t.ok) notify.success(t.msg)
+    else notify.error(t.msg)
   }
 
   function openCreate() {
@@ -172,23 +171,11 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
         }
       />
 
-      {toast && (
-        <div
-          className={`mb-4 rounded-[4px] border px-3 py-2 text-xs font-semibold ${
-            toast.ok
-              ? "border-emerald-800 bg-emerald-950/40 text-emerald-300"
-              : "border-rose-800 bg-rose-950/40 text-rose-300"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
-
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
-              <Tr className="border-b border-zinc-800 hover:bg-transparent">
+              <Tr className="border-b border-gray-200 hover:bg-transparent">
                 <Th>Slug</Th>
                 <Th>Title</Th>
                 <Th>Status</Th>
@@ -217,16 +204,16 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
               {pages.map((row) => (
                 <Tr key={row.id}>
                   <Td className="whitespace-nowrap">
-                    <span className="rounded-[3px] bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">
+                    <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700">
                       /{row.slug}
                     </span>
                   </Td>
-                  <Td className="text-zinc-200">{row.title}</Td>
+                  <Td className="text-gray-800">{row.title}</Td>
                   <Td className="whitespace-nowrap">
                     <StatusBadge status={row.status} />
                   </Td>
-                  <Td className="whitespace-nowrap tabular-nums text-zinc-400">{row.versionCount}</Td>
-                  <Td className="whitespace-nowrap text-zinc-400">
+                  <Td className="whitespace-nowrap tabular-nums text-gray-600">{row.versionCount}</Td>
+                  <Td className="whitespace-nowrap text-gray-600">
                     {new Date(row.updatedAt).toLocaleDateString()}
                   </Td>
                   <Td className="whitespace-nowrap text-right">
@@ -262,7 +249,7 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
       >
         <form onSubmit={save} className="space-y-3">
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">
               Slug (kebab-case)
             </label>
             <input
@@ -275,7 +262,7 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
             />
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Title</label>
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -286,7 +273,7 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
             />
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">
               Body (markdown)
             </label>
             <textarea
@@ -297,7 +284,7 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
               placeholder="# Heading&#10;&#10;Plain markdown — no rich-text editor."
               className={`${inputCls} font-mono resize-y`}
             />
-            <p className="mt-1 text-[11px] text-zinc-600">
+            <p className="mt-1 text-[11px] text-gray-400">
               Plain markdown textarea — rich-text editing is out of scope.
             </p>
           </div>
@@ -319,7 +306,7 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
         onClose={() => setHistoryOpen(false)}
         title={historyPage ? `History — ${historyPage.title}` : "History"}
       >
-        {historyLoading && <p className="text-sm text-zinc-500">Loading versions…</p>}
+        {historyLoading && <p className="text-sm text-gray-500">Loading versions…</p>}
         {!historyLoading && versions.length === 0 && (
           <EmptyState
             icon={<ClockCounterClockwise className="h-8 w-8" weight="duotone" />}
@@ -328,12 +315,12 @@ export default function PagesClient({ pages }: { pages: PageRow[] }) {
           />
         )}
         {!historyLoading && versions.length > 0 && (
-          <ul className="divide-y divide-zinc-800">
+          <ul className="divide-y divide-gray-200">
             {versions.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-zinc-200">{v.title}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="truncate text-sm text-gray-800">{v.title}</p>
+                  <p className="text-[11px] text-gray-500">
                     {new Date(v.createdAt).toLocaleString()}
                   </p>
                 </div>

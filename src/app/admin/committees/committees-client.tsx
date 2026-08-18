@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { UsersThree, Trash, Plus } from "@phosphor-icons/react"
-import { PageHeader, Button, EmptyState } from "../admin-ui"
+import { PageHeader, Button, EmptyState, useRowAction } from "../admin-ui"
 import { COMMITTEES } from "@/config/committees"
 import { addCommitteeMemberAction, removeCommitteeMemberAction } from "./actions"
 
@@ -25,8 +25,10 @@ const ROUTES: Record<string, string> = {
 
 export default function CommitteesClient({ members }: { members: MemberRow[] }) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const { run, isBusy } = useRowAction()
+  // Optimistically hide removed rows; server-generated ids for new rows can't be
+  // predicted, so adds fall back to router.refresh() instead of optimism.
+  const [removed, setRemoved] = useState<Record<string, boolean>>({})
 
   function add(committee: string, form: HTMLFormElement) {
     const data = new FormData(form)
@@ -34,21 +36,31 @@ export default function CommitteesClient({ members }: { members: MemberRow[] }) 
     const name = String(data.get("name") || "").trim()
     const role = String(data.get("role") || "member")
     if (!email) return
-    setError(null)
-    startTransition(async () => {
-      const res = await addCommitteeMemberAction({ committee, email, name, role })
-      if (!res.ok) setError(res.error || "Could not add member")
-      else {
+    run(`add:${committee}`, {
+      action: async () => {
+        const res = await addCommitteeMemberAction({ committee, email, name, role })
+        if (!res.ok) throw new Error(res.error || "Could not add member")
         form.reset()
         router.refresh()
-      }
+      },
+      success: "Member added",
     })
   }
 
   function remove(id: string) {
-    startTransition(async () => {
-      await removeCommitteeMemberAction(id)
-      router.refresh()
+    run(id, {
+      optimistic: () => setRemoved((r) => ({ ...r, [id]: true })),
+      revert: () =>
+        setRemoved((r) => {
+          const n = { ...r }
+          delete n[id]
+          return n
+        }),
+      action: async () => {
+        const res = await removeCommitteeMemberAction(id)
+        if (!res.ok) throw new Error(res.error || "Could not remove member")
+      },
+      success: "Member removed",
     })
   }
 
@@ -61,20 +73,20 @@ export default function CommitteesClient({ members }: { members: MemberRow[] }) 
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         {COMMITTEES.map((c) => {
-          const list = members.filter((m) => m.committee === c.key)
+          const list = members.filter((m) => m.committee === c.key && !removed[m.id])
           return (
-            <section key={c.key} className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+            <section key={c.key} className="rounded-[5px] border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-zinc-100">{c.label}</h2>
-                  <p className="mt-0.5 text-xs text-zinc-500">Emailed about: {ROUTES[c.key] || "—"}</p>
+                  <h2 className="text-sm font-semibold text-gray-900">{c.label}</h2>
+                  <p className="mt-0.5 text-xs text-gray-500">Emailed about: {ROUTES[c.key] || "—"}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400">
+                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
                   {list.length} {list.length === 1 ? "member" : "members"}
                 </span>
               </div>
 
-              <div className="mt-3 divide-y divide-zinc-800">
+              <div className="mt-3 divide-y divide-gray-200">
                 {list.length === 0 ? (
                   <EmptyState
                     icon={<UsersThree className="h-6 w-6" weight="duotone" />}
@@ -85,21 +97,21 @@ export default function CommitteesClient({ members }: { members: MemberRow[] }) 
                   list.map((m) => (
                     <div key={m.id} className="flex items-center justify-between gap-3 py-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-zinc-200">
+                        <p className="truncate text-sm text-gray-800">
                           {m.name || m.email}
                           {m.role === "chair" && (
-                            <span className="ml-2 rounded-full bg-blue-600/20 px-1.5 py-0.5 text-[10px] font-medium text-blue-400">
+                            <span className="ml-2 rounded-full bg-blue-600/20 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
                               Chair
                             </span>
                           )}
                         </p>
-                        {m.name && <p className="truncate text-xs text-zinc-500">{m.email}</p>}
+                        {m.name && <p className="truncate text-xs text-gray-500">{m.email}</p>}
                       </div>
                       <button
                         onClick={() => remove(m.id)}
-                        disabled={pending}
+                        disabled={isBusy(m.id)}
                         aria-label={`Remove ${m.email}`}
-                        className="shrink-0 rounded-[3px] p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-red-400 disabled:opacity-50"
+                        className="shrink-0 rounded-[3px] p-1.5 text-gray-500 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
                       >
                         <Trash className="h-4 w-4" weight="duotone" />
                       </button>
@@ -113,29 +125,29 @@ export default function CommitteesClient({ members }: { members: MemberRow[] }) 
                   e.preventDefault()
                   add(c.key, e.currentTarget)
                 }}
-                className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-3"
+                className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3"
               >
                 <input
                   name="email"
                   type="email"
                   required
                   placeholder="email@example.com"
-                  className="min-w-[10rem] flex-1 rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-2.5 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-blue-600 focus:outline-none"
+                  className="min-w-[10rem] flex-1 rounded-[4px] border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
                 />
                 <input
                   name="name"
                   placeholder="Name (optional)"
-                  className="min-w-[8rem] flex-1 rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-2.5 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-blue-600 focus:outline-none"
+                  className="min-w-[8rem] flex-1 rounded-[4px] border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
                 />
                 <select
                   name="role"
                   defaultValue="member"
-                  className="rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-zinc-300 focus:border-blue-600 focus:outline-none"
+                  className="rounded-[4px] border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-700 focus:border-blue-600 focus:outline-none"
                 >
                   <option value="member">Member</option>
                   <option value="chair">Chair</option>
                 </select>
-                <Button type="submit" size="sm" disabled={pending}>
+                <Button type="submit" size="sm" disabled={isBusy(`add:${c.key}`)}>
                   <Plus className="h-4 w-4" weight="bold" /> Add
                 </Button>
               </form>
@@ -143,8 +155,6 @@ export default function CommitteesClient({ members }: { members: MemberRow[] }) 
           )
         })}
       </div>
-
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
     </div>
   )
 }

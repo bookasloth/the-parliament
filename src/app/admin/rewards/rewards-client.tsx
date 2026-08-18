@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Gift, Coins, Package, Clock, CheckCircle, CaretLeft, CaretRight } from "@phosphor-icons/react"
 import {
@@ -15,6 +15,7 @@ import {
   Th,
   Td,
   EmptyState,
+  useRowAction,
 } from "../admin-ui"
 import { setRewardActive, setRedemptionStatus } from "./actions"
 
@@ -68,14 +69,9 @@ export default function RewardsClient({
   pageInfo: RewardsPageInfo
 }) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
-
-  function run(fn: () => Promise<unknown>) {
-    startTransition(async () => {
-      await fn()
-      router.refresh()
-    })
-  }
+  const { run, isBusy } = useRowAction()
+  const [activeOverride, setActiveOverride] = useState<Record<string, boolean>>({})
+  const [statusOverride, setStatusOverride] = useState<Record<string, string>>({})
 
   function pushQuery(patch: Partial<RewardsQuery>) {
     const next = { ...query, ...patch }
@@ -109,9 +105,9 @@ export default function RewardsClient({
       </div>
 
       {/* ---- Reward items ---- */}
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden mb-6">
-        <div className="border-b border-zinc-800 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-200">Reward Items</h2>
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden mb-6">
+        <div className="border-b border-gray-200 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-800">Reward Items</h2>
         </div>
         <div className="overflow-x-auto">
           {items.length === 0 ? (
@@ -133,9 +129,11 @@ export default function RewardsClient({
                 </Tr>
               </Thead>
               <Tbody>
-                {items.map((i) => (
+                {items.map((i) => {
+                  const isActive = activeOverride[i.id] ?? i.isActive
+                  return (
                   <Tr key={i.id}>
-                    <Td className="text-zinc-100 font-medium">{i.title}</Td>
+                    <Td className="text-gray-900 font-medium">{i.title}</Td>
                     <Td className="capitalize">{i.category}</Td>
                     <Td>{i.karmaCost.toLocaleString()}</Td>
                     <Td>{i.quantity ?? "∞"}</Td>
@@ -143,24 +141,30 @@ export default function RewardsClient({
                     <Td>{i.popularity.toLocaleString()}</Td>
                     <Td>
                       <span className="inline-flex items-center gap-1.5">
-                        <StatusBadge status={i.isActive ? "active" : "archived"} />
+                        <StatusBadge status={isActive ? "active" : "archived"} />
                         {i.isFeatured && (
-                          <span className="rounded-[3px] border border-amber-800 bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-300">Featured</span>
+                          <span className="rounded-[3px] border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700">Featured</span>
                         )}
                       </span>
                     </Td>
                     <Td className="text-right">
                       <Button
-                        variant={i.isActive ? "ghost" : "primary"}
+                        variant={isActive ? "ghost" : "primary"}
                         size="sm"
-                        disabled={pending}
-                        onClick={() => run(() => setRewardActive(i.id, !i.isActive))}
+                        disabled={isBusy(i.id)}
+                        onClick={() => run(i.id, {
+                          optimistic: () => setActiveOverride(o => ({ ...o, [i.id]: !isActive })),
+                          revert: () => setActiveOverride(o => { const n = { ...o }; delete n[i.id]; return n }),
+                          action: () => setRewardActive(i.id, !isActive),
+                          success: isActive ? "Item disabled" : "Item enabled",
+                        })}
                       >
-                        {i.isActive ? "Disable" : "Enable"}
+                        {isActive ? "Disable" : "Enable"}
                       </Button>
                     </Td>
                   </Tr>
-                ))}
+                  )
+                })}
               </Tbody>
             </Table>
           )}
@@ -169,17 +173,17 @@ export default function RewardsClient({
 
       {/* ---- Redemptions ---- */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-zinc-200">Redemptions</h2>
+        <h2 className="text-sm font-semibold text-gray-800">Redemptions</h2>
         <select
           value={query.status || "All"}
           onChange={(e) => pushQuery({ status: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600 capitalize"
+          className="rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-blue-600 capitalize"
         >
           {["All", ...STATUS_OPTIONS].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           {redemptions.length === 0 ? (
             <div className="p-6">
@@ -199,44 +203,52 @@ export default function RewardsClient({
                 </Tr>
               </Thead>
               <Tbody>
-                {redemptions.map((r) => (
+                {redemptions.map((r) => {
+                  const status = statusOverride[r.id] ?? r.status
+                  return (
                   <Tr key={r.id}>
-                    <Td className="text-zinc-100">{r.user}</Td>
+                    <Td className="text-gray-900">{r.user}</Td>
                     <Td>{r.reward}</Td>
                     <Td>{r.karmaSpent.toLocaleString()}</Td>
-                    <Td><StatusBadge status={r.status} /></Td>
+                    <Td><StatusBadge status={status} /></Td>
                     <Td>{r.channel ?? "—"}</Td>
-                    <Td className="whitespace-nowrap text-zinc-400">{r.date}</Td>
+                    <Td className="whitespace-nowrap text-gray-600">{r.date}</Td>
                     <Td className="text-right">
-                      {r.status === "pending" ? (
-                        <Button size="sm" disabled={pending} onClick={() => run(() => setRedemptionStatus(r.id, "fulfilled"))}>
+                      {status === "pending" ? (
+                        <Button size="sm" disabled={isBusy(r.id)} onClick={() => run(r.id, {
+                          optimistic: () => setStatusOverride(o => ({ ...o, [r.id]: "fulfilled" })),
+                          revert: () => setStatusOverride(o => { const n = { ...o }; delete n[r.id]; return n }),
+                          action: () => setRedemptionStatus(r.id, "fulfilled"),
+                          success: "Marked fulfilled",
+                        })}>
                           Mark fulfilled
                         </Button>
                       ) : (
-                        <span className="text-zinc-600">—</span>
+                        <span className="text-gray-400">—</span>
                       )}
                     </Td>
                   </Tr>
-                ))}
+                  )
+                })}
               </Tbody>
             </Table>
           )}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-          <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span></p>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span></p>
           <div className="flex items-center gap-1">
-            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
               <CaretLeft className="h-4 w-4" weight="duotone" />
             </button>
             {nums.map((p) => (
               <button key={p} onClick={() => pushQuery({ page: p })}
-                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                 {p}
               </button>
             ))}
-            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
+            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
               <CaretRight className="h-4 w-4" weight="duotone" />
             </button>
           </div>

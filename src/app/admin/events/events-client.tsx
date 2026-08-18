@@ -94,20 +94,20 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
-        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-zinc-800">
-          <div className="flex gap-1 rounded-[4px] bg-zinc-900 p-1 overflow-x-auto">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-gray-200">
+          <div className="flex gap-1 rounded-[4px] bg-gray-100 p-1 overflow-x-auto">
             {(["all", "upcoming", "draft", "past", "cancelled"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
-                className={`rounded-[3px] px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-[#111113] text-blue-400 shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}>
+                className={`rounded-[3px] px-3 py-1.5 text-xs font-semibold capitalize whitespace-nowrap transition-colors ${tab === t ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-800"}`}>
                 {t}
               </button>
             ))}
           </div>
           <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" weight="duotone" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events..."
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all" />
+              className="w-full rounded-[4px] border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
           </div>
         </div>
 
@@ -134,13 +134,13 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
                           title={featuredState[e.id] ? "Unfeature" : "Feature on homepage"}
                           className="flex-shrink-0 disabled:opacity-50"
                         >
-                          <Star className={`h-4 w-4 transition-colors ${featuredState[e.id] ? "text-amber-400" : "text-zinc-700 hover:text-amber-300"}`} weight={featuredState[e.id] ? "fill" : "duotone"} />
+                          <Star className={`h-4 w-4 transition-colors ${featuredState[e.id] ? "text-amber-600" : "text-gray-400 hover:text-amber-700"}`} weight={featuredState[e.id] ? "fill" : "duotone"} />
                         </button>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-zinc-200 truncate">{e.title}</p>
-                          <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+                          <p className="text-xs font-semibold text-gray-800 truncate">{e.title}</p>
+                          <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
                             <span className="capitalize">{e.category}</span>
-                            <span className="text-zinc-700">·</span>
+                            <span className="text-gray-400">·</span>
                             <span className="flex items-center gap-0.5 capitalize">
                               {e.mode === "virtual" ? <VideoCamera className="h-3 w-3" weight="duotone" /> : <MapPin className="h-3 w-3" weight="duotone" />}
                               {e.mode}
@@ -149,48 +149,48 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
                         </div>
                       </div>
                     </Td>
-                    <Td className="text-xs text-zinc-400 whitespace-nowrap">{e.date}</Td>
-                    <Td className="text-xs text-zinc-400 whitespace-nowrap">{e.organizer}</Td>
-                    <Td className="text-xs font-semibold text-zinc-300 tabular-nums whitespace-nowrap">{e.going} going</Td>
-                    <Td className="text-xs font-bold text-zinc-300 tabular-nums whitespace-nowrap">{formatRevenue(e)}</Td>
+                    <Td className="text-xs text-gray-600 whitespace-nowrap">{e.date}</Td>
+                    <Td className="text-xs text-gray-600 whitespace-nowrap">{e.organizer}</Td>
+                    <Td className="text-xs font-semibold text-gray-700 tabular-nums whitespace-nowrap">{e.going} going</Td>
+                    <Td className="text-xs font-bold text-gray-700 tabular-nums whitespace-nowrap">{formatRevenue(e)}</Td>
                     <Td><StatusBadge status={status} /></Td>
                     <Td className="relative">
                       <button onClick={() => setActiveMenu(activeMenu === e.id ? null : e.id)}
-                        className="p-1.5 rounded-[3px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800">
+                        className="p-1.5 rounded-[3px] text-gray-500 hover:text-gray-800 hover:bg-gray-100">
                         <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                       </button>
                       {activeMenu === e.id && (
-                        <div className="absolute right-4 top-10 z-20 w-52 rounded-[4px] border border-zinc-800 bg-[#111113] py-1 shadow-xl">
+                        <div className="absolute right-4 top-10 z-20 w-52 rounded-[4px] border border-gray-200 bg-white py-1 shadow-xl">
                           <button
                             onClick={() => inviteAll(e.id)}
                             disabled={pending}
-                            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-blue-400 hover:bg-zinc-800 disabled:opacity-50"
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-gray-100 disabled:opacity-50"
                           >
                             <Megaphone className="h-4 w-4" weight="duotone" /> Invite all members
                           </button>
-                          <div className="my-1 border-t border-zinc-800" />
+                          <div className="my-1 border-t border-gray-200" />
                           {[
                             { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View event page" },
                             { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },
                             { icon: <Users className="h-4 w-4" weight="duotone" />, label: "View attendees" },
                             { icon: <Copy className="h-4 w-4" weight="duotone" />, label: "Duplicate event" },
                           ].map((item, i) => (
-                            <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                            <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                               {item.icon}{item.label}
                             </button>
                           ))}
-                          <div className="my-1 border-t border-zinc-800" />
+                          <div className="my-1 border-t border-gray-200" />
                           <button
                             onClick={() => cancelEvent(e.id)}
                             disabled={pending || status === "cancelled"}
-                            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40 disabled:opacity-40"
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-40"
                           >
                             <Trash className="h-4 w-4" weight="duotone" /> Cancel event
                           </button>
                         </div>
                       )}
                       {inviteMsg[e.id] && (
-                        <p className="mt-1 text-[11px] text-zinc-400 whitespace-nowrap">{inviteMsg[e.id]}</p>
+                        <p className="mt-1 text-[11px] text-gray-600 whitespace-nowrap">{inviteMsg[e.id]}</p>
                       )}
                     </Td>
                   </Tr>
@@ -199,8 +199,8 @@ export default function EventsClient({ events }: { events: AdminEventRow[] }) {
               {filtered.length === 0 && (
                 <Tr>
                   <Td colSpan={7} className="text-center py-12">
-                    <CalendarCheck className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
-                    <p className="text-sm font-medium text-zinc-400">No events found</p>
+                    <CalendarCheck className="h-8 w-8 text-gray-400 mx-auto mb-2" weight="duotone" />
+                    <p className="text-sm font-medium text-gray-600">No events found</p>
                   </Td>
                 </Tr>
               )}

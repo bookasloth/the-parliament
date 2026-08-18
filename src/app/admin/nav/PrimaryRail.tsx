@@ -10,7 +10,7 @@ export default function PrimaryRail({ sections, badges }: { sections: NavSection
   const active = activeSection(sections, pathname)
 
   return (
-    <nav className="hidden w-14 flex-shrink-0 flex-col items-center gap-1 border-r border-zinc-800 bg-[#0a0a0a] py-3 lg:flex">
+    <nav className="hidden w-14 flex-shrink-0 flex-col items-center gap-1 border-r border-gray-200 bg-gray-50 py-3 lg:flex">
       {sections.map(section => {
         const Icon = ICONS[section.icon]
         const isActive = section.key === active?.key
@@ -22,7 +22,7 @@ export default function PrimaryRail({ sections, badges }: { sections: NavSection
             href={first}
             aria-label={section.label}
             aria-current={isActive ? "true" : undefined}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-[4px] transition-colors hover:bg-zinc-800/60"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-[4px] transition-colors hover:bg-gray-100"
           >
             {isActive && (
               <span
@@ -31,7 +31,7 @@ export default function PrimaryRail({ sections, badges }: { sections: NavSection
               />
             )}
             <span
-              className={`flex h-10 w-10 items-center justify-center rounded-[4px] ${isActive ? "bg-zinc-800/60" : ""}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-[4px] ${isActive ? "bg-gray-100" : ""}`}
             >
               {Icon && (
                 <Icon
@@ -44,11 +44,11 @@ export default function PrimaryRail({ sections, badges }: { sections: NavSection
             {count > 0 && (
               <span
                 aria-hidden
-                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#0a0a0a]"
+                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-gray-50"
               />
             )}
             {/* Tooltip */}
-            <span className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-[3px] border border-zinc-800 bg-[#111113] px-2 py-1 text-xs font-medium text-zinc-100 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+            <span className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-[3px] border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
               {section.label}
             </span>
           </Link>

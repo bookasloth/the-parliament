@@ -279,13 +279,13 @@ h1, h2 {
   }
 }
 
-/* Admin console — dark, Poppins, scoped to .admin-root only */
+/* Admin console — light, Poppins, scoped to .admin-root only */
 .admin-root {
-  --admin-bg: #0a0a0a;
-  --admin-panel: #111113;
-  --admin-border: #27272a; /* zinc-800 */
+  --admin-bg: #f9fafb;    /* gray-50 */
+  --admin-panel: #ffffff;
+  --admin-border: #e5e7eb; /* gray-200 */
   background: var(--admin-bg);
-  color: #f4f4f5; /* zinc-100 */
+  color: #111827; /* gray-900 */
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; /* Poppins */
   min-height: 100dvh;
 }
