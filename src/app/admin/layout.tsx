@@ -51,7 +51,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Live nav badge counts (keys match NavItem.badge). Counts are Int → serializable as-is.
   const [openReports, pendingVerifications] = await Promise.all([
     prisma.contentReport.count({ where: { status: "open" } }),
-    prisma.user.count({ where: { deletedAt: null, verificationStatus: "pending" } }),
+    // Count the actual review queue (submitted evidence), not every unverified
+    // user — mirrors listPending on /admin/verification. User.verificationStatus
+    // "pending" is the default signup state and isn't a review request.
+    prisma.alumniVerification.count({ where: { status: "pending" } }),
   ])
   const badges = { openReports, pendingVerifications }
 

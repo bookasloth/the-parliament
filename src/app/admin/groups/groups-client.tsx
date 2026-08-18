@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import {
-  UsersThree, Plus, MagnifyingGlass, DotsThreeVertical, Eye, PencilSimple,
-  Trash, Star, ChatCircle, ShieldCheck, UserGear, Globe,
+  UsersThree, Plus, MagnifyingGlass, DotsThreeVertical, Eye,
+  Trash, Star, ChatCircle, UserGear, Globe,
 } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button, useRowAction } from "../admin-ui"
 import type { AdminGroupRow } from "@/modules/groups/service"
@@ -107,16 +107,15 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
                     </button>
                     {activeMenu === g.id && (
                       <div className="absolute right-4 top-10 z-20 w-48 rounded-[4px] border border-gray-200 bg-white py-1 shadow-xl">
-                        {[
-                          { icon: <Eye className="h-4 w-4" weight="duotone" />, label: "View group" },
-                          { icon: <PencilSimple className="h-4 w-4" weight="duotone" />, label: "Edit details" },
-                          { icon: <UserGear className="h-4 w-4" weight="duotone" />, label: "Manage admins" },
-                          { icon: <ShieldCheck className="h-4 w-4" weight="duotone" />, label: "Review group rules" },
-                        ].map((item, i) => (
-                          <button key={i} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
-                            {item.icon}{item.label}
-                          </button>
-                        ))}
+                        <a
+                          href={`/groups/${g.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setActiveMenu(null)}
+                          className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                          <Eye className="h-4 w-4" weight="duotone" /> View group
+                        </a>
                         <div className="my-1 border-t border-gray-200" />
                         <button
                           onClick={() => deleteGroup(g.id)}
