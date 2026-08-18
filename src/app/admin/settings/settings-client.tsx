@@ -82,6 +82,16 @@ const SectionHead = ({ icon, title }: { icon: React.ReactNode; title: string }) 
   </div>
 )
 
+type TabKey = "general" | "access" | "features" | "integrations" | "danger"
+
+const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+  { key: "general", label: "General", icon: <Globe className="h-4 w-4" weight="duotone" /> },
+  { key: "access", label: "Registration & Access", icon: <UserPlus className="h-4 w-4" weight="duotone" /> },
+  { key: "features", label: "Feature Modules", icon: <ToggleLeft className="h-4 w-4" weight="duotone" /> },
+  { key: "integrations", label: "Integrations", icon: <Key className="h-4 w-4" weight="duotone" /> },
+  { key: "danger", label: "Danger Zone", icon: <Warning className="h-4 w-4" weight="duotone" /> },
+]
+
 export function SettingsClient({ initial }: { initial: Record<string, unknown> }) {
   const { run, isBusy } = useRowAction()
 
@@ -90,6 +100,7 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
   const [features, setFeatures] = useState<Features>(() => pick(initial, "features", DEFAULTS.features))
   const [maintenance, setMaintenance] = useState<Maintenance>(() => pick(initial, "maintenance", DEFAULTS.maintenance))
   const [showRazorpayKey, setShowRazorpayKey] = useState(false)
+  const [tab, setTab] = useState<TabKey>("general")
 
   function save(key: string, values: unknown) {
     run(key, {
@@ -100,12 +111,34 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <PageHeader title="Platform Settings" description="Global configuration for NNAWCA" />
 
-      <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-5">
+        {/* Tab rail */}
+        <nav className="flex md:flex-col gap-1 md:w-56 flex-shrink-0 overflow-x-auto md:overflow-visible">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-2 rounded-[4px] px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${
+                tab === t.key
+                  ? t.key === "danger"
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                  : "text-gray-600 hover:bg-gray-100 border border-transparent"
+              }`}
+            >
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Active pane */}
+        <div className="flex-1 min-w-0 space-y-4">
 
         {/* General */}
+        {tab === "general" && (
         <section className="rounded-[5px] border border-gray-200 bg-white overflow-hidden">
           <SectionHead icon={<Globe className="h-4 w-4 text-blue-600" weight="duotone" />} title="General" />
           <div className="p-4 sm:p-5 space-y-4">
@@ -136,8 +169,10 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
             </div>
           </div>
         </section>
+        )}
 
         {/* Registration & access */}
+        {tab === "access" && (
         <section className="rounded-[5px] border border-gray-200 bg-white overflow-hidden">
           <SectionHead icon={<UserPlus className="h-4 w-4 text-emerald-600" weight="duotone" />} title="Registration & Access" />
           <div className="px-4 sm:px-5 divide-y divide-gray-200">
@@ -156,8 +191,10 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
             <SaveButton pending={isBusy("access")} onClick={() => save("access", access)} />
           </div>
         </section>
+        )}
 
         {/* Feature flags */}
+        {tab === "features" && (
         <section className="rounded-[5px] border border-gray-200 bg-white overflow-hidden">
           <SectionHead icon={<ToggleLeft className="h-4 w-4 text-violet-600" weight="duotone" />} title="Feature Modules" />
           <div className="px-4 sm:px-5 divide-y divide-gray-200">
@@ -180,10 +217,12 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
             <SaveButton pending={isBusy("features")} onClick={() => save("features", features)} />
           </div>
         </section>
+        )}
 
         {/* Integrations — read-only status/secret display, not persisted here.
             Secret fields (Razorpay key) are write-only: the stored secret lives in
             env, never rendered back. Rotate/test are managed elsewhere. */}
+        {tab === "integrations" && (
         <section className="rounded-[5px] border border-gray-200 bg-white overflow-hidden">
           <SectionHead icon={<Key className="h-4 w-4 text-amber-600" weight="duotone" />} title="Integrations" />
           <div className="p-4 sm:p-5 space-y-4">
@@ -249,8 +288,10 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
             </div>
           </div>
         </section>
+        )}
 
         {/* Danger zone — only the maintenance toggle persists; purge/delete are inert. */}
+        {tab === "danger" && (
         <section className="rounded-[5px] border border-rose-200 bg-white overflow-hidden">
           <div className="flex items-center gap-2 px-4 sm:px-5 py-3.5 border-b border-rose-200/60 bg-rose-50/30">
             <Warning className="h-4 w-4 text-rose-600" weight="duotone" />
@@ -288,6 +329,9 @@ export function SettingsClient({ initial }: { initial: Record<string, unknown> }
             </div>
           </div>
         </section>
+        )}
+
+        </div>
       </div>
     </div>
   )
