@@ -3,9 +3,10 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
-import { type GameKey, gameByKey, launchDate } from "@/config/games";
+import { type GameKey, gameByKey, launchDate, canViewArchive } from "@/config/games";
 import { getEngine, runGame, type GuessResult } from "@/modules/games/engines";
 import { puzzleNumber } from "@/modules/games/periods";
+import type { SessionUser } from "@/modules/auth/session";
 import { gameId, cacheTag, brokenStreakLength } from "@/modules/games/leaderboard";
 import { emitGameEvent } from "@/modules/games/analytics";
 import { trophiesForUser, type Trophy } from "@/modules/games/champions";
@@ -37,9 +38,32 @@ function normalize(key: GameKey, guess: string): string {
   return g;
 }
 
-async function answerForToday(key: GameKey): Promise<string> {
-  const puzzleNo = puzzleNumber(todayUtc(), launchDate(key));
-  return getEngine(key).getAnswer(puzzleNo);
+const DAY_MS = 86_400_000;
+
+function todayPuzzleNo(key: GameKey): number {
+  return puzzleNumber(todayUtc(), launchDate(key));
+}
+
+function puzzleDateFor(key: GameKey, puzzleNo: number): Date {
+  return new Date(launchDate(key).getTime() + (puzzleNo - 1) * DAY_MS);
+}
+
+/**
+ * Resolve a play target (default = today) and enforce access server-side:
+ *  - puzzleNo must be within [1, today] (no future answers).
+ *  - archive puzzles older than the free window (today + yesterday) require a paid tier.
+ */
+function resolvePuzzle(
+  key: GameKey,
+  user: SessionUser,
+  puzzleNo?: number,
+): { puzzleNo: number; puzzleDate: Date; isToday: boolean } {
+  const today = todayPuzzleNo(key);
+  const n = puzzleNo ?? today;
+  if (!Number.isInteger(n) || n < 1 || n > today) throw new Error("invalid puzzle");
+  const inFreeWindow = n === today || n === today - 1;
+  if (!inFreeWindow && !canViewArchive(user.membershipStatus)) throw new Error("archive requires membership");
+  return { puzzleNo: n, puzzleDate: puzzleDateFor(key, n), isToday: n === today };
 }
 
 /** Fired on board mount — records a start event for DAU. */
@@ -58,19 +82,17 @@ export async function checkGuessAction(
   key: string,
   guess: string,
   guessIndex = 0,
+  puzzleNo?: number,
 ): Promise<{ valid: boolean; result: GuessResult | null }> {
   const k = assertLiveKey(key);
   const user = await requireUser();
   const engine = getEngine(k);
+  const target = resolvePuzzle(k, user, puzzleNo); // also gates archive access
   const g = normalize(k, guess);
   if (!engine.isValidGuess(g)) return { valid: false, result: null };
-  const answer = await answerForToday(k);
+  const answer = await engine.getAnswer(target.puzzleNo);
   const result = engine.evaluate(g, answer);
-  await emitGameEvent(user.id, k, "guess_submitted", {
-    puzzleNo: puzzleNumber(todayUtc(), launchDate(k)),
-    guessIndex,
-    valid: true,
-  });
+  await emitGameEvent(user.id, k, "guess_submitted", { puzzleNo: target.puzzleNo, guessIndex, valid: true });
   return { valid: true, result };
 }
 
@@ -79,13 +101,14 @@ export async function getTrophiesAction(userId: string): Promise<Trophy[]> {
   return trophiesForUser(userId);
 }
 
-/** Whether the current user already played this game today. */
-export async function hasPlayedTodayAction(key: string): Promise<boolean> {
+/** Whether the current user already played a given puzzle (default: today). */
+export async function hasPlayedTodayAction(key: string, puzzleNo?: number): Promise<boolean> {
   const k = assertLiveKey(key);
   const user = await requireUser();
   const id = await gameId(k);
+  const puzzleDate = puzzleNo == null ? todayUtc() : puzzleDateFor(k, puzzleNo);
   const existing = await prisma.gameScore.findUnique({
-    where: { gameId_userId_puzzleDate: { gameId: id, userId: user.id, puzzleDate: todayUtc() } },
+    where: { gameId_userId_puzzleDate: { gameId: id, userId: user.id, puzzleDate } },
     select: { id: true },
   });
   return !!existing;
@@ -99,27 +122,31 @@ export async function hasPlayedTodayAction(key: string): Promise<boolean> {
 export async function submitResultAction(
   key: string,
   guesses: string[],
+  puzzleNo?: number,
 ): Promise<{ solved: boolean; guessesUsed: number; score: number; alreadyPlayed: boolean }> {
   const k = assertLiveKey(key);
   const user = await requireUser();
   const engine = getEngine(k);
   const id = await gameId(k);
-  const puzzleDate = todayUtc();
-  const puzzleNo = puzzleNumber(puzzleDate, launchDate(k));
+  const target = resolvePuzzle(k, user, puzzleNo); // validates + gates archive access
+  const { puzzleDate, isToday } = target;
+  const source = isToday ? "daily" : "archive";
 
   const normalized = (guesses ?? []).slice(0, engine.maxGuesses).map((g) => normalize(k, g));
   if (normalized.length === 0) throw new Error("no guesses");
 
-  const answer = await answerForToday(k);
+  const answer = await engine.getAnswer(target.puzzleNo);
   const result = runGame(engine, normalized, answer);
 
-  // Streak-loss is detected from the plays that existed BEFORE today's row.
-  const priorDays = await prisma.gameScore.findMany({
-    where: { gameId: id, userId: user.id, puzzleDate: { lt: puzzleDate } },
-    select: { puzzleDate: true },
-    orderBy: { puzzleDate: "desc" },
-    take: 400,
-  });
+  // Streak-loss only matters on the live daily path — computed from prior daily plays.
+  const priorDays = isToday
+    ? await prisma.gameScore.findMany({
+        where: { gameId: id, userId: user.id, source: "daily", puzzleDate: { lt: puzzleDate } },
+        select: { puzzleDate: true },
+        orderBy: { puzzleDate: "desc" },
+        take: 400,
+      })
+    : [];
 
   try {
     await prisma.gameScore.create({
@@ -127,6 +154,7 @@ export async function submitResultAction(
         gameId: id,
         userId: user.id,
         puzzleDate,
+        source,
         score: result.score,
         levelReached: result.solved ? result.guessesUsed : null,
         solved: result.solved,
@@ -140,17 +168,22 @@ export async function submitResultAction(
     throw e;
   }
 
-  const lostStreak = brokenStreakLength(new Set(priorDays.map((r) => dayKey(r.puzzleDate))), puzzleDate);
-  if (lostStreak != null) await emitGameEvent(user.id, k, "streak_lost", { previousStreak: lostStreak });
+  if (isToday) {
+    const lostStreak = brokenStreakLength(new Set(priorDays.map((r) => dayKey(r.puzzleDate))), puzzleDate);
+    if (lostStreak != null) await emitGameEvent(user.id, k, "streak_lost", { previousStreak: lostStreak });
+  }
   await emitGameEvent(user.id, k, "game_completed", {
-    puzzleNo,
+    puzzleNo: target.puzzleNo,
+    source,
     solved: result.solved,
     guessesUsed: result.guessesUsed,
     score: result.score,
   });
 
-  revalidateTag(cacheTag(k), "max");
-  revalidatePath(`/games/${gameByKey(k)!.slug}`);
+  if (isToday) {
+    revalidateTag(cacheTag(k), "max"); // archive plays never touch the boards
+    revalidatePath(`/games/${gameByKey(k)!.slug}`);
+  }
   return { solved: result.solved, guessesUsed: result.guessesUsed, score: result.score, alreadyPlayed: false };
 }
 

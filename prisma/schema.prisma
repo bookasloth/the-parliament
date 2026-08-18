@@ -1778,6 +1778,9 @@ model GameScore {
   levelReached Int?     @map("level_reached") // Alfazy: guesses used (1-6); null = failed
   solved       Boolean  @default(false)
   puzzleDate   DateTime @map("puzzle_date") @db.Date
+  // "daily" = today's live puzzle (counts on leaderboards + streaks);
+  // "archive" = a catch-up play of a past puzzle (counts toward Solved only).
+  source       String   @default("daily") @map("source") @db.VarChar(8)
   karmaAwarded Decimal  @default(0) @map("karma_awarded") @db.Decimal(8, 2)
   playedAt     DateTime @default(now()) @map("played_at") @db.Timestamptz
 

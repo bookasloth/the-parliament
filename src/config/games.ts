@@ -82,6 +82,14 @@ export const GAMES: GameConfig[] = [
 
 export const LIVE_GAMES = GAMES.filter((g) => g.status === "live");
 
+/** Membership tiers that unlock the full puzzle archive (older than yesterday). */
+export const PAID_TIERS = ["associate", "premium", "life", "committee"];
+
+/** Can this member play archive puzzles older than the free window (today + yesterday)? */
+export function canViewArchive(membershipStatus: string | undefined): boolean {
+  return !!membershipStatus && PAID_TIERS.includes(membershipStatus);
+}
+
 export function gameByKey(key: string): GameConfig | undefined {
   return GAMES.find((g) => g.key === key);
 }

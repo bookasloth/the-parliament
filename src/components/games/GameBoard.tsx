@@ -31,6 +31,9 @@ export interface GameBoardProps {
   keyboard: KeyDef[][];
   theme: BoardTheme;
   tileLabels?: { correct: string; present: string; absent: string };
+  /** Archive mode: play a specific past puzzle. Omit for today's live puzzle. */
+  puzzleNo?: number;
+  archive?: boolean;
 }
 
 type GradedRow = { chars: string[]; result: GuessResult };
@@ -46,7 +49,10 @@ export default function GameBoard({
   keyboard,
   theme,
   tileLabels = { correct: "correct", present: "wrong spot", absent: "not present" },
+  puzzleNo,
+  archive = false,
 }: GameBoardProps) {
+  const resultHref = archive ? `/games/${slug}/archive` : `/games/${slug}/results`;
   const [rows, setRows] = useState<GradedRow[]>([]);
   const [current, setCurrent] = useState("");
   const [keyState, setKeyState] = useState<Record<string, Tile>>({});
@@ -63,11 +69,11 @@ export default function GameBoard({
   );
 
   useEffect(() => {
-    startGameAction(gameKey).catch(() => {});
-    hasPlayedTodayAction(gameKey)
+    if (!archive) startGameAction(gameKey).catch(() => {}); // DAU is the live puzzle only
+    hasPlayedTodayAction(gameKey, puzzleNo)
       .then((played) => setStatus(played ? "done" : "playing"))
       .catch(() => setStatus("playing"));
-  }, [gameKey]);
+  }, [gameKey, puzzleNo, archive]);
 
   const tileClass = (t: Tile | "empty" | "filled"): string => {
     switch (t) {
@@ -90,7 +96,7 @@ export default function GameBoard({
     async (allGuesses: string[], won: boolean) => {
       setBusy(true);
       try {
-        const r = await submitResultAction(gameKey, allGuesses);
+        const r = await submitResultAction(gameKey, allGuesses, puzzleNo);
         setResult({ score: r.score, guessesUsed: r.guessesUsed });
         setStatus(won ? "won" : "lost");
         if (won) {
@@ -103,7 +109,7 @@ export default function GameBoard({
         setBusy(false);
       }
     },
-    [gameKey],
+    [gameKey, puzzleNo],
   );
 
   const submitGuess = useCallback(async () => {
@@ -111,7 +117,7 @@ export default function GameBoard({
     setBusy(true);
     setError(null);
     try {
-      const { valid, result: graded } = await checkGuessAction(gameKey, current, rows.length);
+      const { valid, result: graded } = await checkGuessAction(gameKey, current, rows.length, puzzleNo);
       if (!valid || !graded) {
         setError("Not a valid guess");
         setShakeKey((k) => k + 1);
@@ -141,7 +147,7 @@ export default function GameBoard({
     } finally {
       setBusy(false);
     }
-  }, [busy, status, current, rows, finish, gameKey, length, maxGuesses]);
+  }, [busy, status, current, rows, finish, gameKey, length, maxGuesses, puzzleNo]);
 
   const onKey = useCallback(
     (k: string) => {
@@ -190,10 +196,14 @@ export default function GameBoard({
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[5px] bg-emerald-50">
             <Trophy className="h-7 w-7 text-emerald-500" />
           </div>
-          <p className="text-lg font-bold text-gray-900">You&apos;ve already played today</p>
-          <p className="mt-1 text-[14px] text-gray-500">A new puzzle unlocks tomorrow. See how you did:</p>
-          <Link href={`/games/${slug}/results`} className="mt-4 inline-block rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
-            View your result
+          <p className="text-lg font-bold text-gray-900">
+            {archive ? "You've already played this puzzle" : "You've already played today"}
+          </p>
+          <p className="mt-1 text-[14px] text-gray-500">
+            {archive ? "Pick another from the archive." : "A new puzzle unlocks tomorrow. See how you did:"}
+          </p>
+          <Link href={resultHref} className="mt-4 inline-block rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+            {archive ? "Back to archive" : "View your result"}
           </Link>
         </div>
       ) : (
@@ -262,8 +272,8 @@ export default function GameBoard({
               <p className="mt-1 text-[14px] text-gray-600">
                 You scored <span className="font-bold">{result.score}</span> points.
               </p>
-              <Link href={`/games/${slug}/results`} className="mt-3 inline-flex items-center gap-1.5 rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
-                <Trophy className="h-4 w-4" /> See full results
+              <Link href={resultHref} className="mt-3 inline-flex items-center gap-1.5 rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
+                <Trophy className="h-4 w-4" /> {archive ? "Back to archive" : "See full results"}
               </Link>
             </div>
           )}

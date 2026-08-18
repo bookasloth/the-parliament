@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GAMES, LIVE_GAMES, gameByKey, gameBySlug, gameByCode, launchDate } from "@/config/games";
+import { GAMES, LIVE_GAMES, gameByKey, gameBySlug, gameByCode, launchDate, canViewArchive } from "@/config/games";
 
 describe("games registry", () => {
   it("has unique keys, slugs, and codes", () => {
@@ -36,5 +36,10 @@ describe("games registry", () => {
   it("launchDate throws on unknown key", () => {
     // @ts-expect-error testing runtime guard
     expect(() => launchDate("nope")).toThrow();
+  });
+
+  it("canViewArchive: paid tiers unlock the archive, free tiers do not", () => {
+    for (const t of ["associate", "premium", "life", "committee"]) expect(canViewArchive(t)).toBe(true);
+    for (const t of ["student", "inactive", "free", undefined, ""]) expect(canViewArchive(t)).toBe(false);
   });
 });

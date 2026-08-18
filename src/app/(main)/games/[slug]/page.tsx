@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Type, Binary, Sigma, Trophy, Flame, Play, CheckCircle2, ChevronRight, type LucideIcon } from "lucide-react";
+import { Type, Binary, Sigma, Trophy, Flame, Play, CheckCircle2, ChevronRight, History, type LucideIcon } from "lucide-react";
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { gameBySlug, launchDate, type GameKey } from "@/config/games";
@@ -111,6 +111,9 @@ export default async function GameLandingPage({ params }: { params: Promise<{ sl
           )}
           <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="mt-3 flex items-center gap-2 text-[13px] font-semibold text-white/90 hover:text-white">
             <Trophy className="h-4 w-4" /> Leaderboards &amp; champions
+          </Link>
+          <Link href={`/games/${cfg.slug}/archive`} className="mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-white/90 hover:text-white">
+            <History className="h-4 w-4" /> Play past puzzles
           </Link>
         </section>
 

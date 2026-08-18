@@ -171,7 +171,7 @@ export function brokenStreakLength(playedDays: Set<string>, today: Date): number
 export async function currentStreak(key: GameKey, userId: string): Promise<number> {
   const id = await gameId(key);
   const rows = await prisma.gameScore.findMany({
-    where: { gameId: id, userId },
+    where: { gameId: id, userId, source: "daily" }, // archive catch-ups never build a streak
     select: { puzzleDate: true },
     orderBy: { puzzleDate: "desc" },
     take: 400,
@@ -198,7 +198,7 @@ export function alfazyGameId(): Promise<string> {
 /** Fetch flattened score rows for a window. */
 export async function fetchWindowScores(gameId: string, start: Date, end: Date): Promise<ScoreRow[]> {
   const scores = await prisma.gameScore.findMany({
-    where: { gameId, playedAt: { gte: start, lt: end } },
+    where: { gameId, source: "daily", playedAt: { gte: start, lt: end } },
     select: {
       userId: true,
       score: true,
