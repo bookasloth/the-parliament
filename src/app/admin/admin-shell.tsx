@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
-import type { NavSection } from "./nav/nav-config"
+import type { Badges, NavSection } from "./nav/nav-config"
 import Topbar from "./nav/Topbar"
 import PrimaryRail from "./nav/PrimaryRail"
 import SecondarySidebar from "./nav/SecondarySidebar"
+import CommandPalette from "./nav/CommandPalette"
 
 export interface AdminIdentity {
   name: string
@@ -23,25 +24,41 @@ export default function AdminShell({
   admin,
   env,
   sections,
+  badges,
   children,
 }: {
   admin: AdminIdentity
   env: string
   sections: NavSection[]
+  badges: Badges
   children: React.ReactNode
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  // Global ⌘K / Ctrl+K toggle — lives here (always mounted) so it works while
+  // the palette is closed. The palette itself only mounts when open.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setPaletteOpen(v => !v)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   return (
     <div className="flex h-[100dvh] flex-col bg-[#0a0a0a]">
-      <Topbar admin={admin} env={env} onMenuClick={() => setDrawerOpen(true)} />
+      <Topbar admin={admin} env={env} onMenuClick={() => setDrawerOpen(true)} onSearchClick={() => setPaletteOpen(true)} sections={sections} />
 
       <div className="flex min-h-0 flex-1">
-        <PrimaryRail sections={sections} />
+        <PrimaryRail sections={sections} badges={badges} />
 
         {/* Secondary sidebar — desktop */}
         <aside className="hidden lg:block">
-          <SecondarySidebar sections={sections} />
+          <SecondarySidebar sections={sections} badges={badges} />
         </aside>
 
         {/* Secondary sidebar — mobile drawer */}
@@ -56,13 +73,15 @@ export default function AdminShell({
               >
                 <X className="h-5 w-5" />
               </button>
-              <SecondarySidebar sections={sections} onNavigate={() => setDrawerOpen(false)} />
+              <SecondarySidebar sections={sections} badges={badges} onNavigate={() => setDrawerOpen(false)} />
             </aside>
           </>
         )}
 
         <main className="min-w-0 flex-1 overflow-y-auto bg-[#0a0a0a] p-4 sm:p-6">{children}</main>
       </div>
+
+      {paletteOpen && <CommandPalette sections={sections} onClose={() => setPaletteOpen(false)} />}
     </div>
   )
 }

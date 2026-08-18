@@ -2,14 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { activeSection, itemActive, type NavSection } from "./nav-config"
+import { activeSection, itemActive, type Badges, type NavSection } from "./nav-config"
 import { ICONS } from "./icon-map"
 
 export default function SecondarySidebar({
   sections,
+  badges,
   onNavigate,
 }: {
   sections: NavSection[]
+  badges: Badges
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
@@ -25,6 +27,7 @@ export default function SecondarySidebar({
         {section.items.map(item => {
           const Icon = ICONS[item.icon]
           const active = itemActive(item.href, pathname)
+          const count = item.badge ? badges[item.badge] ?? 0 : 0
           return (
             <li key={item.href}>
               <Link
@@ -42,6 +45,11 @@ export default function SecondarySidebar({
                 )}
                 {Icon && <Icon className="h-4.5 w-4.5" weight="regular" color={active ? section.color : undefined} />}
                 <span className="flex-1">{item.label}</span>
+                {count > 0 && (
+                  <span className="rounded-full border border-rose-900 bg-rose-950/50 px-1.5 text-[10px] font-semibold text-rose-300">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
               </Link>
             </li>
           )
