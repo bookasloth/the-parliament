@@ -26,6 +26,11 @@ export const env = {
   livekitUrl: process.env.LIVEKIT_URL ?? "",
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? "",
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? "",
+  // AiSensy WhatsApp (utility templates). Key is server-only. Sends no-op /
+  // fail-closed until AISENSY_API_KEY is set. The "utility" category is fixed on
+  // the AiSensy template itself; we only reference an approved campaign by name.
+  aisensyApiKey: process.env.AISENSY_API_KEY ?? "",
+  aisensyApiUrl: process.env.AISENSY_API_URL ?? "https://backend.aisensy.com/campaign/t1/api/v2",
 } as const;
 
 // Vars the app genuinely cannot run correctly without. In production a missing

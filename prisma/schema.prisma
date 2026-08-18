@@ -1711,6 +1711,27 @@ model GroupRequest {
   @@map("group_requests")
 }
 
+// Audit log of an admin WhatsApp utility broadcast (AiSensy). One row per
+// broadcast, with an aggregate tally. FK-less (app-joined) like other
+// cross-cutting logs; per-recipient delivery/read tracking is a later phase and
+// needs the AiSensy inbound webhook.
+model WhatsAppBroadcast {
+  id             String   @id @default(uuid()) @db.Uuid
+  campaignName   String   @map("campaign_name") @db.VarChar(120)
+  audience       String   @default("group") @db.VarChar(20) // group | custom
+  groupId        String?  @map("group_id") @db.Uuid
+  templateParams Json     @default("[]") @map("template_params")
+  recipientCount Int      @default(0) @map("recipient_count")
+  sentCount      Int      @default(0) @map("sent_count")
+  failedCount    Int      @default(0) @map("failed_count")
+  sentById       String   @map("sent_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@index([groupId])
+  @@map("whatsapp_broadcasts")
+}
+
 // ─────────────────────────────────────────────
 // MODULES: Gamification
 // ─────────────────────────────────────────────

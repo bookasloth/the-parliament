@@ -6,13 +6,19 @@
 
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { type GameKey, launchDate } from "@/config/games";
 import { Period, windowFor, anchorFor, priorAnchor } from "./periods";
 import { type Scope, SCOPES } from "./format";
 
 export { type Scope, SCOPES }; // re-export for existing importers
 
-/** Cache tag for all Alfazy leaderboard data; busted when a new play is saved. */
-export const ALFAZY_CACHE_TAG = "alfazy-leaderboard";
+/** Per-game leaderboard cache tag; busted when a new play for that game is saved. */
+export function cacheTag(key: GameKey): string {
+  return `game-leaderboard:${key}`;
+}
+
+/** @deprecated use cacheTag("alfazy"). Kept for the existing cron/actions. */
+export const ALFAZY_CACHE_TAG = cacheTag("alfazy");
 
 /** A single play, flattened with the player's house/batch identity. */
 export interface ScoreRow {
@@ -146,11 +152,26 @@ export function streakLength(playedDays: Set<string>, now: Date): number {
   return n;
 }
 
-/** The current user's Alfazy daily streak. */
-export async function currentStreak(userId: string): Promise<number> {
-  const gameId = await alfazyGameId();
+/**
+ * Given the user's played UTC-day keys and today, did a streak just break as of
+ * today? Returns the length of the streak that ended (>0), or null if there's no
+ * break — i.e. they have no history, or they played yesterday (streak continuous),
+ * or today's play is their streak continuing. Pure.
+ */
+export function brokenStreakLength(playedDays: Set<string>, today: Date): number | null {
+  if (playedDays.size === 0) return null;
+  const yesterday = utcDayKey(new Date(today.getTime() - DAY_MS));
+  const todayKey = utcDayKey(today);
+  if (playedDays.has(yesterday) || playedDays.has(todayKey)) return null; // continuous
+  const lastKey = [...playedDays].sort().pop()!; // most recent prior play
+  return streakLength(playedDays, new Date(`${lastKey}T00:00:00Z`)) || null;
+}
+
+/** The current user's daily streak for a game. */
+export async function currentStreak(key: GameKey, userId: string): Promise<number> {
+  const id = await gameId(key);
   const rows = await prisma.gameScore.findMany({
-    where: { gameId, userId },
+    where: { gameId: id, userId },
     select: { puzzleDate: true },
     orderBy: { puzzleDate: "desc" },
     take: 400,
@@ -158,14 +179,20 @@ export async function currentStreak(userId: string): Promise<number> {
   return streakLength(new Set(rows.map((r) => utcDayKey(r.puzzleDate))), new Date());
 }
 
-let cachedGameId: string | null = null;
-/** The Alfazy game row id (cached). */
-export async function alfazyGameId(): Promise<string> {
-  if (cachedGameId) return cachedGameId;
-  const game = await prisma.game.findFirst({ where: { key: "alfazy" }, select: { id: true } });
-  if (!game) throw new Error("alfazy game row missing — seed it");
-  cachedGameId = game.id;
+const gameIdCache = new Map<GameKey, string>();
+/** The game row id for a key (cached per key). */
+export async function gameId(key: GameKey): Promise<string> {
+  const hit = gameIdCache.get(key);
+  if (hit) return hit;
+  const game = await prisma.game.findFirst({ where: { key }, select: { id: true } });
+  if (!game) throw new Error(`game row missing for "${key}" — seed it`);
+  gameIdCache.set(key, game.id);
   return game.id;
+}
+
+/** @deprecated use gameId("alfazy"). Kept for existing Alfazy pages. */
+export function alfazyGameId(): Promise<string> {
+  return gameId("alfazy");
 }
 
 /** Fetch flattened score rows for a window. */
@@ -213,15 +240,17 @@ export async function fetchWindowScores(gameId: string, start: Date, end: Date):
 
 /** The one leaderboard call. anchor defaults to the period containing now. */
 export async function leaderboard(
+  key: GameKey,
   scope: Scope,
   period: Period,
   anchor?: string,
   now: Date = new Date(),
 ): Promise<{ anchor: string; entries: LeaderEntry[] }> {
-  const gameId = await alfazyGameId();
+  const id = await gameId(key);
+  const launch = launchDate(key);
   const resolvedAnchor = anchor ?? anchorFor(period, now);
-  const { start, end } = period === "all" ? windowFor("all", "all") : windowFor(period, resolvedAnchor);
-  const rows = await fetchWindowScores(gameId, start, end);
+  const { start, end } = windowFor(period, resolvedAnchor, launch);
+  const rows = await fetchWindowScores(id, start, end);
   return { anchor: resolvedAnchor, entries: rankEntries(aggregate(rows, scope)) };
 }
 
@@ -249,35 +278,51 @@ export function movementMap(current: LeaderEntry[], prior: LeaderEntry[]): Map<s
 // to a string BEFORE caching so keys are stable and inputs stay serializable
 // (LeaderEntry is all primitives — no Date crosses the cache boundary).
 
-const cachedEntries = unstable_cache(
-  async (scope: Scope, period: Period, anchor: string): Promise<LeaderEntry[]> => {
-    const { entries } = await leaderboard(scope, period, anchor);
-    return entries;
-  },
-  ["alfazy-leaderboard-entries"],
-  { revalidate: 60, tags: [ALFAZY_CACHE_TAG] },
-);
+// One cached function per game key (memoized), so each game carries its own
+// cache tag — revalidateTag(cacheTag(key)) busts only that game's boards.
+const cachedEntriesByKey = new Map<
+  GameKey,
+  (scope: Scope, period: Period, anchor: string) => Promise<LeaderEntry[]>
+>();
+
+function cachedEntriesFor(key: GameKey) {
+  let fn = cachedEntriesByKey.get(key);
+  if (!fn) {
+    fn = unstable_cache(
+      async (scope: Scope, period: Period, anchor: string): Promise<LeaderEntry[]> => {
+        const { entries } = await leaderboard(key, scope, period, anchor);
+        return entries;
+      },
+      ["game-leaderboard-entries", key],
+      { revalidate: 60, tags: [cacheTag(key)] },
+    );
+    cachedEntriesByKey.set(key, fn);
+  }
+  return fn;
+}
 
 /** Cached leaderboard for a resolved-or-current window. */
 export async function leaderboardCached(
+  key: GameKey,
   scope: Scope,
   period: Period,
   anchor?: string,
 ): Promise<{ anchor: string; entries: LeaderEntry[] }> {
   const resolved = anchor ?? anchorFor(period, new Date());
-  return { anchor: resolved, entries: await cachedEntries(scope, period, resolved) };
+  return { anchor: resolved, entries: await cachedEntriesFor(key)(scope, period, resolved) };
 }
 
 /** Cached leaderboard + movement (two cached reads, no DB when warm). */
 export async function leaderboardWithMovementCached(
+  key: GameKey,
   scope: Scope,
   period: Period,
   anchor?: string,
 ): Promise<{ anchor: string; entries: LeaderEntry[]; movement: Map<string, Movement> }> {
-  const cur = await leaderboardCached(scope, period, anchor);
+  const cur = await leaderboardCached(key, scope, period, anchor);
   if (period === "all") return { ...cur, movement: new Map() };
-  const prevA = priorAnchor(period, cur.anchor);
+  const prevA = priorAnchor(period, cur.anchor, launchDate(key));
   if (!prevA) return { ...cur, movement: new Map() };
-  const prev = await leaderboardCached(scope, period, prevA);
+  const prev = await leaderboardCached(key, scope, period, prevA);
   return { ...cur, movement: movementMap(cur.entries, prev.entries) };
 }

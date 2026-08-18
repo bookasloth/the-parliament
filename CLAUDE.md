@@ -226,6 +226,8 @@ RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
 R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
 SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET  # when Google OAuth is configured
+AISENSY_API_KEY                     # AiSensy WhatsApp (utility templates). Unset = fail-closed, sends no-op.
+AISENSY_API_URL                     # optional; defaults to https://backend.aisensy.com/campaign/t1/api/v2
 ```
 
 ## Karma System (from `src/config/karma.ts`)

@@ -34,6 +34,7 @@ export type Permission =
   | "groups:manage"
   | "events:manage"
   | "announcements:send"
+  | "whatsapp:send"
   | "cms:manage"
   | "analytics:read"
   | "audit:read"
@@ -57,6 +58,7 @@ const MATRIX: Record<AdminRole, readonly Permission[] | "*"> = {
     "groups:manage",
     "events:manage",
     "announcements:send",
+    "whatsapp:send",
     "cms:manage",
     "analytics:read",
     "audit:read",

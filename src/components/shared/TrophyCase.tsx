@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trophy as TrophyIcon } from "lucide-react";
-import { getTrophiesAction } from "@/app/(main)/games/alfazy/actions";
+import { getTrophiesAction } from "@/app/(main)/games/actions";
 import { trophyDef, TROPHY_TONE_CLASS } from "@/config/alfazy-trophies";
 import { formatAnchor, PERIOD_LABEL } from "@/modules/games/format";
 import type { Trophy } from "@/modules/games/champions";

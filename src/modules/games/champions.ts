@@ -5,26 +5,27 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { ALFAZY_LAUNCH, Period, anchorFor, justClosedAnchor, windowFor } from "./periods";
-import { SCOPES, Scope, alfazyGameId, leaderboard } from "./leaderboard";
+import { type GameKey, LIVE_GAMES, launchDate } from "@/config/games";
+import { Period, anchorFor, justClosedAnchor, windowFor } from "./periods";
+import { SCOPES, Scope, gameId, leaderboard } from "./leaderboard";
 
 const FROZEN_PERIODS: Period[] = ["daily", "weekly", "monthly", "yearly"];
 const DAY_MS = 86_400_000;
 
-/** Freeze one (period, anchor) across all 3 scopes. Replaces existing rows. */
-export async function freezeAnchor(period: Period, anchor: string): Promise<number> {
-  const gameId = await alfazyGameId();
+/** Freeze one game's (period, anchor) across all 3 scopes. Replaces existing rows. */
+export async function freezeAnchor(key: GameKey, period: Period, anchor: string): Promise<number> {
+  const id = await gameId(key);
   let written = 0;
   for (const scope of SCOPES) {
-    const { entries } = await leaderboard(scope, period, anchor);
+    const { entries } = await leaderboard(key, scope, period, anchor);
     const winners = entries.filter((e) => e.rank === 1 && e.total > 0);
     await prisma.$transaction([
-      prisma.gameChampion.deleteMany({ where: { gameId, scope, period, anchor } }),
+      prisma.gameChampion.deleteMany({ where: { gameId: id, scope, period, anchor } }),
       ...(winners.length
         ? [
             prisma.gameChampion.createMany({
               data: winners.map((w) => ({
-                gameId,
+                gameId: id,
                 scope,
                 period,
                 anchor,
@@ -41,31 +42,36 @@ export async function freezeAnchor(period: Period, anchor: string): Promise<numb
   return written;
 }
 
-/** Cron entry: freeze every period that just closed as of `now`. */
-export async function closeJustEnded(now: Date = new Date()): Promise<{ period: Period; anchor: string }[]> {
-  const done: { period: Period; anchor: string }[] = [];
-  for (const period of FROZEN_PERIODS) {
-    const anchor = justClosedAnchor(period, now);
-    if (!anchor) continue;
-    await freezeAnchor(period, anchor);
-    done.push({ period, anchor });
+/** Cron entry: freeze every period that just closed as of `now`, for every live game. */
+export async function closeJustEnded(
+  now: Date = new Date(),
+): Promise<{ key: GameKey; period: Period; anchor: string }[]> {
+  const done: { key: GameKey; period: Period; anchor: string }[] = [];
+  for (const game of LIVE_GAMES) {
+    for (const period of FROZEN_PERIODS) {
+      const anchor = justClosedAnchor(period, now, launchDate(game.key));
+      if (!anchor) continue;
+      await freezeAnchor(game.key, period, anchor);
+      done.push({ key: game.key, period, anchor });
+    }
   }
   return done;
 }
 
-/** Backfill every closed anchor from launch to now (seed / catch-up). */
-export async function backfillChampions(now: Date = new Date()): Promise<number> {
+/** Backfill every closed anchor for one game from its launch to now (seed / catch-up). */
+export async function backfillChampions(key: GameKey, now: Date = new Date()): Promise<number> {
+  const launch = launchDate(key);
   let total = 0;
   for (const period of FROZEN_PERIODS) {
     const seen = new Set<string>();
-    for (let t = ALFAZY_LAUNCH.getTime(); t < now.getTime(); t += DAY_MS) {
+    for (let t = launch.getTime(); t < now.getTime(); t += DAY_MS) {
       const d = new Date(t);
       const anchor = anchorFor(period, d);
       if (seen.has(anchor)) continue;
-      const { end } = windowFor(period, anchor);
+      const { end } = windowFor(period, anchor, launch);
       if (end.getTime() > now.getTime()) continue; // period not closed yet
       seen.add(anchor);
-      total += await freezeAnchor(period, anchor);
+      total += await freezeAnchor(key, period, anchor);
     }
   }
   return total;

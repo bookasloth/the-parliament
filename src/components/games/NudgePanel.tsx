@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { Search, Hand, Check } from "lucide-react";
-import { nudgePlayerAction } from "@/app/(main)/games/alfazy/actions";
+import { nudgePlayerAction } from "@/app/(main)/games/actions";
 
 export interface NudgeTarget {
   userId: string;

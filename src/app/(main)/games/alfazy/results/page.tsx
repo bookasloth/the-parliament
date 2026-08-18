@@ -35,8 +35,8 @@ export default async function AlfazyResultsPage() {
   if (!played) redirect("/games/alfazy/play");
 
   const [board, streak, follow] = await Promise.all([
-    leaderboardCached("individual", "daily"),
-    currentStreak(user.id),
+    leaderboardCached("alfazy", "individual", "daily"),
+    currentStreak("alfazy", user.id),
     getFollowData(user.id),
   ]);
 

@@ -30,9 +30,9 @@ export default async function AlfazyHubPage() {
       select: { score: true, solved: true, levelReached: true },
     }),
     prisma.gameScore.count({ where: { gameId, userId: user.id } }),
-    leaderboardCached("individual", "daily"),
+    leaderboardCached("alfazy", "individual", "daily"),
     trophiesForUser(user.id),
-    currentStreak(user.id),
+    currentStreak("alfazy", user.id),
     prisma.profile.findUnique({
       where: { userId: user.id },
       select: { houseId: true, batchId: true },

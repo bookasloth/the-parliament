@@ -35,12 +35,12 @@ export default async function AlfazyLeaderboardPage({
 
   const user = await requireUser();
 
-  const { anchor, entries, movement } = await leaderboardWithMovementCached(scope, period, anchorParam);
+  const { anchor, entries, movement } = await leaderboardWithMovementCached("alfazy", scope, period, anchorParam);
 
   // League rail: current #1 per scope for the selected period (all cached reads).
   const rail = await Promise.all(
     SCOPES.map(async (s) => {
-      const r = await leaderboardWithMovementCached(s, period, anchorParam);
+      const r = await leaderboardWithMovementCached("alfazy", s, period, anchorParam);
       const top = r.entries[0] ?? null;
       return { scope: s, top, movement: top ? r.movement.get(top.key) : undefined };
     }),

@@ -1,35 +1,36 @@
 /**
- * Alfazy period math — pure, DB-free, UTC-based.
+ * Game period math — pure, DB-free, UTC-based. Shared by every game.
  *
  * Leaderboards are SUM(score) over a date window. A `period` + an `anchor`
  * (a label placing the window in history) resolve to a half-open [start, end)
  * range fed to the query. Weeks are Monday–Sunday (ISO).
  *
+ * Each game numbers its puzzles from its OWN launch day, so every epoch-sensitive
+ * function takes a `launch: Date` (the game's puzzle-#1 UTC midnight, from
+ * `launchDate(key)` in the registry). Pure calendar math (week/month boundaries,
+ * anchor labels) is game-agnostic and takes no launch.
+ *
  * All dates treated as UTC calendar dates to avoid timezone drift.
  */
-
-export const ALFAZY_LAUNCH = new Date(Date.UTC(2026, 6, 1)); // 2026-07-01
 
 export type Period = "daily" | "weekly" | "monthly" | "yearly" | "all";
 
 export const PERIODS: Period[] = ["daily", "weekly", "monthly", "yearly", "all"];
 
 const DAY_MS = 86_400_000;
+/** Far-future sentinel for the open end of the "all" window. */
+const FOREVER = new Date(Date.UTC(9999, 0, 1));
 
-/** Whole days from launch to `date` (UTC, floored). Puzzle #001 = day 0. */
-export function daysSinceLaunch(date: Date): number {
+/** Whole days from a game's launch to `date` (UTC, floored). Puzzle #1 = day 0. */
+export function daysSinceLaunch(date: Date, launch: Date): number {
   const a = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  const b = Date.UTC(
-    ALFAZY_LAUNCH.getUTCFullYear(),
-    ALFAZY_LAUNCH.getUTCMonth(),
-    ALFAZY_LAUNCH.getUTCDate(),
-  );
+  const b = Date.UTC(launch.getUTCFullYear(), launch.getUTCMonth(), launch.getUTCDate());
   return Math.floor((a - b) / DAY_MS);
 }
 
-/** 1-based puzzle number for a date (day 0 → #1). */
-export function puzzleNumber(date: Date): number {
-  return daysSinceLaunch(date) + 1;
+/** 1-based puzzle number for a date (launch day → #1). */
+export function puzzleNumber(date: Date, launch: Date): number {
+  return daysSinceLaunch(date, launch) + 1;
 }
 
 /** UTC midnight of the given date. */
@@ -46,15 +47,10 @@ export function mondayOf(date: Date): Date {
 
 /** ISO week-year + week number ({ year: 2026, week: 23 }). */
 export function isoWeek(date: Date): { year: number; week: number } {
-  // Thursday of this week determines the ISO week-year.
   const thursday = new Date(mondayOf(date).getTime() + 3 * DAY_MS);
   const year = thursday.getUTCFullYear();
-  const firstThursday = (() => {
-    const jan1 = new Date(Date.UTC(year, 0, 1));
-    const dow = (jan1.getUTCDay() + 6) % 7;
-    // Thursday of week containing Jan 1
-    return new Date(mondayOf(jan1).getTime() + 3 * DAY_MS + (dow <= 3 ? 0 : 0));
-  })();
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const firstThursday = new Date(mondayOf(jan1).getTime() + 3 * DAY_MS);
   const week = 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / (7 * DAY_MS));
   return { year, week };
 }
@@ -70,7 +66,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Canonical anchor label for the period window containing `date`. */
+/** Canonical anchor label for the period window containing `date`. Game-agnostic. */
 export function anchorFor(period: Period, date: Date): string {
   const y = date.getUTCFullYear();
   switch (period) {
@@ -90,7 +86,7 @@ export function anchorFor(period: Period, date: Date): string {
 }
 
 /** A representative date inside the window named by (period, anchor). Throws on bad label. */
-export function dateForAnchor(period: Period, anchor: string): Date {
+export function dateForAnchor(period: Period, anchor: string, launch: Date): Date {
   switch (period) {
     case "daily": {
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(anchor);
@@ -113,7 +109,7 @@ export function dateForAnchor(period: Period, anchor: string): Date {
       return new Date(Date.UTC(+m[1], 0, 1));
     }
     case "all":
-      return ALFAZY_LAUNCH;
+      return launch;
   }
 }
 
@@ -123,7 +119,7 @@ export interface Window {
 }
 
 /** Half-open [start, end) window for the period containing `date`. */
-export function windowForDate(period: Period, date: Date): Window {
+export function windowForDate(period: Period, date: Date, launch: Date): Window {
   switch (period) {
     case "daily": {
       const start = utcMidnight(date);
@@ -144,21 +140,21 @@ export function windowForDate(period: Period, date: Date): Window {
       return { start, end };
     }
     case "all":
-      return { start: ALFAZY_LAUNCH, end: new Date(Date.UTC(9999, 0, 1)) };
+      return { start: launch, end: FOREVER };
   }
 }
 
 /** Window from a (period, anchor) label. */
-export function windowFor(period: Period, anchor: string): Window {
-  return windowForDate(period, dateForAnchor(period, anchor));
+export function windowFor(period: Period, anchor: string, launch: Date): Window {
+  return windowForDate(period, dateForAnchor(period, anchor, launch), launch);
 }
 
 /** The anchor of the period immediately before the one named by (period, anchor). */
-export function priorAnchor(period: Period, anchor: string): string | null {
+export function priorAnchor(period: Period, anchor: string, launch: Date): string | null {
   if (period === "all") return null;
-  const { start } = windowFor(period, anchor);
+  const { start } = windowFor(period, anchor, launch);
   const before = new Date(start.getTime() - 1); // last ms of the previous window
-  if (before < ALFAZY_LAUNCH) return null;
+  if (before < launch) return null;
   return anchorFor(period, before);
 }
 
@@ -167,7 +163,7 @@ export function priorAnchor(period: Period, anchor: string): string | null {
  * champions). Returns null when nothing of that period has closed yet.
  * - daily closes yesterday; weekly closes last week; etc.
  */
-export function justClosedAnchor(period: Period, now: Date): string | null {
+export function justClosedAnchor(period: Period, now: Date, launch: Date): string | null {
   if (period === "all") return null;
   const prev = (() => {
     switch (period) {
@@ -181,6 +177,6 @@ export function justClosedAnchor(period: Period, now: Date): string | null {
         return new Date(Date.UTC(now.getUTCFullYear(), 0, 0)); // Dec 31 prev year
     }
   })();
-  if (!prev || prev < ALFAZY_LAUNCH) return null;
+  if (!prev || prev < launch) return null;
   return anchorFor(period, prev);
 }

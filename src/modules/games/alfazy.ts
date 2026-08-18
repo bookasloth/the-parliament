@@ -5,6 +5,7 @@
 
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { launchDate } from "@/config/games";
 import { puzzleNumber } from "./periods";
 
 export const WORD_LEN = 5;
@@ -92,16 +93,19 @@ export interface DailyPuzzle {
   word: string;
 }
 
-/** Today's (or a given date's) puzzle: word read from the DB dictionary. */
-async function fetchDailyPuzzle(date: Date): Promise<DailyPuzzle> {
-  const puzzleNo = puzzleNumber(date);
+/** The answer word for a given 1-based puzzle number, read from the DB dictionary. */
+export async function wordForPuzzleNo(puzzleNo: number): Promise<string> {
   const count = await prisma.alfazyWord.count({ where: { isActive: true } });
   const idx = pickIndex(puzzleNo, count);
-  const row = await prisma.alfazyWord.findFirst({
-    where: { isActive: true, idx },
-  });
+  const row = await prisma.alfazyWord.findFirst({ where: { isActive: true, idx } });
   if (!row) throw new Error(`no active word at idx ${idx}`);
-  return { puzzleNo, word: row.word.toUpperCase() };
+  return row.word.toUpperCase();
+}
+
+/** Today's (or a given date's) puzzle: word read from the DB dictionary. */
+async function fetchDailyPuzzle(date: Date): Promise<DailyPuzzle> {
+  const puzzleNo = puzzleNumber(date, launchDate("alfazy"));
+  return { puzzleNo, word: await wordForPuzzleNo(puzzleNo) };
 }
 
 // Cached for the whole day — puzzle number is the cache key, so the DB is hit
@@ -113,6 +117,6 @@ const getDailyPuzzleCached = unstable_cache(
 );
 
 export async function getDailyPuzzle(date: Date = new Date()): Promise<DailyPuzzle> {
-  const pn = puzzleNumber(date);
+  const pn = puzzleNumber(date, launchDate("alfazy"));
   return getDailyPuzzleCached(pn);
 }
