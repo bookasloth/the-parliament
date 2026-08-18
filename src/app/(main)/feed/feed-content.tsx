@@ -2,7 +2,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState, useTransition, type Dispatch, type SetStateAction } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronRight, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { ChevronRight, Sparkles, Megaphone, X } from "lucide-react"
 import { FeedCard, avatarColors, type FeedPost } from "@/components/shared/FeedCard"
 import { ComposeTrigger } from "@/components/shared/ComposeTrigger"
 import { ProfileSidebarView } from "@/components/shared/ProfileSidebarView"
@@ -44,6 +45,45 @@ export type NewsItem = {
   id: string
   title: string
   time: string
+}
+
+export type FeedAnnouncement = {
+  id: string
+  title: string
+  body: string | null
+  ctaLabel: string | null
+  ctaHref: string | null
+}
+
+// Dismissible admin banner at the top of the feed. Dismissal is per-browser
+// (localStorage keyed by announcement id) — no per-user DB state needed.
+function AnnouncementBanner({ a }: { a: FeedAnnouncement }) {
+  const [dismissed, setDismissed] = useState(false)
+  useEffect(() => {
+    try { if (localStorage.getItem(`ann-dismissed:${a.id}`)) setDismissed(true) } catch {}
+  }, [a.id])
+  if (dismissed) return null
+  return (
+    <div className="flex items-start gap-3 rounded-[5px] border border-brand-200 bg-brand-50 px-4 py-3">
+      <Megaphone className="h-5 w-5 text-brand-600 flex-shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-brand-800">{a.title}</p>
+        {a.body && <p className="text-xs text-brand-700 mt-0.5 whitespace-pre-wrap">{a.body}</p>}
+        {a.ctaLabel && a.ctaHref && (
+          <Link href={a.ctaHref} className="mt-2 inline-flex items-center gap-1 rounded-[3px] bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700">
+            {a.ctaLabel}
+          </Link>
+        )}
+      </div>
+      <button
+        onClick={() => { try { localStorage.setItem(`ann-dismissed:${a.id}`, "1") } catch {}; setDismissed(true) }}
+        aria-label="Dismiss announcement"
+        className="rounded-[3px] p-1 text-brand-500 hover:bg-brand-100 hover:text-brand-700 flex-shrink-0"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
 }
 
 // --- Left Sidebar ---
@@ -156,6 +196,7 @@ export function FeedContent({
   caughtUp = false,
   initialShuffleSeed = null,
   canPin = false,
+  announcement = null,
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -179,6 +220,8 @@ export function FeedContent({
   initialShuffleSeed?: number | null
   /** Viewer may pin/unpin posts (admin/owner) — shows the pin action on cards. */
   canPin?: boolean
+  /** Active admin announcement banner, shown at the top of the feed. */
+  announcement?: FeedAnnouncement | null
 }) {
   const commentViewer = viewerId && viewer
     ? { id: viewerId, displayName: viewer.name, avatarUrl: viewer.photoUrl }
@@ -403,6 +446,9 @@ export function FeedContent({
                 </button>
               </div>
             )}
+            {/* Active admin announcement */}
+            {announcement && <AnnouncementBanner a={announcement} />}
+
             {/* Standard compose trigger */}
             <ComposeTrigger
               avatar={

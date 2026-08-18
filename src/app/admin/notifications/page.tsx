@@ -1,68 +1,41 @@
 import { requireAdmin } from "@/modules/auth/session"
-import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@/generated/prisma/client"
-import { parsePage, pageCount, firstParam, PAGE_SIZE } from "@/modules/admin/pagination"
-import NotificationsClient, { type NotificationRow } from "./notifications-client"
+import { listAnnouncements } from "@/modules/announcements/service"
+import AnnouncementsClient, { type AnnouncementRow } from "./notifications-client"
 
 export const dynamic = "force-dynamic"
 
-export default async function AdminNotificationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
+function statusOf(startsAt: Date, endsAt: Date, now: Date): AnnouncementRow["status"] {
+  if (now < startsAt) return "scheduled"
+  if (now >= endsAt) return "expired"
+  return "active"
+}
+
+const fmt = (d: Date) =>
+  d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+
+export default async function AdminAnnouncementsPage() {
   await requireAdmin()
-  const sp = await searchParams
-  const { page, skip, take } = parsePage(sp.page)
-  const type = firstParam(sp.type)
+  const now = new Date()
+  const rows = await listAnnouncements(100)
 
-  const where: Prisma.NotificationWhereInput = {}
-  if (type) where.type = type
-
-  const [rows, filteredTotal, total, unread, typeGroups] = await Promise.all([
-    prisma.notification.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        body: true,
-        isRead: true,
-        createdAt: true,
-        user: { select: { displayName: true, legalName: true, username: true } },
-      },
-    }),
-    prisma.notification.count({ where }),
-    prisma.notification.count(),
-    prisma.notification.count({ where: { isRead: false } }),
-    prisma.notification.groupBy({ by: ["type"], orderBy: { type: "asc" } }),
-  ])
-
-  const mapped: NotificationRow[] = rows.map((n) => ({
-    id: n.id,
-    type: n.type,
-    title: n.title,
-    body: n.body,
-    recipient: n.user?.displayName || n.user?.legalName || n.user?.username || "—",
-    isRead: n.isRead,
-    createdAt: n.createdAt.toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
+  const announcements: AnnouncementRow[] = rows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    ctaLabel: a.ctaLabel,
+    ctaHref: a.ctaHref,
+    startsAtISO: a.startsAt.toISOString(),
+    endsAtISO: a.endsAt.toISOString(),
+    starts: fmt(a.startsAt),
+    ends: fmt(a.endsAt),
+    status: statusOf(a.startsAt, a.endsAt, now),
   }))
 
-  return (
-    <NotificationsClient
-      rows={mapped}
-      types={typeGroups.map((g) => g.type)}
-      stats={{ total, unread, read: total - unread }}
-      query={{ page, type: type ?? "" }}
-      pageInfo={{ page, pageCount: pageCount(filteredTotal), filteredTotal, pageSize: PAGE_SIZE }}
-    />
-  )
+  const stats = {
+    active: announcements.filter((a) => a.status === "active").length,
+    scheduled: announcements.filter((a) => a.status === "scheduled").length,
+    expired: announcements.filter((a) => a.status === "expired").length,
+  }
+
+  return <AnnouncementsClient announcements={announcements} stats={stats} />
 }
