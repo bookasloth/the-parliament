@@ -10,7 +10,7 @@ import {
   Flag, Megaphone, CreditCard, Storefront, Briefcase, Sparkle,
   Palette, Trophy, GameController, ChatsCircle, Gear, Scroll,
   List, X, MagnifyingGlass, Bell, CaretDown, SignOut,
-  ArrowSquareOut, VideoCamera, Bank, HandHeart, Warning,
+  ArrowSquareOut, VideoCamera, Bank, HandHeart, Warning, FileText,
 } from "@phosphor-icons/react"
 
 export interface AdminIdentity {
@@ -83,6 +83,7 @@ const NAV: NavGroup[] = [
   {
     title: "System",
     items: [
+      { href: "/admin/pages", label: "CMS Pages", icon: <FileText className={ICON} weight="duotone" color="#71717a" /> },
       { href: "/admin/settings", label: "Settings", icon: <Gear className={ICON} weight="duotone" color="#71717a" /> },
       { href: "/admin/audit-logs", label: "Audit Logs", icon: <Scroll className={ICON} weight="duotone" color="#71717a" /> },
     ],

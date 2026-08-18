@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache"
 import { z } from "zod"
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { getDefaultSchoolId } from "@/lib/school"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
@@ -43,7 +43,7 @@ const schema = z.object({
 export type CreateEventInput = z.infer<typeof schema>
 
 export async function createAdminEventAction(input: CreateEventInput) {
-  const admin = await requireAdmin()
+  const admin = await requirePermission("events:manage")
   const parsed = schema.parse(input)
 
   const schoolId = await getDefaultSchoolId()
@@ -91,7 +91,7 @@ export async function createAdminEventAction(input: CreateEventInput) {
 export async function toggleEventFeaturedAction(
   eventId: string,
 ): Promise<{ ok: boolean; featured?: boolean; error?: string }> {
-  await requireAdmin()
+  await requirePermission("events:manage")
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { isFeatured: true } })
   if (!event) return { ok: false, error: "Event not found" }
   const featured = !event.isFeatured
@@ -106,7 +106,7 @@ export async function toggleEventFeaturedAction(
 export async function cancelEventAction(
   eventId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireAdmin()
+  await requirePermission("events:manage")
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, status: true } })
   if (!event) return { ok: false, error: "Event not found" }
   if (event.status !== "cancelled") {
@@ -130,7 +130,7 @@ export async function cancelEventAction(
 export async function inviteAllToEventAction(
   eventId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireAdmin()
+  await requirePermission("events:manage")
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     select: { id: true, status: true },
