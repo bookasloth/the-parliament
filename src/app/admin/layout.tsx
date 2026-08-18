@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { notFound } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { canEnterConsole, can } from "@/modules/admin/permissions"
+import { prisma } from "@/lib/prisma"
 import AdminShell, { type AdminIdentity } from "./admin-shell"
 import { NAV } from "./nav/nav-config"
 
@@ -47,9 +48,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ? "Preview"
         : "Local"
 
+  // Live nav badge counts (keys match NavItem.badge). Counts are Int → serializable as-is.
+  const [openReports, pendingVerifications] = await Promise.all([
+    prisma.contentReport.count({ where: { status: "open" } }),
+    prisma.user.count({ where: { deletedAt: null, verificationStatus: "pending" } }),
+  ])
+  const badges = { openReports, pendingVerifications }
+
   return (
     <div className="admin-root">
-      <AdminShell admin={admin} env={env} sections={sections}>{children}</AdminShell>
+      <AdminShell admin={admin} env={env} sections={sections} badges={badges}>{children}</AdminShell>
     </div>
   )
 }
