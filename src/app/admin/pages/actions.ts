@@ -3,6 +3,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { requirePermission } from "@/lib/gate"
+import { enforceAdminRateLimit } from "@/modules/admin/rate-limit"
 import {
   savePageSchema,
   savePage,
@@ -22,6 +23,7 @@ export async function savePageAction(input: {
   body: string
 }): Promise<Result> {
   const admin = await requirePermission("cms:manage")
+  await enforceAdminRateLimit(admin.id, "cms-save", 30, 60)
   const parsed = savePageSchema.parse(input)
   try {
     await savePage(admin.id, parsed)

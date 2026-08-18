@@ -3,6 +3,7 @@ import { z } from "zod"
 import { handleError, ok } from "@/lib/api"
 import { requirePermission } from "@/lib/gate"
 import { actOnUser, isSelfForbidden } from "@/modules/admin/users"
+import { enforceAdminRateLimit } from "@/modules/admin/rate-limit"
 
 // Bulk-safe subset (no per-user email/role args needed).
 const schema = z.object({
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
     const { ids, action } = schema.parse(await req.json())
     // Bulk actions are all member moderation (verify/unverify/suspend/activate).
     const admin = await requirePermission("members:moderate")
+    // Tighter bucket — bulk touches up to 500 accounts per call.
+    await enforceAdminRateLimit(admin.id, "user-bulk", 10, 60)
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
 
     let done = 0

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { requirePermission } from "@/lib/gate"
+import { enforceAdminRateLimit } from "@/modules/admin/rate-limit"
 import { assignCluster, resolveCluster } from "@/modules/moderation/service"
 
 const entityType = z.enum(["post", "comment", "profile", "business", "message"])
@@ -24,6 +25,7 @@ export async function resolveClusterAction(input: {
   notes?: string
 }) {
   const admin = await requirePermission("reports:resolve")
+  await enforceAdminRateLimit(admin.id, "report-resolve", 60, 60)
   const t = entityType.parse(input.entityType)
   const id = z.string().uuid().parse(input.entityId)
   const res = resolution.parse(input.resolution)

@@ -1,12 +1,15 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { prisma } from "@/lib/prisma"
+import { enforceAdminRateLimit } from "@/modules/admin/rate-limit"
 import { broadcastSchema, type BroadcastInput } from "./schema"
 
 export async function broadcast(input: BroadcastInput) {
-  await requireAdmin()
+  const admin = await requirePermission("announcements:send")
+  // Broadcasts fan out to every active member — cap hard: 5 per 5 minutes.
+  await enforceAdminRateLimit(admin.id, "broadcast", 5, 300)
   const data = broadcastSchema.parse(input)
 
   const users = await prisma.user.findMany({
