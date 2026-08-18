@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { GamesRail } from "@/components/games/GamesRail";
+import GameGuideRail from "@/components/games/GameGuideRail";
 import { ProfileSidebarSkeleton } from "@/components/shared/ProfileSidebarView";
 
 export default function GamesLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,12 @@ export default function GamesLayout({ children }: { children: React.ReactNode })
           </div>
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
+        {/* Per-game "How to play" + Other games — renders only on a live game's pages. */}
+        <aside className="hidden w-[300px] flex-shrink-0 xl:block">
+          <div className="sticky top-20">
+            <GameGuideRail />
+          </div>
+        </aside>
       </div>
     </div>
   );
