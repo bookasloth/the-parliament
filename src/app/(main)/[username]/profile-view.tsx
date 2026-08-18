@@ -22,6 +22,7 @@ import {
   MessageSquare, Globe, Link as LinkIcon,
 } from "lucide-react"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
+import { VerifiedBadge } from "@/components/shared/VerifiedBadge"
 import { AchievementsPanel, type AchievementBadge } from "@/components/shared/AchievementsPanel"
 
 // Brand SVGs (lucide 1.17 doesn't ship brand icons). Simple Icons paths.
@@ -272,7 +273,14 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
   const nameTick = (
     <div className="flex min-w-0 items-center gap-1.5">
       <h1 className="truncate font-heading text-xl font-extrabold tracking-tight text-gray-900">{data.name}</h1>
-      {data.isVerified && <VerifiedTick size={20} membership={data.membership.tier} />}
+      {data.isVerified && (
+        <VerifiedBadge
+          size={20}
+          membership={data.membership.tier}
+          membershipLabel={data.membership.label}
+          verifiedOn={data.verifiedOn}
+        />
+      )}
     </div>
   )
 

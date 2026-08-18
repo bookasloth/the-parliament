@@ -391,7 +391,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     membership,
     isVerified: user.isVerified,
     verificationStatus: user.verificationStatus,
-    verifiedOn: formatDate(user.verifiedAt),
+    verifiedOn: user.verifiedAt ? user.verifiedAt.toISOString() : null,
     profileCompletion: user.profileCompletion,
     followersCount: user._count.followers,
     followingCount: user._count.following,
