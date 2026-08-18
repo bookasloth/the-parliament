@@ -26,13 +26,26 @@ Three UI regions:
 └──────┴───────────────┴─────────────────────────────────────┘
 ```
 
-- `nav-config.ts` — data + pure helpers (`itemActive`, `activeSection`). No JSX.
+- `nav-config.ts` — data + pure helpers (`itemActive`, `activeSection`, `sectionBadgeCount`). No JSX.
 - `icon-map.ts` — maps the config's string icon names to phosphor components (client-safe).
-- `PrimaryRail.tsx` — icon-only sections; active = longest-prefix item match; click → section's first item.
-- `SecondarySidebar.tsx` — items of the active section; active item gets a colored left border.
-- `Topbar.tsx` — logo, search, env badge, notifications, profile dropdown + signOut.
-- `admin-shell.tsx` — composes the three regions; holds only the mobile-drawer toggle.
-- `layout.tsx` — the auth gate; filters `NAV` by role and passes the visible sections to the shell.
+- `PrimaryRail.tsx` — icon-only sections; active = longest-prefix item match; click → section's first item; rose dot when the section has a live badge count.
+- `SecondarySidebar.tsx` — items of the active section; active item gets a colored left border; rose count pill for items with a live badge.
+- `Topbar.tsx` — logo, breadcrumb, search-chip (opens the palette), env badge, notifications, profile dropdown + signOut.
+- `Breadcrumb.tsx` — `Section › Page`, derived from `activeSection`/`itemActive` (detail routes resolve to their parent item).
+- `CommandPalette.tsx` — ⌘K / Ctrl+K modal; flattens the role-scoped `sections` into a filterable, keyboard-driven list. Mounted once in `admin-shell.tsx`; open-state is lifted so the Topbar chip can open it too.
+- `admin-shell.tsx` — composes the regions; holds the mobile-drawer toggle + palette open-state.
+- `layout.tsx` — the auth gate; filters `NAV` by role, computes live badge counts, passes both to the shell.
+
+### Nav badges, palette, breadcrumbs
+
+- **Badges** — a `NavItem` may carry `badge?: "openReports" | "pendingVerifications"`.
+  `layout.tsx` computes the counts once (after the gate) and passes a
+  `badges: Record<BadgeKey, number>` prop down through the shell. Add a new badge:
+  extend `BadgeKey` in `nav-config.ts`, tag the item, and add the count query in
+  `layout.tsx`. Counts are Int → serializable as-is (no Decimal/BigInt conversion).
+- **Command palette & breadcrumbs** are entirely nav-config-driven — they read
+  the same role-scoped `sections`, so a new page appears in both automatically
+  once its `NavItem` exists. No per-feature wiring.
 
 Visibility rule (computed once, server-side, in `layout.tsx`):
 

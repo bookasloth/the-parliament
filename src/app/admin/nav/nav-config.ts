@@ -12,12 +12,25 @@ import type { Permission } from "@/modules/admin/permissions"
  * `icon` is a phosphor component name resolved by `icon-map.ts` (client-safe).
  * `color` is the section hex used for the rail glyph + active accents.
  */
+/** Keys of the live badge counts computed in `admin/layout.tsx`. */
+export type BadgeKey = "openReports" | "pendingVerifications"
+
+/** Live count per badge key, threaded from the layout to the nav regions. */
+export type Badges = Record<BadgeKey, number>
+
+/** Sum of an item's badge count within a section (for the rail dot). 0 if none. */
+export function sectionBadgeCount(section: NavSection, badges: Badges): number {
+  return section.items.reduce((n, item) => n + (item.badge ? badges[item.badge] ?? 0 : 0), 0)
+}
+
 export interface NavItem {
   label: string
   href: string
   icon: string
   permission?: Permission
   adminOnly?: boolean
+  /** Tags a live count (from `badges` prop) to render as a pill/dot. */
+  badge?: BadgeKey
 }
 
 export interface NavSection {
@@ -46,7 +59,7 @@ export const NAV: NavSection[] = [
     color: "#0ea5e9",
     items: [
       { label: "Users", href: "/admin/users", icon: "Users", permission: "members:read" },
-      { label: "Verification", href: "/admin/verification", icon: "ShieldCheck", permission: "verification:read" },
+      { label: "Verification", href: "/admin/verification", icon: "ShieldCheck", permission: "verification:read", badge: "pendingVerifications" },
       { label: "Groups", href: "/admin/groups", icon: "UsersThree", permission: "groups:manage" },
       { label: "Events", href: "/admin/events", icon: "CalendarDots", permission: "events:manage" },
       { label: "AMA Sessions", href: "/admin/ama", icon: "VideoCamera", adminOnly: true },
@@ -59,8 +72,8 @@ export const NAV: NavSection[] = [
     icon: "Flag",
     color: "#f43f5e",
     items: [
-      { label: "Moderation", href: "/admin/moderation", icon: "Flag", permission: "reports:read" },
-      { label: "Reports", href: "/admin/reports", icon: "Warning", permission: "reports:read" },
+      { label: "Moderation", href: "/admin/moderation", icon: "Flag", permission: "reports:read", badge: "openReports" },
+      { label: "Reports", href: "/admin/reports", icon: "Warning", permission: "reports:read", badge: "openReports" },
       { label: "Announcements", href: "/admin/notifications", icon: "Megaphone", permission: "announcements:send" },
       { label: "CMS Pages", href: "/admin/pages", icon: "FileText", permission: "cms:manage" },
     ],

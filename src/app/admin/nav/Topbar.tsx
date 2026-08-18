@@ -10,6 +10,8 @@ import {
 import { LogoMark } from "@/components/shared/Logo"
 import type { AdminIdentity } from "../admin-shell"
 import { guideForPath } from "../help/guides"
+import type { NavSection } from "./nav-config"
+import Breadcrumb from "./Breadcrumb"
 
 const ENV_STYLE: Record<string, string> = {
   Production: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
@@ -21,10 +23,14 @@ export default function Topbar({
   admin,
   env,
   onMenuClick,
+  onSearchClick,
+  sections,
 }: {
   admin: AdminIdentity
   env: string
   onMenuClick: () => void
+  onSearchClick: () => void
+  sections: NavSection[]
 }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const pathname = usePathname()
@@ -55,15 +61,23 @@ export default function Topbar({
         </div>
       </div>
 
+      {/* Breadcrumb: Section › Page */}
+      <div className="ml-2 hidden md:block">
+        <Breadcrumb sections={sections} />
+      </div>
+
       <div className="flex-1" />
 
-      {/* Search affordance (non-functional) */}
-      <button className="hidden w-56 items-center gap-2 rounded-[3px] border border-zinc-800 bg-[#111113] px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:border-zinc-700 sm:flex">
+      {/* Search affordance → opens the command palette */}
+      <button
+        onClick={onSearchClick}
+        className="hidden w-56 items-center gap-2 rounded-[3px] border border-zinc-800 bg-[#111113] px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:border-zinc-700 sm:flex"
+      >
         <MagnifyingGlass className="h-4 w-4" />
         <span className="flex-1 text-left">Search...</span>
         <kbd className="rounded-[3px] border border-zinc-800 px-1 py-0.5 font-mono text-[10px] text-zinc-600">⌘K</kbd>
       </button>
-      <button className="rounded-[3px] p-2 text-zinc-500 hover:bg-zinc-900 sm:hidden" aria-label="Search">
+      <button onClick={onSearchClick} className="rounded-[3px] p-2 text-zinc-500 hover:bg-zinc-900 sm:hidden" aria-label="Search">
         <MagnifyingGlass className="h-5 w-5" />
       </button>
 
