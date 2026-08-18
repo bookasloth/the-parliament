@@ -20,6 +20,7 @@ import {
   Briefcase, MapPin, Building2, MoreHorizontal,
   Award, Droplet, Cake, Home, Users, Pencil, Share2,
   MessageSquare, Globe, Link as LinkIcon,
+  LayoutGrid, Tag, Info,
 } from "lucide-react"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { VerifiedBadge } from "@/components/shared/VerifiedBadge"
@@ -411,13 +412,16 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
             {/* tabs — centred on mobile, left on desktop */}
             <div className="mt-3 flex justify-center gap-1.5 border-t border-gray-100 px-1 pt-1.5 lg:justify-start">
-              {([["posts", "Posts"], ["tagged", "Tagged"], ["about", "About"], ["followers", "Followers"]] as const).map(([key, label]) => (
+              {([["posts", "Posts", LayoutGrid], ["tagged", "Tagged", Tag], ["about", "About", Info], ["followers", "Followers", Users]] as const).map(([key, label, Icon]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
-                  className={`border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${tab === key ? "border-brand text-brand" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+                  aria-label={label}
+                  className={`flex items-center border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${tab === key ? "border-brand text-brand" : "border-transparent text-gray-400 hover:text-gray-600"}`}
                 >
-                  {label}
+                  {/* mobile: icon only; desktop: text label (count stays on both) */}
+                  <Icon className="h-[18px] w-[18px] lg:hidden" />
+                  <span className="hidden lg:inline">{label}</span>
                   {key === "posts" && data.postsCount > 0 && (
                     <span className="ml-1 rounded-[5px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
                   )}
