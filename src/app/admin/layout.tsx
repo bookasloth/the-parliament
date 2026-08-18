@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // OR any lower back-office role (moderator/support/analyst) may enter; each
   // surface inside then enforces `can()` per action. Logged-out → signin;
   // logged-in without console access → 404 so the surface isn't discoverable.
-  if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/admin")
+  if (!session?.user?.id) redirect("/auth/admin?callbackUrl=/admin")
   const mayEnter =
     session.user.isAdmin ||
     canEnterConsole({ email: session.user.email, roles: session.user.roles })
