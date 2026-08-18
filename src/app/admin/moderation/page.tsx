@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { listOpenReports } from "@/modules/moderation/service"
 import { prisma } from "@/lib/prisma"
 import { relativeTime } from "@/lib/relative-time"
@@ -7,7 +7,7 @@ import ModerationClient, { type ModReport } from "./moderation-client"
 export const dynamic = "force-dynamic"
 
 export default async function AdminModerationPage() {
-  await requireAdmin()
+  await requirePermission("reports:read")
 
   const [open, resolved30d] = await Promise.all([
     listOpenReports(100),

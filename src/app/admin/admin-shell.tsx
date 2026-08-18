@@ -10,7 +10,7 @@ import {
   Flag, Megaphone, CreditCard, Storefront, Briefcase, Sparkle,
   Palette, Trophy, GameController, ChatsCircle, Gear, Scroll,
   List, X, MagnifyingGlass, Bell, CaretDown, SignOut,
-  ArrowSquareOut, VideoCamera, Bank, HandHeart,
+  ArrowSquareOut, VideoCamera, Bank, HandHeart, Warning,
 } from "@phosphor-icons/react"
 
 export interface AdminIdentity {
@@ -39,7 +39,7 @@ const NAV: NavGroup[] = [
     title: "Overview",
     items: [
       { href: "/admin", label: "Dashboard", icon: <House className={ICON} weight="duotone" color="#3b82f6" /> },
-      { href: "/admin/analytics", label: "Analytics", icon: <ChartBar className={ICON} weight="duotone" color="#3b82f6" />, soon: true },
+      { href: "/admin/analytics", label: "Analytics", icon: <ChartBar className={ICON} weight="duotone" color="#3b82f6" /> },
     ],
   },
   {
@@ -57,7 +57,8 @@ const NAV: NavGroup[] = [
     title: "Content",
     items: [
       { href: "/admin/moderation", label: "Moderation", icon: <Flag className={ICON} weight="duotone" color="#f43f5e" />, badge: 7 },
-      { href: "/admin/notifications", label: "Announcements", icon: <Megaphone className={ICON} weight="duotone" color="#f43f5e" />, soon: true },
+      { href: "/admin/reports", label: "Reports", icon: <Warning className={ICON} weight="duotone" color="#f43f5e" /> },
+      { href: "/admin/notifications", label: "Announcements", icon: <Megaphone className={ICON} weight="duotone" color="#f43f5e" /> },
     ],
   },
   {
@@ -65,7 +66,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/membership", label: "Membership", icon: <CreditCard className={ICON} weight="duotone" color="#8b5cf6" /> },
       { href: "/admin/contributions", label: "Contributions", icon: <HandHeart className={ICON} weight="duotone" color="#8b5cf6" /> },
-      { href: "/admin/businesses", label: "Businesses", icon: <Storefront className={ICON} weight="duotone" color="#8b5cf6" />, soon: true },
+      { href: "/admin/businesses", label: "Businesses", icon: <Storefront className={ICON} weight="duotone" color="#8b5cf6" /> },
       { href: "/admin/jobs", label: "Job Board", icon: <Briefcase className={ICON} weight="duotone" color="#8b5cf6" />, soon: true },
     ],
   },
@@ -74,16 +75,16 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/karma", label: "Karma System", icon: <Sparkle className={ICON} weight="duotone" color="#f59e0b" /> },
       { href: "/admin/themes", label: "Chat Themes", icon: <Palette className={ICON} weight="duotone" color="#f59e0b" /> },
-      { href: "/admin/rewards", label: "Badges & Rewards", icon: <Trophy className={ICON} weight="duotone" color="#f59e0b" />, soon: true },
-      { href: "/admin/games", label: "Games", icon: <GameController className={ICON} weight="duotone" color="#10b981" />, soon: true },
-      { href: "/admin/messaging", label: "Messaging", icon: <ChatsCircle className={ICON} weight="duotone" color="#10b981" />, soon: true },
+      { href: "/admin/rewards", label: "Badges & Rewards", icon: <Trophy className={ICON} weight="duotone" color="#f59e0b" /> },
+      { href: "/admin/games", label: "Games", icon: <GameController className={ICON} weight="duotone" color="#10b981" /> },
+      { href: "/admin/messaging", label: "Messaging", icon: <ChatsCircle className={ICON} weight="duotone" color="#10b981" /> },
     ],
   },
   {
     title: "System",
     items: [
       { href: "/admin/settings", label: "Settings", icon: <Gear className={ICON} weight="duotone" color="#71717a" /> },
-      { href: "/admin/audit-logs", label: "Audit Logs", icon: <Scroll className={ICON} weight="duotone" color="#71717a" />, soon: true },
+      { href: "/admin/audit-logs", label: "Audit Logs", icon: <Scroll className={ICON} weight="duotone" color="#71717a" /> },
     ],
   },
 ]
