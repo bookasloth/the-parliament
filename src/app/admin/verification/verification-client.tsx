@@ -9,6 +9,7 @@ import { PageHeader, StatCard, StatusBadge, Button, useRowAction } from "../admi
 import {
   approveVerificationAction, rejectVerificationAction,
   listSuggestedEndorsersAction, requestEndorsementAction,
+  startUserReviewAction, verifyUserNowAction,
 } from "./actions"
 
 export interface VReq {
@@ -22,6 +23,19 @@ export interface VReq {
   evidenceUrl: string | null
   submitted: string
   endorsements: { asked: number; endorsed: number; declined: number }
+}
+
+export interface VCandidate {
+  userId: string
+  name: string
+  email: string
+  username: string | null
+  memberType: string
+  profileCompletion: number
+  hasJnvData: boolean
+  followers: number
+  endorsedCount: number
+  joined: string
 }
 
 interface Suggested {
@@ -137,16 +151,18 @@ const methodLabel: Record<string, string> = {
 }
 
 export default function VerificationClient({
-  requests, approved30d, rejected30d,
-}: { requests: VReq[]; approved30d: number; rejected30d: number }) {
+  requests, candidates, approved30d, rejected30d,
+}: { requests: VReq[]; candidates: VCandidate[]; approved30d: number; rejected30d: number }) {
   const [expanded, setExpanded] = useState<string | null>(requests[0]?.id ?? null)
   const [done, setDone] = useState<Record<string, "approved" | "rejected">>({})
   const [rejectFor, setRejectFor] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
   const [endorseFor, setEndorseFor] = useState<VReq | null>(null)
+  const [candDone, setCandDone] = useState<Record<string, "review" | "verified">>({})
   const { run, isBusy } = useRowAction()
 
   const list = requests.filter((r) => !done[r.id])
+  const candList = candidates.filter((c) => !candDone[c.userId])
 
   function approve(id: string) {
     run(id, {
@@ -169,6 +185,25 @@ export default function VerificationClient({
       revert: () => setDone((d) => { const n = { ...d }; delete n[id]; return n }),
       action: () => rejectVerificationAction(id, reason),
       success: "Verification rejected",
+    })
+  }
+
+  function startReview(userId: string) {
+    run(userId, {
+      optimistic: () => setCandDone((d) => ({ ...d, [userId]: "review" })),
+      revert: () => setCandDone((d) => { const n = { ...d }; delete n[userId]; return n }),
+      action: () => startUserReviewAction(userId),
+      success: "Moved to review queue",
+    })
+  }
+
+  function verifyNow(userId: string) {
+    if (!confirm("Verify this member directly, without submitted evidence? They'll be marked Verified Alumni and notified.")) return
+    run(userId, {
+      optimistic: () => setCandDone((d) => ({ ...d, [userId]: "verified" })),
+      revert: () => setCandDone((d) => { const n = { ...d }; delete n[userId]; return n }),
+      action: () => verifyUserNowAction(userId),
+      success: "Member verified",
     })
   }
 
@@ -290,6 +325,54 @@ export default function VerificationClient({
             </div>
           )
         })}
+      </div>
+
+      {/* Unverified members — not in the submission queue. Ranked by signal. */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Unverified members</h2>
+            <p className="text-xs text-gray-500">Never submitted evidence — ranked by vouches, profile completeness, and JNV data. Start review to request endorsements, or verify directly.</p>
+          </div>
+          <span className="text-xs font-semibold text-gray-500">{candList.length}</span>
+        </div>
+
+        {candList.length === 0 ? (
+          <div className="rounded-[4px] border border-gray-200 bg-white py-12 text-center">
+            <User className="h-8 w-8 text-gray-400 mx-auto mb-2" weight="duotone" />
+            <p className="text-sm font-medium text-gray-600">No unverified members</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {candList.map((c) => (
+              <div key={c.userId} className="flex items-center gap-3 rounded-[4px] border border-gray-200 bg-white p-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[3px] bg-gray-100 text-[11px] font-bold text-gray-600 flex-shrink-0">
+                  {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                    <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold capitalize text-gray-500">{c.memberType}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate">{c.username ? `@${c.username} · ` : ""}{c.email} · joined {c.joined}</p>
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+                  {c.endorsedCount > 0 && (
+                    <span className="rounded-[3px] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">{c.endorsedCount} vouch{c.endorsedCount > 1 ? "es" : ""}</span>
+                  )}
+                  <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{c.profileCompletion}% profile</span>
+                  {c.hasJnvData && <span className="rounded-[3px] bg-sky-50 border border-sky-200 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">JNV data</span>}
+                  {c.followers > 0 && <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{c.followers} follower{c.followers > 1 ? "s" : ""}</span>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => startReview(c.userId)} disabled={isBusy(c.userId)}>Start review</Button>
+                  <button onClick={() => verifyNow(c.userId)} disabled={isBusy(c.userId)}
+                    className="rounded-[3px] bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">Verify now</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {endorseFor && <EndorseModal req={endorseFor} onClose={() => setEndorseFor(null)} />}
