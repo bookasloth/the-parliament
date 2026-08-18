@@ -90,3 +90,19 @@ grant table — never compare role strings inline; call `can(user, perm)`.
   `Modal`, `EmptyState`, `ComingSoon`, `StatusBadge`, charts). Don't re-roll them.
 - **`force-dynamic`** on every admin page — the console is never statically cached.
 - **Audit everything** — every mutation writes an `audit()` entry.
+
+## 5. Adding a help guide
+
+The in-app Help Center (`/admin/help`) is data-driven. To document a task, add a
+`Guide` entry to `src/app/admin/help/guides.ts`:
+
+- `slug` — stable id, used for deep-links (`/admin/help#slug`) and the topbar `?`.
+- `section` — group label the card sorts under (e.g. `"Members"`, `"Content"`).
+- `permission` **or** `adminOnly` — same visibility rule as the nav; omit both for
+  a guide everyone with console access can see.
+- `steps` — ordered, imperative strings (rendered as a numbered list, plain text).
+- `href` — the admin page the guide is about.
+
+It then auto-appears in the Help Center (role-filtered server-side in `page.tsx`)
+and becomes the topbar `?` target for its `href` via `guideForPath(pathname)`
+(longest-prefix match). No markdown/HTML — steps are typed data rendered as JSX.

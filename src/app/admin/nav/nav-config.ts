@@ -98,6 +98,7 @@ export const NAV: NavSection[] = [
     items: [
       { label: "Settings", href: "/admin/settings", icon: "Gear", permission: "settings:manage" },
       { label: "Audit Logs", href: "/admin/audit-logs", icon: "Scroll", permission: "audit:read" },
+      { label: "Help", href: "/admin/help", icon: "Question" },
     ],
   },
 ]

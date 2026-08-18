@@ -2,12 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
-  List, MagnifyingGlass, Bell, CaretDown, SignOut, Gear, ArrowSquareOut,
+  List, MagnifyingGlass, Bell, CaretDown, SignOut, Gear, ArrowSquareOut, Question,
 } from "@phosphor-icons/react"
 import { LogoMark } from "@/components/shared/Logo"
 import type { AdminIdentity } from "../admin-shell"
+import { guideForPath } from "../help/guides"
 
 const ENV_STYLE: Record<string, string> = {
   Production: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
@@ -25,6 +27,13 @@ export default function Topbar({
   onMenuClick: () => void
 }) {
   const [profileOpen, setProfileOpen] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
+
+  function openHelp() {
+    const guide = guideForPath(pathname)
+    router.push(guide ? `/admin/help#${guide.slug}` : "/admin/help")
+  }
 
   return (
     <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center gap-3 border-b border-zinc-800 bg-[#0a0a0a] px-4 sm:px-6">
@@ -62,6 +71,16 @@ export default function Topbar({
       <span className={`hidden rounded-[3px] border px-2 py-1 text-[10px] font-bold uppercase tracking-wider md:inline-block ${ENV_STYLE[env] ?? ENV_STYLE.Local}`}>
         {env}
       </span>
+
+      {/* Context help — jumps to the guide for the current page */}
+      <button
+        onClick={openHelp}
+        className="rounded-[3px] p-2 text-zinc-500 hover:bg-zinc-900"
+        aria-label="Help for this page"
+        title="Help for this page"
+      >
+        <Question className="h-5 w-5" />
+      </button>
 
       {/* Notifications */}
       <button className="relative rounded-[3px] p-2 text-zinc-500 hover:bg-zinc-900" aria-label="Notifications">
