@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation"
 import { notFound } from "next/navigation"
 import { auth } from "@/lib/auth"
-import { canEnterConsole } from "@/modules/admin/permissions"
+import { canEnterConsole, can } from "@/modules/admin/permissions"
 import AdminShell, { type AdminIdentity } from "./admin-shell"
+import { NAV } from "./nav/nav-config"
 
 function initialsFrom(name: string, email: string): string {
   const source = name.trim() || email
@@ -28,9 +29,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const email = session.user.email || ""
   const admin: AdminIdentity = { name, email, initials: initialsFrom(name, email) }
 
+  // Role-scope the nav server-side: an item shows if adminOnly ? isAdmin :
+  // permission ? can() : always. A section shows if it has >= 1 visible item.
+  const principal = { email: session.user.email, roles: session.user.roles }
+  const isAdmin = session.user.isAdmin
+  const sections = NAV
+    .map(s => ({
+      ...s,
+      items: s.items.filter(i => (i.adminOnly ? isAdmin : i.permission ? can(principal, i.permission) : true)),
+    }))
+    .filter(s => s.items.length > 0)
+
+  const env =
+    process.env.VERCEL_ENV === "production"
+      ? "Production"
+      : process.env.VERCEL_ENV === "preview"
+        ? "Preview"
+        : "Local"
+
   return (
     <div className="admin-root">
-      <AdminShell admin={admin}>{children}</AdminShell>
+      <AdminShell admin={admin} env={env} sections={sections}>{children}</AdminShell>
     </div>
   )
 }
