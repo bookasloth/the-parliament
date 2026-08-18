@@ -103,7 +103,7 @@ export default function AdminThemesClient({ initialThemes }: { initialThemes: Ch
     <div>
       <PageHeader
         title="Festive Chat Themes"
-        description="Schedule seasonal looks for the chat. When a window is active, every conversation adopts that theme's bubbles, background, and decorations."
+        description="Schedule seasonal looks for the chat. When a window is active, every conversation adopts that theme's bubbles, background, and decorations. Saved changes apply to live chats on the next deploy."
         actions={
           <>
             <button className="flex items-center gap-1.5 rounded-[3px] border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-100">
