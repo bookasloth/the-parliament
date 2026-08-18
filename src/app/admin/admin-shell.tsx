@@ -7,6 +7,7 @@ import Topbar from "./nav/Topbar"
 import PrimaryRail from "./nav/PrimaryRail"
 import SecondarySidebar from "./nav/SecondarySidebar"
 import CommandPalette from "./nav/CommandPalette"
+import { ToastProvider } from "./admin-ui"
 
 export interface AdminIdentity {
   name: string
@@ -50,7 +51,8 @@ export default function AdminShell({
   }, [])
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-[#0a0a0a]">
+    <ToastProvider>
+    <div className="flex h-[100dvh] flex-col bg-gray-50">
       <Topbar admin={admin} env={env} onMenuClick={() => setDrawerOpen(true)} onSearchClick={() => setPaletteOpen(true)} sections={sections} />
 
       <div className="flex min-h-0 flex-1">
@@ -78,10 +80,11 @@ export default function AdminShell({
           </>
         )}
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-[#0a0a0a] p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">{children}</main>
       </div>
 
       {paletteOpen && <CommandPalette sections={sections} onClose={() => setPaletteOpen(false)} />}
     </div>
+    </ToastProvider>
   )
 }

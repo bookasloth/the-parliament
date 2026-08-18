@@ -59,11 +59,11 @@ export default function MessagingClient({
         <StatCard label="Active 7d" value={stats.activeLast7d.toLocaleString()} icon={<Users className="h-4.5 w-4.5" weight="duotone" />} accent="violet" />
       </div>
 
-      <p className="mb-3 text-[11px] text-zinc-500">
+      <p className="mb-3 text-[11px] text-gray-500">
         Message contents and media are intentionally hidden for privacy — only conversation metadata is shown.
       </p>
 
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
@@ -84,10 +84,10 @@ export default function MessagingClient({
               ) : (
                 rows.map((r) => (
                   <Tr key={r.id}>
-                    <Td className="text-zinc-200">{r.participants.length ? r.participants.join(" ↔ ") : "—"}</Td>
-                    <Td className="text-zinc-400">{r.messageCount.toLocaleString()}</Td>
-                    <Td className="text-zinc-400 whitespace-nowrap">{r.createdAt}</Td>
-                    <Td className="text-zinc-400 whitespace-nowrap">{r.lastMessageAt}</Td>
+                    <Td className="text-gray-800">{r.participants.length ? r.participants.join(" ↔ ") : "—"}</Td>
+                    <Td className="text-gray-600">{r.messageCount.toLocaleString()}</Td>
+                    <Td className="text-gray-600 whitespace-nowrap">{r.createdAt}</Td>
+                    <Td className="text-gray-600 whitespace-nowrap">{r.lastMessageAt}</Td>
                   </Tr>
                 ))
               )}
@@ -95,20 +95,20 @@ export default function MessagingClient({
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-          <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span></p>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span></p>
           <div className="flex items-center gap-1">
-            <button onClick={() => goto(page - 1)} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+            <button onClick={() => goto(page - 1)} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
               <CaretLeft className="h-4 w-4" weight="duotone" />
             </button>
             {nums.map((p) => (
               <button key={p} onClick={() => goto(p)}
-                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                 {p}
               </button>
             ))}
-            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-            <button onClick={() => goto(page + 1)} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
+            <button onClick={() => goto(page + 1)} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
               <CaretRight className="h-4 w-4" weight="duotone" />
             </button>
           </div>

@@ -8,7 +8,7 @@ import {
   Users, UserCheck, UserMinus, Clock, X, Key, Crown, PencilSimple,
   Sparkle, Medal, ClockCounterClockwise, UploadSimple,
 } from "@phosphor-icons/react"
-import { PageHeader, StatCard, StatusBadge, Table, Thead, Tbody, Tr, Th, Td, Button } from "../admin-ui"
+import { PageHeader, StatCard, StatusBadge, Table, Thead, Tbody, Tr, Th, Td, Button, useToast } from "../admin-ui"
 
 export interface AdminUser {
   id: string
@@ -106,7 +106,7 @@ export default function AdminUsersClient({
   const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteMsg, setInviteMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const notify = useToast()
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
   const [edit, setEdit] = useState({ legalName: "", displayName: "", email: "", membership: "free", houseId: "", batchId: "" })
   const [editBusy, setEditBusy] = useState(false)
@@ -145,7 +145,7 @@ export default function AdminUsersClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Save failed")
-      setToast(`Updated ${edit.legalName}`)
+      notify.success(`Updated ${edit.legalName}`)
       setEditUser(null)
       router.refresh()
     } catch (e) {
@@ -173,7 +173,7 @@ export default function AdminUsersClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Adjust failed")
-      setToast(`Karma ${delta > 0 ? "+" : ""}${delta} → ${json.balance}`)
+      notify.success(`Karma ${delta > 0 ? "+" : ""}${delta} → ${json.balance}`)
       setKarmaUser(null); setKarmaDelta(""); setKarmaReason(""); router.refresh()
     } catch (e) {
       setKarmaErr(e instanceof Error ? e.message : "Adjust failed")
@@ -215,7 +215,7 @@ export default function AdminUsersClient({
     } catch {
       // Revert optimistic toggle on failure.
       setBadgeSet(s => { const n = new Set(s); add ? n.delete(badgeId) : n.add(badgeId); return n })
-      setToast("Badge update failed")
+      notify.error("Badge update failed")
     }
   }
 
@@ -253,7 +253,6 @@ export default function AdminUsersClient({
     if (confirmMsg && !window.confirm(confirmMsg)) return
     setActiveMenu(null)
     setBusy(true)
-    setToast(null)
     try {
       const res = await fetch(`/api/admin/users/${id}/action`, {
         method: "POST",
@@ -262,10 +261,10 @@ export default function AdminUsersClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Action failed")
-      setToast(`Done: ${action}`)
+      notify.success(`Done: ${action}`)
       router.refresh()
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Action failed")
+      notify.error(e instanceof Error ? e.message : "Action failed")
     } finally {
       setBusy(false)
     }
@@ -273,7 +272,6 @@ export default function AdminUsersClient({
 
   async function runBulk(action: string) {
     setBusy(true)
-    setToast(null)
     try {
       const res = await fetch("/api/admin/users/bulk", {
         method: "POST",
@@ -282,11 +280,11 @@ export default function AdminUsersClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Bulk action failed")
-      setToast(`${action}: ${json.done}/${json.requested} updated`)
+      notify.success(`${action}: ${json.done}/${json.requested} updated`)
       setSelected(new Set())
       router.refresh()
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Bulk action failed")
+      notify.error(e instanceof Error ? e.message : "Bulk action failed")
     } finally {
       setBusy(false)
     }
@@ -346,13 +344,6 @@ export default function AdminUsersClient({
         }
       />
 
-      {toast && (
-        <div className="mb-4 flex items-center justify-between rounded-[4px] border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-xs text-zinc-300">
-          <span>{toast}</span>
-          <button onClick={() => setToast(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-4 w-4" weight="duotone" /></button>
-        </div>
-      )}
-
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Users" value={(stats?.total ?? users.length).toLocaleString()} icon={<Users className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
@@ -362,20 +353,20 @@ export default function AdminUsersClient({
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
-        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-zinc-800">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-gray-200">
           <div className="relative flex-1">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" weight="duotone" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" weight="duotone" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or email..."
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 transition-all"
+              className="w-full rounded-[4px] border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center gap-1.5 rounded-[4px] border px-3 py-2 text-xs font-semibold transition-colors ${showFilters ? "border-blue-800 bg-blue-950/40 text-blue-300" : "border-zinc-800 text-zinc-300 hover:bg-zinc-800"}`}
+            className={`flex items-center justify-center gap-1.5 rounded-[4px] border px-3 py-2 text-xs font-semibold transition-colors ${showFilters ? "border-blue-200 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-700 hover:bg-gray-100"}`}
           >
             <Funnel className="h-3.5 w-3.5" weight="duotone" /> Filters
             {(houseFilter !== "All Houses" || statusFilter !== "All Statuses" || planFilter !== "All Plans") && (
@@ -385,18 +376,18 @@ export default function AdminUsersClient({
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 border-b border-zinc-800 bg-zinc-900/40">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 border-b border-gray-200 bg-gray-100/40">
             {[
               { label: "House", value: houseFilter, set: setHouseFilter, options: HOUSES },
               { label: "Status", value: statusFilter, set: setStatusFilter, options: STATUSES },
               { label: "Membership", value: planFilter, set: setPlanFilter, options: MEMBERSHIPS },
             ].map(f => (
               <div key={f.label}>
-                <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1">{f.label}</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">{f.label}</label>
                 <select
                   value={f.value}
                   onChange={e => f.set(e.target.value)}
-                  className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500 capitalize"
+                  className="w-full rounded-[4px] border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-800 outline-none focus:border-blue-500 capitalize"
                 >
                   {f.options.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
@@ -407,20 +398,20 @@ export default function AdminUsersClient({
 
         {/* Bulk actions */}
         {selected.size > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-950/30 border-b border-blue-900">
-            <span className="text-xs font-semibold text-blue-300">{selected.size} selected</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50/30 border-b border-blue-200">
+            <span className="text-xs font-semibold text-blue-700">{selected.size} selected</span>
             <div className="flex gap-1.5 ml-2">
-              <button disabled={busy} onClick={() => runBulk("verify")} className="flex items-center gap-1 rounded-[3px] bg-[#111113] border border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-300 hover:bg-blue-950/50 disabled:opacity-50">
+              <button disabled={busy} onClick={() => runBulk("verify")} className="flex items-center gap-1 rounded-[3px] bg-white border border-blue-200 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100/50 disabled:opacity-50">
                 <ShieldCheck className="h-3 w-3" weight="duotone" /> Verify
               </button>
-              <button disabled={busy} onClick={() => runBulk("activate")} className="flex items-center gap-1 rounded-[3px] bg-[#111113] border border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-950/50 disabled:opacity-50">
+              <button disabled={busy} onClick={() => runBulk("activate")} className="flex items-center gap-1 rounded-[3px] bg-white border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-100/50 disabled:opacity-50">
                 <UserCheck className="h-3 w-3" weight="duotone" /> Activate
               </button>
-              <button disabled={busy} onClick={() => runBulk("suspend")} className="flex items-center gap-1 rounded-[3px] bg-[#111113] border border-rose-800 px-2.5 py-1 text-[11px] font-semibold text-rose-400 hover:bg-rose-950/50 disabled:opacity-50">
+              <button disabled={busy} onClick={() => runBulk("suspend")} className="flex items-center gap-1 rounded-[3px] bg-white border border-rose-200 px-2.5 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-100/50 disabled:opacity-50">
                 <Prohibit className="h-3 w-3" weight="duotone" /> Suspend
               </button>
             </div>
-            <button onClick={() => setSelected(new Set())} className="ml-auto text-zinc-500 hover:text-zinc-300">
+            <button onClick={() => setSelected(new Set())} className="ml-auto text-gray-500 hover:text-gray-700">
               <X className="h-4 w-4" weight="duotone" />
             </button>
           </div>
@@ -441,7 +432,7 @@ export default function AdminUsersClient({
             </Thead>
             <Tbody>
               {filtered.map(u => (
-                <Tr key={u.id} className={selected.has(u.id) ? "bg-blue-950/20" : ""}>
+                <Tr key={u.id} className={selected.has(u.id) ? "bg-blue-50/20" : ""}>
                   <Td>
                     <input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} className="h-3.5 w-3.5 accent-blue-600" />
                   </Td>
@@ -451,65 +442,65 @@ export default function AdminUsersClient({
                         {u.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-zinc-200 truncate flex items-center gap-1">
+                        <p className="text-xs font-semibold text-gray-800 truncate flex items-center gap-1">
                           {u.name}
-                          {u.membership === "life" && <Crown className="h-3 w-3 text-amber-400 flex-shrink-0" weight="duotone" />}
+                          {u.membership === "life" && <Crown className="h-3 w-3 text-amber-600 flex-shrink-0" weight="duotone" />}
                         </p>
-                        <p className="text-[11px] text-zinc-500 truncate">{u.email}</p>
+                        <p className="text-[11px] text-gray-500 truncate">{u.email}</p>
                       </div>
                     </div>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    <p className="text-xs text-zinc-300">Batch {u.batch}</p>
-                    <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                    <p className="text-xs text-gray-700">Batch {u.batch}</p>
+                    <p className="text-[11px] text-gray-500 flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: u.houseColor }} />
                       {u.house}
                     </p>
                   </Td>
                   <Td><StatusBadge status={u.membership} /></Td>
                   <Td className="text-xs font-bold tabular-nums whitespace-nowrap">
-                    <span className={u.karma < 0 ? "text-rose-400" : "text-zinc-300"}>{u.karma.toLocaleString()}</span>
+                    <span className={u.karma < 0 ? "text-rose-600" : "text-gray-700"}>{u.karma.toLocaleString()}</span>
                   </Td>
                   <Td><StatusBadge status={u.status} /></Td>
-                  <Td className="text-xs text-zinc-500 whitespace-nowrap">{u.lastActive}</Td>
+                  <Td className="text-xs text-gray-500 whitespace-nowrap">{u.lastActive}</Td>
                   <Td className="relative">
                     <button
                       onClick={() => setActiveMenu(activeMenu === u.id ? null : u.id)}
-                      className="p-1.5 rounded-[3px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+                      className="p-1.5 rounded-[3px] text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                     >
                       <DotsThreeVertical className="h-4 w-4" weight="duotone" />
                     </button>
                     {activeMenu === u.id && (
-                      <div className="absolute right-4 top-10 z-20 w-48 rounded-[4px] border border-zinc-800 bg-[#111113] py-1 shadow-xl">
-                        <a href={u.username ? `/profile/${u.username}` : "#"} target="_blank" rel="noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                      <div className="absolute right-4 top-10 z-20 w-48 rounded-[4px] border border-gray-200 bg-white py-1 shadow-xl">
+                        <a href={u.username ? `/profile/${u.username}` : "#"} target="_blank" rel="noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <Eye className="h-4 w-4" weight="duotone" /> View profile
                         </a>
-                        <button onClick={() => openEdit(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => openEdit(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <PencilSimple className="h-4 w-4" weight="duotone" /> Edit user
                         </button>
-                        <button onClick={() => runAction(u.id, "verify")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => runAction(u.id, "verify")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <ShieldCheck className="h-4 w-4" weight="duotone" /> Verify account
                         </button>
-                        <button onClick={() => runAction(u.id, "reset-password")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => runAction(u.id, "reset-password")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <Key className="h-4 w-4" weight="duotone" /> Reset password
                         </button>
-                        <button onClick={() => { setActiveMenu(null); setKarmaUser(u); setKarmaDelta(""); setKarmaReason(""); setKarmaErr(null) }} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => { setActiveMenu(null); setKarmaUser(u); setKarmaDelta(""); setKarmaReason(""); setKarmaErr(null) }} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <Sparkle className="h-4 w-4" weight="duotone" /> Adjust karma
                         </button>
-                        <button onClick={() => openHistory(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => openHistory(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <ClockCounterClockwise className="h-4 w-4" weight="duotone" /> Karma history
                         </button>
-                        <button onClick={() => openBadges(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <button onClick={() => openBadges(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <Medal className="h-4 w-4" weight="duotone" /> Manage badges
                         </button>
-                        <a href={`mailto:${u.email}`} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">
+                        <a href={`mailto:${u.email}`} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <EnvelopeSimple className="h-4 w-4" weight="duotone" /> Send email
                         </a>
-                        <div className="my-1 border-t border-zinc-800" />
-                        <button onClick={() => runAction(u.id, u.status === "suspended" ? "activate" : "suspend")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40">
+                        <div className="my-1 border-t border-gray-200" />
+                        <button onClick={() => runAction(u.id, u.status === "suspended" ? "activate" : "suspend")} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-100/40">
                           <Prohibit className="h-4 w-4" weight="duotone" /> {u.status === "suspended" ? "Unsuspend" : "Suspend"}
                         </button>
-                        <button onClick={() => runAction(u.id, "delete", `Delete ${u.name}? This soft-deletes the account.`)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-400 hover:bg-rose-950/40">
+                        <button onClick={() => runAction(u.id, "delete", `Delete ${u.name}? This soft-deletes the account.`)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">
                           <Trash className="h-4 w-4" weight="duotone" /> Delete account
                         </button>
                       </div>
@@ -520,8 +511,8 @@ export default function AdminUsersClient({
               {filtered.length === 0 && (
                 <Tr>
                   <Td colSpan={8} className="text-center py-12">
-                    <Users className="h-8 w-8 text-zinc-700 mx-auto mb-2" weight="duotone" />
-                    <p className="text-sm font-medium text-zinc-400">No users match your filters</p>
+                    <Users className="h-8 w-8 text-gray-400 mx-auto mb-2" weight="duotone" />
+                    <p className="text-sm font-medium text-gray-600">No users match your filters</p>
                   </Td>
                 </Tr>
               )}
@@ -540,20 +531,20 @@ export default function AdminUsersClient({
           const start = Math.max(1, Math.min(page - 2, last - 4))
           const nums = Array.from({ length: Math.min(5, last) }, (_, i) => start + i).filter(p => p <= last)
           return (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-              <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span> users</p>
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+              <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span> users</p>
               <div className="flex items-center gap-1">
-                <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+                <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
                   <CaretLeft className="h-4 w-4" weight="duotone" />
                 </button>
                 {nums.map(p => (
                   <button key={p} onClick={() => pushQuery({ page: p })}
-                    className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                    className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                     {p}
                   </button>
                 ))}
-                {nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-                <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+                {nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
+                <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
                   <CaretRight className="h-4 w-4" weight="duotone" />
                 </button>
               </div>
@@ -564,21 +555,21 @@ export default function AdminUsersClient({
 
       {karmaUser && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setKarmaUser(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Adjust Karma</h3>
-              <button onClick={() => setKarmaUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Adjust Karma</h3>
+              <button onClick={() => setKarmaUser(null)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
-            <p className="mb-4 text-xs text-zinc-500">{karmaUser.name} · current {karmaUser.karma.toLocaleString()}. Admin override — bypasses daily caps.</p>
+            <p className="mb-4 text-xs text-gray-500">{karmaUser.name} · current {karmaUser.karma.toLocaleString()}. Admin override — bypasses daily caps.</p>
             <label className="mb-3 block">
-              <span className="mb-1 block text-xs font-semibold text-zinc-300">Delta (+ or −)</span>
-              <input value={karmaDelta} onChange={(e) => setKarmaDelta(e.target.value)} inputMode="numeric" placeholder="e.g. 50 or -20" className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+              <span className="mb-1 block text-xs font-semibold text-gray-700">Delta (+ or −)</span>
+              <input value={karmaDelta} onChange={(e) => setKarmaDelta(e.target.value)} inputMode="numeric" placeholder="e.g. 50 or -20" className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
             </label>
             <label className="mb-3 block">
-              <span className="mb-1 block text-xs font-semibold text-zinc-300">Reason</span>
-              <input value={karmaReason} onChange={(e) => setKarmaReason(e.target.value)} placeholder="Why this adjustment?" className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+              <span className="mb-1 block text-xs font-semibold text-gray-700">Reason</span>
+              <input value={karmaReason} onChange={(e) => setKarmaReason(e.target.value)} placeholder="Why this adjustment?" className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
             </label>
-            {karmaErr && <div className="mb-3 rounded-[3px] bg-rose-950/40 border border-rose-900 px-3 py-2 text-xs text-rose-300">{karmaErr}</div>}
+            {karmaErr && <div className="mb-3 rounded-[3px] bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-700">{karmaErr}</div>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setKarmaUser(null)}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitKarma} disabled={busy || !karmaDelta || !karmaReason}>{busy ? "Saving…" : "Apply"}</Button>
@@ -589,24 +580,24 @@ export default function AdminUsersClient({
 
       {historyUser && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistoryUser(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Karma History · {historyUser.name}</h3>
-              <button onClick={() => setHistoryUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Karma History · {historyUser.name}</h3>
+              <button onClick={() => setHistoryUser(null)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto">
-              {history === null && <p className="py-8 text-center text-xs text-zinc-500">Loading…</p>}
-              {history?.length === 0 && <p className="py-8 text-center text-xs text-zinc-500">No karma transactions</p>}
+              {history === null && <p className="py-8 text-center text-xs text-gray-500">Loading…</p>}
+              {history?.length === 0 && <p className="py-8 text-center text-xs text-gray-500">No karma transactions</p>}
               {history && history.length > 0 && (
                 <table className="w-full text-left text-xs">
-                  <thead><tr className="text-[11px] uppercase text-zinc-500"><th className="py-2">When</th><th className="py-2">Action</th><th className="py-2 text-right">Δ</th><th className="py-2">Reason</th></tr></thead>
+                  <thead><tr className="text-[11px] uppercase text-gray-500"><th className="py-2">When</th><th className="py-2">Action</th><th className="py-2 text-right">Δ</th><th className="py-2">Reason</th></tr></thead>
                   <tbody>
                     {history.map((h) => (
-                      <tr key={h.id} className="border-t border-zinc-900">
-                        <td className="py-2 text-zinc-400 whitespace-nowrap">{new Date(h.at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="py-2"><span className="rounded-[3px] bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{h.actionType}</span></td>
-                        <td className={`py-2 text-right font-bold tabular-nums ${h.applied < 0 ? "text-rose-400" : "text-emerald-400"}`}>{h.applied > 0 ? "+" : ""}{h.applied}</td>
-                        <td className="py-2 text-zinc-500">{h.reason ?? "—"}</td>
+                      <tr key={h.id} className="border-t border-gray-200">
+                        <td className="py-2 text-gray-600 whitespace-nowrap">{new Date(h.at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2"><span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700">{h.actionType}</span></td>
+                        <td className={`py-2 text-right font-bold tabular-nums ${h.applied < 0 ? "text-rose-600" : "text-emerald-600"}`}>{h.applied > 0 ? "+" : ""}{h.applied}</td>
+                        <td className="py-2 text-gray-500">{h.reason ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -619,17 +610,17 @@ export default function AdminUsersClient({
 
       {badgeUser && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBadgeUser(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Badges · {badgeUser.name}</h3>
-              <button onClick={() => setBadgeUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Badges · {badgeUser.name}</h3>
+              <button onClick={() => setBadgeUser(null)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
-            {badgeOptions.length === 0 && <p className="py-6 text-center text-xs text-zinc-500">No badges defined yet</p>}
+            {badgeOptions.length === 0 && <p className="py-6 text-center text-xs text-gray-500">No badges defined yet</p>}
             <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
               {badgeOptions.map((b) => (
-                <label key={b.id} className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 hover:bg-zinc-800 cursor-pointer">
+                <label key={b.id} className="flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 hover:bg-gray-100 cursor-pointer">
                   <input type="checkbox" checked={badgeSet.has(b.id)} onChange={() => toggleBadge(b.id)} className="h-3.5 w-3.5 accent-blue-600" />
-                  <span className="text-xs text-zinc-200">{b.label}</span>
+                  <span className="text-xs text-gray-800">{b.label}</span>
                 </label>
               ))}
             </div>
@@ -642,15 +633,15 @@ export default function AdminUsersClient({
 
       {importOpen && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setImportOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Import Users (CSV)</h3>
-              <button onClick={() => setImportOpen(false)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Import Users (CSV)</h3>
+              <button onClick={() => setImportOpen(false)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
-            <p className="mb-3 text-xs text-zinc-500">One row per user: <code className="text-zinc-400">Name,email</code>. Each gets an activation email. Existing emails are skipped. Max 500 rows.</p>
-            <input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then(setImportText) }} className="mb-2 block w-full text-xs text-zinc-400 file:mr-3 file:rounded-[3px] file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-xs file:text-zinc-200" />
-            <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6} placeholder={"Neha Gupta,neha@example.com\nAmit Verma,amit@example.com"} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs font-mono text-zinc-200 placeholder-zinc-600 focus:border-blue-500 focus:outline-none" />
-            {importResult && <div className="mt-3 rounded-[3px] bg-zinc-900 px-3 py-2 text-xs text-zinc-300">{importResult}</div>}
+            <p className="mb-3 text-xs text-gray-500">One row per user: <code className="text-gray-600">Name,email</code>. Each gets an activation email. Existing emails are skipped. Max 500 rows.</p>
+            <input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then(setImportText) }} className="mb-2 block w-full text-xs text-gray-600 file:mr-3 file:rounded-[3px] file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:text-gray-800" />
+            <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6} placeholder={"Neha Gupta,neha@example.com\nAmit Verma,amit@example.com"} className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs font-mono text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
+            {importResult && <div className="mt-3 rounded-[3px] bg-gray-100 px-3 py-2 text-xs text-gray-700">{importResult}</div>}
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setImportOpen(false)}>Close</Button>
               <Button variant="primary" size="sm" onClick={submitImport} disabled={importBusy || !importText.trim()}>{importBusy ? "Importing…" : "Import"}</Button>
@@ -661,48 +652,48 @@ export default function AdminUsersClient({
 
       {editUser && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditUser(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Edit User</h3>
-              <button onClick={() => setEditUser(null)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Edit User</h3>
+              <button onClick={() => setEditUser(null)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-zinc-300">Legal name</span>
-                <input value={edit.legalName} onChange={(e) => setEdit(s => ({ ...s, legalName: e.target.value }))} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 focus:border-blue-500 focus:outline-none" />
+                <span className="mb-1 block text-xs font-semibold text-gray-700">Legal name</span>
+                <input value={edit.legalName} onChange={(e) => setEdit(s => ({ ...s, legalName: e.target.value }))} className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-zinc-300">Display name</span>
-                <input value={edit.displayName} onChange={(e) => setEdit(s => ({ ...s, displayName: e.target.value }))} placeholder="Optional" className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" />
+                <span className="mb-1 block text-xs font-semibold text-gray-700">Display name</span>
+                <input value={edit.displayName} onChange={(e) => setEdit(s => ({ ...s, displayName: e.target.value }))} placeholder="Optional" className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-zinc-300">Email</span>
-                <input type="email" value={edit.email} onChange={(e) => setEdit(s => ({ ...s, email: e.target.value }))} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 focus:border-blue-500 focus:outline-none" />
+                <span className="mb-1 block text-xs font-semibold text-gray-700">Email</span>
+                <input type="email" value={edit.email} onChange={(e) => setEdit(s => ({ ...s, email: e.target.value }))} className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none" />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-zinc-300">House</span>
-                  <select value={edit.houseId} onChange={(e) => setEdit(s => ({ ...s, houseId: e.target.value }))} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none">
+                  <span className="mb-1 block text-xs font-semibold text-gray-700">House</span>
+                  <select value={edit.houseId} onChange={(e) => setEdit(s => ({ ...s, houseId: e.target.value }))} className="w-full rounded-[4px] border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-800 focus:border-blue-500 focus:outline-none">
                     <option value="">— None —</option>
                     {houseOptions.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-zinc-300">Batch</span>
-                  <select value={edit.batchId} onChange={(e) => setEdit(s => ({ ...s, batchId: e.target.value }))} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none">
+                  <span className="mb-1 block text-xs font-semibold text-gray-700">Batch</span>
+                  <select value={edit.batchId} onChange={(e) => setEdit(s => ({ ...s, batchId: e.target.value }))} className="w-full rounded-[4px] border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-800 focus:border-blue-500 focus:outline-none">
                     <option value="">— None —</option>
                     {batchOptions.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                   </select>
                 </label>
               </div>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-zinc-300">Membership</span>
-                <select value={edit.membership} onChange={(e) => setEdit(s => ({ ...s, membership: e.target.value }))} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-2.5 py-2 text-xs text-zinc-200 capitalize focus:border-blue-500 focus:outline-none">
+                <span className="mb-1 block text-xs font-semibold text-gray-700">Membership</span>
+                <select value={edit.membership} onChange={(e) => setEdit(s => ({ ...s, membership: e.target.value }))} className="w-full rounded-[4px] border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-800 capitalize focus:border-blue-500 focus:outline-none">
                   {["free", "student", "associate", "premium", "life", "committee", "inactive"].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </label>
             </div>
-            {editErr && <div className="mt-3 rounded-[3px] bg-rose-950/40 border border-rose-900 px-3 py-2 text-xs text-rose-300">{editErr}</div>}
+            {editErr && <div className="mt-3 rounded-[3px] bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-700">{editErr}</div>}
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setEditUser(null)}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitEdit} disabled={editBusy || !edit.legalName || !edit.email}>
@@ -715,21 +706,21 @@ export default function AdminUsersClient({
 
       {inviteOpen && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setInviteOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-zinc-800 bg-[#111113] p-6 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-[4px] border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100">Invite User</h3>
-              <button onClick={() => setInviteOpen(false)} className="text-zinc-500 hover:text-zinc-300"><X className="h-5 w-5" weight="duotone" /></button>
+              <h3 className="text-base font-bold text-gray-900">Invite User</h3>
+              <button onClick={() => setInviteOpen(false)} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" weight="duotone" /></button>
             </div>
-            <p className="mb-4 text-xs text-zinc-500">Creates an account and emails a link to set their own password. No default password is stored.</p>
+            <p className="mb-4 text-xs text-gray-500">Creates an account and emails a link to set their own password. No default password is stored.</p>
             <label className="mb-3 block">
-              <span className="mb-1 block text-xs font-semibold text-zinc-300">Legal name</span>
-              <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" placeholder="Full name as on records" />
+              <span className="mb-1 block text-xs font-semibold text-gray-700">Legal name</span>
+              <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" placeholder="Full name as on records" />
             </label>
             <label className="mb-4 block">
-              <span className="mb-1 block text-xs font-semibold text-zinc-300">Email</span>
-              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-none" placeholder="name@example.com" />
+              <span className="mb-1 block text-xs font-semibold text-gray-700">Email</span>
+              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none" placeholder="name@example.com" />
             </label>
-            {inviteMsg && <div className="mb-3 rounded-[3px] bg-zinc-900 px-3 py-2 text-xs text-zinc-300">{inviteMsg}</div>}
+            {inviteMsg && <div className="mb-3 rounded-[3px] bg-gray-100 px-3 py-2 text-xs text-gray-700">{inviteMsg}</div>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setInviteOpen(false)}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitInvite} disabled={inviteBusy || !inviteEmail || !inviteName}>

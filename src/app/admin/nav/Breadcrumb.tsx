@@ -22,11 +22,11 @@ export default function Breadcrumb({ sections }: { sections: NavSection[] }) {
 
   return (
     <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-xs md:flex">
-      <span className="text-zinc-500">{section.label}</span>
+      <span className="text-gray-500">{section.label}</span>
       {current && (
         <>
-          <CaretRight className="h-3 w-3 text-zinc-600" weight="bold" />
-          <span className="font-medium text-zinc-200">{current.label}</span>
+          <CaretRight className="h-3 w-3 text-gray-400" weight="bold" />
+          <span className="font-medium text-gray-800">{current.label}</span>
         </>
       )}
     </nav>

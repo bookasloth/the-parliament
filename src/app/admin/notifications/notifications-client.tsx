@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, Megaphone, CaretLeft, CaretRight, CheckCircle } from "@phosphor-icons/react"
-import { PageHeader, StatCard, StatusBadge, Button, Modal, Table, Thead, Tbody, Tr, Th, Td, EmptyState } from "../admin-ui"
+import { PageHeader, StatCard, StatusBadge, Button, Modal, Table, Thead, Tbody, Tr, Th, Td, EmptyState, useToast, useRowAction } from "../admin-ui"
 import { broadcast } from "./actions"
 
 export interface NotificationRow {
@@ -60,23 +60,22 @@ export default function NotificationsClient({
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
   const [type, setType] = useState("announcement")
-  const [result, setResult] = useState<{ ok: boolean; count?: number; error?: string } | null>(null)
-  const [pending, startTransition] = useTransition()
+  const toast = useToast()
+  const { run, isBusy } = useRowAction()
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    setResult(null)
-    startTransition(async () => {
-      try {
+    run("send", {
+      action: async () => {
         const r = await broadcast({ title, body: body || undefined, type })
-        setResult({ ok: true, count: r.count })
+        toast.success(`Sent to ${r.count.toLocaleString()} member${r.count === 1 ? "" : "s"}.`)
         setTitle("")
         setBody("")
-        router.refresh()
-      } catch {
-        setResult({ ok: false, error: "Failed to send broadcast." })
-      }
+        setOpen(false)
+        router.refresh() // notification appears in the server-rendered list
+      },
+      error: "Failed to send broadcast.",
     })
   }
 
@@ -86,7 +85,7 @@ export default function NotificationsClient({
         title="Notifications"
         description="Every notification delivered across the network — and one-click platform broadcasts"
         actions={
-          <Button onClick={() => { setResult(null); setOpen(true) }}>
+          <Button onClick={() => setOpen(true)}>
             <Megaphone className="h-4 w-4" weight="duotone" /> Broadcast
           </Button>
         }
@@ -102,17 +101,17 @@ export default function NotificationsClient({
         <select
           value={q0.type || "All"}
           onChange={(e) => pushQuery({ type: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-600"
+          className="rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-blue-600"
         >
           {["All", ...types].map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
-      <div className="rounded-[4px] border border-zinc-800 bg-[#111113] overflow-hidden">
+      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <Thead>
-              <Tr className="border-b border-zinc-800 hover:bg-transparent">
+              <Tr className="border-b border-gray-200 hover:bg-transparent">
                 <Th>Recipient</Th>
                 <Th>Type</Th>
                 <Th>Title</Th>
@@ -134,40 +133,40 @@ export default function NotificationsClient({
               )}
               {rows.map((r) => (
                 <Tr key={r.id}>
-                  <Td className="whitespace-nowrap text-zinc-200">{r.recipient}</Td>
+                  <Td className="whitespace-nowrap text-gray-800">{r.recipient}</Td>
                   <Td className="whitespace-nowrap">
-                    <span className="rounded-[3px] bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{r.type}</span>
+                    <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700">{r.type}</span>
                   </Td>
                   <Td className="max-w-[360px]">
-                    <span className="text-zinc-200">{r.title}</span>
-                    {r.body && <span className="block truncate text-[11px] text-zinc-500" title={r.body}>{r.body}</span>}
+                    <span className="text-gray-800">{r.title}</span>
+                    {r.body && <span className="block truncate text-[11px] text-gray-500" title={r.body}>{r.body}</span>}
                   </Td>
                   <Td className="whitespace-nowrap">
                     {r.isRead
                       ? <StatusBadge status="resolved" />
-                      : <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> unread</span>}
+                      : <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> unread</span>}
                   </Td>
-                  <Td className="whitespace-nowrap text-zinc-400">{r.createdAt}</Td>
+                  <Td className="whitespace-nowrap text-gray-600">{r.createdAt}</Td>
                 </Tr>
               ))}
             </Tbody>
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-          <p className="text-xs text-zinc-500">Showing <span className="font-semibold text-zinc-300">{from}–{to}</span> of <span className="font-semibold text-zinc-300">{total.toLocaleString()}</span></p>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span></p>
           <div className="flex items-center gap-1">
-            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page <= 1}>
+            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
               <CaretLeft className="h-4 w-4" weight="duotone" />
             </button>
             {nums.map((p) => (
               <button key={p} onClick={() => pushQuery({ page: p })}
-                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}>
+                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                 {p}
               </button>
             ))}
-            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-zinc-500 px-1">… {last}</span>}
-            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-zinc-800 text-zinc-500 hover:bg-zinc-800 disabled:opacity-40" disabled={page >= last}>
+            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
+            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
               <CaretRight className="h-4 w-4" weight="duotone" />
             </button>
           </div>
@@ -177,44 +176,41 @@ export default function NotificationsClient({
       <Modal open={open} onClose={() => setOpen(false)} title="Broadcast to all members">
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Title</label>
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
               required
               placeholder="Reunion registrations are open"
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600"
+              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600"
             />
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Body</label>
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Body</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               maxLength={2000}
               rows={4}
               placeholder="Optional details…"
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600 resize-y"
+              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600 resize-y"
             />
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Type</label>
+            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Type</label>
             <input
               value={type}
               onChange={(e) => setType(e.target.value)}
               maxLength={40}
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-blue-600"
+              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-600"
             />
           </div>
 
-          {result?.ok && <p className="text-xs font-semibold text-emerald-400">Sent to {result.count?.toLocaleString()} member{result.count === 1 ? "" : "s"}.</p>}
-          {result && !result.ok && <p className="text-xs font-semibold text-rose-400">{result.error}</p>}
-
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Close</Button>
-            <Button type="submit" disabled={pending || !title.trim()}>
-              <Megaphone className="h-4 w-4" weight="duotone" /> {pending ? "Sending…" : "Send broadcast"}
+            <Button type="submit" disabled={isBusy("send") || !title.trim()}>
+              <Megaphone className="h-4 w-4" weight="duotone" /> {isBusy("send") ? "Sending…" : "Send broadcast"}
             </Button>
           </div>
         </form>

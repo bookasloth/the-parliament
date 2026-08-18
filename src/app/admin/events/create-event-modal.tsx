@@ -36,8 +36,8 @@ type PillGroupProps<T extends string> = {
 function PillGroup<T extends string>({ label, value, options, onChange }: PillGroupProps<T>) {
   return (
     <div>
-      <label className="block text-sm text-zinc-400 mb-2">{label}</label>
-      <div className="flex rounded-[4px] border border-zinc-800 overflow-hidden">
+      <label className="block text-sm text-gray-600 mb-2">{label}</label>
+      <div className="flex rounded-[4px] border border-gray-200 overflow-hidden">
         {options.map((o) => (
           <button
             key={o.key}
@@ -46,7 +46,7 @@ function PillGroup<T extends string>({ label, value, options, onChange }: PillGr
             className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
               value === o.key
                 ? "bg-blue-600 text-white"
-                : "bg-[#111113] text-blue-400 hover:bg-zinc-800"
+                : "bg-white text-blue-600 hover:bg-gray-100"
             }`}
           >
             {o.label}
@@ -103,12 +103,12 @@ export default function CreateEventModal({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div role="presentation" className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-[4px] border border-zinc-800 bg-[#111113] shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-          <h2 className="text-base font-bold text-zinc-100">Create Event</h2>
+      <div className="relative w-full max-w-2xl rounded-[4px] border border-gray-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-base font-bold text-gray-900">Create Event</h2>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300"
+            className="text-gray-500 hover:text-gray-700"
             aria-label="Close"
           >
             <X className="h-5 w-5" weight="duotone" />
@@ -117,68 +117,68 @@ export default function CreateEventModal({ open, onClose }: Props) {
 
         <form onSubmit={submit} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-sm text-zinc-400 mb-1.5">Title</label>
+            <label className="block text-sm text-gray-600 mb-1.5">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="Event name here"
-              className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-zinc-400 mb-1.5">Description</label>
+            <label className="block text-sm text-gray-600 mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Ex: topics, schedule, etc."
-              className="w-full resize-y rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full resize-y rounded-[4px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5">Date</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Date</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
+                className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 [color-scheme:dark]"
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5">Time</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Time</label>
               <input
                 type="time"
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950 [color-scheme:dark]"
+                className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 [color-scheme:dark]"
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5">Duration</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Duration</label>
               <input
                 value={durationText}
                 onChange={(e) => setDurationText(e.target.value)}
                 placeholder="1hr 30m"
-                className="w-full rounded-[4px] border border-zinc-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+                className="w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-zinc-400 mb-1.5">
+            <label className="block text-sm text-gray-600 mb-1.5">
               {mode === "online" ? "Online URL" : "Location"}
             </label>
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder={mode === "online" ? "https://meet.google.com/…" : "MP Hall, JNV Nagpur"}
-              className="w-full rounded-[4px] border border-blue-800 bg-[#111113] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-950"
+              className="w-full rounded-[4px] border border-blue-200 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -212,7 +212,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
             />
           </div>
 
-          {error && <p className="text-xs text-rose-400">{error}</p>}
+          {error && <p className="text-xs text-rose-600">{error}</p>}
 
           <button
             type="submit"

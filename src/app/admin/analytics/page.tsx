@@ -26,7 +26,7 @@ function ExportLink({ dataset }: { dataset: string }) {
   return (
     <a
       href={`/api/admin/analytics/export?dataset=${dataset}`}
-      className="inline-flex items-center gap-1.5 rounded-[4px] border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+      className="inline-flex items-center gap-1.5 rounded-[4px] border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900"
     >
       <DownloadSimple className="h-3.5 w-3.5" weight="duotone" />
       CSV
@@ -164,7 +164,7 @@ export default async function AdminAnalyticsPage() {
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4 lg:col-span-2">
+        <div className="rounded-[5px] border border-gray-200 bg-white p-4 lg:col-span-2">
           <SectionHeader title="Sign-ups (last 12 months)" action={<ExportLink dataset="signups" />} />
           {recentSignups.length ? (
             <BarChart data={signupBuckets} labels={monthLabels} color="#3b82f6" />
@@ -173,7 +173,7 @@ export default async function AdminAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+        <div className="rounded-[5px] border border-gray-200 bg-white p-4">
           <SectionHeader title="Membership tiers" action={<ExportLink dataset="tiers" />} />
           {orderedTiers.length ? (
             <div className="space-y-3">
@@ -182,8 +182,8 @@ export default async function AdminAnalyticsPage() {
                 return (
                   <div key={tier}>
                     <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="capitalize text-zinc-300">{tier}</span>
-                      <span className="tabular-nums text-zinc-400">{nf.format(count)}</span>
+                      <span className="capitalize text-gray-700">{tier}</span>
+                      <span className="tabular-nums text-gray-600">{nf.format(count)}</span>
                     </div>
                     <ProgressBar value={count} max={tierMax} color={TIER_COLOR[tier] ?? "#71717a"} />
                   </div>
@@ -196,7 +196,7 @@ export default async function AdminAnalyticsPage() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+      <div className="mt-3 rounded-[5px] border border-gray-200 bg-white p-4">
         <SectionHeader title="Content & economy" />
         <Table>
           <Thead>
@@ -228,7 +228,7 @@ export default async function AdminAnalyticsPage() {
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+        <div className="rounded-[5px] border border-gray-200 bg-white p-4">
           <SectionHeader title="Top members (by karma)" action={<ExportLink dataset="top-members" />} />
           {topMembers.length ? (
             <Table>
@@ -250,7 +250,7 @@ export default async function AdminAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+        <div className="rounded-[5px] border border-gray-200 bg-white p-4">
           <SectionHeader title="Top groups (by members)" action={<ExportLink dataset="top-groups" />} />
           {topGroups.length ? (
             <Table>
@@ -272,7 +272,7 @@ export default async function AdminAnalyticsPage() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
+      <div className="mt-3 rounded-[5px] border border-gray-200 bg-white p-4">
         <SectionHeader title="Top posts (by upvotes)" action={<ExportLink dataset="top-posts" />} />
         {topPosts.length ? (
           <Table>
@@ -285,7 +285,7 @@ export default async function AdminAnalyticsPage() {
                   <Td>{displayNameOf(p.author)}</Td>
                   <Td>{nf.format(p.upvoteCount)}</Td>
                   <Td>{nf.format(p.commentCount)}</Td>
-                  <Td className="text-zinc-400">{(p.body ?? "").slice(0, 60)}{(p.body?.length ?? 0) > 60 ? "…" : ""}</Td>
+                  <Td className="text-gray-600">{(p.body ?? "").slice(0, 60)}{(p.body?.length ?? 0) > 60 ? "…" : ""}</Td>
                 </Tr>
               ))}
             </Tbody>

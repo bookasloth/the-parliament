@@ -61,7 +61,7 @@ export default function ContributionsClient({ rows }: { rows: ContributionRow[] 
             <Tr key={r.id}>
               <Td>
                 {r.websiteUrl ? (
-                  <a href={r.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">{r.name}</a>
+                  <a href={r.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline">{r.name}</a>
                 ) : (
                   r.name
                 )}
@@ -72,16 +72,16 @@ export default function ContributionsClient({ rows }: { rows: ContributionRow[] 
               <Td><StatusBadge status={r.status} /></Td>
               <Td>
                 {r.isAnonymous ? (
-                  <span className="text-zinc-500">anonymous</span>
+                  <span className="text-gray-500">anonymous</span>
                 ) : !r.showOnWall ? (
-                  <span className="text-zinc-500">hidden</span>
+                  <span className="text-gray-500">hidden</span>
                 ) : r.approved ? (
-                  <span className="text-emerald-400">live</span>
+                  <span className="text-emerald-600">live</span>
                 ) : (
-                  <span className="text-amber-400">pending</span>
+                  <span className="text-amber-600">pending</span>
                 )}
               </Td>
-              <Td className="text-zinc-500">{r.time}</Td>
+              <Td className="text-gray-500">{r.time}</Td>
               <Td>
                 {canApprove &&
                   (r.approved ? (

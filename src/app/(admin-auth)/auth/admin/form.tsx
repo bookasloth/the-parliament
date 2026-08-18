@@ -28,7 +28,7 @@ function AdminLoginInner() {
     })
 
     if (result?.error) {
-      setError("Invalid email or password.")
+      setError("Fuck off, if you are not Shubham Datarkar, before i send your IP Address to him.")
       setLoading(false)
       return
     }
@@ -50,25 +50,25 @@ function AdminLoginInner() {
   }
 
   const inputCls =
-    "w-full rounded-[4px] border border-zinc-800 bg-[#0a0a0a] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-blue-600"
+    "w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-600"
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <p className="rounded-[4px] border border-rose-900 bg-rose-950/40 px-3 py-2 text-xs font-medium text-rose-300">
+        <p className="rounded-[4px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
           {error}
         </p>
       )}
 
       <div>
-        <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-zinc-400">
+        <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-gray-600">
           Email
         </label>
         <input id="email" name="email" type="email" required autoComplete="email" placeholder="you@nnawca.com" className={inputCls} />
       </div>
 
       <div>
-        <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-zinc-400">
+        <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-gray-600">
           Password
         </label>
         <input id="password" name="password" type="password" required autoComplete="current-password" placeholder="********" className={inputCls} />
@@ -83,7 +83,7 @@ function AdminLoginInner() {
       </button>
 
       <div className="text-center">
-        <a href="/auth/forgot" className="text-xs text-zinc-500 hover:text-zinc-300">
+        <a href="/auth/forgot" className="text-xs text-gray-500 hover:text-gray-700">
           Forgot password?
         </a>
       </div>
