@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Delete, Target, Wind, Trophy } from "lucide-react";
 import WinBurst from "@/components/games/WinBurst";
+import ShareResult from "@/components/games/ShareResult";
 import {
   checkGuessAction,
   submitResultAction,
@@ -225,9 +226,27 @@ export default function HitAndBlowBoard({
                 {status === "won" ? `Cracked in ${result.guessesUsed}/${maxGuesses}! 🎉` : "Out of tries — try tomorrow"}
               </p>
               <p className="mt-1 text-[14px] text-gray-600">You scored <span className="font-bold">{result.score}</span> points.</p>
-              <Link href={resultHref} className="mt-3 inline-flex items-center gap-1.5 rounded-[4px] bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105">
-                <Trophy className="h-4 w-4" /> {archive ? "Back to archive" : "See full results"}
-              </Link>
+              <div className="mx-auto mt-4 max-w-xs">
+                <ShareResult
+                  gameKey={gameKey}
+                  text={`${name} — ${status === "won" ? `cracked ${result.guessesUsed}/${maxGuesses}` : "unsolved"} · ${result.score} pts\n${typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : ""}`}
+                  url={typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : undefined}
+                  className="bg-brand text-white hover:bg-brand-700"
+                  image={{
+                    gameName: name,
+                    puzzleNo: puzzleNo ?? 0,
+                    solved: status === "won",
+                    guesses: status === "won" ? result.guessesUsed : null,
+                    maxGuesses,
+                    score: result.score,
+                    streak: 0,
+                    grid: rows.map((r) => `🎯${r.hits} 💨${r.blows}`).join("\n"),
+                  }}
+                />
+                <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
+                  <Trophy className="h-4 w-4" /> {archive ? "Back to archive" : "See full results"}
+                </Link>
+              </div>
             </div>
           )}
         </>
