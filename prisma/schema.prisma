@@ -1018,6 +1018,23 @@ model Notification {
   @@map("notifications")
 }
 
+// Feed announcements — a timed banner shown at the top of the member feed while
+// now is within [startsAt, endsAt]. Distinct from Notification (per-user bell).
+model Announcement {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @db.VarChar(200)
+  body      String?
+  ctaLabel  String?  @map("cta_label") @db.VarChar(60)
+  ctaHref   String?  @map("cta_href")
+  startsAt  DateTime @map("starts_at") @db.Timestamptz
+  endsAt    DateTime @map("ends_at") @db.Timestamptz
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([startsAt, endsAt])
+  @@map("announcements")
+}
+
 // ─────────────────────────────────────────────
 // 12. Age-Tier Safety
 // ─────────────────────────────────────────────

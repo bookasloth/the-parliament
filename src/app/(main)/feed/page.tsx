@@ -3,6 +3,7 @@ import { FeedContent, type ViewerCard, type SuggestedConnection, type NewsItem }
 import type { FeedPost } from "@/components/shared/FeedCard"
 import { getFeed } from "@/modules/feed/query"
 import { canPinFeed } from "@/modules/feed/pin"
+import { getActiveAnnouncement } from "@/modules/announcements/service"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
@@ -152,9 +153,12 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
     }
   }
 
+  const announcement = await getActiveAnnouncement()
+
   return (
     <FeedContent
       userName={viewerCard?.name ?? "Guest"}
+      announcement={announcement}
       viewer={viewerCard}
       viewerId={viewer?.id ?? null}
       posts={mappedReal}

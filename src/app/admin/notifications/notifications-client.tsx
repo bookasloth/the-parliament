@@ -1,220 +1,183 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Bell, Megaphone, CaretLeft, CaretRight, CheckCircle } from "@phosphor-icons/react"
-import { PageHeader, StatCard, StatusBadge, Button, Modal, Table, Thead, Tbody, Tr, Th, Td, EmptyState, useToast, useRowAction } from "../admin-ui"
-import { broadcast } from "./actions"
+import { Megaphone, Broadcast, Clock, CheckCircle, Trash, Plus } from "@phosphor-icons/react"
+import { PageHeader, StatCard, Button, Modal, EmptyState, useRowAction } from "../admin-ui"
+import { createAnnouncementAction, deleteAnnouncementAction } from "./actions"
 
-export interface NotificationRow {
+export interface AnnouncementRow {
   id: string
-  type: string
   title: string
   body: string | null
-  recipient: string
-  isRead: boolean
-  createdAt: string
+  ctaLabel: string | null
+  ctaHref: string | null
+  startsAtISO: string
+  endsAtISO: string
+  starts: string
+  ends: string
+  status: "scheduled" | "active" | "expired"
 }
 
-export interface NotificationQuery { page: number; type: string }
-export interface NotificationPageInfo { page: number; pageCount: number; filteredTotal: number; pageSize: number }
-export interface NotificationStats { total: number; unread: number; read: number }
+const STATUS_STYLE: Record<AnnouncementRow["status"], string> = {
+  active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  scheduled: "bg-sky-50 text-sky-700 border-sky-200",
+  expired: "bg-gray-100 text-gray-500 border-gray-300",
+}
 
-export default function NotificationsClient({
-  rows,
-  types = [],
+// datetime-local wants "YYYY-MM-DDTHH:mm" in local time.
+function toLocalInput(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+export default function AnnouncementsClient({
+  announcements,
   stats,
-  query,
-  pageInfo,
 }: {
-  rows: NotificationRow[]
-  types?: string[]
-  stats: NotificationStats
-  query?: NotificationQuery
-  pageInfo?: NotificationPageInfo
+  announcements: AnnouncementRow[]
+  stats: { active: number; scheduled: number; expired: number }
 }) {
-  const router = useRouter()
-  const q0 = query ?? { page: 1, type: "" }
-
-  function pushQuery(patch: Partial<NotificationQuery>) {
-    const next = { ...q0, ...patch }
-    if (patch.page === undefined) next.page = 1
-    const params = new URLSearchParams()
-    if (next.type) params.set("type", next.type)
-    if (next.page > 1) params.set("page", String(next.page))
-    const qs = params.toString()
-    router.push(qs ? `/admin/notifications?${qs}` : "/admin/notifications")
-  }
-
-  const total = pageInfo?.filteredTotal ?? rows.length
-  const size = pageInfo?.pageSize ?? rows.length
-  const page = pageInfo?.page ?? 1
-  const last = pageInfo?.pageCount ?? 1
-  const from = total === 0 ? 0 : (page - 1) * size + 1
-  const to = Math.min(page * size, total)
-  const start = Math.max(1, Math.min(page - 2, last - 4))
-  const nums = Array.from({ length: Math.min(5, last) }, (_, i) => start + i).filter((p) => p <= last)
-
-  // Broadcast modal state
+  const { run, isBusy } = useRowAction()
   const [open, setOpen] = useState(false)
+  const [deleted, setDeleted] = useState<Record<string, boolean>>({})
+
+  const now = new Date()
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
-  const [type, setType] = useState("announcement")
-  const toast = useToast()
-  const { run, isBusy } = useRowAction()
+  const [ctaLabel, setCtaLabel] = useState("")
+  const [ctaHref, setCtaHref] = useState("")
+  const [startsAt, setStartsAt] = useState(toLocalInput(now))
+  const [endsAt, setEndsAt] = useState(toLocalInput(new Date(now.getTime() + 7 * 86400_000)))
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) return
-    run("send", {
+  const list = announcements.filter((a) => !deleted[a.id])
+
+  function create() {
+    run("create", {
       action: async () => {
-        const r = await broadcast({ title, body: body || undefined, type })
-        toast.success(`Sent to ${r.count.toLocaleString()} member${r.count === 1 ? "" : "s"}.`)
-        setTitle("")
-        setBody("")
+        const r = await createAnnouncementAction({
+          title,
+          body: body || undefined,
+          ctaLabel: ctaLabel || undefined,
+          ctaHref: ctaHref || undefined,
+          startsAt: new Date(startsAt).toISOString(),
+          endsAt: new Date(endsAt).toISOString(),
+        })
+        if (!r.ok) throw new Error("Failed")
         setOpen(false)
-        router.refresh() // notification appears in the server-rendered list
+        setTitle(""); setBody(""); setCtaLabel(""); setCtaHref("")
       },
-      error: "Failed to send broadcast.",
+      success: "Announcement scheduled",
     })
   }
 
+  function remove(id: string) {
+    if (!confirm("Delete this announcement? It disappears from the feed immediately.")) return
+    run(id, {
+      optimistic: () => setDeleted((d) => ({ ...d, [id]: true })),
+      revert: () => setDeleted((d) => { const n = { ...d }; delete n[id]; return n }),
+      action: () => deleteAnnouncementAction(id),
+      success: "Announcement deleted",
+    })
+  }
+
+  const canSubmit = title.trim().length >= 3 && startsAt && endsAt && new Date(endsAt) > new Date(startsAt)
+
   return (
-    <div>
+    <div className="max-w-4xl">
       <PageHeader
-        title="Notifications"
-        description="Every notification delivered across the network — and one-click platform broadcasts"
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Megaphone className="h-4 w-4" weight="duotone" /> Broadcast
-          </Button>
-        }
+        title="Announcements"
+        description="Banners shown at the top of the member feed for a set duration"
+        actions={<Button variant="primary" size="sm" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5" weight="duotone" /> New announcement</Button>}
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-        <StatCard label="Total" value={stats.total.toLocaleString()} icon={<Bell className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
-        <StatCard label="Unread" value={stats.unread.toLocaleString()} icon={<Bell className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
-        <StatCard label="Read" value={stats.read.toLocaleString()} icon={<CheckCircle className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <StatCard label="Active now" value={String(stats.active)} icon={<CheckCircle className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
+        <StatCard label="Scheduled" value={String(stats.scheduled)} icon={<Clock className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
+        <StatCard label="Expired" value={String(stats.expired)} icon={<Broadcast className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <select
-          value={q0.type || "All"}
-          onChange={(e) => pushQuery({ type: e.target.value === "All" ? "" : e.target.value })}
-          className="rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-blue-600"
-        >
-          {["All", ...types].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-
-      <div className="rounded-[4px] border border-gray-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <Thead>
-              <Tr className="border-b border-gray-200 hover:bg-transparent">
-                <Th>Recipient</Th>
-                <Th>Type</Th>
-                <Th>Title</Th>
-                <Th>Read</Th>
-                <Th>Created</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {rows.length === 0 && (
-                <Tr className="hover:bg-transparent">
-                  <Td colSpan={5}>
-                    <EmptyState
-                      icon={<Bell className="h-8 w-8" weight="duotone" />}
-                      title="No notifications"
-                      description="Nothing has been delivered for this filter yet."
-                    />
-                  </Td>
-                </Tr>
-              )}
-              {rows.map((r) => (
-                <Tr key={r.id}>
-                  <Td className="whitespace-nowrap text-gray-800">{r.recipient}</Td>
-                  <Td className="whitespace-nowrap">
-                    <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700">{r.type}</span>
-                  </Td>
-                  <Td className="max-w-[360px]">
-                    <span className="text-gray-800">{r.title}</span>
-                    {r.body && <span className="block truncate text-[11px] text-gray-500" title={r.body}>{r.body}</span>}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    {r.isRead
-                      ? <StatusBadge status="resolved" />
-                      : <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> unread</span>}
-                  </Td>
-                  <Td className="whitespace-nowrap text-gray-600">{r.createdAt}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
+      {list.length === 0 ? (
+        <div className="rounded-[5px] border border-gray-200 bg-white">
+          <EmptyState
+            icon={<Megaphone className="h-8 w-8" weight="duotone" />}
+            title="No announcements"
+            description="Create one to show a banner at the top of everyone's feed for a chosen window."
+            action={<Button variant="primary" size="sm" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5" weight="duotone" /> New announcement</Button>}
+          />
         </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <p className="text-xs text-gray-500">Showing <span className="font-semibold text-gray-700">{from}–{to}</span> of <span className="font-semibold text-gray-700">{total.toLocaleString()}</span></p>
-          <div className="flex items-center gap-1">
-            <button onClick={() => pushQuery({ page: page - 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page <= 1}>
-              <CaretLeft className="h-4 w-4" weight="duotone" />
-            </button>
-            {nums.map((p) => (
-              <button key={p} onClick={() => pushQuery({ page: p })}
-                className={`h-7 w-7 rounded-[3px] text-xs font-semibold ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
-                {p}
+      ) : (
+        <div className="space-y-2">
+          {list.map((a) => (
+            <div key={a.id} className="flex items-start gap-3 rounded-[5px] border border-gray-200 bg-white p-4">
+              <Megaphone className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-800">{a.title}</p>
+                  <span className={`rounded-[3px] border px-1.5 py-0.5 text-[10px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>{a.status}</span>
+                  {a.ctaLabel && <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">CTA: {a.ctaLabel}</span>}
+                </div>
+                {a.body && <p className="text-xs text-gray-600 mt-1 line-clamp-2">{a.body}</p>}
+                <p className="text-[11px] text-gray-500 mt-1">{a.starts} → {a.ends}</p>
+              </div>
+              <button onClick={() => remove(a.id)} disabled={isBusy(a.id)} aria-label="Delete"
+                className="rounded-[3px] p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40">
+                <Trash className="h-4 w-4" weight="duotone" />
               </button>
-            ))}
-            {nums.length > 0 && nums[nums.length - 1] < last && <span className="text-xs text-gray-500 px-1">… {last}</span>}
-            <button onClick={() => pushQuery({ page: page + 1 })} className="p-1.5 rounded-[3px] border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40" disabled={page >= last}>
-              <CaretRight className="h-4 w-4" weight="duotone" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Modal open={open} onClose={() => setOpen(false)} title="New announcement">
+        <div className="space-y-3">
+          <Field label="Title">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200}
+              placeholder="Reunion 2026 registrations are open"
+              className={inputCls} />
+          </Field>
+          <Field label="Body (optional)">
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className={inputCls} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Button label (optional)">
+              <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} maxLength={60} placeholder="Register" className={inputCls} />
+            </Field>
+            <Field label="Button link (optional)">
+              <input value={ctaHref} onChange={(e) => setCtaHref(e.target.value)} placeholder="/events/reunion-2026" className={inputCls} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Starts">
+              <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputCls} />
+            </Field>
+            <Field label="Ends">
+              <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className={inputCls} />
+            </Field>
+          </div>
+          {!canSubmit && (title.length > 0 || endsAt) && (
+            <p className="text-[11px] text-rose-600">Title needs 3+ chars and End must be after Start.</p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <button onClick={create} disabled={!canSubmit || isBusy("create")}
+              className="rounded-[3px] bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+              {isBusy("create") ? "Scheduling…" : "Schedule announcement"}
             </button>
           </div>
         </div>
-      </div>
-
-      <Modal open={open} onClose={() => setOpen(false)} title="Broadcast to all members">
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Title</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={200}
-              required
-              placeholder="Reunion registrations are open"
-              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Body</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={2000}
-              rows={4}
-              placeholder="Optional details…"
-              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-600 resize-y"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide text-gray-500 mb-1">Type</label>
-            <input
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              maxLength={40}
-              className="w-full rounded-[4px] border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-600"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Close</Button>
-            <Button type="submit" disabled={isBusy("send") || !title.trim()}>
-              <Megaphone className="h-4 w-4" weight="duotone" /> {isBusy("send") ? "Sending…" : "Send broadcast"}
-            </Button>
-          </div>
-        </form>
       </Modal>
+    </div>
+  )
+}
+
+const inputCls =
+  "w-full rounded-[3px] border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+      {children}
     </div>
   )
 }
