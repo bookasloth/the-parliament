@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email"
 import { colorAvatar } from "@/lib/avatar"
 import { adminSetTier } from "@/modules/membership/admin"
 import type { AdminRole } from "@/generated/prisma/enums"
+import type { Permission } from "@/modules/admin/permissions"
 
 // Actions an admin can take on a single user account.
 export const USER_ACTIONS = [
@@ -22,6 +23,21 @@ export const USER_ACTIONS = [
   "remove-role",
 ] as const
 export type UserAction = (typeof USER_ACTIONS)[number]
+
+// Which RBAC permission each single-user action requires. Role management is the
+// most privileged (admins:manage → super_admin only); password/verification
+// reset is support-grade; the rest are member moderation.
+export const USER_ACTION_PERMISSION: Record<UserAction, Permission> = {
+  verify: "members:moderate",
+  unverify: "members:moderate",
+  suspend: "members:moderate",
+  activate: "members:moderate",
+  ban: "members:moderate",
+  delete: "members:moderate",
+  "reset-password": "members:reset",
+  "set-role": "admins:manage",
+  "remove-role": "admins:manage",
+}
 
 // Actions that must never target your own account (locking yourself out /
 // self-privilege games). Reset-password/verify on self are harmless.

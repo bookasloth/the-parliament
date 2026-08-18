@@ -1,9 +1,14 @@
 import { env } from "@/config/env"
 
 /**
- * Roles that grant access to the admin console. Finer-grained RBAC
- * (Sub-Admin / Moderator / Editor per-module rights) is future scope —
- * for now these roles all open the console.
+ * Roles that count as a FULL admin — the strict `requireAdmin`/`isAdmin` gate
+ * used by every admin API route and `session.user.isAdmin`. Deliberately narrow:
+ * broadening this would silently open every requireAdmin-gated route to lower
+ * roles. `founder` is a legacy super-admin alias.
+ *
+ * Lower back-office roles (moderator/support/analyst) do NOT get full admin;
+ * they reach the console via `canEnterConsole` (src/modules/admin/permissions)
+ * and are then limited per-action by the `can()` matrix on each surface.
  *
  * Kept dependency-free (config only) so it can be imported from the Auth.js
  * callbacks without creating a circular import via `@/lib/auth`.

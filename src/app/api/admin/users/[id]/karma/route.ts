@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server"
 import { handleError, ok, badRequest } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import { adminAdjustKarma, adjustKarmaSchema, getKarmaHistory, NotFoundError, BadActionError } from "@/modules/admin/users"
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin()
+    await requirePermission("members:read")
     const { id } = await ctx.params
     return ok({ history: await getKarmaHistory(id) })
   } catch (e) {
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requirePermission("members:edit")
     const { id } = await ctx.params
     const { delta, reason } = adjustKarmaSchema.parse(await req.json())
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()

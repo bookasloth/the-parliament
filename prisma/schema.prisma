@@ -2108,6 +2108,8 @@ enum AdminRole {
   super_admin
   admin
   moderator
+  support
+  analyst
 }
 
 enum EmailStatus {
