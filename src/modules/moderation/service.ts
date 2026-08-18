@@ -1,9 +1,65 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/modules/auth/session"
 import { notifyCommittee } from "@/modules/committees/service"
+import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
+import { buildWarnPayload } from "./warn-copy"
 
 export type ReportableEntity = "post" | "comment" | "profile" | "business" | "message"
+
+export { buildWarnPayload }
+
+// Resolve the author/owner of a reportable entity (the person who gets warned).
+async function resolveEntityAuthor(
+  entityType: ReportableEntity,
+  entityId: string,
+): Promise<{ userId: string; name: string } | null> {
+  const pick = (u: { displayName: string | null; legalName: string }) => u.displayName || u.legalName
+  switch (entityType) {
+    case "post": {
+      const x = await prisma.post.findUnique({ where: { id: entityId }, select: { authorId: true, author: { select: { displayName: true, legalName: true } } } })
+      return x ? { userId: x.authorId, name: pick(x.author) } : null
+    }
+    case "comment": {
+      const x = await prisma.comment.findUnique({ where: { id: entityId }, select: { authorId: true, author: { select: { displayName: true, legalName: true } } } })
+      return x ? { userId: x.authorId, name: pick(x.author) } : null
+    }
+    case "business": {
+      const x = await prisma.business.findUnique({ where: { id: entityId }, select: { ownerId: true, owner: { select: { displayName: true, legalName: true } } } })
+      return x ? { userId: x.ownerId, name: pick(x.owner) } : null
+    }
+    case "message": {
+      // ponytail: assumes the in-feed Message model (senderId). Revisit if
+      // "message" reports ever point at DirectMessage instead.
+      const x = await prisma.message.findUnique({ where: { id: entityId }, select: { senderId: true, sender: { select: { displayName: true, legalName: true } } } })
+      return x ? { userId: x.senderId, name: pick(x.sender) } : null
+    }
+    case "profile": {
+      const x = await prisma.user.findUnique({ where: { id: entityId }, select: { id: true, displayName: true, legalName: true } })
+      return x ? { userId: x.id, name: pick(x) } : null
+    }
+  }
+}
+
+/**
+ * Warn-only: email + in-app notification to the content author. Best-effort —
+ * a delivery failure must never fail the resolve (caller wraps in .catch).
+ */
+export async function notifyWarnedAuthor(entityType: ReportableEntity, entityId: string, notes?: string) {
+  const author = await resolveEntityAuthor(entityType, entityId)
+  if (!author) return
+  const base = process.env.AUTH_URL || "https://nnawca.org"
+  const { title, body, email } = buildWarnPayload(entityType, author.name, notes, base)
+  await sendNotification({
+    userId: author.userId,
+    kind: "moderation_warning",
+    title,
+    body,
+    entityType,
+    entityId,
+    email,
+  })
+}
 
 export interface ReportInput {
   reporterId: string
@@ -226,6 +282,11 @@ export async function resolveCluster(opts: {
     payload: { reportCount: open.length, notes: opts.notes },
   })
 
+  if (opts.resolution === "warned") {
+    await notifyWarnedAuthor(opts.entityType, opts.entityId, opts.notes)
+      .catch((e) => console.error("warn notify (cluster) failed", e))
+  }
+
   return { resolved: open.length }
 }
 
@@ -262,4 +323,9 @@ export async function resolveReport(opts: {
     entityId: r.entityId,
     payload: { reportId: r.id },
   })
+
+  if (opts.resolution === "warned") {
+    await notifyWarnedAuthor(r.entityType as ReportableEntity, r.entityId, opts.notes)
+      .catch((e) => console.error("warn notify (report) failed", e))
+  }
 }

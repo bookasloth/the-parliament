@@ -37,6 +37,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   membership_expiring: { firstName: "Shubham", planName: "Alumni Premium", daysLeft: "7", expiresOn: "31 Jul 2026", renewUrl: "https://x/membership" },
   membership_expired: { firstName: "Shubham", renewUrl: "https://x/membership" },
   committee_alert: { committeeLabel: "Executive", title: "New Life member", detail: "Shubham just became a Life member.", actionUrl: "https://x/admin/membership", actionLabel: "View membership" },
+  moderation_warning: { legalName: "Shubham", reason: "Off-topic spam", contentType: "post", appUrl: "https://x" },
 }
 
 describe("email-layout shell", () => {
@@ -74,7 +75,7 @@ describe("email-layout shell", () => {
 
 describe("lib/email templates", () => {
   it("covers all keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(30)
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(31)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 
