@@ -503,3 +503,47 @@ export function formatSchedule(theme: ChatTheme | ChatThemeSchedule | undefined,
   if (!sched) return "On-demand"
   return `${MONTHS[sched.startMonth - 1]} ${sched.startDay} – ${MONTHS[sched.endMonth - 1]} ${sched.endDay}`
 }
+
+/**
+ * Admin-editable overrides for the static theme set, persisted as one JSON blob
+ * in the `AdminSetting` KV store (key `chat_themes`). Only the two fields the
+ * admin UI actually edits are overridable — `enabled` and the annual `schedule`.
+ * Everything else (colors, decorations, windows) stays code-owned.
+ */
+export type ThemeOverride = { enabled?: boolean; schedule?: ChatThemeSchedule }
+export type ThemeOverrides = Record<string, ThemeOverride>
+
+/** Apply persisted admin overrides onto the base theme set. Unknown ids are
+ *  ignored so a stale saved blob can never resurrect a removed theme. */
+export function mergeThemeOverrides(
+  overrides: ThemeOverrides | null | undefined,
+  base: ChatTheme[] = FESTIVE_THEMES,
+): ChatTheme[] {
+  if (!overrides) return base
+  return base.map((t) => {
+    const o = overrides[t.id]
+    if (!o) return t
+    return {
+      ...t,
+      ...(o.enabled !== undefined ? { enabled: o.enabled } : {}),
+      ...(o.schedule && t.schedule ? { schedule: { ...t.schedule, ...o.schedule } } : {}),
+    }
+  })
+}
+
+/** Reduce a full theme set down to the persistable override blob. */
+export function extractThemeOverrides(themes: ChatTheme[], base: ChatTheme[] = FESTIVE_THEMES): ThemeOverrides {
+  const out: ThemeOverrides = {}
+  for (const t of themes) {
+    const b = base.find((x) => x.id === t.id)
+    if (!b) continue
+    const o: ThemeOverride = {}
+    if (t.enabled !== b.enabled) o.enabled = t.enabled
+    if (t.schedule && b.schedule && (
+      t.schedule.startMonth !== b.schedule.startMonth || t.schedule.startDay !== b.schedule.startDay ||
+      t.schedule.endMonth !== b.schedule.endMonth || t.schedule.endDay !== b.schedule.endDay
+    )) o.schedule = t.schedule
+    if (o.enabled !== undefined || o.schedule) out[t.id] = o
+  }
+  return out
+}
