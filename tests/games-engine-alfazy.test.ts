@@ -5,10 +5,10 @@ import { emojiGrid, type Tile } from "@/modules/games/engines/types";
 const alfazy = getEngine("alfazy");
 
 describe("alfazy engine (via GameEngine contract)", () => {
-  it("is registered; games without an engine are not", () => {
+  it("all three games are registered engines", () => {
     expect(hasEngine("alfazy")).toBe(true);
-    expect(hasEngine("integra")).toBe(false); // no engine yet (phase 3)
-    expect(() => getEngine("integra")).toThrow();
+    expect(hasEngine("hit_and_blow")).toBe(true);
+    expect(hasEngine("integra")).toBe(true);
   });
 
   it("exposes 5×6 board + keyboard with ENTER/DEL", () => {

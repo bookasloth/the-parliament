@@ -70,7 +70,7 @@ export const GAMES: GameConfig[] = [
     tint: "from-violet-50 to-white",
     code: "intg",
     launchISO: "2026-08-18",
-    status: "coming_soon",
+    status: "live",
     unit: "equation",
     howTo: [
       "Guess the hidden 7-character equation in 6 tries.",

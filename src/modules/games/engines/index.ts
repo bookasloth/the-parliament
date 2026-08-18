@@ -4,10 +4,12 @@ import type { GameKey } from "@/config/games";
 import type { GameEngine } from "./types";
 import { alfazyEngine } from "./alfazy";
 import { hitAndBlowEngine } from "./hit-and-blow";
+import { integraEngine } from "./integra";
 
 const ENGINES: Partial<Record<GameKey, GameEngine>> = {
   alfazy: alfazyEngine,
   hit_and_blow: hitAndBlowEngine,
+  integra: integraEngine,
 };
 
 /** The engine for a game key. Throws if the game has no engine yet (coming_soon). */
