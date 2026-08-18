@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { getDefaultSchoolId } from "@/lib/school"
 import { getEventReports } from "@/modules/events/service"
 import { PageHeader, StatCard, Table, Thead, Tbody, Tr, Th, Td, EmptyState } from "../../admin-ui"
@@ -11,7 +11,7 @@ function rupees(paise: number): string {
 }
 
 export default async function AdminEventReportsPage() {
-  await requireAdmin()
+  await requirePermission("events:manage")
   const schoolId = await getDefaultSchoolId()
   const rows = schoolId ? await getEventReports(schoolId) : []
 

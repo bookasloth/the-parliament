@@ -20,8 +20,10 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
   // Required when running behind a reverse proxy / managed host (Railway, a VPS
   // with Caddy/Nginx, etc.) — Auth.js otherwise rejects the forwarded host.
   trustHost: true,
-  // Stay signed in for 30 days; the cookie's Expires is derived from this.
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  // Stay signed in for 30 days (absolute cap); the JWT is re-issued at most once
+  // a day of activity (updateAge) so a long-idle token stops refreshing. A
+  // shorter, separate admin-only idle timeout is future hardening.
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
   pages: {
     signIn: "/auth/signin",
   },

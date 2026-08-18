@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { resolveReport } from "@/modules/moderation/service"
 
 const resolution = z.enum(["dismissed", "warned", "hidden", "removed"])
@@ -12,7 +12,7 @@ export async function resolveReportAction(
   res: "dismissed" | "warned" | "hidden" | "removed",
   notes?: string,
 ) {
-  const admin = await requireAdmin()
+  const admin = await requirePermission("content:moderate")
   z.string().min(1).parse(reportId)
   await resolveReport({
     reportId,

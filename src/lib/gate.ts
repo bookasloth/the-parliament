@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { ForbiddenError, requireUser } from "@/modules/auth/session"
 import { getBalance } from "@/modules/karma/ledger"
 import { computeIsAdmin } from "@/modules/auth/admin"
+import { can, type Permission } from "@/modules/admin/permissions"
 
 export interface GateOptions {
   verified?: boolean
@@ -69,6 +70,20 @@ export async function requireAdmin(): Promise<GatedUser> {
   const gated = await gateUser()
   if (!computeIsAdmin({ email: gated.email, roles: gated.roles, isSuperAdmin: gated.isSuperAdmin })) {
     throw new ForbiddenError("Admin access required")
+  }
+  return gated
+}
+
+/**
+ * Fine-grained admin gate: the logged-in user must hold `perm` in the RBAC
+ * matrix. Lets lower back-office roles (moderator/support/analyst) act on the
+ * specific surfaces they're granted, without the strict full-admin check.
+ * Throws ForbiddenError otherwise.
+ */
+export async function requirePermission(perm: Permission): Promise<GatedUser> {
+  const gated = await gateUser()
+  if (!can({ email: gated.email, roles: gated.roles, isSuperAdmin: gated.isSuperAdmin }, perm)) {
+    throw new ForbiddenError("Insufficient permissions")
   }
   return gated
 }

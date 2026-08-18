@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ZodError } from "zod"
 import { ForbiddenError, UnauthorizedError } from "@/modules/auth/session"
+import { RateLimitedError } from "@/lib/rate-limit"
 
 export function ok<T>(data: T, status = 200) {
   return NextResponse.json(data, { status })
@@ -21,6 +22,13 @@ export function handleError(error: unknown) {
     return NextResponse.json(
       { error: "Validation failed", details: error.issues },
       { status: 400 },
+    )
+  }
+  if (error instanceof RateLimitedError) {
+    const retryAfter = Math.max(1, Math.ceil((error.resetAt.getTime() - Date.now()) / 1000))
+    return NextResponse.json(
+      { error: "Too many requests — slow down." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
     )
   }
   console.error("API error:", error)

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import { handleError } from "@/lib/api"
 
 const COLUMNS = [
@@ -14,7 +14,7 @@ function csvCell(v: unknown): string {
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requirePermission("members:read")
     const rows = await prisma.user.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: "desc" },

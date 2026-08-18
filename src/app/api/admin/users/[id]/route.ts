@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server"
 import { handleError, ok, badRequest } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import { editUser, editUserSchema, NotFoundError, BadActionError } from "@/modules/admin/users"
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requirePermission("members:edit")
     const { id } = await ctx.params
     const input = editUserSchema.parse(await req.json())
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()

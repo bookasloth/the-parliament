@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 import { handleError, ok, badRequest } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import { ForbiddenError } from "@/modules/auth/session"
-import { actOnUser, isSelfForbidden, USER_ACTIONS, NotFoundError, BadActionError } from "@/modules/admin/users"
+import { actOnUser, isSelfForbidden, USER_ACTIONS, USER_ACTION_PERMISSION, NotFoundError, BadActionError } from "@/modules/admin/users"
+import { enforceAdminRateLimit } from "@/modules/admin/rate-limit"
 
 const schema = z.object({
   action: z.enum(USER_ACTIONS),
@@ -12,9 +13,10 @@ const schema = z.object({
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
     const { id } = await ctx.params
     const { action, role } = schema.parse(await req.json())
+    const admin = await requirePermission(USER_ACTION_PERMISSION[action])
+    await enforceAdminRateLimit(admin.id, "user-action")
 
     if (isSelfForbidden(action, admin.id, id)) {
       throw new ForbiddenError("You cannot perform this action on your own account")

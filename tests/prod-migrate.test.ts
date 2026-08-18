@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-// @ts-expect-error — plain .mjs helper, no types
+// allowJs infers types from the .mjs helper, so no @ts-expect-error is needed
+// (an unused one is itself a TS2578 hard-gate error).
 import { parseMigrationList } from "../scripts/lib/parse-migration-list.mjs"
 
 describe("parseMigrationList", () => {

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 import { handleError, ok, badRequest } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import { setBadge, NotFoundError, BadActionError } from "@/modules/admin/users"
 
 const schema = z.object({
@@ -11,7 +11,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requirePermission("members:edit")
     const { id } = await ctx.params
     const { badgeId, action } = schema.parse(await req.json())
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()

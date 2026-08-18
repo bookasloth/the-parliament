@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import { auth } from "@/lib/auth"
+import { canEnterConsole } from "@/modules/admin/permissions"
 import AdminShell, { type AdminIdentity } from "./admin-shell"
 
 function initialsFrom(name: string, email: string): string {
@@ -11,10 +14,18 @@ function initialsFrom(name: string, email: string): string {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
 
-  // TEMP: console unfinished — ungated so it's reachable without an admin login.
-  // Restore the id + isAdmin guards (redirect to /terminal) once it's built.
-  const name = session?.user?.name || "Admin"
-  const email = session?.user?.email || ""
+  // Authoritative gate for the whole console. Full admins (session.user.isAdmin)
+  // OR any lower back-office role (moderator/support/analyst) may enter; each
+  // surface inside then enforces `can()` per action. Logged-out → signin;
+  // logged-in without console access → 404 so the surface isn't discoverable.
+  if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/admin")
+  const mayEnter =
+    session.user.isAdmin ||
+    canEnterConsole({ email: session.user.email, roles: session.user.roles })
+  if (!mayEnter) notFound()
+
+  const name = session.user.name || "Admin"
+  const email = session.user.email || ""
   const admin: AdminIdentity = { name, email, initials: initialsFrom(name, email) }
 
   return (

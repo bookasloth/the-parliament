@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { revalidateTag } from "next/cache"
 import { z } from "zod"
 import { handleError, ok } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import {
   approveVerification,
   listPending,
@@ -23,7 +23,7 @@ const actionSchema = z.discriminatedUnion("action", [
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requirePermission("verification:read")
     const pending = await listPending()
     return ok({ pending })
   } catch (e) {
@@ -33,7 +33,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requirePermission("verification:review")
     const body = actionSchema.parse(await req.json())
 
     if (body.action === "approve") {

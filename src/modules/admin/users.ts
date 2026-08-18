@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email"
 import { colorAvatar } from "@/lib/avatar"
 import { adminSetTier } from "@/modules/membership/admin"
 import type { AdminRole } from "@/generated/prisma/enums"
+import type { Permission } from "@/modules/admin/permissions"
 
 // Actions an admin can take on a single user account.
 export const USER_ACTIONS = [
@@ -22,6 +23,21 @@ export const USER_ACTIONS = [
   "remove-role",
 ] as const
 export type UserAction = (typeof USER_ACTIONS)[number]
+
+// Which RBAC permission each single-user action requires. Role management is the
+// most privileged (admins:manage → super_admin only); password/verification
+// reset is support-grade; the rest are member moderation.
+export const USER_ACTION_PERMISSION: Record<UserAction, Permission> = {
+  verify: "members:moderate",
+  unverify: "members:moderate",
+  suspend: "members:moderate",
+  activate: "members:moderate",
+  ban: "members:moderate",
+  delete: "members:moderate",
+  "reset-password": "members:reset",
+  "set-role": "admins:manage",
+  "remove-role": "admins:manage",
+}
 
 // Actions that must never target your own account (locking yourself out /
 // self-privilege games). Reset-password/verify on self are harmless.
@@ -123,6 +139,96 @@ export async function actOnUser(
   })
 
   return { ok: true, action }
+}
+
+// ── Suspension with reason + duration (records a member_suspensions row) ──
+
+export const suspendSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+  days: z.number().int().min(1).max(3650).optional(), // omit = indefinite
+})
+export type SuspendInput = z.infer<typeof suspendSchema>
+
+/** Pure: expiry timestamp for a suspension of `days` from `from` (null = indefinite). */
+export function suspensionExpiry(days: number | undefined, from: Date): Date | null {
+  if (days === undefined) return null
+  return new Date(from.getTime() + days * 86_400_000)
+}
+
+/** Pure: is a suspension row still in force at `now`? */
+export function isSuspensionActive(
+  s: { expiresAt: Date | null; liftedAt: Date | null },
+  now: Date,
+): boolean {
+  if (s.liftedAt) return false
+  if (s.expiresAt && s.expiresAt <= now) return false
+  return true
+}
+
+export async function suspendUser(
+  actorId: string,
+  targetId: string,
+  input: SuspendInput,
+  ip?: string,
+): Promise<{ ok: true; expiresAt: Date | null }> {
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, deletedAt: true },
+  })
+  if (!target || target.deletedAt) throw new NotFoundError("User not found")
+
+  const now = new Date()
+  const expiresAt = suspensionExpiry(input.days, now)
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: targetId }, data: { status: "suspended" } }),
+    prisma.memberSuspension.create({
+      data: { userId: targetId, moderatorId: actorId, reason: input.reason, startsAt: now, expiresAt },
+    }),
+    prisma.moderationAction.create({
+      data: {
+        moderatorId: actorId,
+        targetType: "user",
+        targetId,
+        action: "suspend",
+        reason: input.reason,
+        expiresAt,
+      },
+    }),
+  ])
+
+  await invalidateSession(targetId)
+  await audit({
+    actorId,
+    action: "admin.user.suspend",
+    entityType: "user",
+    entityId: targetId,
+    payload: { reason: input.reason, days: input.days ?? null, expiresAt: expiresAt?.toISOString() ?? null },
+    ipInet: ip,
+  })
+  return { ok: true, expiresAt }
+}
+
+/** Lift all in-force suspensions and reactivate the account. */
+export async function liftSuspension(
+  actorId: string,
+  targetId: string,
+  ip?: string,
+): Promise<{ ok: true }> {
+  const now = new Date()
+  await prisma.$transaction([
+    prisma.memberSuspension.updateMany({
+      where: { userId: targetId, liftedAt: null },
+      data: { liftedAt: now, liftedBy: actorId },
+    }),
+    prisma.user.update({ where: { id: targetId }, data: { status: "active" } }),
+  ])
+  await invalidateSession(targetId)
+  await audit({ actorId, action: "admin.user.unsuspend", entityType: "user", entityId: targetId, ipInet: ip })
+  await prisma.moderationAction.create({
+    data: { moderatorId: actorId, targetType: "user", targetId, action: "unsuspend" },
+  })
+  return { ok: true }
 }
 
 export const MEMBERSHIP_TIERS = [
