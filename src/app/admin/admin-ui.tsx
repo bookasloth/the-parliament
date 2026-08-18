@@ -30,13 +30,15 @@ export function StatCard({ label, value, delta, deltaUp, icon, accent = "indigo"
   icon: React.ReactNode
   accent?: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet"
 }) {
+  // All accents intentionally render the same neutral grey badge — the console
+  // reads calmer without per-tile colour. Keys kept so call sites need no change.
   const accents: Record<string, string> = {
-    indigo: "bg-blue-950/40 text-blue-400",
-    emerald: "bg-emerald-950/40 text-emerald-400",
-    amber: "bg-amber-950/40 text-amber-400",
-    rose: "bg-rose-950/40 text-rose-400",
-    sky: "bg-sky-950/40 text-sky-400",
-    violet: "bg-violet-950/40 text-violet-400",
+    indigo: "bg-zinc-800/60 text-zinc-400",
+    emerald: "bg-zinc-800/60 text-zinc-400",
+    amber: "bg-zinc-800/60 text-zinc-400",
+    rose: "bg-zinc-800/60 text-zinc-400",
+    sky: "bg-zinc-800/60 text-zinc-400",
+    violet: "bg-zinc-800/60 text-zinc-400",
   }
   return (
     <div className="rounded-[5px] border border-zinc-800 bg-[#111113] p-4">
