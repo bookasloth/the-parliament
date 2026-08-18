@@ -83,7 +83,7 @@ export function PeopleYouMayKnow({ people }: { people: SuggestedConnection[] }) 
                   </>
                 ) : (
                   <>
-                    <UserPlus className="h-3.5 w-3.5" /> Connect
+                    <UserPlus className="h-3.5 w-3.5" /> Follow
                   </>
                 )}
               </button>

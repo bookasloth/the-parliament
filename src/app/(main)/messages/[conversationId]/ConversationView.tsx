@@ -93,6 +93,8 @@ export default function ConversationView({
   const [incomingCall, setIncomingCall] = useState(false)
   const [callConnecting, setCallConnecting] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState(false)
+  // In-chat notice when a call is blocked (inactive/quota) instead of a browser alert.
+  const [callBlock, setCallBlock] = useState<string | null>(null)
   const callStartedAtRef = useRef<number | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -363,10 +365,11 @@ export default function ConversationView({
       const data = await res.json()
       if (!res.ok) {
         // Student without included calling → open the pass/upgrade paywall.
+        // Everything else (inactive tier, quota spent) → in-chat notice + reactivate CTA.
         if (data.code === "pass_required") {
           setPaywallOpen(true)
         } else {
-          alert(data.error ?? "Couldn't start the call.")
+          setCallBlock(data.error ?? "Couldn't start the call.")
         }
         return
       }
@@ -539,6 +542,30 @@ export default function ConversationView({
             </button>
             <button
               onClick={() => setIncomingCall(false)}
+              className="rounded-[4px] px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Call blocked (inactive membership / quota) — in-chat notice + pay CTA */}
+      {callBlock && !callSession && (
+        <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm">
+          <span className="flex items-center gap-2 font-medium text-amber-800">
+            <Video className="h-4 w-4 shrink-0" />
+            {callBlock}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <a
+              href="/membership"
+              className="rounded-[4px] bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-600"
+            >
+              Reactivate to call
+            </a>
+            <button
+              onClick={() => setCallBlock(null)}
               className="rounded-[4px] px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
             >
               Dismiss
