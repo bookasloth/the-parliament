@@ -39,6 +39,7 @@ export type EmailTemplates = {
   membership_expiring: { firstName: string; planName: string; daysLeft: string; expiresOn: string; renewUrl: string }
   membership_expired: { firstName: string; renewUrl: string }
   committee_alert: { committeeLabel: string; title: string; detail: string; actionUrl: string; actionLabel: string }
+  moderation_warning: { legalName: string; reason: string; contentType: string; appUrl: string }
 }
 
 // Engagement/lifecycle mail links to the member's email-preference page. These
@@ -155,6 +156,24 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
           p(`Re-submit with updated documents from your profile and we'll review it again.`) +
           button("Update my documents", MANAGE_URL.replace("/settings/email", "/profile/edit"), "navy"),
         reason: "You're getting this because you applied for alumni verification.",
+      }),
+  },
+  moderation_warning: {
+    subject: () => "A note from the NNAWCA moderation team",
+    text: (d) =>
+      `Hi ${d.legalName},\n\nOur moderators reviewed your ${d.contentType} after a member report and issued a warning.\n\nReason: ${d.reason}\n\nPlease review our community guidelines. Repeated issues may lead to content removal or account action.`,
+    html: (d) =>
+      emailShell({
+        accent: "navy",
+        pill: "Moderation",
+        eyebrow: "Community · Warning",
+        heading: "You've received a moderation warning",
+        body:
+          p(`Hi ${d.legalName}, our moderators reviewed your ${d.contentType} after a member report and issued a warning.`) +
+          details([["Reason", d.reason]], "navy") +
+          p(`Please review our community guidelines. Repeated issues may lead to content removal or account action.`) +
+          button("Open NNAWCA", d.appUrl, "navy"),
+        reason: "You're getting this because your content was reported and reviewed by our moderation team.",
       }),
   },
   new_follower: {
@@ -638,6 +657,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   membership_expiring: "reminder",
   membership_expired: "lifecycle",
   committee_alert: "admin",
+  moderation_warning: "transactional",
 }
 
 /**

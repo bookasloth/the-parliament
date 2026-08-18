@@ -32,6 +32,7 @@ export type NotificationKind =
   | "game_nudge"
   | "egg_thrown"
   | "egg_volunteer"
+  | "moderation_warning"
 
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",
@@ -44,6 +45,7 @@ const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   new_event_in_batch: "new_event_in_batch",
   reaction_milestone: "reaction_milestone",
   endorsement_request: "endorsement_request",
+  moderation_warning: "moderation_warning",
   // endorsement_received is in-app only (no email template).
 }
 
