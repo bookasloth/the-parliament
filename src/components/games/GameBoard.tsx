@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Delete, CornerDownLeft, Trophy, Target, Wind } from "lucide-react";
-import Confetti from "@/components/games/Confetti";
+import WinBurst from "@/components/games/WinBurst";
 import {
   checkGuessAction,
   submitResultAction,
@@ -178,7 +178,7 @@ export default function GameBoard({
 
   return (
     <div className="mx-auto max-w-2xl">
-      {showConfetti && <Confetti />}
+      {showConfetti && <WinBurst />}
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-brand">{name}</h1>
         <Link

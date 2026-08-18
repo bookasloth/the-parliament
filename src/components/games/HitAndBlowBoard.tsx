@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Delete, Target, Wind, Trophy } from "lucide-react";
-import Confetti from "@/components/games/Confetti";
+import WinBurst from "@/components/games/WinBurst";
 import {
   checkGuessAction,
   submitResultAction,
@@ -121,7 +121,7 @@ export default function HitAndBlowBoard({
 
   return (
     <div className="mx-auto max-w-md">
-      {showConfetti && <Confetti />}
+      {showConfetti && <WinBurst />}
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-brand">{name}</h1>
         <Link href={`/games/${slug}/leaderboard/individual/daily`} className="flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
