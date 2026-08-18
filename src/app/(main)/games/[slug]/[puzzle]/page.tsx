@@ -7,6 +7,7 @@ import { getBoardTheme } from "@/config/game-themes";
 import { getEngine, hasEngine } from "@/modules/games/engines";
 import { puzzleNumber } from "@/modules/games/periods";
 import GameBoard from "@/components/games/GameBoard";
+import HitAndBlowBoard from "@/components/games/HitAndBlowBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -70,18 +71,30 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
           <ArrowLeft className="h-4 w-4" /> Archive
         </Link>
       </div>
-      <GameBoard
-        gameKey={cfg.key}
-        slug={cfg.slug}
-        name={`${cfg.name} #${String(n).padStart(3, "0")}`}
-        length={engine.length}
-        maxGuesses={engine.maxGuesses}
-        render={engine.render}
-        keyboard={engine.keyboard}
-        theme={getBoardTheme(cfg.key)}
-        puzzleNo={n}
-        archive
-      />
+      {engine.render === "count" ? (
+        <HitAndBlowBoard
+          gameKey={cfg.key}
+          slug={cfg.slug}
+          name={`${cfg.name} #${String(n).padStart(3, "0")}`}
+          length={engine.length}
+          maxGuesses={engine.maxGuesses}
+          puzzleNo={n}
+          archive
+        />
+      ) : (
+        <GameBoard
+          gameKey={cfg.key}
+          slug={cfg.slug}
+          name={`${cfg.name} #${String(n).padStart(3, "0")}`}
+          length={engine.length}
+          maxGuesses={engine.maxGuesses}
+          render={engine.render}
+          keyboard={engine.keyboard}
+          theme={getBoardTheme(cfg.key)}
+          puzzleNo={n}
+          archive
+        />
+      )}
     </div>
   );
 }
