@@ -79,7 +79,20 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
         )}
 
         <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2 sm:flex-row">
-          <ShareResult text={shareText} className="flex-1 bg-white text-brand hover:bg-white/90" />
+          <ShareResult
+            text={shareText}
+            className="flex-1 bg-white text-brand hover:bg-white/90"
+            gameKey={cfg.key}
+            image={{
+              gameName: cfg.name,
+              puzzleNo,
+              solved,
+              guesses: played.levelReached,
+              maxGuesses: maxG,
+              score: played.score,
+              streak,
+            }}
+          />
           <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25">
             <Trophy className="h-4 w-4" /> Leaderboard
           </Link>
