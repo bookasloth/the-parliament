@@ -2,8 +2,8 @@ import { cache } from "react"
 import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
 import { followUser } from "@/modules/connections/service"
-import { sendNotification } from "@/modules/notifications/service"
 import { createPost, type CreatePostInput, type PostFormat } from "@/modules/feed/posts"
+import { WELCOME_TEMPLATES, pickTemplate } from "@/modules/bot/templates"
 
 /**
  * The official NNAWCA system account ("the bot"). It is a normal User row whose
@@ -24,20 +24,14 @@ export const getBotUserId = cache(async (): Promise<string | null> => {
   return bot?.id ?? null
 })
 
-async function botPhoto(): Promise<string | undefined> {
-  const bot = await prisma.user.findFirst({
-    where: { memberType: "system", deletedAt: null },
-    orderBy: { createdAt: "asc" },
-    select: { profile: { select: { photoUrl: true } } },
-  })
-  return bot?.profile?.photoUrl ?? undefined
-}
-
 /**
- * Welcome a freshly-onboarded member: the bot follows them (which also unlocks a
- * future DM edge and fires the "started following you" notification) and sends a
- * one-off in-app welcome. Entirely best-effort — never throws, never blocks the
- * caller. No-ops if the bot account isn't seeded or the target IS the bot.
+ * Welcome a freshly-onboarded member: the bot follows them (unlocks a future DM
+ * edge + fires the "started following you" notification) and posts a public
+ * welcome to the feed that @mentions them by handle — createPost resolves the
+ * mention, so the member gets a real mention notification and the post links
+ * back to their profile. Best-effort: never throws, never blocks the caller.
+ * No-ops if the bot isn't seeded, the target IS the bot, or (for the mention
+ * post) the member has no username yet.
  */
 export async function botWelcome(userId: string): Promise<void> {
   try {
@@ -46,16 +40,14 @@ export async function botWelcome(userId: string): Promise<void> {
 
     await followUser(botId, userId).catch(() => {})
 
-    await sendNotification({
-      userId,
-      kind: "bot_welcome",
-      title: "Welcome to The Parliament 🎉",
-      body: "You're in! Complete your profile, find your batchmates in the directory, and say hello in the feed. — Team NNAWCA",
-      entityType: "user",
-      entityId: botId,
-      imageUrl: await botPhoto(),
-      sendEmail: false,
+    const member = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
     })
+    if (!member?.username) return // no handle → can't mention; skip the post
+
+    const body = pickTemplate(WELCOME_TEMPLATES, userId).replace("{mention}", `@${member.username}`)
+    await botAnnounce({ body }).catch(() => {})
   } catch (e) {
     console.error("botWelcome failed:", e)
   }

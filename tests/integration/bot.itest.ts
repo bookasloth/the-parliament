@@ -42,9 +42,10 @@ describe("nnawca bot", () => {
     expect(post!.body).toBe("AGM this Sunday at 5pm.")
   })
 
-  it("botWelcome follows the new member and sends a bot_welcome notification", async () => {
+  it("botWelcome follows the member and posts a welcome that @mentions them", async () => {
+    const uname = `newbie${rnd().slice(0, 6)}`
     const member = await prisma.user.create({
-      data: { email: `m-${rnd()}@test.local`, legalName: "New Member" },
+      data: { email: `m-${rnd()}@test.local`, legalName: "New Member", username: uname },
     })
 
     await botWelcome(member.id)
@@ -54,15 +55,39 @@ describe("nnawca bot", () => {
     })
     expect(follow).not.toBeNull()
 
-    const welcome = await prisma.notification.findFirst({
-      where: { userId: member.id, type: "bot_welcome" },
+    // A welcome post authored by the bot, mentioning the member's handle.
+    const post = await prisma.post.findFirst({
+      where: { authorId: botId, body: { contains: `@${uname}` } },
     })
-    expect(welcome).not.toBeNull()
+    expect(post).not.toBeNull()
+
+    // createPost resolved the @mention → PostMention row + mention notification.
+    const mention = await prisma.postMention.findFirst({
+      where: { postId: post!.id, userId: member.id },
+    })
+    expect(mention).not.toBeNull()
+    const notif = await prisma.notification.findFirst({
+      where: { userId: member.id, type: "mention", entityId: post!.id },
+    })
+    expect(notif).not.toBeNull()
   })
 
   it("botWelcome no-ops when the target IS the bot", async () => {
+    const before = await prisma.post.count({ where: { authorId: botId } })
     await botWelcome(botId)
-    const notif = await prisma.notification.findFirst({ where: { userId: botId, type: "bot_welcome" } })
-    expect(notif).toBeNull()
+    const after = await prisma.post.count({ where: { authorId: botId } })
+    expect(after).toBe(before)
+  })
+
+  it("no welcome post when the member has no username (can't mention)", async () => {
+    const member = await prisma.user.create({
+      data: { email: `nn-${rnd()}@test.local`, legalName: "No Handle" },
+    })
+    await botWelcome(member.id)
+    // Follow still happens; no post (nothing to mention).
+    const follow = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: botId, followingId: member.id } },
+    })
+    expect(follow).not.toBeNull()
   })
 })
