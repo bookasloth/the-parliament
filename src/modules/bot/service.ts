@@ -15,12 +15,6 @@ import { WELCOME_TEMPLATES, WELCOME_DM_TEMPLATES, pickTemplate } from "@/modules
  */
 export const BOT_USERNAME = "nnawca"
 
-// First-sign-in welcome only applies to accounts created on/after this launch
-// date — so shipping the feature doesn't retro-welcome every pre-existing member
-// the next time they log in. New signups and freshly-imported/migrated members
-// (created after this) are eligible.
-export const BOT_WELCOME_SINCE = new Date("2026-08-19T00:00:00Z")
-
 /** Resolve the bot's user id, or null if the account hasn't been seeded yet. */
 export const getBotUserId = cache(async (): Promise<string | null> => {
   const bot = await prisma.user.findFirst({
@@ -45,57 +39,52 @@ export async function botWelcome(userId: string): Promise<void> {
     const botId = await getBotUserId()
     if (!botId || botId === userId) return
 
-    // Idempotency: the welcome makes the bot follow the member, so an existing
-    // bot→member follow edge means we've already welcomed them. Skip re-welcoming
-    // on repeat logins / a second trigger.
-    // ponytail: follow edge doubles as the "welcomed" marker (no extra column).
-    // If a member unfollows the bot AND re-triggers, they could be re-welcomed —
-    // acceptable; add a botWelcomedAt column if that ever matters.
-    const already = await prisma.follow.findUnique({
-      where: { followerId_followingId: { followerId: botId, followingId: userId } },
-      select: { followerId: true },
+    const member = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true, displayName: true, legalName: true, botWelcomedAt: true },
     })
-    if (already) return
+    // Idempotency: botWelcomedAt is the authoritative "already welcomed" marker,
+    // so the welcome fires exactly once across its triggers (onboarding-complete
+    // + first sign-in) and repeat logins.
+    if (!member || member.botWelcomedAt) return
 
     // Follow first — this creates the follow edge that canMessage() requires,
     // so the welcome DM below is allowed.
     await followUser(botId, userId).catch(() => {})
 
-    const member = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { username: true, displayName: true, legalName: true },
-    })
-
     // Public welcome post that @mentions the member (needs a handle).
-    if (member?.username) {
+    if (member.username) {
       const body = pickTemplate(WELCOME_TEMPLATES, userId).replace("{mention}", `@${member.username}`)
       await botAnnounce({ body }).catch(() => {})
     }
 
     // Private welcome DM.
-    const name = member?.displayName || member?.legalName || "there"
+    const name = member.displayName || member.legalName || "there"
     const dm = pickTemplate(WELCOME_DM_TEMPLATES, userId).replace("{name}", name)
     await botDM(userId, dm).catch(() => {})
+
+    // Mark welcomed last — a partial failure above just retries next trigger.
+    await prisma.user.update({ where: { id: userId }, data: { botWelcomedAt: new Date() } }).catch(() => {})
   } catch (e) {
     console.error("botWelcome failed:", e)
   }
 }
 
 /**
- * Fire the welcome for a member on their FIRST sign-in, if they arrive already
- * onboarded — i.e. imported/migrated accounts that set a password via the reset
- * flow and never touch the onboarding wizard (which is the normal welcome
- * trigger). Guarded by the launch cutoff so pre-existing members aren't
- * retro-welcomed, and botWelcome itself is idempotent (won't double up with the
- * onboarding-complete trigger). Best-effort — never throws into the auth flow.
+ * Fire the welcome for a member on sign-in if they haven't been welcomed yet and
+ * have finished onboarding — this catches imported/migrated accounts that set a
+ * password via the reset flow and skip the onboarding wizard (the normal welcome
+ * trigger). Every registered-but-not-yet-welcomed member thus gets the welcome
+ * on their first login. botWelcomedAt makes it fire exactly once. Best-effort —
+ * never throws into the auth flow.
  */
 export async function maybeWelcomeOnSignIn(userId: string): Promise<void> {
   try {
     const u = await prisma.user.findUnique({
       where: { id: userId },
-      select: { createdAt: true, onboardingCompleted: true },
+      select: { onboardingCompleted: true, botWelcomedAt: true },
     })
-    if (!u || !u.onboardingCompleted || u.createdAt < BOT_WELCOME_SINCE) return
+    if (!u || u.botWelcomedAt || !u.onboardingCompleted) return
     await botWelcome(userId)
   } catch (e) {
     console.error("maybeWelcomeOnSignIn failed:", e)
