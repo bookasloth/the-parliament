@@ -82,6 +82,7 @@ export interface BotAnnounceInput {
   media?: CreatePostInput["media"]
   linkUrl?: string
   groupId?: string
+  poll?: { question: string; options: string[] }
 }
 
 /**
@@ -111,10 +112,11 @@ export async function botAnnounce(input: BotAnnounceInput) {
     authorId: botId,
     schoolId,
     categoryKey,
-    format: input.format ?? "text",
+    format: input.format ?? (input.poll ? "poll" : "text"),
     body: input.body,
     media: input.media,
     linkUrl: input.linkUrl,
     groupId: input.groupId,
+    poll: input.poll,
   })
 }

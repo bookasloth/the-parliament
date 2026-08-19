@@ -40,6 +40,17 @@ export const WELCOME_DM_TEMPLATES: string[] = [
   "Welcome, {name}! 🎓 On behalf of NNAWCA — great to have you. Add your details, find your batch, and jump into the conversation whenever you like. Here's to staying connected.",
 ]
 
+// Weekly community polls the bot rotates through (one per week). 2–6 options each
+// (createPost enforces that bound).
+export const POLL_TEMPLATES: { question: string; options: string[] }[] = [
+  { question: "How often do you check in with your JNV batchmates?", options: ["Weekly", "Monthly", "A few times a year", "Reconnecting now via NNAWCA"] },
+  { question: "What would you most like NNAWCA to organise next?", options: ["A reunion", "Career mentorship", "Regional meetups", "Online talks"] },
+  { question: "Which JNV memory hits hardest?", options: ["Mess hall food", "Night study", "House competitions", "Migration exchange"] },
+  { question: "How can you give back to the community?", options: ["Mentoring students", "Hiring/referrals", "Donating", "Volunteering time"] },
+  { question: "Best way to keep our alumni network active?", options: ["Regular events", "Active feed", "WhatsApp groups", "Local chapters"] },
+  { question: "Where are you based now?", options: ["Maharashtra", "Elsewhere in India", "Abroad", "Prefer not to say"] },
+]
+
 /**
  * Deterministic per-user template pick — same member always gets the same
  * welcome, and tests are stable (no Math.random). Simple char-sum hash.
