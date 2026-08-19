@@ -9,14 +9,21 @@ export const IMPRESSION_BATCH_LIMIT = 40
  *  members who've seen thousands of posts. */
 export const SEEN_EXCLUSION_WINDOW = 1000
 
-/** Dedupe, drop empties, and cap a set of post ids for one impression flush. */
+/** Matches canonical UUIDs. Feed rows for synthetic content (house ads use ids
+ *  like "ad-bookasloth") are NOT real posts — passing their non-uuid ids into a
+ *  `Post.id { in: ids }` query throws P2007 against the uuid column. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Dedupe, drop empties + non-uuid (ad) ids, and cap a set of post ids for one
+ *  impression flush. Filtering here guards every caller (refreshPostCounts +
+ *  recordImpressions) that feeds these ids into a uuid `Post.id` query. */
 export function prepareImpressionBatch(
   ids: Iterable<string>,
   limit = IMPRESSION_BATCH_LIMIT,
 ): string[] {
   const out = new Set<string>()
   for (const id of ids) {
-    if (typeof id === "string" && id.length > 0) out.add(id)
+    if (typeof id === "string" && UUID_RE.test(id)) out.add(id)
     if (out.size >= limit) break
   }
   return [...out]
