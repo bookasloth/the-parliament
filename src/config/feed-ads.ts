@@ -82,22 +82,82 @@ export const FEED_ADS: FeedPost[] = [
     comments: 0,
     shares: 0,
   },
+  {
+    id: "ad-aisensy",
+    name: "AiSensy",
+    headline: "WhatsApp marketing on autopilot",
+    membership: "premium",
+    timestamp: "",
+    isSponsored: true,
+    sponsorName: "AiSensy",
+    sponsorSubhead: "Official WhatsApp Business API",
+    // Referral backlink.
+    sponsorUrl: "https://wa.aisensy.com/ref/ad4mls",
+    sponsorTagline: "Turn WhatsApp into your #1 sales & support channel.",
+    content:
+      "Broadcasts, drip campaigns and chatbots on the official WhatsApp Business API — trusted by 40,000+ businesses.",
+    sponsorCta: "Start Free Trial",
+    // WhatsApp green for the CTA + verified tick.
+    sponsorAccent: "#25d366",
+    // Self-contained SVG banner (shapes/colours, no photo) in /public.
+    image: "/aisensy-ad.svg",
+    avatar: "/aisensy-icon.png",
+    borderType: "darkBlue",
+    upvotes: 0,
+    downvotes: 0,
+    comments: 0,
+    shares: 0,
+  },
 ]
 
 // Ad frequency by membership tier:
 //   student   — capped feed of 5 items, positions 2 & 5 are ads (3 real posts)
 //   committee — never any feed ads (internal office-bearer tier)
-//   everyone else — the ad rotation repeats through the whole feed: an ad after
-//                   every random 5–10 posts, cycling ads[] so all three recur.
+//   everyone else — an ad after every 5 posts, cycling ads[] so all recur.
 export type AdTier = "student" | "associate" | "premium" | "life" | "committee" | string
 
+// Fixed cadence: one ad after every AD_GAP real posts.
+export const AD_GAP = 5
+
+// Rotation position carried across feed pages so load-more keeps the every-5
+// cadence + ad order unbroken instead of restarting each page.
+export interface FeedAdState {
+  sinceAd: number // real posts shown since the last ad (phase within the gap)
+  adIdx: number // next index into the rotation (round-robin via % ads.length)
+}
+
+/** Weave ads into one page of posts, continuing from `state`. Returns the woven
+ *  page + the state for the next page. Pure — original array untouched. */
+export function weaveFeedAds(
+  posts: FeedPost[],
+  state: FeedAdState,
+  ads: FeedPost[] = FEED_ADS,
+): { posts: FeedPost[]; state: FeedAdState } {
+  if (ads.length === 0) return { posts, state }
+  const out: FeedPost[] = []
+  let { sinceAd, adIdx } = state
+  for (const p of posts) {
+    out.push(p)
+    if (++sinceAd >= AD_GAP) {
+      out.push(ads[adIdx++ % ads.length]) // cycle so ads recur
+      sinceAd = 0
+    }
+  }
+  return { posts: out, state: { sinceAd, adIdx } }
+}
+
+/** Rotation state after a page already woven with `realPosts` real posts — lets
+ *  the client resume load-more from the server-rendered first page. */
+export function adStateAfter(realPosts: number): FeedAdState {
+  return { sinceAd: realPosts % AD_GAP, adIdx: Math.floor(realPosts / AD_GAP) }
+}
+
 // Splice ads into a feed page according to the viewer's tier. Returns a new
-// array (original untouched). `rand` is injectable for deterministic tests.
+// array (original untouched).
 export function injectFeedAds(
   posts: FeedPost[],
   tier: AdTier,
   ads: FeedPost[] = FEED_ADS,
-  rand: () => number = Math.random,
 ): FeedPost[] {
   if (ads.length === 0 || posts.length === 0) return posts
   if (tier === "committee") return posts // internal tier: ad-free
@@ -116,21 +176,8 @@ export function injectFeedAds(
     return out
   }
 
-  // A fresh random gap of 5–10 posts between each ad.
-  const gap = () => 5 + Math.floor(rand() * 6) // 5..10 inclusive
-  const out: FeedPost[] = []
-  let sinceAd = 0
-  let next = gap()
-  let adIdx = 0
-  for (let i = 0; i < posts.length; i++) {
-    out.push(posts[i])
-    if (++sinceAd >= next) {
-      out.push(ads[adIdx++ % ads.length]) // cycle so ads recur
-      sinceAd = 0
-      next = gap()
-    }
-  }
+  const { posts: out } = weaveFeedAds(posts, { sinceAd: 0, adIdx: 0 }, ads)
   // Short feed that never reached the first gap still surfaces the rotation.
-  if (!out.some((p) => p.isSponsored)) for (const a of ads) out.push(a)
+  if (!out.some((p) => p.isSponsored)) return [...out, ...ads]
   return out
 }
