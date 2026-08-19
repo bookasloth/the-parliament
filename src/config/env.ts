@@ -33,7 +33,7 @@ export const env = {
   aisensyApiUrl: process.env.AISENSY_API_URL ?? "https://backend.aisensy.com/campaign/t1/api/v2",
   // Name of the AiSensy live API campaign bound to the approved blood-request
   // UTILITY template (5 params: group, patient, city, hospital, contact).
-  aisensyBloodCampaign: process.env.AISENSY_BLOOD_CAMPAIGN ?? "blood_request",
+  aisensyBloodCampaign: process.env.AISENSY_BLOOD_CAMPAIGN ?? "Blood Requests",
 } as const;
 
 // Vars the app genuinely cannot run correctly without. In production a missing
