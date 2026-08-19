@@ -26,6 +26,7 @@ import {
   refreshPostCountsAction,
 } from "./actions"
 import { prepareImpressionBatch } from "@/modules/feed/impressions"
+import { weaveFeedAds, adStateAfter, type FeedAdState } from "@/config/feed-ads"
 import { mergePostCounts } from "@/modules/feed/live-counts"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
@@ -234,6 +235,10 @@ export function FeedContent({
   const router = useRouter()
   const [newCount, setNewCount] = useState(0)
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
+  // Ad rotation carried into load-more so later pages keep the every-5 cadence.
+  // committee is ad-free; the initial page's real-post count seeds the phase.
+  const adFree = viewer?.membership === "committee"
+  const adState = useRef<FeedAdState>(adStateAfter(posts.filter((p) => !p.isSponsored).length))
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
   const [cursor, setCursor] = useState<FeedCursor | null>(initialCursor)
@@ -256,6 +261,7 @@ export function FeedContent({
     setShuffleSeed(initialShuffleSeed)
     setHasMore(initialHasMore)
     seenIds.current = new Set(posts.map((p) => p.id))
+    adState.current = adStateAfter(posts.filter((p) => !p.isSponsored).length)
   }, [posts, initialHasMore, initialCursor, initialShuffleSeed])
 
   const loadMore = useCallback(() => {
@@ -266,7 +272,15 @@ export function FeedContent({
         const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined, trending, tag ?? undefined, shuffleSeed ?? undefined, mentions)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
-        setLocalPosts((cur) => [...cur, ...fresh])
+        // Weave ads client-side (after dedup, so recurring ad ids aren't dropped
+        // by seenIds), threading the rotation state across pages.
+        let toAppend = fresh
+        if (!adFree) {
+          const woven = weaveFeedAds(fresh, adState.current)
+          toAppend = woven.posts
+          adState.current = woven.state
+        }
+        setLocalPosts((cur) => [...cur, ...toAppend])
         setHasMore(r.hasMore && fresh.length > 0)
         setPage(r.nextPage)
         setCursor(r.nextCursor)
@@ -276,7 +290,7 @@ export function FeedContent({
         setLoadMoreError(true)
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag, mentions])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag, mentions, adFree])
 
   // Load the next page only as the reader approaches the end (Google-Maps style:
   // fetch what's about to enter view, not the whole feed up front). The old 300ms

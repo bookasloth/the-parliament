@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" font-family="Poppins, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1fce67"/>
+      <stop offset="0.55" stop-color="#12a150"/>
+      <stop offset="1" stop-color="#075e2f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.28" r="0.6">
+      <stop offset="0" stop-color="#7bffb0" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#7bffb0" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="2.4" fill="#ffffff" fill-opacity="0.18"/>
+    </pattern>
+  </defs>
+
+  <!-- Base -->
+  <rect width="1200" height="500" fill="url(#bg)"/>
+  <rect width="1200" height="500" fill="url(#glow)"/>
+
+  <!-- Decorative geometry (no people) -->
+  <rect x="760" y="30" width="180" height="180" fill="url(#dots)"/>
+  <circle cx="150" cy="430" r="120" fill="#ffffff" fill-opacity="0.05"/>
+  <circle cx="1090" cy="90" r="70" fill="#ffffff" fill-opacity="0.06"/>
+  <rect x="60" y="60" width="46" height="46" rx="12" fill="#ffffff" fill-opacity="0.10" transform="rotate(18 83 83)"/>
+  <path d="M40 250 q40 -30 80 0 t80 0" stroke="#ffffff" stroke-opacity="0.16" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- Brand mark: WhatsApp-style chat bubble -->
+  <g transform="translate(70 62)">
+    <rect x="0" y="0" width="34" height="30" rx="10" fill="#ffffff"/>
+    <path d="M9 30 v9 l11 -9 z" fill="#ffffff"/>
+    <circle cx="9" cy="15" r="2.8" fill="#12a150"/>
+    <circle cx="17" cy="15" r="2.8" fill="#12a150"/>
+    <circle cx="25" cy="15" r="2.8" fill="#12a150"/>
+    <text x="52" y="24" fill="#ffffff" font-size="26" font-weight="700" letter-spacing="1">AiSensy</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="70" y="215" fill="#ffffff" font-size="60" font-weight="800">WhatsApp marketing</text>
+  <text x="70" y="283" fill="#ffffff" font-size="60" font-weight="800">on autopilot</text>
+
+  <!-- Feature line -->
+  <text x="72" y="333" fill="#dcffe9" font-size="24" font-weight="500">Broadcasts · Chatbots · Official Business API</text>
+
+  <!-- Trust pill -->
+  <g transform="translate(72 372)">
+    <rect x="0" y="0" width="290" height="58" rx="29" fill="#ffffff"/>
+    <text x="24" y="38" fill="#0b6b39" font-size="22" font-weight="800">40,000+ businesses</text>
+  </g>
+
+  <!-- Faux CTA -->
+  <g transform="translate(386 372)">
+    <rect x="0" y="0" width="224" height="58" rx="12" fill="#25d366"/>
+    <text x="26" y="37" fill="#083b21" font-size="21" font-weight="800">Start Free Trial</text>
+    <path d="M188 29 h14 M196 22 l8 7 -8 7" stroke="#083b21" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Stylized phone with chat bubbles (all shapes) -->
+  <g transform="translate(820 90)">
+    <rect x="0" y="0" width="260" height="320" rx="30" fill="#ffffff" fill-opacity="0.97"/>
+    <rect x="14" y="16" width="232" height="288" rx="18" fill="#e9fbf1"/>
+    <rect x="98" y="6" width="64" height="12" rx="6" fill="#ffffff"/>
+    <!-- incoming bubble -->
+    <rect x="30" y="44" width="150" height="44" rx="14" fill="#ffffff"/>
+    <rect x="46" y="58" width="104" height="8" rx="4" fill="#bfe9d1"/>
+    <rect x="46" y="72" width="70" height="8" rx="4" fill="#d8f2e3"/>
+    <!-- outgoing bubble -->
+    <rect x="80" y="104" width="150" height="44" rx="14" fill="#25d366"/>
+    <rect x="96" y="118" width="104" height="8" rx="4" fill="#eafff3"/>
+    <rect x="96" y="132" width="60" height="8" rx="4" fill="#bff2d3"/>
+    <!-- incoming bubble -->
+    <rect x="30" y="164" width="126" height="40" rx="14" fill="#ffffff"/>
+    <rect x="46" y="178" width="86" height="8" rx="4" fill="#bfe9d1"/>
+    <!-- automation chip -->
+    <g transform="translate(64 226)">
+      <rect x="0" y="0" width="132" height="40" rx="20" fill="#12a150"/>
+      <circle cx="22" cy="20" r="9" fill="#eafff3"/>
+      <path d="M18 20 l3 3 6 -7" stroke="#12a150" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="40" y="26" fill="#ffffff" font-size="15" font-weight="700">Automated</text>
+    </g>
+  </g>
+
+  <!-- Little orbiting accents -->
+  <circle cx="800" cy="120" r="12" fill="#eafff3"/>
+  <rect x="1096" y="360" width="26" height="26" rx="8" fill="#7bffb0" transform="rotate(20 1109 373)"/>
+</svg>
