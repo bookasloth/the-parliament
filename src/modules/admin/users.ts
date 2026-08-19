@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { slugify } from "@/lib/slug"
 import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
 import { createResetToken, resetUrl } from "@/lib/password-reset"
@@ -327,10 +328,7 @@ const RESERVED = new Set([
   "profile", "admin", "auth", "api", "onboarding", "companies",
 ])
 
-export function slugify(name: string): string {
-  const base = name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 40)
-  return base || `user-${Date.now().toString(36)}`
-}
+export { slugify }
 
 async function uniqueUsername(base: string): Promise<string> {
   if (!RESERVED.has(base) && !(await prisma.user.findUnique({ where: { username: base } }))) return base

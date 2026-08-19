@@ -76,6 +76,7 @@ export const NAV: NavSection[] = [
       { label: "Reports", href: "/admin/reports", icon: "Warning", permission: "reports:read", badge: "openReports" },
       { label: "Announcements", href: "/admin/notifications", icon: "Megaphone", permission: "announcements:send" },
       { label: "CMS Pages", href: "/admin/pages", icon: "FileText", permission: "cms:manage" },
+      { label: "Gallery", href: "/admin/gallery", icon: "Images", adminOnly: true },
     ],
   },
   {
