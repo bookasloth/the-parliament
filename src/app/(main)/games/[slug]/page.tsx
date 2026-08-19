@@ -118,15 +118,7 @@ export default async function GameLandingPage({ params }: { params: Promise<{ sl
         </section>
 
         <section className="rounded-[5px] border border-gray-200 bg-white p-6">
-          <h2 className="font-heading text-lg font-bold text-gray-900">How to play</h2>
-          <ol className="mt-3 space-y-2.5 text-[14px] text-gray-700">
-            {cfg.howTo.map((line, i) => (
-              <li key={i} className="flex gap-2.5">
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[3px] bg-brand-50 text-[12px] font-bold text-brand">{i + 1}</span>
-                {line}
-              </li>
-            ))}
-          </ol>
+          <h2 className="font-heading text-lg font-bold text-gray-900">Your stats</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-[5px] bg-brand-50 p-3 text-center">
               <CountUp value={gamesPlayed} className="block text-2xl font-extrabold text-brand" />
@@ -145,32 +137,37 @@ export default async function GameLandingPage({ params }: { params: Promise<{ sl
         </section>
       </div>
 
-      <section className="rounded-[5px] border border-gray-200 bg-white p-5">
-        <h2 className="font-heading text-lg font-bold text-gray-900">Today&apos;s Leaderboard</h2>
-        {top5.length === 0 ? (
-          <p className="mt-4 text-[13.5px] text-gray-500">No plays yet today — be the first!</p>
-        ) : (
-          <ol className="mt-3 space-y-2">
-            {top5.map((e) => (
-              <li key={e.key} className="flex items-center gap-3">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-[3px] text-[13px] font-bold ${e.rank === 1 ? "bg-amber-100 text-amber-700" : e.rank === 2 ? "bg-gray-200 text-gray-700" : e.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-500"}`}>
-                  {e.rank}
-                </span>
-                <span className={`flex-1 truncate text-[14px] ${e.key === user.id ? "font-bold text-brand" : "font-medium text-gray-800"}`}>
-                  {e.key === user.id ? "You" : e.label}
-                </span>
-                <span className="text-[13px] font-semibold text-gray-500">{e.total} pts</span>
-              </li>
-            ))}
-          </ol>
-        )}
-        <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
-          Full leaderboard →
-        </Link>
-      </section>
+      {/* Leaderboard + nudge only appear once you've played today. */}
+      {playedToday && (
+        <>
+          <section className="rounded-[5px] border border-gray-200 bg-white p-5">
+            <h2 className="font-heading text-lg font-bold text-gray-900">Today&apos;s Leaderboard</h2>
+            {top5.length === 0 ? (
+              <p className="mt-4 text-[13.5px] text-gray-500">No plays yet today — be the first!</p>
+            ) : (
+              <ol className="mt-3 space-y-2">
+                {top5.map((e) => (
+                  <li key={e.key} className="flex items-center gap-3">
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-[3px] text-[13px] font-bold ${e.rank === 1 ? "bg-amber-100 text-amber-700" : e.rank === 2 ? "bg-gray-200 text-gray-700" : e.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-500"}`}>
+                      {e.rank}
+                    </span>
+                    <span className={`flex-1 truncate text-[14px] ${e.key === user.id ? "font-bold text-brand" : "font-medium text-gray-800"}`}>
+                      {e.key === user.id ? "You" : e.label}
+                    </span>
+                    <span className="text-[13px] font-semibold text-gray-500">{e.total} pts</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="mt-4 inline-block text-[13px] font-semibold text-brand hover:underline">
+              Full leaderboard →
+            </Link>
+          </section>
 
-      {nudgeTargets.length > 0 && (
-        <NudgePanel connections={nudgeTargets} title="Nudge your batchmates & housemates" subtitle="A nudge lands as a message. One per person per day." />
+          {nudgeTargets.length > 0 && (
+            <NudgePanel connections={nudgeTargets} title="Nudge your batchmates & housemates" subtitle="A nudge lands as a message. One per person per day." />
+          )}
+        </>
       )}
     </div>
   );

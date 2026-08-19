@@ -112,9 +112,9 @@ export const integraEngine: GameEngine = {
   keyboard: [
     ["1", "2", "3", "4", "5"].map((k) => ({ key: k })),
     ["6", "7", "8", "9", "0"].map((k) => ({ key: k })),
+    ["+", "-", "*", "/", "="].map((k) => ({ key: k })),
     [
       { key: "ENTER", wide: true },
-      ...["+", "-", "*", "/", "="].map((k) => ({ key: k })),
       { key: "DEL", wide: true },
     ],
   ],
