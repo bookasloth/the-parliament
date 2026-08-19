@@ -61,12 +61,17 @@ function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 
   const initial = placeholder ? null : member.name.replace(/^(Shri\.|Smt\.|Dr\.)\s*/i, "").charAt(0)
   return (
     <div className="flex flex-col items-center rounded-[5px] border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
-      <div
-        className="flex h-16 w-16 items-center justify-center rounded-[4px] font-heading text-2xl font-semibold text-white"
-        style={{ backgroundColor: ACCENT_HEX[accent] }}
-      >
-        {initial ?? <Users className="h-6 w-6" />}
-      </div>
+      {member.photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={member.photo} alt={member.name} className="h-16 w-16 rounded-[4px] object-cover" />
+      ) : (
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-[4px] font-heading text-2xl font-semibold text-white"
+          style={{ backgroundColor: ACCENT_HEX[accent] }}
+        >
+          {initial ?? <Users className="h-6 w-6" />}
+        </div>
+      )}
       <p className="mt-3 line-clamp-2 text-sm font-semibold leading-tight text-[#1a1a1a]">
         {placeholder ? member.position : member.name}
       </p>

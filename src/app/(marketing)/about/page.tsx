@@ -23,6 +23,7 @@ import {
   ACCENT_HEX,
 } from "@/components/marketing/primitives"
 import { EXECUTIVE, ADVISORY } from "@/lib/committee"
+import { getCommitteePhotos, applyPhotos } from "@/modules/committee/photos"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 export const metadata: Metadata = {
@@ -93,7 +94,8 @@ const ALUMNI_COLLAGE = [
   "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=faces",
 ]
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const executive = applyPhotos(EXECUTIVE, await getCommitteePhotos())
   return (
     <>
       {/* ── Hero (compact) ── */}
@@ -283,7 +285,7 @@ export default function AboutPage() {
 
         {/* Tab-based committee browser (Executive / Advisory) */}
         <div className="mt-14">
-          <CommitteeTabs executive={EXECUTIVE} advisory={ADVISORY} />
+          <CommitteeTabs executive={executive} advisory={ADVISORY} />
         </div>
       </Section>
 

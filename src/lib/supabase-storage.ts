@@ -146,6 +146,24 @@ export async function uploadGalleryImage(
   return { url: `${url}/storage/v1/object/public/${BUCKET}/${path}`, path }
 }
 
+/** Upload a committee member headshot. Same public bucket, `committee/` prefix.
+ *  Returns the public URL. Admin-gated callers only. */
+export async function uploadCommitteePhoto(key: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  const cfg = config()
+  const ext = EXT[contentType]
+  if (!ext) throw new Error("Unsupported image type")
+  if (sniffImageMime(bytes) !== contentType) throw new Error("File content does not match a supported image type")
+  const safeKey = key.replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "member"
+  const path = `committee/${safeKey}-${crypto.randomBytes(4).toString("hex")}.${ext}`
+  const res = await fetch(`${cfg.url}/storage/v1/object/${BUCKET}/${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cfg.key}`, apikey: cfg.key, "Content-Type": contentType, "x-upsert": "true", "cache-control": "public, max-age=31536000" },
+    body: bytes as unknown as BodyInit,
+  })
+  if (!res.ok) throw new Error(`Storage upload failed (${res.status}): ${await res.text().catch(() => "")}`)
+  return `${cfg.url}/storage/v1/object/public/${BUCKET}/${path}`
+}
+
 /** Delete a stored object by its `storage_path`. Best-effort: throws only if the
  *  request itself fails, so callers can treat cleanup as non-fatal. A 404 (object
  *  already gone) is treated as success. */
