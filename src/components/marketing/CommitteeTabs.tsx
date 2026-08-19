@@ -59,8 +59,14 @@ export function CommitteeTabs({
 function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 }) {
   const placeholder = isPlaceholder(member.name)
   const initial = placeholder ? null : member.name.replace(/^(Shri\.|Smt\.|Dr\.)\s*/i, "").charAt(0)
+  const link = !placeholder && member.profileLink ? member.profileLink : null
+  const Tag = link ? "a" : "div"
+  const linkProps = link ? { href: link, target: "_blank" as const, rel: "noopener noreferrer" } : {}
   return (
-    <div className="flex flex-col items-center rounded-[5px] border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
+    <Tag
+      {...linkProps}
+      className={`flex flex-col items-center rounded-[5px] border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)] ${link ? "cursor-pointer hover:border-brand/30" : ""}`}
+    >
       {member.photo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={member.photo} alt={member.name} className="h-16 w-16 rounded-[4px] object-cover" />
@@ -78,6 +84,6 @@ function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 
       <p className="mt-0.5 line-clamp-2 text-xs text-[#8a8a8a]">
         {placeholder ? "Committee member" : member.position}
       </p>
-    </div>
+    </Tag>
   )
 }

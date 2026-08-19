@@ -9,10 +9,12 @@ export interface Member {
   position: string
   email?: string
   phone?: string
-  /** Stable slug used to attach an admin-uploaded photo (see committee-photos). */
+  /** Stable slug used to attach admin-editable overrides (see committee-photos). */
   key?: string
-  /** Headshot URL — set from the admin photo store, else an initial avatar. */
+  /** Headshot URL — set from the admin store, else an initial avatar. */
   photo?: string
+  /** Optional link on the member's name/card (profile, LinkedIn, etc.). */
+  profileLink?: string
 }
 
 export interface SubCommittee {
