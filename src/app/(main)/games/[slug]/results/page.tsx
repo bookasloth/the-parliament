@@ -89,7 +89,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
           </p>
         )}
 
-        <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2 sm:flex-row">
+        <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2">
           <ShareResult
             text={shareText}
             url={shareUrl}

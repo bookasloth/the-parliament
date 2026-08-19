@@ -123,12 +123,7 @@ export default function ShareResult({
   return (
     <div className="w-full">
       <button
-        onClick={() => {
-          const next = !open;
-          setOpen(next);
-          // On mobile, the first tap goes straight to the native sheet with the image.
-          if (next && typeof navigator !== "undefined" && typeof navigator.canShare === "function") void shareImage("native_image");
-        }}
+        onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center justify-center gap-2 rounded-[4px] px-4 py-2.5 text-sm font-semibold transition-colors ${className}`}
       >
         <Share2 className="h-4 w-4" /> Share
