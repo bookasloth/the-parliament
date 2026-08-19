@@ -64,6 +64,7 @@ export const NAV: NavSection[] = [
       { label: "Events", href: "/admin/events", icon: "CalendarDots", permission: "events:manage" },
       { label: "AMA Sessions", href: "/admin/ama", icon: "VideoCamera", adminOnly: true },
       { label: "Committees", href: "/admin/committees", icon: "Bank", adminOnly: true },
+      { label: "Committee Photos", href: "/admin/committee-photos", icon: "UserCircle", adminOnly: true },
     ],
   },
   {

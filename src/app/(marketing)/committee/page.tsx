@@ -7,6 +7,7 @@ import {
   CtaBand,
 } from "@/components/marketing/primitives"
 import { EXECUTIVE, ADVISORY } from "@/lib/committee"
+import { getCommitteePhotos, applyPhotos } from "@/modules/committee/photos"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 const HERO_IMG =
@@ -18,7 +19,9 @@ export const metadata: Metadata = {
     "The NNAWCA Executive Committee and Advisory Committee — the alumni who run the network.",
 }
 
-export default function CommitteePage() {
+export default async function CommitteePage() {
+  const photos = await getCommitteePhotos()
+  const executive = applyPhotos(EXECUTIVE, photos)
   return (
     <>
       {/* ── Hero (split) ── */}
@@ -66,7 +69,7 @@ export default function CommitteePage() {
 
       {/* ── Committee groups (tabbed) ── */}
       <Section width="7xl" className="pt-4">
-        <CommitteeTabs executive={EXECUTIVE} advisory={ADVISORY} />
+        <CommitteeTabs executive={executive} advisory={ADVISORY} />
       </Section>
 
       {/* ── CTA ── */}

@@ -9,6 +9,10 @@ export interface Member {
   position: string
   email?: string
   phone?: string
+  /** Stable slug used to attach an admin-uploaded photo (see committee-photos). */
+  key?: string
+  /** Headshot URL — set from the admin photo store, else an initial avatar. */
+  photo?: string
 }
 
 export interface SubCommittee {
@@ -22,16 +26,16 @@ export interface SubCommittee {
 // These are NOT real office-bearers. Replace every name with the real elected
 // roster before this page goes public. Cards render initials avatars (no photos).
 export const EXECUTIVE: Member[] = [
-  { name: "Prince Jiwani Khoja", position: "President", email: "president@nnawca.org" },
-  { name: "Aditya Rane", position: "Vice President", email: "vicepresident@nnawca.org" },
-  { name: "Sameer Kulkarni", position: "General Secretary", email: "secretary@nnawca.org" },
-  { name: "Rohit Deshpande", position: "Joint Secretary", email: "jointsecretary@nnawca.org" },
-  { name: "Nikhil Warhade", position: "Treasurer", email: "treasurer@nnawca.org" },
-  { name: "Amol Thakre", position: "Joint Treasurer", email: "jointtreasurer@nnawca.org" },
-  { name: "Vishal Gaikwad", position: "Executive Member", email: "member@nnawca.org" },
-  { name: "Kiran Sonkusare", position: "Executive Member", email: "member@nnawca.org" },
-  { name: "Anjali Deshmukh", position: "Executive Member", email: "member@nnawca.org" },
-  { name: "Sneha Pawar", position: "Executive Member", email: "member@nnawca.org" },
+  { key: "president", name: "Prince Jiwani Khoja", position: "President", email: "president@nnawca.org" },
+  { key: "vice-president", name: "Aditya Rane", position: "Vice President", email: "vicepresident@nnawca.org" },
+  { key: "general-secretary", name: "Sameer Kulkarni", position: "General Secretary", email: "secretary@nnawca.org" },
+  { key: "joint-secretary", name: "Rohit Deshpande", position: "Joint Secretary", email: "jointsecretary@nnawca.org" },
+  { key: "treasurer", name: "Nikhil Warhade", position: "Treasurer", email: "treasurer@nnawca.org" },
+  { key: "joint-treasurer", name: "Amol Thakre", position: "Joint Treasurer", email: "jointtreasurer@nnawca.org" },
+  { key: "member-1", name: "Vishal Gaikwad", position: "Executive Member", email: "member@nnawca.org" },
+  { key: "member-2", name: "Kiran Sonkusare", position: "Executive Member", email: "member@nnawca.org" },
+  { key: "member-3", name: "Anjali Deshmukh", position: "Executive Member", email: "member@nnawca.org" },
+  { key: "member-4", name: "Sneha Pawar", position: "Executive Member", email: "member@nnawca.org" },
 ]
 
 // Advisory Committee — past office-bearers ("Ex" roles).
