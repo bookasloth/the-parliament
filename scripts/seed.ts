@@ -24,6 +24,7 @@ const POST_CATEGORIES = [
   { key: "mentorship", label: "Mentorship" },
   { key: "school_memory", label: "School Memory" },
   { key: "event", label: "Event" },
+  { key: "announcement", label: "Announcement" },
 ];
 
 const KARMA_THRESHOLDS = [
@@ -127,6 +128,33 @@ async function main() {
       create: { schoolId: school.id, ...c },
     });
   }
+
+  // Official NNAWCA bot / system account (member_type "system"), resolved at
+  // runtime by src/modules/bot/service.ts.
+  const bot = await prisma.user.upsert({
+    where: { email: "bot@nnawca.com" },
+    update: { memberType: "system" },
+    create: {
+      schoolId: school.id,
+      email: "bot@nnawca.com",
+      username: "nnawca",
+      legalName: "NNAWCA",
+      displayName: "NNAWCA",
+      memberType: "system",
+      isVerified: true,
+      verifiedAt: new Date(),
+      status: "active",
+      onboardingStep: "complete",
+      onboardingCompleted: true,
+      profileCompletion: 100,
+      membershipStatus: "committee",
+    },
+  });
+  await prisma.profile.upsert({
+    where: { userId: bot.id },
+    update: {},
+    create: { userId: bot.id, headline: "Official account of NNAWCA", isComplete: true },
+  });
 
   for (const t of KARMA_THRESHOLDS) {
     await prisma.karmaThreshold.upsert({
