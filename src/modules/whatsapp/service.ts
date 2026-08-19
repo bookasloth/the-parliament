@@ -77,12 +77,47 @@ export async function groupWhatsAppAudience(
   return { total: contacts.length, reachable: reachableRecipients(contacts).length }
 }
 
-export interface BroadcastResult {
-  recipientCount: number
+export interface SendTally {
   sent: number
   failed: number
   /** True if AiSensy is unconfigured — every send was skipped, not attempted. */
   skipped: boolean
+}
+
+/**
+ * Send the same campaign/template to a pre-computed recipient set, one at a time
+ * with a gentle throttle (AiSensy rate + Vercel maxDuration). Shared by group
+ * broadcasts and blood requests. `templateParams` is the same for every
+ * recipient (per-request content, not per-recipient).
+ */
+export async function sendWhatsAppToRecipients(
+  recipients: WhatsAppRecipient[],
+  opts: { campaignName: string; templateParams?: string[]; source?: string },
+): Promise<SendTally> {
+  let sent = 0
+  let failed = 0
+  let skipped = false
+  for (const r of recipients) {
+    const res = await sendWhatsAppCampaign({
+      campaignName: opts.campaignName,
+      destination: r.destination,
+      userName: r.name,
+      templateParams: opts.templateParams,
+      source: opts.source,
+    })
+    if (res.ok) {
+      sent++
+    } else {
+      failed++
+      if (res.skipped) skipped = true
+    }
+    await new Promise((res) => setTimeout(res, 200)) // gentle throttle
+  }
+  return { sent, failed, skipped }
+}
+
+export interface BroadcastResult extends SendTally {
+  recipientCount: number
 }
 
 export async function broadcastGroupWhatsApp(opts: {
@@ -94,25 +129,11 @@ export async function broadcastGroupWhatsApp(opts: {
 }): Promise<BroadcastResult> {
   const recipients = reachableRecipients(await groupMemberContacts(opts.groupId))
 
-  let sent = 0
-  let failed = 0
-  let skipped = false
-  for (const r of recipients) {
-    const res = await sendWhatsAppCampaign({
-      campaignName: opts.campaignName,
-      destination: r.destination,
-      userName: r.name,
-      templateParams: opts.templateParams,
-      source: opts.source ?? `group:${opts.groupId}`,
-    })
-    if (res.ok) {
-      sent++
-    } else {
-      failed++
-      if (res.skipped) skipped = true
-    }
-    await new Promise((res) => setTimeout(res, 200)) // gentle throttle
-  }
+  const { sent, failed, skipped } = await sendWhatsAppToRecipients(recipients, {
+    campaignName: opts.campaignName,
+    templateParams: opts.templateParams,
+    source: opts.source ?? `group:${opts.groupId}`,
+  })
 
   await prisma.whatsAppBroadcast.create({
     data: {

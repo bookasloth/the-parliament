@@ -47,6 +47,15 @@ export function normalizeWhatsAppDestination(
   return digits
 }
 
+/**
+ * Sanitise a value for a WhatsApp template parameter. Meta rejects params that
+ * contain newlines, tabs, or 4+ consecutive spaces, so collapse all whitespace
+ * runs to a single space, trim, and cap length.
+ */
+export function sanitizeTemplateParam(value: string, maxLen = 400): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, maxLen)
+}
+
 export interface WhatsAppCampaignInput {
   /** Name of a live API campaign in AiSensy, bound to an approved template. */
   campaignName: string
@@ -87,7 +96,7 @@ export async function sendWhatsAppCampaign(
     campaignName: input.campaignName,
     destination,
     userName,
-    templateParams: input.templateParams ?? [],
+    templateParams: (input.templateParams ?? []).map((p) => sanitizeTemplateParam(p)),
   }
   if (input.source) payload.source = input.source
   if (input.attributes) payload.attributes = input.attributes

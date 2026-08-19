@@ -228,6 +228,7 @@ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET  # when Google OAuth is configured
 AISENSY_API_KEY                     # AiSensy WhatsApp (utility templates). Unset = fail-closed, sends no-op.
 AISENSY_API_URL                     # optional; defaults to https://backend.aisensy.com/campaign/t1/api/v2
+AISENSY_BLOOD_CAMPAIGN              # AiSensy campaign name for the blood-request UTILITY template. Default "Blood Requests".
 ```
 
 ## Karma System (from `src/config/karma.ts`)

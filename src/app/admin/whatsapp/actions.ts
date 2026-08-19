@@ -49,3 +49,13 @@ export async function sendGroupWhatsAppAction(
   revalidatePath("/admin/whatsapp")
   return result
 }
+
+export async function markBloodRequestFulfilledAction(id: string): Promise<{ ok: true }> {
+  await requirePermission("whatsapp:send")
+  await prisma.bloodRequest.update({
+    where: { id },
+    data: { status: "fulfilled", fulfilledAt: new Date() },
+  })
+  revalidatePath("/admin/whatsapp")
+  return { ok: true }
+}
