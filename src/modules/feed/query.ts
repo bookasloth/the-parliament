@@ -26,6 +26,11 @@ export interface FeedFilters {
   trending?: boolean
   /** Restrict to posts carrying this hashtag (case-insensitive). */
   hashtag?: string
+  /** Restrict to posts that @mention this viewer (their id, and optionally their
+   *  house / batch). Powers the /mention feed. */
+  mentionsUserId?: string
+  mentionsHouseId?: string
+  mentionsBatchId?: string
   /**
    * Keyset pagination cursor — the last row of the previous page. Honoured on
    * BOTH feeds: recency keys on (createdAt, id), ranked on (rankingScore, id).
@@ -60,6 +65,14 @@ export async function getFeed(filters: FeedFilters) {
   if (filters.groupId !== undefined) where.groupId = filters.groupId
   if (filters.trending) where.createdAt = { gte: trendingWindowStart() }
   if (filters.hashtag) where.hashtags = postHashtagWhere(filters.hashtag)
+
+  if (filters.mentionsUserId || filters.mentionsHouseId || filters.mentionsBatchId) {
+    const or: Prisma.PostMentionWhereInput[] = []
+    if (filters.mentionsUserId) or.push({ userId: filters.mentionsUserId })
+    if (filters.mentionsHouseId) or.push({ houseId: filters.mentionsHouseId })
+    if (filters.mentionsBatchId) or.push({ batchId: filters.mentionsBatchId })
+    where.mentions = { some: { OR: or } }
+  }
 
   if (filters.categoryKey) {
     const cat = await prisma.postCategory.findUnique({

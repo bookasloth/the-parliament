@@ -16,6 +16,7 @@ import { NextResponse, type NextRequest } from "next/server"
 // so a presence-check here would redirect admins to the wrong page.
 const PRIVATE_PREFIXES = [
   "/feed",
+  "/mention",
   "/community",
   "/groups",
   "/business",

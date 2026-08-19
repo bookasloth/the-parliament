@@ -365,12 +365,21 @@ export async function loadMoreFeedAction(
   trending = false,
   hashtag?: string,
   shuffleSeed?: number,
+  mentions = false,
 ): Promise<LoadMoreResult> {
   const [schoolId, viewer] = await Promise.all([
     getDefaultSchoolId(),
     optionalUser(),
   ])
   if (!schoolId) return { posts: [], hasMore: false, nextPage: page, nextCursor: null, shuffleSeed: null }
+
+  // Mention feed: resolve the viewer's house/batch so posts mentioning them (or
+  // their house/batch) are included on every page.
+  let mentionFilter: { mentionsUserId?: string; mentionsHouseId?: string; mentionsBatchId?: string } = {}
+  if (mentions && viewer?.id) {
+    const p = await prisma.profile.findUnique({ where: { userId: viewer.id }, select: { houseId: true, batchId: true } })
+    mentionFilter = { mentionsUserId: viewer.id, mentionsHouseId: p?.houseId ?? undefined, mentionsBatchId: p?.batchId ?? undefined }
+  }
 
   const { rows, nextCursor, shuffleSeed: seed } = await getFeed({
     schoolId,
@@ -380,6 +389,7 @@ export async function loadMoreFeedAction(
     followingOnly,
     trending,
     hashtag,
+    ...mentionFilter,
     // Caught-up recycle: force the shuffled path and reuse the visit's seed so
     // pages share one order. Non-caught-up keysets via the cursor.
     caughtUp,

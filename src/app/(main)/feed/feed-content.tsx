@@ -197,6 +197,7 @@ export function FeedContent({
   initialShuffleSeed = null,
   canPin = false,
   announcement = null,
+  mentions = false,
 }: {
   userName: string
   viewer?: ViewerCard | null
@@ -222,6 +223,8 @@ export function FeedContent({
   canPin?: boolean
   /** Active admin announcement banner, shown at the top of the feed. */
   announcement?: FeedAnnouncement | null
+  /** Mentions feed — posts that @mention the viewer. Hides tabs, shows a header. */
+  mentions?: boolean
 }) {
   const commentViewer = viewerId && viewer
     ? { id: viewerId, displayName: viewer.name, avatarUrl: viewer.photoUrl }
@@ -260,7 +263,7 @@ export function FeedContent({
     startLoadMore(async () => {
       try {
         setLoadMoreError(false)
-        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined, trending, tag ?? undefined, shuffleSeed ?? undefined)
+        const r = await loadMoreFeedAction(page, pageSize, followingOnly, caughtUp, cursor ?? undefined, trending, tag ?? undefined, shuffleSeed ?? undefined, mentions)
         const fresh = r.posts.filter((p) => !seenIds.current.has(p.id))
         for (const p of fresh) seenIds.current.add(p.id)
         setLocalPosts((cur) => [...cur, ...fresh])
@@ -273,7 +276,7 @@ export function FeedContent({
         setLoadMoreError(true)
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag, mentions])
 
   // Load the next page only as the reader approaches the end (Google-Maps style:
   // fetch what's about to enter view, not the whole feed up front). The old 300ms
@@ -399,7 +402,20 @@ export function FeedContent({
 
           {/* Feed Column */}
           <div className="flex-1 min-w-0 space-y-3">
-            {tag ? (
+            {mentions ? (
+              <div className="flex items-center justify-between gap-3 rounded-[5px] border border-gray-200 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-bold text-brand">Mentions</h1>
+                  <p className="text-xs text-gray-500">Posts that mention you, your house or your batch</p>
+                </div>
+                <a
+                  href="/feed"
+                  className="flex-shrink-0 rounded-[4px] border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Back to feed
+                </a>
+              </div>
+            ) : tag ? (
               <div className="flex items-center justify-between gap-3 rounded-[5px] border border-gray-200 bg-white px-4 py-3">
                 <div className="min-w-0">
                   <h1 className="truncate text-lg font-bold text-brand">#{tag}</h1>
