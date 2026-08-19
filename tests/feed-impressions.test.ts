@@ -6,23 +6,33 @@ import {
   IMPRESSION_BATCH_LIMIT,
 } from "@/modules/feed/impressions"
 
+// Real post ids are canonical UUIDs; ad rows use synthetic ids like "ad-<user>".
+const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
+const A = uuid(1)
+const B = uuid(2)
+
 describe("prepareImpressionBatch", () => {
   it("dedupes ids and drops empties", () => {
-    expect(prepareImpressionBatch(["a", "a", "", "b", "a"])).toEqual(["a", "b"])
+    expect(prepareImpressionBatch([A, A, "", B, A])).toEqual([A, B])
   })
   it("caps the batch at the limit", () => {
-    const many = Array.from({ length: IMPRESSION_BATCH_LIMIT + 25 }, (_, i) => `p${i}`)
+    const many = Array.from({ length: IMPRESSION_BATCH_LIMIT + 25 }, (_, i) => uuid(i))
     expect(prepareImpressionBatch(many)).toHaveLength(IMPRESSION_BATCH_LIMIT)
   })
   it("respects a custom limit and preserves first-seen order", () => {
-    expect(prepareImpressionBatch(["x", "y", "z"], 2)).toEqual(["x", "y"])
+    expect(prepareImpressionBatch([uuid(10), uuid(11), uuid(12)], 2)).toEqual([uuid(10), uuid(11)])
   })
   it("returns [] for an empty iterable", () => {
     expect(prepareImpressionBatch([])).toEqual([])
   })
+  it("drops non-uuid (house ad) ids so they never reach the uuid Post.id query", () => {
+    // regression for P2007: "invalid input syntax for type uuid: \"ad-bookasloth\""
+    expect(prepareImpressionBatch([A, "ad-bookasloth", "ad-123", B])).toEqual([A, B])
+    expect(prepareImpressionBatch(["ad-bookasloth"])).toEqual([])
+  })
   it("ignores non-string entries defensively", () => {
     // @ts-expect-error — exercising the runtime guard against bad client input
-    expect(prepareImpressionBatch(["a", null, undefined, 3, "b"])).toEqual(["a", "b"])
+    expect(prepareImpressionBatch([A, null, undefined, 3, B])).toEqual([A, B])
   })
 })
 
