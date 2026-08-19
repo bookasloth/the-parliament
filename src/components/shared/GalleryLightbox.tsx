@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react"
 import Image from "next/image"
-import { X, ChevronLeft, ChevronRight, MapPin, Camera, Calendar } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, MapPin, Camera, Calendar, User as UserIcon } from "lucide-react"
 import type { GalleryImageDTO } from "@/modules/gallery/types"
 
 /**
@@ -148,13 +148,14 @@ export function GalleryLightbox({
       </div>
 
       {/* Caption + metadata */}
-      {(img.caption || img.description || img.location || img.photographer) && (
+      {(img.caption || img.description || img.location || img.photographer || img.uploaderName) && (
         <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-2 text-center text-white/90" onClick={(e) => e.stopPropagation()}>
           {img.caption && <p className="text-base font-semibold">{img.caption}</p>}
           {img.description && <p className="mt-1 text-sm text-white/70">{img.description}</p>}
           <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/60">
             {img.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {img.location}</span>}
             {img.photographer && <span className="inline-flex items-center gap-1"><Camera className="h-3.5 w-3.5" /> {img.photographer}</span>}
+            {img.uploaderName && <span className="inline-flex items-center gap-1"><UserIcon className="h-3.5 w-3.5" /> Added by {img.uploaderName}</span>}
             <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {uploaded}</span>
           </div>
         </div>

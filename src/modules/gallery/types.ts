@@ -5,6 +5,7 @@
 export interface GalleryImageDTO {
   id: string
   albumId: string | null
+  uploadedById: string | null
   caption: string
   description: string | null
   location: string | null
@@ -19,6 +20,9 @@ export interface GalleryImageDTO {
   displayOrder: number
   createdAt: string
   updatedAt: string
+  // Filled by an app-layer join for member views (who contributed the photo).
+  uploaderName?: string | null
+  uploaderAvatarUrl?: string | null
 }
 
 export interface GalleryAlbumDTO {
@@ -28,6 +32,8 @@ export interface GalleryAlbumDTO {
   description: string | null
   coverImageId: string | null
   coverImageUrl: string | null
+  createdById: string | null
+  eventId: string | null
   imageCount: number
   isPublished: boolean
   displayOrder: number
@@ -41,6 +47,7 @@ export interface GalleryAlbumDTO {
 export interface DbGalleryImage {
   id: string
   albumId: string | null
+  uploadedById: string | null
   caption: string
   description: string | null
   location: string | null
@@ -63,6 +70,8 @@ export interface DbGalleryAlbum {
   slug: string
   description: string | null
   coverImageId: string | null
+  createdById: string | null
+  eventId: string | null
   isPublished: boolean
   displayOrder: number
   createdAt: Date

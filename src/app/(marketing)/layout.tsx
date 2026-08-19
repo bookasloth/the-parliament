@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma"
 const NAV_LINKS = [
   { label: "About", href: "/about" },
   { label: "Committee", href: "/committee" },
-  { label: "Gallery", href: "/gallery" },
   { label: "Membership", href: "/join" },
   { label: "Donate", href: "/donate" },
   { label: "Get App", href: "/download" },
@@ -33,7 +32,6 @@ const FOOTER_COLUMNS = [
       { label: "Membership", href: "/join" },
       { label: "Donate", href: "/donate" },
       { label: "Wall of Honour", href: "/wall-of-honour" },
-      { label: "Gallery", href: "/gallery" },
       { label: "Sponsorship", href: "/sponsorship" },
       { label: "Sign up", href: "/auth/signup" },
     ],
