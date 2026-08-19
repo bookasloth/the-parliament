@@ -18,14 +18,13 @@ export function gameShareUrl(origin: string, code: string): string {
   return `${origin.replace(/\/$/, "")}/g/${code}`;
 }
 
-/** A friendly, share-ready message with the result, grid, a nudge, and the link. */
-export function buildShareText({ name, puzzleNo, solved, guesses, maxGuesses, score, url, grid }: ShareTextInput): string {
-  // If the name already carries a "#NNN", don't append another.
+/** A friendly, share-ready message: headline, emoji grid, and a beat-me + link closer. */
+export function buildShareText({ name, puzzleNo, solved, guesses, maxGuesses, url, grid }: ShareTextInput): string {
+  // Headline tag keeps any existing "#NNN" (archive); else append the puzzle number.
   const tag = /#\d/.test(name) ? name : `${name} #${String(puzzleNo).padStart(3, "0")}`;
-  const headline = solved
-    ? `I cracked ${tag} in ${guesses}/${maxGuesses}! 🎉`
-    : `${tag} got me today 😅`;
-  const nudge = solved ? `${score} pts — think you can beat me?` : `${score} pts — your turn:`;
+  // Hashtag from the base game name (no puzzle number, no spaces): "Hit and Blow" → "#HitandBlow".
+  const hashtag = `#${name.replace(/\s*#\d.*$/, "").replace(/\s+/g, "")}`;
+  const headline = solved ? `I Solved ${tag} in ${guesses}/${maxGuesses}` : `${tag} beat me today`;
   const gridBlock = grid ? `\n\n${grid}\n` : "\n";
-  return `${headline}${gridBlock}\n${nudge}\n${url}`;
+  return `${headline}${gridBlock}\nTry now to beat me at ${hashtag} ${url}`;
 }
