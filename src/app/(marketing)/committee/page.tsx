@@ -56,7 +56,7 @@ export default function CommitteePage() {
                 style={{ backgroundImage: `url(${HERO_IMG})` }}
               />
               <div className="absolute -bottom-5 left-6 rounded-[5px] border border-black/5 bg-white px-5 py-3 shadow-lg">
-                <p className="font-heading text-2xl font-semibold text-brand">11 + 11</p>
+                <p className="font-heading text-2xl font-semibold text-brand">10 + 11</p>
                 <p className="text-xs text-[#8a8a8a]">Executive & advisory members</p>
               </div>
             </div>

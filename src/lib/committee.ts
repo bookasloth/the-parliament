@@ -1,5 +1,5 @@
 /**
- * NNAWCA committee roster — Executive Committee (11) + 4 sub-committees (3 each).
+ * NNAWCA committee roster — Executive Committee (10) + 4 sub-committees (3 each).
  * {{PLACEHOLDER}} names/emails/phones — swap with the real roster round-2.
  * Shared by the About committee preview and the /committee page.
  */
@@ -18,18 +18,20 @@ export interface SubCommittee {
   members: Member[]
 }
 
+// PLACEHOLDER names — a randomly-generated roster so the layout is populated.
+// These are NOT real office-bearers. Replace every name with the real elected
+// roster before this page goes public. Cards render initials avatars (no photos).
 export const EXECUTIVE: Member[] = [
-  { name: "{{Name}}", position: "President", email: "president@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Vice President", email: "vicepresident@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "General Secretary", email: "secretary@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Joint Secretary", email: "jointsecretary@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Treasurer", email: "treasurer@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Joint Treasurer", email: "jointtreasurer@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
-  { name: "{{Name}}", position: "Executive Member", email: "member@nnawca.org", phone: "+91 {{}}" },
+  { name: "Prince Jiwani Khoja", position: "President", email: "president@nnawca.org" },
+  { name: "Aditya Rane", position: "Vice President", email: "vicepresident@nnawca.org" },
+  { name: "Sameer Kulkarni", position: "General Secretary", email: "secretary@nnawca.org" },
+  { name: "Rohit Deshpande", position: "Joint Secretary", email: "jointsecretary@nnawca.org" },
+  { name: "Nikhil Warhade", position: "Treasurer", email: "treasurer@nnawca.org" },
+  { name: "Amol Thakre", position: "Joint Treasurer", email: "jointtreasurer@nnawca.org" },
+  { name: "Vishal Gaikwad", position: "Executive Member", email: "member@nnawca.org" },
+  { name: "Kiran Sonkusare", position: "Executive Member", email: "member@nnawca.org" },
+  { name: "Anjali Deshmukh", position: "Executive Member", email: "member@nnawca.org" },
+  { name: "Sneha Pawar", position: "Executive Member", email: "member@nnawca.org" },
 ]
 
 // Advisory Committee — past office-bearers ("Ex" roles).
