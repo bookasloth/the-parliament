@@ -29,6 +29,17 @@ export const WELCOME_TEMPLATES: string[] = [
   "Welcome to NNAWCA, {mention}! 💙 Once a Navodayan, always family. We're happy you're here.",
 ]
 
+// Private 1:1 welcome DM from the bot. Addressed to the member by name ({name}),
+// warmer + more actionable than the public post. Same NNAWCA-only branding.
+export const WELCOME_DM_TEMPLATES: string[] = [
+  "Hi {name}, welcome to NNAWCA! 👋 I'm the official NNAWCA account. Two quick wins: finish your profile so batchmates can find you, and browse the directory to reconnect. Reach out anytime.",
+  "Namaste {name}! 🙏 So glad you joined NNAWCA. Tip: add your batch, house, and a photo to your profile — it's how old friends recognise you. See you in the feed!",
+  "Welcome aboard, {name}! 🎉 This is the official NNAWCA account. Whenever you're ready — complete your profile, RSVP to upcoming events, and say hi to your batch. We're happy you're here.",
+  "Hey {name}, warm welcome to NNAWCA! 💙 Start by filling in your profile and exploring the directory. Events and mentorship are just a click away. Glad to have you in the family.",
+  "Hello {name}! 🌟 Welcome to the NNAWCA community. A complete profile unlocks the most out of the network — batchmates, events, and more. Ping us if you ever need anything.",
+  "Welcome, {name}! 🎓 On behalf of NNAWCA — great to have you. Add your details, find your batch, and jump into the conversation whenever you like. Here's to staying connected.",
+]
+
 /**
  * Deterministic per-user template pick — same member always gets the same
  * welcome, and tests are stable (no Math.random). Simple char-sum hash.

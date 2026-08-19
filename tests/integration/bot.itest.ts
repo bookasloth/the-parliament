@@ -70,6 +70,13 @@ describe("nnawca bot", () => {
       where: { userId: member.id, type: "mention", entityId: post!.id },
     })
     expect(notif).not.toBeNull()
+
+    // And a private welcome DM from the bot to the member.
+    const dm = await prisma.message.findFirst({
+      where: { senderId: botId, conversation: { participants: { some: { userId: member.id } } } },
+    })
+    expect(dm).not.toBeNull()
+    expect(dm!.body.length).toBeGreaterThan(0)
   })
 
   it("botWelcome no-ops when the target IS the bot", async () => {
