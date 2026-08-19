@@ -99,3 +99,63 @@ export async function uploadMessageImage(userId: string, bytes: Uint8Array, cont
 export async function uploadCommentImage(userId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   return uploadImage("comments/", userId, bytes, contentType)
 }
+
+// ---------------------------------------------------------------------------
+// Gallery objects. Admin-uploaded public photos. These ride the same public
+// bucket as avatars, under a date-partitioned `gallery/YYYY/MM/` prefix — the
+// repo's storage story is one public bucket with prefixes, so no new bucket or
+// Supabase config is needed. Writes happen only from admin-gated server actions
+// using the service-role key; the browser never writes to the bucket.
+// Allowlist stays png/jpeg/webp — the same magic-byte set `sniffImageMime`
+// validates. (gif/avif deferred: they'd need new byte-sniffing surface.)
+// ---------------------------------------------------------------------------
+
+const pad2 = (n: number) => String(n).padStart(2, "0")
+
+/** Upload one gallery photo and return its public URL + storage path. The path
+ *  is what we persist so we can delete the object later. Content is verified by
+ *  magic bytes, not the declared type. */
+export async function uploadGalleryImage(
+  bytes: Uint8Array,
+  contentType: string,
+  now: Date = new Date(),
+): Promise<{ url: string; path: string }> {
+  const { url, key } = config()
+  const ext = EXT[contentType]
+  if (!ext) throw new Error("Unsupported image type")
+  if (sniffImageMime(bytes) !== contentType) {
+    throw new Error("File content does not match a supported image type")
+  }
+
+  const path = `gallery/${now.getUTCFullYear()}/${pad2(now.getUTCMonth() + 1)}/${crypto.randomBytes(8).toString("hex")}.${ext}`
+
+  const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      apikey: key,
+      "Content-Type": contentType,
+      "x-upsert": "true",
+      "cache-control": "public, max-age=31536000",
+    },
+    body: bytes as unknown as BodyInit,
+  })
+  if (!res.ok) {
+    throw new Error(`Storage upload failed (${res.status}): ${await res.text().catch(() => "")}`)
+  }
+  return { url: `${url}/storage/v1/object/public/${BUCKET}/${path}`, path }
+}
+
+/** Delete a stored object by its `storage_path`. Best-effort: throws only if the
+ *  request itself fails, so callers can treat cleanup as non-fatal. A 404 (object
+ *  already gone) is treated as success. */
+export async function deleteStorageObject(path: string): Promise<void> {
+  const { url, key } = config()
+  const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${key}`, apikey: key },
+  })
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Storage delete failed (${res.status})`)
+  }
+}
