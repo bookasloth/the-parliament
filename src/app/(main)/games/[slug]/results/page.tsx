@@ -10,6 +10,7 @@ import { leaderboardCached, gameId, currentStreak } from "@/modules/games/leader
 import { getFollowData } from "@/modules/connections/service";
 import { env } from "@/config/env";
 import { buildShareText, gameShareUrl } from "@/lib/games/share";
+import { getAccentHex } from "@/config/game-themes";
 import ShareResult from "@/components/games/ShareResult";
 import NudgePanel from "@/components/games/NudgePanel";
 
@@ -102,6 +103,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
               maxGuesses: maxG,
               score: played.score,
               streak,
+              accent: getAccentHex(cfg.key),
             }}
           />
           <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25">

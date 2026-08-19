@@ -294,3 +294,25 @@ h1, h2 {
 /* Membership pricing card + CTA hover (accent comes from --accent set inline per tier). */
 .tier-card:hover { border-color: var(--accent) !important; }
 .tier-cta:hover { background-color: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+
+/* Per-game accent — override the brand colour scale inside a game's zone.
+   Applied via [data-game-accent] on the games layout wrapper (GameAccentScope).
+   Everything using brand tokens (text-brand, bg-brand, brand-50…900) recolours. */
+[data-game-accent="alfazy"] {
+  --color-brand-50:#ecfdf5; --color-brand-100:#d1fae5; --color-brand-200:#a7f3d0;
+  --color-brand-300:#6ee7b7; --color-brand-400:#34d399; --color-brand-500:#10b981;
+  --color-brand-600:#059669; --color-brand-700:#047857; --color-brand-800:#065f46;
+  --color-brand-900:#064e3b; --color-brand:#10b981;
+}
+[data-game-accent="hit_and_blow"] {
+  --color-brand-50:#f0f9ff; --color-brand-100:#e0f2fe; --color-brand-200:#bae6fd;
+  --color-brand-300:#7dd3fc; --color-brand-400:#38bdf8; --color-brand-500:#0ea5e9;
+  --color-brand-600:#0284c7; --color-brand-700:#0369a1; --color-brand-800:#075985;
+  --color-brand-900:#0c4a6e; --color-brand:#0ea5e9;
+}
+[data-game-accent="integra"] {
+  --color-brand-50:#f5f3ff; --color-brand-100:#ede9fe; --color-brand-200:#ddd6fe;
+  --color-brand-300:#c4b5fd; --color-brand-400:#a78bfa; --color-brand-500:#8b5cf6;
+  --color-brand-600:#7c3aed; --color-brand-700:#6d28d9; --color-brand-800:#5b21b6;
+  --color-brand-900:#4c1d95; --color-brand:#8b5cf6;
+}

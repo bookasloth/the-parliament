@@ -63,3 +63,14 @@ const GAME_THEMES: Partial<Record<GameKey, BoardTheme>> = {
 export function getBoardTheme(key: GameKey): BoardTheme {
   return GAME_THEMES[key] ?? ALFAZY_THEME;
 }
+
+/** Per-game accent hex (the brand-500 override) — for canvas/inline use where CSS vars don't reach. */
+export const ACCENT_HEX: Record<GameKey, string> = {
+  alfazy: "#10b981", // emerald
+  hit_and_blow: "#0ea5e9", // sky
+  integra: "#8b5cf6", // violet
+};
+
+export function getAccentHex(key: GameKey): string {
+  return ACCENT_HEX[key];
+}

@@ -14,6 +14,8 @@ import {
 import type { GuessResult, Tile } from "@/modules/games/engines";
 import { shareResults } from "@/modules/games/engines/types";
 import { buildShareText, gameShareUrl } from "@/lib/games/share";
+import { getAccentHex } from "@/config/game-themes";
+import type { GameKey } from "@/config/games";
 import type { BoardTheme } from "@/config/game-themes";
 
 export type { BoardTheme };
@@ -303,6 +305,7 @@ export default function GameBoard({
                     score: result.score,
                     streak: 0,
                     grid: shareResults(rows.map((r) => r.result)),
+                    accent: getAccentHex(gameKey as GameKey),
                   }}
                 />
                 <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">

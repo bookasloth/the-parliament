@@ -6,6 +6,8 @@ import { Delete, Target, Wind, Trophy } from "lucide-react";
 import WinBurst from "@/components/games/WinBurst";
 import ShareResult from "@/components/games/ShareResult";
 import { buildShareText, gameShareUrl } from "@/lib/games/share";
+import { getAccentHex } from "@/config/game-themes";
+import type { GameKey } from "@/config/games";
 import {
   checkGuessAction,
   submitResultAction,
@@ -254,6 +256,7 @@ export default function HitAndBlowBoard({
                     score: result.score,
                     streak: 0,
                     grid: rows.map((r) => `🎯${r.hits} 💨${r.blows}`).join("\n"),
+                    accent: getAccentHex(gameKey as GameKey),
                   }}
                 />
                 <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">

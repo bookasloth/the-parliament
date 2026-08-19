@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Type, Binary, Sigma, Gamepad2, Trophy, Flame, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { GAMES, type GameKey } from "@/config/games";
+import { getAccentHex } from "@/config/game-themes";
 import { gameId } from "@/modules/games/leaderboard";
 
 export const metadata = { title: "Games · The Parliament" };
@@ -62,16 +63,16 @@ export default async function GamesLandingPage() {
               href={`/games/${g.slug}`}
               className={`group relative overflow-hidden rounded-[5px] border border-gray-200 bg-gradient-to-br ${g.tint} p-6 transition-shadow hover:shadow-md`}
             >
-              <span className="absolute right-4 top-4 rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+              <span className="absolute right-4 top-4 rounded-[3px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white" style={{ backgroundColor: getAccentHex(g.key) }}>
                 Live
               </span>
-              <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-brand text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[5px] text-white" style={{ backgroundColor: getAccentHex(g.key) }}>
                 <Icon className="h-6 w-6" />
               </div>
               <h2 className="mt-4 font-heading text-lg font-bold text-gray-900">{g.name}</h2>
               <p className="mt-1 text-[13.5px] text-gray-600">{g.tag}. Daily, weekly, monthly &amp; yearly champions.</p>
               <div className="mt-4 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-brand">
+                <span className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: getAccentHex(g.key) }}>
                   <Trophy className="h-4 w-4" /> Play &amp; compete →
                 </span>
                 {count > 0 && (

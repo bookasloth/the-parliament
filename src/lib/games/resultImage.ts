@@ -15,6 +15,8 @@ export interface ResultImageData {
   streak: number;
   /** Optional emoji grid (one row per line), drawn when present. */
   grid?: string;
+  /** Per-game accent hex for the top bar + header. Defaults to brand blue. */
+  accent?: string;
 }
 
 const W = 1080;
@@ -41,16 +43,18 @@ export async function renderResultImage(data: ResultImageData): Promise<Blob> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas 2d context unavailable");
 
+  const accent = data.accent ?? BRAND;
+
   // Background + top accent bar.
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = BRAND;
+  ctx.fillStyle = accent;
   ctx.fillRect(0, 0, W, 24);
 
   ctx.textAlign = "center";
 
   // Header.
-  ctx.fillStyle = BRAND;
+  ctx.fillStyle = accent;
   ctx.font = font(64, 800);
   ctx.fillText(data.gameName, W / 2, 200);
 

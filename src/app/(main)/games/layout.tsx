@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { GamesRail } from "@/components/games/GamesRail";
 import GameGuideRail from "@/components/games/GameGuideRail";
+import GameAccentScope from "@/components/games/GameAccentScope";
 import { ProfileSidebarSkeleton } from "@/components/shared/ProfileSidebarView";
 
 export default function GamesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
-      <div className="flex flex-col gap-8 lg:flex-row">
+    <GameAccentScope>
+      <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+        <div className="flex flex-col gap-8 lg:flex-row">
         <aside className="hidden w-[280px] flex-shrink-0 lg:block">
           <div className="sticky top-20">
             <Suspense fallback={<ProfileSidebarSkeleton navRows={4} />}>
@@ -21,7 +23,8 @@ export default function GamesLayout({ children }: { children: React.ReactNode })
             <GameGuideRail />
           </div>
         </aside>
+        </div>
       </div>
-    </div>
+    </GameAccentScope>
   );
 }

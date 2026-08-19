@@ -35,7 +35,7 @@ export const GAMES: GameConfig[] = [
     slug: "alfazy",
     name: "Alfazy",
     tag: "Guess the 5-letter word",
-    tint: "from-brand-50 to-white",
+    tint: "from-emerald-50 to-white",
     code: "alfz",
     launchISO: "2026-07-01", // preserves current puzzle numbering; do not change post-launch
     status: "live",
