@@ -91,7 +91,7 @@ export interface Trophy {
  * individual→userId, house→their houseId, batch→their batchId. House/batch wins
  * are shared by all current members. Newest first.
  */
-export async function trophiesForUser(userId: string): Promise<Trophy[]> {
+export async function trophiesForUser(userId: string, gameId?: string): Promise<Trophy[]> {
   const profile = await prisma.profile.findUnique({
     where: { userId },
     select: { houseId: true, batchId: true },
@@ -102,6 +102,7 @@ export async function trophiesForUser(userId: string): Promise<Trophy[]> {
 
   const rows = await prisma.gameChampion.findMany({
     where: {
+      ...(gameId ? { gameId } : {}), // scope to one game when given; else all games (profile trophy case)
       winnerKey: { in: keys },
       OR: [
         { scope: "individual", winnerKey: userId },

@@ -30,9 +30,9 @@ export default async function ChampionsPage({
   const winner = sp.winner ?? null;
 
   const user = await requireUser();
-  const myTrophies = await trophiesForUser(user.id);
-
   const id = await gameId(cfg.key);
+  const myTrophies = await trophiesForUser(user.id, id); // this game's titles only
+
   const rows = await prisma.gameChampion.findMany({
     where: { gameId: id, ...(scopeFilter ? { scope: scopeFilter } : {}), ...(winner ? { winnerKey: winner } : {}) },
     orderBy: { decidedAt: "desc" },
