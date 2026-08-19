@@ -2418,3 +2418,23 @@ model GalleryImage {
   @@index([uploadedById])
   @@map("gallery_images")
 }
+
+// Public-facing committee roster shown on /committee and /about. Distinct from
+// CommitteeMember (operational email-alert groups). Fully admin-CRUD'd.
+model CommitteeRoster {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  position     String   @db.VarChar(80)
+  groupType    String   @default("executive") @map("group_type") @db.VarChar(20) // executive | advisory
+  profileLink  String?  @map("profile_link")
+  email        String?  @db.VarChar(254)
+  phone        String?  @db.VarChar(20)
+  photoUrl     String?  @map("photo_url")
+  displayOrder Int      @default(0) @map("display_order")
+  isPublished  Boolean  @default(true) @map("is_published")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([groupType, isPublished, displayOrder])
+  @@map("committee_roster")
+}

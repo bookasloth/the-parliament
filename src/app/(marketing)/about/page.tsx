@@ -22,9 +22,15 @@ import {
   ACCENT_TEXT,
   ACCENT_HEX,
 } from "@/components/marketing/primitives"
-import { EXECUTIVE, ADVISORY } from "@/lib/committee"
-import { getCommitteeOverrides, applyOverrides } from "@/modules/committee/photos"
+import { getPublicRoster, type RosterMemberDTO } from "@/modules/committee/roster"
+import type { Member } from "@/lib/committee"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
+
+const toMember = (m: RosterMemberDTO): Member => ({
+  name: m.name, position: m.position,
+  photo: m.photo ?? undefined, profileLink: m.profileLink ?? undefined,
+  email: m.email ?? undefined, phone: m.phone ?? undefined,
+})
 
 export const metadata: Metadata = {
   title: "About NNAWCA — the JNV Nagpur alumni family",
@@ -95,7 +101,9 @@ const ALUMNI_COLLAGE = [
 ]
 
 export default async function AboutPage() {
-  const executive = applyOverrides(EXECUTIVE, await getCommitteeOverrides())
+  const roster = await getPublicRoster()
+  const executive = roster.executive.map(toMember)
+  const advisory = roster.advisory.map(toMember)
   return (
     <>
       {/* ── Hero (compact) ── */}
@@ -285,7 +293,7 @@ export default async function AboutPage() {
 
         {/* Tab-based committee browser (Executive / Advisory) */}
         <div className="mt-14">
-          <CommitteeTabs executive={executive} advisory={ADVISORY} />
+          <CommitteeTabs executive={executive} advisory={advisory} />
         </div>
       </Section>
 
