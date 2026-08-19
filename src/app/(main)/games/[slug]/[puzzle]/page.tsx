@@ -75,6 +75,7 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
         <HitAndBlowBoard
           gameKey={cfg.key}
           slug={cfg.slug}
+          code={cfg.code}
           name={`${cfg.name} #${String(n).padStart(3, "0")}`}
           length={engine.length}
           maxGuesses={engine.maxGuesses}
@@ -85,6 +86,7 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
         <GameBoard
           gameKey={cfg.key}
           slug={cfg.slug}
+          code={cfg.code}
           name={`${cfg.name} #${String(n).padStart(3, "0")}`}
           length={engine.length}
           maxGuesses={engine.maxGuesses}

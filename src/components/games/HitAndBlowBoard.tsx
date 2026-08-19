@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Delete, Target, Wind, Trophy } from "lucide-react";
 import WinBurst from "@/components/games/WinBurst";
 import ShareResult from "@/components/games/ShareResult";
+import { buildShareText, gameShareUrl } from "@/lib/games/share";
 import {
   checkGuessAction,
   submitResultAction,
@@ -15,6 +16,7 @@ import {
 export interface HitAndBlowBoardProps {
   gameKey: string;
   slug: string;
+  code: string;
   name: string;
   length: number; // 4
   maxGuesses: number; // 9
@@ -28,12 +30,14 @@ const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 export default function HitAndBlowBoard({
   gameKey,
   slug,
+  code,
   name,
   length,
   maxGuesses,
   puzzleNo,
   archive = false,
 }: HitAndBlowBoardProps) {
+  const shortUrl = typeof window !== "undefined" ? gameShareUrl(window.location.origin, code) : "";
   const [rows, setRows] = useState<Row[]>([]);
   const [current, setCurrent] = useState("");
   const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost" | "done">("loading");
@@ -229,8 +233,17 @@ export default function HitAndBlowBoard({
               <div className="mx-auto mt-4 max-w-xs">
                 <ShareResult
                   gameKey={gameKey}
-                  text={`${name} — ${status === "won" ? `cracked ${result.guessesUsed}/${maxGuesses}` : "unsolved"} · ${result.score} pts\n${typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : ""}`}
-                  url={typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : undefined}
+                  text={buildShareText({
+                    name,
+                    puzzleNo: puzzleNo ?? 0,
+                    solved: status === "won",
+                    guesses: status === "won" ? result.guessesUsed : null,
+                    maxGuesses,
+                    score: result.score,
+                    url: shortUrl,
+                    grid: rows.map((r) => `🎯${r.hits} 💨${r.blows}`).join("\n"),
+                  })}
+                  url={shortUrl}
                   className="bg-brand text-white hover:bg-brand-700"
                   image={{
                     gameName: name,

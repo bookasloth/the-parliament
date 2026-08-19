@@ -23,7 +23,7 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
   // Count games (Hit and Blow) use the compact single-input board.
   if (engine.render === "count") {
     return (
-      <HitAndBlowBoard gameKey={cfg.key} slug={cfg.slug} name={cfg.name} length={engine.length} maxGuesses={engine.maxGuesses} puzzleNo={puzzleNo} />
+      <HitAndBlowBoard gameKey={cfg.key} slug={cfg.slug} code={cfg.code} name={cfg.name} length={engine.length} maxGuesses={engine.maxGuesses} puzzleNo={puzzleNo} />
     );
   }
 
@@ -31,6 +31,7 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
     <GameBoard
       gameKey={cfg.key}
       slug={cfg.slug}
+      code={cfg.code}
       name={cfg.name}
       length={engine.length}
       maxGuesses={engine.maxGuesses}

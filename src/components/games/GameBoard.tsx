@@ -13,6 +13,7 @@ import {
 } from "@/app/(main)/games/actions";
 import type { GuessResult, Tile } from "@/modules/games/engines";
 import { shareResults } from "@/modules/games/engines/types";
+import { buildShareText, gameShareUrl } from "@/lib/games/share";
 import type { BoardTheme } from "@/config/game-themes";
 
 export type { BoardTheme };
@@ -26,6 +27,8 @@ export interface KeyDef {
 export interface GameBoardProps {
   gameKey: string;
   slug: string;
+  /** Short share code (registry) — powers the /g/<code> link in shares. */
+  code: string;
   name: string;
   length: number;
   maxGuesses: number;
@@ -44,6 +47,7 @@ const RANK: Record<Tile, number> = { correct: 3, present: 2, absent: 1 };
 export default function GameBoard({
   gameKey,
   slug,
+  code,
   name,
   length,
   maxGuesses,
@@ -55,6 +59,7 @@ export default function GameBoard({
   archive = false,
 }: GameBoardProps) {
   const resultHref = archive ? `/games/${slug}/archive` : `/games/${slug}/results`;
+  const shortUrl = typeof window !== "undefined" ? gameShareUrl(window.location.origin, code) : "";
   const [rows, setRows] = useState<GradedRow[]>([]);
   const [current, setCurrent] = useState("");
   const [keyState, setKeyState] = useState<Record<string, Tile>>({});
@@ -277,8 +282,17 @@ export default function GameBoard({
               <div className="mx-auto mt-4 max-w-xs">
                 <ShareResult
                   gameKey={gameKey}
-                  text={`${name} — ${status === "won" ? `solved ${result.guessesUsed}/${maxGuesses}` : "unsolved"} · ${result.score} pts\n${typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : ""}`}
-                  url={typeof window !== "undefined" ? `${window.location.origin}/games/${slug}` : undefined}
+                  text={buildShareText({
+                    name,
+                    puzzleNo: puzzleNo ?? 0,
+                    solved: status === "won",
+                    guesses: status === "won" ? result.guessesUsed : null,
+                    maxGuesses,
+                    score: result.score,
+                    url: shortUrl,
+                    grid: shareResults(rows.map((r) => r.result)),
+                  })}
+                  url={shortUrl}
                   className="bg-brand text-white hover:bg-brand-700"
                   image={{
                     gameName: name,

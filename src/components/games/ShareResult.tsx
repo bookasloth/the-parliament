@@ -32,7 +32,7 @@ export default function ShareResult({
   const [open, setOpen] = useState(false);
   const blobRef = useRef<Blob | null>(null);
 
-  const shareUrl = url ?? (typeof window !== "undefined" ? `${window.location.origin}/games/${gameKey ?? ""}` : "");
+  const shareUrl = url ?? (typeof window !== "undefined" ? window.location.href : "");
 
   const report = useCallback(
     (target: string) => {

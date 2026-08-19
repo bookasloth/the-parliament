@@ -9,6 +9,7 @@ import { puzzleNumber } from "@/modules/games/periods";
 import { leaderboardCached, gameId, currentStreak } from "@/modules/games/leaderboard";
 import { getFollowData } from "@/modules/connections/service";
 import { env } from "@/config/env";
+import { buildShareText, gameShareUrl } from "@/lib/games/share";
 import ShareResult from "@/components/games/ShareResult";
 import NudgePanel from "@/components/games/NudgePanel";
 
@@ -52,7 +53,16 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
 
   const solved = played.solved;
   const heading = solved ? (streak > 1 ? `${streak}-day streak — you're on fire!` : "You're crushing it!") : "Tomorrow's a fresh one.";
-  const shareText = `${cfg.name} #${String(puzzleNo).padStart(3, "0")} — ${solved ? `solved ${played.levelReached}/${maxG}` : "unsolved"} · ${played.score} pts${streak > 1 ? ` · ${streak}-day streak 🔥` : ""}\nPlay: ${env.authUrl}/games/${cfg.slug}`;
+  const shareUrl = gameShareUrl(env.authUrl, cfg.code);
+  const shareText = buildShareText({
+    name: cfg.name,
+    puzzleNo,
+    solved,
+    guesses: played.levelReached,
+    maxGuesses: maxG,
+    score: played.score,
+    url: shareUrl,
+  });
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -81,6 +91,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
         <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2 sm:flex-row">
           <ShareResult
             text={shareText}
+            url={shareUrl}
             className="flex-1 bg-white text-brand hover:bg-white/90"
             gameKey={cfg.key}
             image={{
