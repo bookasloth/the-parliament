@@ -592,6 +592,9 @@ function GuestNavbar() {
         <a href="/events" className="ml-3 hidden sm:inline text-sm font-medium text-gray-500 hover:text-brand transition-colors">
           Events
         </a>
+        <a href="/gallery" className="ml-3 hidden sm:inline text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+          Gallery
+        </a>
         <div className="flex-1" />
         <div className="flex items-center gap-2 flex-shrink-0">
           <a

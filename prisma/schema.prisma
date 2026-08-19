@@ -2372,6 +2372,12 @@ model GalleryAlbum {
   slug         String   @unique @db.VarChar(220)
   description  String?
   coverImageId String?  @map("cover_image_id") @db.Uuid
+  // createdById: the member who made the album (null = admin/system-owned).
+  // eventId: at most one album per event (auto "event album"). Both are plain
+  // UUIDs joined in app code — no Prisma FK, matching the repo's polymorphic
+  // convention, so User/Event models stay untouched.
+  createdById  String?  @map("created_by_id") @db.Uuid
+  eventId      String?  @unique @map("event_id") @db.Uuid
   isPublished  Boolean  @default(true) @map("is_published")
   displayOrder Int      @default(0) @map("display_order")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -2381,12 +2387,14 @@ model GalleryAlbum {
   coverImage GalleryImage?  @relation("album_cover", fields: [coverImageId], references: [id], onDelete: SetNull)
 
   @@index([isPublished, displayOrder])
+  @@index([createdById])
   @@map("gallery_albums")
 }
 
 model GalleryImage {
   id           String   @id @default(uuid()) @db.Uuid
   albumId      String?  @map("album_id") @db.Uuid
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
   caption      String   @default("")
   description  String?
   location     String?
@@ -2406,5 +2414,6 @@ model GalleryImage {
   coverOf    GalleryAlbum[] @relation("album_cover")
 
   @@index([albumId, isPublished, displayOrder, createdAt])
+  @@index([uploadedById])
   @@map("gallery_images")
 }

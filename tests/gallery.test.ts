@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { mapGalleryImage, mapGalleryAlbum } from "@/modules/gallery/mappers"
+import { mapGalleryImage, mapGalleryAlbum, canDeleteImage } from "@/modules/gallery/mappers"
 import { uniqueSlug } from "@/modules/gallery/slug"
 import type { DbGalleryAlbum, DbGalleryImage } from "@/modules/gallery/types"
 
 const baseImage: DbGalleryImage = {
-  id: "img1", albumId: "alb1", caption: "Founders Day", description: null, location: null,
+  id: "img1", albumId: "alb1", uploadedById: "user-9", caption: "Founders Day", description: null, location: null,
   photographer: null, imageUrl: "https://x/y.jpg", storagePath: "gallery/2026/08/ab.jpg",
   width: 1600, height: 900, fileSize: BigInt(1048576), mimeType: "image/jpeg",
   isPublished: true, displayOrder: 3,
@@ -25,12 +25,38 @@ describe("mapGalleryImage", () => {
   it("handles a zero fileSize", () => {
     expect(mapGalleryImage({ ...baseImage, fileSize: BigInt(0) }).fileSize).toBe(0)
   })
+
+  it("attaches uploader info when provided, else nulls", () => {
+    const withU = mapGalleryImage(baseImage, { name: "Asha", avatarUrl: "https://x/a.jpg" })
+    expect(withU.uploaderName).toBe("Asha")
+    expect(withU.uploaderAvatarUrl).toBe("https://x/a.jpg")
+    const without = mapGalleryImage(baseImage)
+    expect(without.uploaderName).toBeNull()
+    expect(without.uploadedById).toBe("user-9")
+  })
+})
+
+describe("canDeleteImage", () => {
+  const img = { uploadedById: "user-9" }
+  it("lets the uploader delete their own photo", () => {
+    expect(canDeleteImage(img, "user-9", false)).toBe(true)
+  })
+  it("blocks a different member", () => {
+    expect(canDeleteImage(img, "user-8", false)).toBe(false)
+  })
+  it("lets any admin delete", () => {
+    expect(canDeleteImage(img, "user-8", true)).toBe(true)
+  })
+  it("blocks a non-admin on an orphaned (null uploader) photo", () => {
+    expect(canDeleteImage({ uploadedById: null }, "user-9", false)).toBe(false)
+    expect(canDeleteImage({ uploadedById: null }, "user-9", true)).toBe(true)
+  })
 })
 
 describe("mapGalleryAlbum", () => {
   const baseAlbum: DbGalleryAlbum = {
     id: "alb1", title: "Reunion 2026", slug: "reunion-2026", description: "Great day",
-    coverImageId: "img1", isPublished: true, displayOrder: 0,
+    coverImageId: "img1", createdById: "user-1", eventId: null, isPublished: true, displayOrder: 0,
     createdAt: new Date("2026-08-18T10:00:00.000Z"), updatedAt: new Date("2026-08-18T10:00:00.000Z"),
   }
 
