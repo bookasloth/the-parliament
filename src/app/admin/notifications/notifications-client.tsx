@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Megaphone, Broadcast, Clock, CheckCircle, Trash, Plus } from "@phosphor-icons/react"
+import { Megaphone, Broadcast, Clock, CheckCircle, Trash, Plus, PaperPlaneTilt } from "@phosphor-icons/react"
 import { PageHeader, StatCard, Button, Modal, EmptyState, useRowAction } from "../admin-ui"
-import { createAnnouncementAction, deleteAnnouncementAction } from "./actions"
+import { createAnnouncementAction, deleteAnnouncementAction, postAsBotAction } from "./actions"
 
 export interface AnnouncementRow {
   id: string
@@ -49,7 +49,21 @@ export default function AnnouncementsClient({
   const [startsAt, setStartsAt] = useState(toLocalInput(now))
   const [endsAt, setEndsAt] = useState(toLocalInput(new Date(now.getTime() + 7 * 86400_000)))
 
+  const [botBody, setBotBody] = useState("")
+  const [botPostedId, setBotPostedId] = useState<string | null>(null)
+
   const list = announcements.filter((a) => !deleted[a.id])
+
+  function postAsBot() {
+    run("botpost", {
+      action: async () => {
+        const r = await postAsBotAction({ body: botBody })
+        setBotPostedId(r.postId)
+        setBotBody("")
+      },
+      success: "Posted to the feed as NNAWCA",
+    })
+  }
 
   function create() {
     run("create", {
@@ -89,6 +103,45 @@ export default function AnnouncementsClient({
         description="Banners shown at the top of the member feed for a set duration"
         actions={<Button variant="primary" size="sm" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5" weight="duotone" /> New announcement</Button>}
       />
+
+      {/* Post to the feed as the official NNAWCA account (a normal feed post,
+          distinct from the timed banners below). */}
+      <div className="mb-5 rounded-[5px] border border-gray-200 bg-white p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <PaperPlaneTilt className="h-4.5 w-4.5 text-blue-600" weight="duotone" />
+          <p className="text-sm font-semibold text-gray-800">Post to feed as NNAWCA</p>
+          <span className="rounded-[3px] bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">official account</span>
+        </div>
+        <p className="text-[11px] text-gray-500 mb-2">
+          Publishes a normal feed post from the NNAWCA bot. @mentions link and notify. Use #hashtags freely.
+        </p>
+        <textarea
+          value={botBody}
+          onChange={(e) => { setBotBody(e.target.value); setBotPostedId(null) }}
+          rows={3}
+          maxLength={5000}
+          placeholder="Share an update, milestone, or call-to-action from the official account…"
+          className={inputCls}
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <div className="text-[11px] text-gray-500">
+            {botPostedId ? (
+              <a href={`/feed/${botPostedId}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Posted ✓ — view on feed
+              </a>
+            ) : (
+              <span>{botBody.length}/5000</span>
+            )}
+          </div>
+          <button
+            onClick={postAsBot}
+            disabled={botBody.trim().length === 0 || isBusy("botpost")}
+            className="rounded-[3px] bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {isBusy("botpost") ? "Posting…" : "Post as NNAWCA"}
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
         <StatCard label="Active now" value={String(stats.active)} icon={<CheckCircle className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
