@@ -5,8 +5,8 @@
 -- via getBotUserId() (src/modules/bot/service.ts). No password (login-less account).
 
 -- 1. "announcement" post category for the (single) canonical school.
-INSERT INTO post_categories (id, school_id, key, label, created_at)
-SELECT gen_random_uuid(), s.id, 'announcement', 'Announcement', now()
+INSERT INTO post_categories (id, school_id, key, label)
+SELECT gen_random_uuid(), s.id, 'announcement', 'Announcement'
 FROM (SELECT id FROM schools ORDER BY created_at ASC LIMIT 1) s
 ON CONFLICT (school_id, key) DO NOTHING;
 
