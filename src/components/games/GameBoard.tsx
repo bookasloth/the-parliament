@@ -13,8 +13,9 @@ import {
 } from "@/app/(main)/games/actions";
 import type { GuessResult, Tile } from "@/modules/games/engines";
 import { shareResults } from "@/modules/games/engines/types";
-import { buildShareText, gameShareUrl } from "@/lib/games/share";
-import { getAccentHex } from "@/config/game-themes";
+import { buildShareText, gameShareUrl, gameHashtag } from "@/lib/games/share";
+import { getAccentHex, getPalette } from "@/config/game-themes";
+import type { Poster } from "@/lib/games/poster";
 import type { GameKey } from "@/config/games";
 import type { BoardTheme } from "@/config/game-themes";
 
@@ -41,6 +42,8 @@ export interface GameBoardProps {
   /** Archive mode: play a specific past puzzle. Omit for today's live puzzle. */
   puzzleNo?: number;
   archive?: boolean;
+  /** Poster identity for the shared result-post image. */
+  poster: Poster;
 }
 
 type GradedRow = { chars: string[]; result: GuessResult };
@@ -59,6 +62,7 @@ export default function GameBoard({
   tileLabels = { correct: "correct", present: "wrong spot", absent: "not present" },
   puzzleNo,
   archive = false,
+  poster,
 }: GameBoardProps) {
   const resultHref = archive ? `/games/${slug}/archive` : `/games/${slug}/results`;
   const shortUrl = typeof window !== "undefined" ? gameShareUrl(window.location.origin, code) : "";
@@ -302,10 +306,16 @@ export default function GameBoard({
                     solved: status === "won",
                     guesses: status === "won" ? result.guessesUsed : null,
                     maxGuesses,
-                    score: result.score,
-                    streak: 0,
-                    grid: shareResults(rows.map((r) => r.result)),
+                    cols: length,
+                    results: rows.map((r) => r.result),
+                    palette: getPalette(gameKey as GameKey),
                     accent: getAccentHex(gameKey as GameKey),
+                    hashtag: gameHashtag(name),
+                    url: shortUrl,
+                    name: poster.name,
+                    batchLabel: poster.batchLabel,
+                    avatarUrl: poster.avatarUrl,
+                    verified: poster.verified,
                   }}
                 />
                 <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">

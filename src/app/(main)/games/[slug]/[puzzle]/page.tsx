@@ -8,6 +8,7 @@ import { getEngine, hasEngine } from "@/modules/games/engines";
 import { puzzleNumber } from "@/modules/games/periods";
 import GameBoard from "@/components/games/GameBoard";
 import HitAndBlowBoard from "@/components/games/HitAndBlowBoard";
+import { getPoster } from "@/lib/games/poster";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
   if (n === today) redirect(`/games/${cfg.slug}/play`); // today's is the live daily
 
   const user = await requireUser();
+  const poster = await getPoster(user.id);
   const inFreeWindow = n === today - 1; // yesterday (today handled above)
   const engine = getEngine(cfg.key);
   const puzzleDate = new Date(launch.getTime() + (n - 1) * 86_400_000);
@@ -81,6 +83,7 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
           maxGuesses={engine.maxGuesses}
           puzzleNo={n}
           archive
+          poster={poster}
         />
       ) : (
         <GameBoard
@@ -95,6 +98,7 @@ export default async function PuzzlePage({ params }: { params: Promise<{ slug: s
           theme={getBoardTheme(cfg.key)}
           puzzleNo={n}
           archive
+          poster={poster}
         />
       )}
     </div>

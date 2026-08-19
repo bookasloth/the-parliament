@@ -9,8 +9,9 @@ import { puzzleNumber } from "@/modules/games/periods";
 import { leaderboardCached, gameId, currentStreak } from "@/modules/games/leaderboard";
 import { getFollowData } from "@/modules/connections/service";
 import { env } from "@/config/env";
-import { buildShareText, gameShareUrl } from "@/lib/games/share";
-import { getAccentHex } from "@/config/game-themes";
+import { buildShareText, gameShareUrl, gameHashtag } from "@/lib/games/share";
+import { getAccentHex, getPalette } from "@/config/game-themes";
+import { getPoster } from "@/lib/games/poster";
 import ShareResult from "@/components/games/ShareResult";
 import NudgePanel from "@/components/games/NudgePanel";
 
@@ -27,6 +28,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
   if (!cfg || cfg.status !== "live" || !hasEngine(cfg.key)) notFound();
 
   const user = await requireUser();
+  const poster = await getPoster(user.id);
   const id = await gameId(cfg.key);
   const maxG = getEngine(cfg.key).maxGuesses;
   const puzzleNo = puzzleNumber(todayUtc(), launchDate(cfg.key));
@@ -101,9 +103,16 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
               solved,
               guesses: played.levelReached,
               maxGuesses: maxG,
-              score: played.score,
-              streak,
+              cols: getEngine(cfg.key).length,
+              results: [],
+              palette: getPalette(cfg.key),
               accent: getAccentHex(cfg.key),
+              hashtag: gameHashtag(cfg.name),
+              url: shareUrl,
+              name: poster.name,
+              batchLabel: poster.batchLabel,
+              avatarUrl: poster.avatarUrl,
+              verified: poster.verified,
             }}
           />
           <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25">

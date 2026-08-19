@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import GameBoard from "@/components/games/GameBoard";
 import HitAndBlowBoard from "@/components/games/HitAndBlowBoard";
+import { requireUser } from "@/modules/auth/session";
 import { gameBySlug, launchDate } from "@/config/games";
 import { getBoardTheme } from "@/config/game-themes";
 import { getEngine, hasEngine } from "@/modules/games/engines";
 import { puzzleNumber } from "@/modules/games/periods";
+import { getPoster } from "@/lib/games/poster";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +21,13 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
   if (!cfg || cfg.status !== "live" || !hasEngine(cfg.key)) notFound();
   const engine = getEngine(cfg.key);
   const puzzleNo = puzzleNumber(todayUtc(), launchDate(cfg.key));
+  const user = await requireUser();
+  const poster = await getPoster(user.id);
 
   // Count games (Hit and Blow) use the compact single-input board.
   if (engine.render === "count") {
     return (
-      <HitAndBlowBoard gameKey={cfg.key} slug={cfg.slug} code={cfg.code} name={cfg.name} length={engine.length} maxGuesses={engine.maxGuesses} puzzleNo={puzzleNo} />
+      <HitAndBlowBoard gameKey={cfg.key} slug={cfg.slug} code={cfg.code} name={cfg.name} length={engine.length} maxGuesses={engine.maxGuesses} puzzleNo={puzzleNo} poster={poster} />
     );
   }
 
@@ -39,6 +43,7 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
       keyboard={engine.keyboard}
       theme={getBoardTheme(cfg.key)}
       puzzleNo={puzzleNo}
+      poster={poster}
     />
   );
 }

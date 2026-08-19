@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Delete, Target, Wind, Trophy } from "lucide-react";
 import WinBurst from "@/components/games/WinBurst";
 import ShareResult from "@/components/games/ShareResult";
-import { buildShareText, gameShareUrl } from "@/lib/games/share";
-import { getAccentHex } from "@/config/game-themes";
+import { buildShareText, gameShareUrl, gameHashtag } from "@/lib/games/share";
+import { getAccentHex, getPalette } from "@/config/game-themes";
+import type { Poster } from "@/lib/games/poster";
 import type { GameKey } from "@/config/games";
 import {
   checkGuessAction,
@@ -24,6 +25,7 @@ export interface HitAndBlowBoardProps {
   maxGuesses: number; // 9
   puzzleNo?: number;
   archive?: boolean;
+  poster: Poster;
 }
 
 type Row = { digits: string; hits: number; blows: number };
@@ -38,6 +40,7 @@ export default function HitAndBlowBoard({
   maxGuesses,
   puzzleNo,
   archive = false,
+  poster,
 }: HitAndBlowBoardProps) {
   const shortUrl = typeof window !== "undefined" ? gameShareUrl(window.location.origin, code) : "";
   const [rows, setRows] = useState<Row[]>([]);
@@ -178,7 +181,7 @@ export default function HitAndBlowBoard({
           {/* Active input + Go */}
           {!gameOver && (
             <>
-              <div className={`flex items-center gap-2 ${shake ? "alfazy-shake" : ""}`} key={shake}>
+              <div className={`flex items-stretch gap-2 ${shake ? "alfazy-shake" : ""}`} key={shake}>
                 <div className="flex flex-1 justify-center gap-1.5 rounded-[5px] border-2 border-sky-300 bg-white px-3 py-2.5">
                   {Array.from({ length }).map((_, i) => {
                     const d = current[i] ?? "";
@@ -192,7 +195,7 @@ export default function HitAndBlowBoard({
                 <button
                   onClick={() => onKey("GO")}
                   disabled={busy || current.length !== length}
-                  className="rounded-[5px] bg-brand px-6 py-3 text-sm font-bold text-white transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  className="flex items-center justify-center rounded-[5px] bg-brand px-7 text-sm font-bold text-white transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
                 >
                   Go
                 </button>
@@ -253,10 +256,16 @@ export default function HitAndBlowBoard({
                     solved: status === "won",
                     guesses: status === "won" ? result.guessesUsed : null,
                     maxGuesses,
-                    score: result.score,
-                    streak: 0,
-                    grid: rows.map((r) => `🎯${r.hits} 💨${r.blows}`).join("\n"),
+                    cols: length,
+                    results: rows.map((r) => ({ kind: "count" as const, hits: r.hits, blows: r.blows, solved: r.hits === length })),
+                    palette: getPalette(gameKey as GameKey),
                     accent: getAccentHex(gameKey as GameKey),
+                    hashtag: gameHashtag(name),
+                    url: shortUrl,
+                    name: poster.name,
+                    batchLabel: poster.batchLabel,
+                    avatarUrl: poster.avatarUrl,
+                    verified: poster.verified,
                   }}
                 />
                 <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">

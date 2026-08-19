@@ -16,12 +16,12 @@ export interface BoardTheme {
 
 const ALFAZY_THEME: BoardTheme = {
   correct: "bg-emerald-500 border-emerald-500 text-white",
-  present: "bg-amber-400 border-amber-400 text-white",
+  present: "bg-[#d4a017] border-[#d4a017] text-white", // mustard/gold, not bright yellow
   absent: "bg-gray-400 border-gray-400 text-white",
   filled: "border-gray-400 text-gray-900",
   empty: "border-gray-200 text-gray-900",
   keyCorrect: "bg-emerald-500 text-white",
-  keyPresent: "bg-amber-400 text-white",
+  keyPresent: "bg-[#d4a017] text-white",
   keyAbsent: "bg-gray-300 text-gray-500",
   keyIdle: "bg-gray-100 text-gray-800 hover:bg-gray-200 active:scale-95",
 };
@@ -73,4 +73,16 @@ export const ACCENT_HEX: Record<GameKey, string> = {
 
 export function getAccentHex(key: GameKey): string {
   return ACCENT_HEX[key];
+}
+
+/** Hex tile/peg colours for the shared result image (canvas can't read CSS classes). */
+const TILE_HEX: Record<GameKey, { correct: string; present: string; absent: string }> = {
+  alfazy: { correct: "#10b981", present: "#d4a017", absent: "#9aa3af" },
+  hit_and_blow: { correct: "#10b981", present: "#0ea5e9", absent: "#cbd5e1" },
+  integra: { correct: "#10b981", present: "#8b5cf6", absent: "#4b5563" },
+};
+const PEG = { hit: "#10b981", blow: "#d4a017" };
+
+export function getPalette(key: GameKey) {
+  return { ...(TILE_HEX[key] ?? TILE_HEX.alfazy), ...PEG };
 }
