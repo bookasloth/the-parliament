@@ -6,8 +6,8 @@ import {
   Reveal,
   CtaBand,
 } from "@/components/marketing/primitives"
-import { EXECUTIVE, ADVISORY } from "@/lib/committee"
-import { getCommitteeOverrides, applyOverrides } from "@/modules/committee/photos"
+import { getPublicRoster, type RosterMemberDTO } from "@/modules/committee/roster"
+import type { Member } from "@/lib/committee"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 const HERO_IMG =
@@ -19,9 +19,18 @@ export const metadata: Metadata = {
     "The NNAWCA Executive Committee and Advisory Committee — the alumni who run the network.",
 }
 
+export const revalidate = 300
+
+const toMember = (m: RosterMemberDTO): Member => ({
+  name: m.name, position: m.position,
+  photo: m.photo ?? undefined, profileLink: m.profileLink ?? undefined,
+  email: m.email ?? undefined, phone: m.phone ?? undefined,
+})
+
 export default async function CommitteePage() {
-  const photos = await getCommitteeOverrides()
-  const executive = applyOverrides(EXECUTIVE, photos)
+  const roster = await getPublicRoster()
+  const executive = roster.executive.map(toMember)
+  const advisory = roster.advisory.map(toMember)
   return (
     <>
       {/* ── Hero (split) ── */}
@@ -59,7 +68,7 @@ export default async function CommitteePage() {
                 style={{ backgroundImage: `url(${HERO_IMG})` }}
               />
               <div className="absolute -bottom-5 left-6 rounded-[5px] border border-black/5 bg-white px-5 py-3 shadow-lg">
-                <p className="font-heading text-2xl font-semibold text-brand">10 + 11</p>
+                <p className="font-heading text-2xl font-semibold text-brand">{executive.length} + {advisory.length}</p>
                 <p className="text-xs text-[#8a8a8a]">Executive & advisory members</p>
               </div>
             </div>
@@ -69,7 +78,7 @@ export default async function CommitteePage() {
 
       {/* ── Committee groups (tabbed) ── */}
       <Section width="7xl" className="pt-4">
-        <CommitteeTabs executive={executive} advisory={ADVISORY} />
+        <CommitteeTabs executive={executive} advisory={advisory} />
       </Section>
 
       {/* ── CTA ── */}
