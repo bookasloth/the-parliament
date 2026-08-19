@@ -1,34 +1,42 @@
 import { describe, it, expect } from "vitest"
-import { applyPhotos } from "@/modules/committee/photos"
+import { applyOverrides } from "@/modules/committee/photos"
 import type { Member } from "@/lib/committee"
 
 const roster: Member[] = [
-  { key: "president", name: "A", position: "President" },
-  { key: "member-1", name: "B", position: "Executive Member" },
-  { name: "C", position: "Advisor" }, // no key
+  { key: "president", name: "Placeholder A", position: "President" },
+  { key: "member-1", name: "Placeholder B", position: "Executive Member" },
+  { name: "Advisor C", position: "Advisor" }, // no key
 ]
 
-describe("applyPhotos", () => {
-  it("attaches a photo only to the member whose key is in the map", () => {
-    const out = applyPhotos(roster, { president: "https://x/p.jpg" })
-    expect(out[0].photo).toBe("https://x/p.jpg")
-    expect(out[1].photo).toBeUndefined()
-    expect(out[2].photo).toBeUndefined()
+describe("applyOverrides", () => {
+  it("overlays name, profileLink and photo by member key", () => {
+    const out = applyOverrides(roster, {
+      president: { name: "Real Name", profileLink: "https://x/p", photo: "https://x/p.jpg" },
+    })
+    expect(out[0]).toMatchObject({ name: "Real Name", profileLink: "https://x/p", photo: "https://x/p.jpg", position: "President" })
+    expect(out[1].name).toBe("Placeholder B") // untouched
   })
 
-  it("leaves keyless members untouched even if a same-name key exists", () => {
-    const out = applyPhotos(roster, { "member-1": "https://x/m.jpg", C: "https://x/c.jpg" })
-    expect(out[1].photo).toBe("https://x/m.jpg")
-    expect(out[2].photo).toBeUndefined() // member C has no key, can't be targeted
+  it("only overrides the fields that are set (partial)", () => {
+    const out = applyOverrides(roster, { "member-1": { photo: "https://x/m.jpg" } })
+    expect(out[1]).toMatchObject({ name: "Placeholder B", photo: "https://x/m.jpg" })
+    expect(out[1].profileLink).toBeUndefined()
   })
 
-  it("returns members unchanged when the map is empty", () => {
-    expect(applyPhotos(roster, {})).toEqual(roster)
+  it("ignores empty-string fields (falls back to roster)", () => {
+    const out = applyOverrides(roster, { president: { name: "", profileLink: "" } })
+    expect(out[0].name).toBe("Placeholder A")
+    expect(out[0].profileLink).toBeUndefined()
   })
 
-  it("does not mutate the input array", () => {
+  it("leaves keyless members untouched", () => {
+    const out = applyOverrides(roster, { "Advisor C": { name: "X" } })
+    expect(out[2].name).toBe("Advisor C")
+  })
+
+  it("does not mutate the input", () => {
     const copy = JSON.parse(JSON.stringify(roster))
-    applyPhotos(roster, { president: "https://x/p.jpg" })
+    applyOverrides(roster, { president: { photo: "https://x/p.jpg" } })
     expect(roster).toEqual(copy)
   })
 })

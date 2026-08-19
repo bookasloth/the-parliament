@@ -23,7 +23,7 @@ import {
   ACCENT_HEX,
 } from "@/components/marketing/primitives"
 import { EXECUTIVE, ADVISORY } from "@/lib/committee"
-import { getCommitteePhotos, applyPhotos } from "@/modules/committee/photos"
+import { getCommitteeOverrides, applyOverrides } from "@/modules/committee/photos"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 export const metadata: Metadata = {
@@ -95,7 +95,7 @@ const ALUMNI_COLLAGE = [
 ]
 
 export default async function AboutPage() {
-  const executive = applyPhotos(EXECUTIVE, await getCommitteePhotos())
+  const executive = applyOverrides(EXECUTIVE, await getCommitteeOverrides())
   return (
     <>
       {/* ── Hero (compact) ── */}

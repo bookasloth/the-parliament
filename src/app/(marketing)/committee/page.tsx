@@ -7,7 +7,7 @@ import {
   CtaBand,
 } from "@/components/marketing/primitives"
 import { EXECUTIVE, ADVISORY } from "@/lib/committee"
-import { getCommitteePhotos, applyPhotos } from "@/modules/committee/photos"
+import { getCommitteeOverrides, applyOverrides } from "@/modules/committee/photos"
 import { CommitteeTabs } from "@/components/marketing/CommitteeTabs"
 
 const HERO_IMG =
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 }
 
 export default async function CommitteePage() {
-  const photos = await getCommitteePhotos()
-  const executive = applyPhotos(EXECUTIVE, photos)
+  const photos = await getCommitteeOverrides()
+  const executive = applyOverrides(EXECUTIVE, photos)
   return (
     <>
       {/* ── Hero (split) ── */}
