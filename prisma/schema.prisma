@@ -1733,6 +1733,32 @@ model WhatsAppBroadcast {
   @@map("whatsapp_broadcasts")
 }
 
+// A member-raised blood request. On create it WhatsApp-broadcasts an approved
+// utility template to compatible donors (see src/modules/blood). FK-less
+// (app-joined) like the other broadcast logs.
+model BloodRequest {
+  id             String    @id @default(uuid()) @db.Uuid
+  requesterId    String    @map("requester_id") @db.Uuid
+  bloodGroup     String    @map("blood_group") @db.VarChar(5)
+  patient        String    @db.VarChar(120)
+  city           String    @db.VarChar(120)
+  hospital       String    @db.VarChar(200)
+  contact        String    @db.VarChar(20)
+  unitsNeeded    Int?      @map("units_needed")
+  allCities      Boolean   @default(false) @map("all_cities")
+  donorsOnly     Boolean   @default(false) @map("donors_only")
+  status         String    @default("open") @db.VarChar(20) // open | fulfilled | closed
+  recipientCount Int       @default(0) @map("recipient_count")
+  sentCount      Int       @default(0) @map("sent_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  fulfilledAt    DateTime? @map("fulfilled_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([bloodGroup, city, status])
+  @@index([requesterId, createdAt])
+  @@map("blood_requests")
+}
+
 // ─────────────────────────────────────────────
 // MODULES: Gamification
 // ─────────────────────────────────────────────

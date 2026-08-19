@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { WhatsappLogo, Broadcast, CheckCircle, WarningCircle, Plus, Trash, Users } from "@phosphor-icons/react"
-import { PageHeader, StatCard, Button, Table, Thead, Tbody, Tr, Th, Td, EmptyState, useToast } from "../admin-ui"
-import { previewGroupAudienceAction, sendGroupWhatsAppAction } from "./actions"
+import { WhatsappLogo, Broadcast, CheckCircle, WarningCircle, Plus, Trash, Users, Drop } from "@phosphor-icons/react"
+import { PageHeader, StatCard, Button, Table, Thead, Tbody, Tr, Th, Td, EmptyState, useToast, useRowAction } from "../admin-ui"
+import { previewGroupAudienceAction, sendGroupWhatsAppAction, markBloodRequestFulfilledAction } from "./actions"
 
 export interface GroupOption {
   id: string
@@ -25,16 +25,35 @@ export interface BroadcastRow {
 const inputCls =
   "w-full rounded-[3px] border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-600"
 
+export interface BloodRow {
+  id: string
+  requester: string
+  bloodGroup: string
+  patient: string
+  city: string
+  hospital: string
+  contact: string
+  recipientCount: number
+  sentCount: number
+  failedCount: number
+  status: string
+  createdAt: string
+}
+
 export default function WhatsAppClient({
   configured,
   groups,
   broadcasts,
+  bloodRequests,
 }: {
   configured: boolean
   groups: GroupOption[]
   broadcasts: BroadcastRow[]
+  bloodRequests: BloodRow[]
 }) {
   const toast = useToast()
+  const { run, isBusy } = useRowAction()
+  const [fulfilled, setFulfilled] = useState<Record<string, boolean>>({})
   const [groupId, setGroupId] = useState("")
   const [campaignName, setCampaignName] = useState("")
   const [params, setParams] = useState<string[]>([])
@@ -232,6 +251,81 @@ export default function WhatsAppClient({
                   <Td className="text-gray-500">{b.createdAt}</Td>
                 </Tr>
               ))}
+            </Tbody>
+          </Table>
+        )}
+      </div>
+
+      {/* Blood requests (member-raised) */}
+      <div className="rounded-[5px] border border-gray-200 bg-white">
+        <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-3 text-sm font-semibold text-gray-800">
+          <Drop weight="duotone" className="h-4 w-4 text-rose-500" /> Blood requests
+        </div>
+        {bloodRequests.length === 0 ? (
+          <EmptyState
+            icon={<Drop weight="duotone" />}
+            title="No blood requests yet"
+            description="Member-raised requests appear here."
+          />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Group</Th>
+                <Th>Patient</Th>
+                <Th>City</Th>
+                <Th>Hospital</Th>
+                <Th>Contact</Th>
+                <Th>By</Th>
+                <Th>Reach</Th>
+                <Th>Sent</Th>
+                <Th>Status</Th>
+                <Th>When</Th>
+                <Th> </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {bloodRequests.map((b) => {
+                const status = fulfilled[b.id] ? "fulfilled" : b.status
+                return (
+                  <Tr key={b.id}>
+                    <Td><span className="font-semibold text-rose-600">{b.bloodGroup}</span></Td>
+                    <Td>{b.patient}</Td>
+                    <Td>{b.city}</Td>
+                    <Td>{b.hospital}</Td>
+                    <Td>{b.contact}</Td>
+                    <Td>{b.requester}</Td>
+                    <Td>{b.recipientCount}</Td>
+                    <Td className="text-emerald-600">{b.sentCount}{b.failedCount ? <span className="text-rose-600"> / {b.failedCount}✕</span> : null}</Td>
+                    <Td>
+                      <span className={status === "fulfilled" ? "text-emerald-600" : "text-gray-600"}>{status}</span>
+                    </Td>
+                    <Td className="text-gray-500">{b.createdAt}</Td>
+                    <Td>
+                      {status !== "fulfilled" && (
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          disabled={isBusy(b.id)}
+                          onClick={() =>
+                            run(b.id, {
+                              action: async () => {
+                                const r = await markBloodRequestFulfilledAction(b.id)
+                                if (!r.ok) throw new Error("Failed")
+                              },
+                              optimistic: () => setFulfilled((f) => ({ ...f, [b.id]: true })),
+                              revert: () => setFulfilled((f) => ({ ...f, [b.id]: false })),
+                              success: "Marked fulfilled",
+                            })
+                          }
+                        >
+                          Mark fulfilled
+                        </Button>
+                      )}
+                    </Td>
+                  </Tr>
+                )
+              })}
             </Tbody>
           </Table>
         )}
