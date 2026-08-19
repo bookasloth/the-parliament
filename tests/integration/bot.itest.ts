@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import { prisma } from "@/lib/prisma"
-import { getBotUserId, botAnnounce, botWelcome } from "@/modules/bot/service"
+import { getBotUserId, botAnnounce, botWelcome, maybeWelcomeOnSignIn, BOT_WELCOME_SINCE } from "@/modules/bot/service"
 
 // The NNAWCA bot is a users row with member_type "system". Covers the three MVP
 // behaviours: resolve the account, announce to the feed as it, welcome a member.
@@ -84,6 +84,59 @@ describe("nnawca bot", () => {
     await botWelcome(botId)
     const after = await prisma.post.count({ where: { authorId: botId } })
     expect(after).toBe(before)
+  })
+
+  it("botWelcome is idempotent — a second call adds no second post", async () => {
+    const member = await prisma.user.create({
+      data: { email: `idem-${rnd()}@test.local`, legalName: "Idem", username: `idem${rnd().slice(0, 6)}` },
+    })
+    await botWelcome(member.id)
+    const after1 = await prisma.post.count({ where: { authorId: botId } })
+    await botWelcome(member.id) // repeat — bot already follows → skip
+    const after2 = await prisma.post.count({ where: { authorId: botId } })
+    expect(after2).toBe(after1)
+  })
+
+  it("maybeWelcomeOnSignIn welcomes an onboarded, post-cutoff member", async () => {
+    const member = await prisma.user.create({
+      data: {
+        email: `si-${rnd()}@test.local`, legalName: "SignIn", username: `si${rnd().slice(0, 6)}`,
+        onboardingCompleted: true, createdAt: new Date(BOT_WELCOME_SINCE.getTime() + 86_400_000),
+      },
+    })
+    await maybeWelcomeOnSignIn(member.id)
+    const follow = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: botId, followingId: member.id } },
+    })
+    expect(follow).not.toBeNull()
+  })
+
+  it("maybeWelcomeOnSignIn skips members created before the cutoff", async () => {
+    const member = await prisma.user.create({
+      data: {
+        email: `old-${rnd()}@test.local`, legalName: "Old", username: `old${rnd().slice(0, 6)}`,
+        onboardingCompleted: true, createdAt: new Date(BOT_WELCOME_SINCE.getTime() - 86_400_000),
+      },
+    })
+    await maybeWelcomeOnSignIn(member.id)
+    const follow = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: botId, followingId: member.id } },
+    })
+    expect(follow).toBeNull()
+  })
+
+  it("maybeWelcomeOnSignIn skips members who haven't completed onboarding", async () => {
+    const member = await prisma.user.create({
+      data: {
+        email: `no-${rnd()}@test.local`, legalName: "NotDone", username: `no${rnd().slice(0, 6)}`,
+        onboardingCompleted: false, createdAt: new Date(BOT_WELCOME_SINCE.getTime() + 86_400_000),
+      },
+    })
+    await maybeWelcomeOnSignIn(member.id)
+    const follow = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: botId, followingId: member.id } },
+    })
+    expect(follow).toBeNull()
   })
 
   it("no welcome post when the member has no username (can't mention)", async () => {

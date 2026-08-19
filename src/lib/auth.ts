@@ -144,6 +144,18 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  events: {
+    // First-sign-in welcome for members who arrive already onboarded (imported/
+    // migrated accounts that set a password via the reset flow and skip the
+    // wizard). Dynamic import keeps the bot module (and its feed/messaging deps)
+    // out of the auth bundle's load graph. Best-effort — the helper swallows its
+    // own errors so a bot hiccup can never block a login.
+    async signIn({ user }) {
+      if (!user?.id) return;
+      const { maybeWelcomeOnSignIn } = await import("@/modules/bot/service");
+      await maybeWelcomeOnSignIn(user.id);
+    },
+  },
 });
 
 // Request-scoped dedupe. Auth.js v5 runs the jwt callback (a prisma.user
