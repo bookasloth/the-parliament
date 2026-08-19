@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Users, Mail, Phone } from "lucide-react"
+import { Users, Mail, Phone, Globe } from "lucide-react"
 import { ACCENT_HEX } from "@/components/marketing/primitives"
 import { isPlaceholder } from "@/components/marketing/MemberCard"
 import type { Member } from "@/lib/committee"
@@ -46,8 +46,8 @@ export function CommitteeTabs({
         })}
       </div>
 
-      {/* 6-per-row grid of photo · name · role */}
-      <div key={tab} className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" style={{ animation: "fade-in-up .28s ease" }}>
+      {/* Responsive grid of people cards */}
+      <div key={tab} className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" style={{ animation: "fade-in-up .28s ease" }}>
         {active.members.map((m, i) => (
           <MemberTile key={m.name + i} member={m} accent={(i % 4) as 0 | 1 | 2 | 3} />
         ))}
@@ -60,41 +60,54 @@ function MemberTile({ member, accent }: { member: Member; accent: 0 | 1 | 2 | 3 
   const placeholder = isPlaceholder(member.name)
   const initial = placeholder ? null : member.name.replace(/^(Shri\.|Smt\.|Dr\.)\s*/i, "").charAt(0)
   const link = !placeholder && member.profileLink ? member.profileLink : null
+  const contacts = !placeholder && (member.email || member.phone || link)
   return (
-    <div className="flex flex-col items-center rounded-[5px] border border-black/5 bg-white p-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_28px_-12px_rgba(26,26,26,0.16)]">
-      {member.photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={member.photo} alt={member.name} className="h-16 w-16 rounded-[4px] object-cover" />
-      ) : (
-        <div
-          className="flex h-16 w-16 items-center justify-center rounded-[4px] font-heading text-2xl font-semibold text-white"
-          style={{ backgroundColor: ACCENT_HEX[accent] }}
-        >
-          {initial ?? <Users className="h-6 w-6" />}
-        </div>
-      )}
-      <p className="mt-3 line-clamp-2 text-sm font-semibold leading-tight text-[#1a1a1a]">
-        {placeholder ? (
-          member.position
-        ) : link ? (
-          <a href={link} target="_blank" rel="noopener noreferrer" className="hover:text-brand hover:underline">{member.name}</a>
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(26,26,26,0.28)]">
+      {/* Photo — full-width square, face-focused crop */}
+      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+        {member.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={member.photo}
+            alt={member.name}
+            className="h-full w-full object-cover object-[50%_22%] transition duration-500 group-hover:scale-[1.05]"
+          />
         ) : (
-          member.name
+          <div className="flex h-full w-full items-center justify-center font-heading text-5xl font-semibold text-white" style={{ backgroundColor: ACCENT_HEX[accent] }}>
+            {initial ?? <Users className="h-9 w-9" />}
+          </div>
         )}
-      </p>
-      <p className="mt-0.5 line-clamp-2 text-xs text-[#8a8a8a]">
-        {placeholder ? "Committee member" : member.position}
-      </p>
-      {!placeholder && (member.email || member.phone) && (
-        <div className="mt-2 flex items-center gap-3 text-[#a3a3a3]">
-          {member.email && (
-            <a href={`mailto:${member.email}`} aria-label={`Email ${member.name}`} className="transition hover:text-brand"><Mail className="h-4 w-4" /></a>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-1 flex-col items-center px-3 py-3.5 text-center">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-tight text-[#1a1a1a]">
+          {placeholder ? (
+            member.position
+          ) : link ? (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="transition hover:text-brand">{member.name}</a>
+          ) : (
+            member.name
           )}
-          {member.phone && (
-            <a href={`tel:${member.phone.replace(/\s+/g, "")}`} aria-label={`Call ${member.name}`} className="transition hover:text-brand"><Phone className="h-4 w-4" /></a>
-          )}
-        </div>
-      )}
+        </h3>
+        <p className="mt-1 line-clamp-2 text-[11px] font-semibold uppercase tracking-wide text-brand">
+          {placeholder ? "Committee member" : member.position}
+        </p>
+
+        {contacts && (
+          <div className="mt-3 flex items-center gap-1.5">
+            {member.email && (
+              <a href={`mailto:${member.email}`} aria-label={`Email ${member.name}`} className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[#8a8a8a] transition hover:bg-brand hover:text-white"><Mail className="h-3.5 w-3.5" /></a>
+            )}
+            {member.phone && (
+              <a href={`tel:${member.phone.replace(/\s+/g, "")}`} aria-label={`Call ${member.name}`} className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[#8a8a8a] transition hover:bg-brand hover:text-white"><Phone className="h-3.5 w-3.5" /></a>
+            )}
+            {link && (
+              <a href={link} target="_blank" rel="noopener noreferrer" aria-label={`${member.name}'s profile`} className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[#8a8a8a] transition hover:bg-brand hover:text-white"><Globe className="h-3.5 w-3.5" /></a>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
