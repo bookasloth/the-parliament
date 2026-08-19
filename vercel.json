@@ -8,6 +8,6 @@
     { "path": "/api/cron/email", "schedule": "30 2 * * *" },
     { "path": "/api/cron/event-invites", "schedule": "0 4 * * *" },
     { "path": "/api/cron/alfazy-champions", "schedule": "20 0 * * *" },
-    { "path": "/api/cron/bot", "schedule": "40 0 * * *" }
+    { "path": "/api/cron/bot", "schedule": "30 1 * * *" }
   ]
 }

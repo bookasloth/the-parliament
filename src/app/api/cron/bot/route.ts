@@ -4,8 +4,9 @@ import { runBotDaily } from "@/modules/bot/cron"
 
 // Daily cron: the official NNAWCA bot's scheduled posts (weekly poll, weekly
 // roundup, birthday DMs, event-tomorrow reminders, game results). One daily
-// tick that branches on the date (planBotCron) — Hobby-safe. Scheduled just
-// after alfazy-champions so game-results reads freshly-frozen winners.
+// tick that branches on the date (planBotCron) — Hobby-safe. Runs 01:30 UTC =
+// 07:00 IST — a member-friendly morning slot, and after alfazy-champions
+// (00:20 UTC) freezes the previous night's winners so game-results sees them.
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
