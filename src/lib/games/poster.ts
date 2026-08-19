@@ -6,6 +6,7 @@ export interface Poster {
   batchLabel?: string;
   avatarUrl?: string;
   verified?: boolean;
+  membershipStatus?: string;
 }
 
 export async function getPoster(userId: string): Promise<Poster> {
@@ -15,6 +16,7 @@ export async function getPoster(userId: string): Promise<Poster> {
       displayName: true,
       legalName: true,
       isVerified: true,
+      membershipStatus: true,
       profile: { select: { photoUrl: true, batch: { select: { label: true } } } },
     },
   });
@@ -23,6 +25,7 @@ export async function getPoster(userId: string): Promise<Poster> {
     name: u?.displayName || u?.legalName || "Alumnus",
     avatarUrl: u?.profile?.photoUrl ?? undefined,
     verified: u?.isVerified ?? false,
+    membershipStatus: u?.membershipStatus ?? undefined,
     batchLabel: batch ? (/batch/i.test(batch) ? batch : `${batch} batch`) : undefined,
   };
 }

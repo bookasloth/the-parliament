@@ -113,6 +113,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ slug: 
               batchLabel: poster.batchLabel,
               avatarUrl: poster.avatarUrl,
               verified: poster.verified,
+              membershipStatus: poster.membershipStatus,
             }}
           />
           <Link href={`/games/${cfg.slug}/leaderboard/individual/daily`} className="flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25">

@@ -316,6 +316,7 @@ export default function GameBoard({
                     batchLabel: poster.batchLabel,
                     avatarUrl: poster.avatarUrl,
                     verified: poster.verified,
+                    membershipStatus: poster.membershipStatus,
                   }}
                 />
                 <Link href={resultHref} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline">
