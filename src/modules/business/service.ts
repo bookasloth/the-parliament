@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { EMPLOYEE_SIZES } from "./constants"
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 200) || "business"
@@ -137,8 +138,7 @@ export async function upsertReview(input: {
   })
 }
 
-/** Company-size buckets for the edit form (LinkedIn-style). */
-export const EMPLOYEE_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"] as const
+export { EMPLOYEE_SIZES }
 
 /** Parse a founded year: a 4-digit year within 1800..current, else null. Pure. */
 export function sanitizeFoundedYear(raw: unknown, currentYear: number): number | null {
