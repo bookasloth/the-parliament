@@ -118,6 +118,27 @@ export function isOwnedPostKey(ownerId: string, key: string): boolean {
   return key.startsWith(`${PREFIX.post}/${ownerId}/`)
 }
 
+/** True only if `key` is under this owner's own business-media prefix. */
+export function isOwnedBusinessKey(ownerId: string, key: string): boolean {
+  return key.startsWith(`${PREFIX.business}/${ownerId}/`)
+}
+
+/**
+ * Validate a just-uploaded business image (logo/banner/post photo) the client
+ * asks to attach: reject any key outside the caller's own businesses/<userId>/
+ * prefix, HEAD it and delete+reject anything over the business size cap, then
+ * return the public URL to persist. Same trust model as validatePostMedia.
+ */
+export async function resolveBusinessImage(ownerId: string, key: string): Promise<string> {
+  if (!isOwnedBusinessKey(ownerId, key)) throw new Error("Invalid image reference")
+  const size = await objectSize(key)
+  if (size !== null && size > MAX_BYTES.business) {
+    await deleteObject(key).catch(() => {})
+    throw new Error("Uploaded image exceeds the size limit")
+  }
+  return publicUrlFor(key)
+}
+
 /** HEAD an object; returns its byte size, or null if it can't be read. */
 export async function objectSize(key: string): Promise<number | null> {
   try {
