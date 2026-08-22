@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateBusinessAction } from "../actions"
-import { EMPLOYEE_SIZES } from "@/modules/business/service"
+import { EMPLOYEE_SIZES } from "@/modules/business/constants"
 import { BusinessImageUploader } from "./business-image-uploader"
 
 const SOCIALS = ["linkedin", "twitter", "instagram", "facebook", "youtube", "github"] as const
