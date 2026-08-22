@@ -50,6 +50,8 @@ export type NavbarViewer = {
   avatar: string
   membership: MembershipTier
   username: string
+  /** Slug of a business this user owns, or null if none — drives the "Manage Business" menu item. */
+  businessSlug: string | null
 }
 
 /* ---------------- Search scopes (Quora-style) ---------------- */
@@ -519,6 +521,11 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                 {/* Links */}
                 <ul className="py-1.5">
                   {[
+                    {
+                      icon: Building2,
+                      label: currentUser.businessSlug ? "Manage Business" : "List your Business",
+                      href: currentUser.businessSlug ? `/business/${currentUser.businessSlug}` : "/business/new",
+                    },
                     { icon: FileText, label: "Drafts", href: "/compose/drafts" },
                     { icon: Award, label: "Achievements", href: "/achievements" },
                     { icon: Star, label: "Karma Points", href: "/karma" },
