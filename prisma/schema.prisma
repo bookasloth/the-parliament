@@ -172,6 +172,7 @@ model User {
   eventOrders              EventOrder[]
   businesses               Business[]
   businessReviews          BusinessReview[]
+  businessFollows          BusinessFollower[]
   memberships              Membership[]
   payments                 Payment[]
   donations                Donation[]
@@ -1297,33 +1298,73 @@ model Business {
   contactPhone         String?  @map("contact_phone") @db.VarChar(20)
   city                 String?  @db.VarChar(120)
   offersAlumniDiscount Boolean  @default(false) @map("offers_alumni_discount")
+  // LinkedIn-style company fields (Phase 1b)
+  tagline              String?  @db.VarChar(160)
+  industry             String?  @db.VarChar(80)
+  foundedYear          Int?     @map("founded_year")
+  employeeSize         String?  @map("employee_size") @db.VarChar(20)
+  headquarters         String?  @db.VarChar(160)
+  socialLinks          Json?    @map("social_links")
+  followerCount        Int      @default(0) @map("follower_count")
   ratingAvg            Decimal  @default(0) @map("rating_avg") @db.Decimal(3, 2)
   ratingCount          Int      @default(0) @map("rating_count")
   status               BusinessStatus @default(pending)
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  school   School?          @relation(fields: [schoolId], references: [id])
-  owner    User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  category BusinessCategory @relation(fields: [categoryId], references: [id])
-  reviews  BusinessReview[]
+  school    School?            @relation(fields: [schoolId], references: [id])
+  owner     User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category  BusinessCategory   @relation(fields: [categoryId], references: [id])
+  reviews   BusinessReview[]
+  followers BusinessFollower[]
+  posts     BusinessPost[]
 
   @@index([categoryId])
   @@map("businesses")
 }
 
-model BusinessReview {
+model BusinessFollower {
   id         String   @id @default(uuid()) @db.Uuid
   businessId String   @map("business_id") @db.Uuid
-  reviewerId String   @map("reviewer_id") @db.Uuid
-  rating     Int      @db.SmallInt
-  body       String?
+  userId     String   @map("user_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_followers")
+}
+
+model BusinessReview {
+  id           String    @id @default(uuid()) @db.Uuid
+  businessId   String    @map("business_id") @db.Uuid
+  reviewerId   String    @map("reviewer_id") @db.Uuid
+  rating       Int       @db.SmallInt
+  body         String?
+  ownerReply   String?   @map("owner_reply")
+  ownerReplyAt DateTime? @map("owner_reply_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   reviewer User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, reviewerId])
   @@map("business_reviews")
+}
+
+// Page updates the business owner posts (LinkedIn "Posts" / GMB updates).
+model BusinessPost {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  body       String
+  imageUrl   String?  @map("image_url")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@map("business_posts")
 }
 
 // ─────────────────────────────────────────────
