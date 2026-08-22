@@ -5,6 +5,7 @@ import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
 import { getCurrent } from "@/modules/membership/service"
+import { prisma } from "@/lib/prisma"
 
 const TIERS = ["student", "associate", "premium", "life", "inactive", "committee"] as const
 type Tier = (typeof TIERS)[number]
@@ -26,6 +27,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       const tier = (TIERS as readonly string[]).includes(resolvedPlan)
         ? (resolvedPlan as Tier)
         : "associate"
+      // A business this user owns (any status) → drives the "Manage Business" menu item.
+      const ownedBusiness = await prisma.business.findFirst({
+        where: { ownerId: session.id },
+        orderBy: { createdAt: "desc" },
+        select: { slug: true },
+      })
       viewer = {
         name,
         batch: u.profile?.batch?.label ? `Batch ${u.profile.batch.label}` : "—",
@@ -34,6 +41,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         membership: tier,
         username: u.username ?? "",
+        businessSlug: ownedBusiness?.slug ?? null,
       }
     }
   }
