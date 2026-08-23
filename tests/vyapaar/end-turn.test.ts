@@ -1,0 +1,57 @@
+import { describe, it, expect } from "vitest";
+import { createGame } from "@/modules/vyapaar/engine/state";
+import { applyIntent, winnerOf } from "@/modules/vyapaar/engine/engine";
+
+describe("end_turn and end conditions", () => {
+  it("advances the seat and bumps the round on wrap", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.phase = "manage";
+    applyIntent(s, 0, { type: "end_turn" });
+    expect(s.active).toBe(1);
+    expect(s.round).toBe(1);
+    expect(s.phase).toBe("roll");
+    s.phase = "manage";
+    applyIntent(s, 1, { type: "end_turn" });
+    expect(s.active).toBe(0);
+    expect(s.round).toBe(2);
+  });
+
+  it("refuses end_turn outside the manage phase", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.phase = "roll";
+    const r = applyIntent(s, 0, { type: "end_turn" });
+    expect("error" in r).toBe(true);
+  });
+
+  it("ends the game after MAX_ROUNDS", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.round = 12; // MAX_ROUNDS
+    s.active = 1; // ending this turn wraps → round 13 > 12
+    s.phase = "manage";
+    applyIntent(s, 1, { type: "end_turn" });
+    expect(s.ended).toBe(true);
+    expect(s.winner).not.toBeNull();
+  });
+
+  it("ends after the round completes once a player reaches 3 sets", () => {
+    const s = createGame(1, ["a", "b"]);
+    // seat 0 controls 3 full sets (groups 0,1,2 = cityIds 0..14)
+    for (let id = 0; id <= 14; id++) s.cities[id].owner = 0;
+    s.phase = "manage";
+    applyIntent(s, 0, { type: "end_turn" }); // endRequested set, not wrapped yet
+    expect(s.ended).toBe(false);
+    expect(s.endRequested).toBe(true);
+    s.phase = "manage";
+    applyIntent(s, 1, { type: "end_turn" }); // wraps → ends
+    expect(s.ended).toBe(true);
+    expect(winnerOf(s)).toBe(0);
+  });
+
+  it("winnerOf breaks ties by controlled sets", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.players[0].cash = 1000;
+    s.players[1].cash = 1000;
+    for (let id = 0; id <= 4; id++) s.cities[id].owner = 0; // seat 0 controls a set
+    expect(winnerOf(s)).toBe(0);
+  });
+});

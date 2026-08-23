@@ -9,6 +9,8 @@ import {
   MAX_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
+  SETS_TO_END,
+  MAX_ROUNDS,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
 import type { TradeSide } from "./state";
@@ -22,6 +24,8 @@ import {
   credit,
   controlsSet,
   citiesOwned,
+  controlledSets,
+  scoreOf,
 } from "./helpers";
 import { drawCard } from "./cards";
 
@@ -190,6 +194,24 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
     if (c.owner !== seat || c.level !== 0 || c.mortgaged) return false;
   }
   return true;
+}
+
+export function winnerOf(s: GameState): number {
+  let best = 0;
+  for (let i = 1; i < s.players.length; i++) {
+    const si = scoreOf(s, i);
+    const sb = scoreOf(s, best);
+    if (si > sb) best = i;
+    else if (si === sb && controlledSets(s, i) > controlledSets(s, best)) best = i;
+  }
+  return best;
+}
+
+function endGame(s: GameState, events: EngineEvent[]): void {
+  s.ended = true;
+  s.winner = winnerOf(s);
+  s.phase = "manage";
+  events.push({ type: "game_over", seat: s.winner });
 }
 
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
@@ -370,6 +392,20 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       s.players[t.to].cash += t.give.cash - t.get.cash;
       s.trade = null;
       events.push({ type: "trade_accepted", from: t.from, to: t.to });
+      return { state: s, events };
+    }
+
+    case "end_turn": {
+      if (s.phase !== "manage") return { error: "cannot_end_now" };
+      if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
+      const wrapped = seat + 1 >= s.players.length;
+      s.active = (seat + 1) % s.players.length;
+      if (wrapped) s.round++;
+      s.players[s.active].doubles = 0;
+      s.pendingDouble = false;
+      s.phase = "roll";
+      events.push({ type: "end_turn", seat });
+      if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
       return { state: s, events };
     }
 
