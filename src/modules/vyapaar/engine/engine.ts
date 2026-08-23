@@ -413,3 +413,24 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       return { error: "not_implemented" };
   }
 }
+
+/** One minimal-legal step for a timed-out player. Caller loops until active changes or game ends. */
+export function autoResolve(s: GameState): { state: GameState; events: EngineEvent[] } {
+  if (s.ended) return { state: s, events: [] };
+  const active = s.active;
+  switch (s.phase) {
+    case "roll":
+      return applyIntent(s, active, { type: "roll" }) as { state: GameState; events: EngineEvent[] };
+    case "buy":
+      return applyIntent(s, active, { type: "decline" }) as { state: GameState; events: EngineEvent[] };
+    case "auction": {
+      // make every seat that hasn't bid pass, so the auction resolves
+      const seat = s.auction!.bids.findIndex((b) => b === null);
+      return applyIntent(s, seat, { type: "bid", amount: 0 }) as { state: GameState; events: EngineEvent[] };
+    }
+    case "manage":
+      return applyIntent(s, active, { type: "end_turn" }) as { state: GameState; events: EngineEvent[] };
+    default:
+      return { state: s, events: [] };
+  }
+}
