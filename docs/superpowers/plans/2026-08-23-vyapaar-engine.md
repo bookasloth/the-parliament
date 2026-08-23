@@ -1985,6 +1985,7 @@ describe("end_turn and end conditions", () => {
     expect(s.active).toBe(1);
     expect(s.round).toBe(1);
     expect(s.phase).toBe("roll");
+    s.phase = "manage"; // end_turn reset the new active to "roll"; re-prime to reach their manage phase
     applyIntent(s, 1, { type: "end_turn" });
     expect(s.active).toBe(0);
     expect(s.round).toBe(2);
@@ -2015,6 +2016,7 @@ describe("end_turn and end conditions", () => {
     applyIntent(s, 0, { type: "end_turn" }); // endRequested set, not wrapped yet
     expect(s.ended).toBe(false);
     expect(s.endRequested).toBe(true);
+    s.phase = "manage"; // re-prime the new active's manage phase
     applyIntent(s, 1, { type: "end_turn" }); // wraps → ends
     expect(s.ended).toBe(true);
     expect(winnerOf(s)).toBe(0);
