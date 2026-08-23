@@ -2,6 +2,7 @@ import {
   CITIES,
   ZONES,
   HUB_RENT,
+  HUB_PRICE,
   SET_OWN_NEEDED,
   SET_BONUS_NW,
   BLEND,
@@ -62,7 +63,7 @@ export function netWorth(s: GameState, seat: number): number {
     nw += CITIES[id].price * (c.mortgaged ? 0.35 : 0.5);
     nw += c.level * upgradeCost(id) * 0.5;
   }
-  nw += hubsOwned(s, seat) * 4500 * 0.5;
+  nw += hubsOwned(s, seat) * HUB_PRICE * 0.5;
   nw += controlledSets(s, seat) * SET_BONUS_NW;
   return nw;
 }
