@@ -298,3 +298,90 @@ and no client can act out of turn or move money.
 2. **Stats/leaderboard shape** — assume inline `User` stat fields + a simple
    wallet/wins board; confirm whether it reuses any existing leaderboard UI.
 3. **pg_cron cadence** — assume 10s sweep; tune against Supabase load after M-wire.
+
+---
+
+## Addendum — 2026-08-24: board data v2 + monetization
+
+Two owner-supplied tables land here and **override** parts of the source spec.
+
+### A. Board data v2 (supersedes Appendix A cities/rent)
+
+The abstract-group economy (`GROUPS` + shared per-group `RENT` ladder + fictional
+cheapest-first cities) is **replaced** by a per-city, zoned table: 5 **zones**
+(North/South/East/West/Central), 5 cities each, and **each city carries its own
+7-rung rent ladder** — `[base, 1House, 2House, 3House, 1Hotel, 2Hotel, 3Hotel]`
+→ development levels `0..6`, so **`MAX_LEVEL = 6`**.
+
+| Zone | City | Buy | Base | 1H | 2H | 3H | 1Hotel | 2Hotel | 3Hotel |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| North | Delhi | 9000 | 450 | 900 | 1350 | 2000 | 2700 | 3600 | 4950 |
+| North | Chandigarh | 6500 | 350 | 650 | 1000 | 1450 | 1950 | 2600 | 3600 |
+| North | Jaipur | 5800 | 300 | 600 | 850 | 1300 | 1750 | 2300 | 3200 |
+| North | Lucknow | 5200 | 250 | 500 | 800 | 1150 | 1550 | 2100 | 2850 |
+| North | Dehradun | 4200 | 200 | 400 | 650 | 950 | 1250 | 1700 | 2300 |
+| South | Bengaluru | 8800 | 450 | 900 | 1300 | 1950 | 2650 | 3500 | 4850 |
+| South | Hyderabad | 8000 | 400 | 800 | 1200 | 1750 | 2400 | 3200 | 4400 |
+| South | Chennai | 7500 | 400 | 750 | 1100 | 1650 | 2250 | 3000 | 4100 |
+| South | Kochi | 4800 | 250 | 500 | 700 | 1050 | 1450 | 1900 | 2650 |
+| South | Coimbatore | 4500 | 250 | 450 | 700 | 1000 | 1350 | 1800 | 2500 |
+| East | Kolkata | 7200 | 350 | 700 | 1100 | 1600 | 2150 | 2900 | 3950 |
+| East | Bhubaneswar | 5000 | 250 | 500 | 750 | 1100 | 1500 | 2000 | 2750 |
+| East | Guwahati | 4600 | 250 | 450 | 700 | 1000 | 1400 | 1850 | 2550 |
+| East | Patna | 4300 | 200 | 450 | 650 | 950 | 1300 | 1700 | 2350 |
+| East | Ranchi | 3800 | 200 | 400 | 550 | 850 | 1150 | 1500 | 2100 |
+| West | Mumbai | 9500 | 500 | 950 | 1450 | 2100 | 2850 | 3800 | 5250 |
+| West | Pune | 6800 | 350 | 700 | 1000 | 1500 | 2050 | 2700 | 3750 |
+| West | Ahmedabad | 6200 | 300 | 600 | 950 | 1350 | 1850 | 2500 | 3400 |
+| West | Surat | 5500 | 300 | 550 | 850 | 1200 | 1650 | 2200 | 3000 |
+| West | Vadodara | 4400 | 200 | 450 | 650 | 950 | 1300 | 1750 | 2400 |
+| Central | Indore | 5600 | 300 | 550 | 850 | 1250 | 1700 | 2250 | 3100 |
+| Central | Bhopal | 4900 | 250 | 500 | 750 | 1100 | 1450 | 1950 | 2700 |
+| Central | Nagpur | 4700 | 250 | 450 | 700 | 1050 | 1400 | 1900 | 2600 |
+| Central | Raipur | 4000 | 200 | 400 | 600 | 900 | 1200 | 1600 | 2200 |
+| Central | Jabalpur | 3500 | 200 | 350 | 500 | 800 | 1050 | 1400 | 1900 |
+
+**Rules kept as mechanics (table gives no column for them):**
+- **Zone = the "set".** Control a zone at 3 of its 5 unmortgaged cities
+  (`SET_OWN_NEEDED = 3`). Controlling a zone **doubles base rent** on its
+  undeveloped cities (`rent[0] * 2`) and unlocks development.
+- **Upgrade cost** is not in the table → `upgradeCost(city) = round(price *
+  UPGRADE_COST_RATIO)`, default `UPGRADE_COST_RATIO = 0.1` (10% of buy per level).
+  **Tunable in `data.ts` by the balance harness.**
+- Scrappy Landlord (×1.25 when owner holds ≤3 cities), mortgage (price/2),
+  unmortgage (round(price*0.55)) unchanged.
+
+> ⚠ **These numbers are NOT balance-validated.** They replace the validated
+> Appendix A economy, so the "port, don't reinvent" guarantee no longer covers the
+> economy. Salary (1200/2100), `MAX_ROUNDS` (12), and the 25,000 opening stack must
+> be **re-validated against these prices** by the M5 balance harness; expect to tune
+> `data.ts` constants. The engine mechanics are still ported verbatim — only the
+> data changed.
+
+### B. Monetization — coin store (⚠ reverses "play money only")
+
+Owner-supplied INR→coin pricing:
+
+| Price (INR) | Coins | Bonus | Total |
+|---|--:|--:|--:|
+| Free | 25,000 | Welcome | 25,000 |
+| ₹100 | 15,000 | 0 | 15,000 |
+| ₹250 | 40,000 | +2,500 | 42,500 |
+| ₹500 | 85,000 | +10,000 | 95,000 |
+| ₹1,000 | 180,000 | +30,000 | 210,000 |
+| ₹2,000 | 400,000 | +80,000 | 480,000 |
+
+> 🚩 **Flag — this is a real-money path the source spec explicitly prohibited.**
+> Buying coins with INR, then winning/losing them on dice, is **gambling-adjacent**:
+> Vyapaar is a game of **chance** (dice), and real-money chance gaming is restricted
+> or banned across several Indian states, and increasingly regulated nationally.
+> Before building this: (1) legal review for real-money gaming compliance in the
+> target states; (2) decide whether coins are ever cashable (if never redeemable,
+> the gambling exposure drops but consumer-law/IAP rules still apply); (3) Razorpay
+> product/category approval for the coin SKU.
+>
+> **Decision for this build:** the coin store is **recorded, not built** in the
+> engine phase. It becomes its **own later phase** (spec → legal check → plan). The
+> engine and wallet are unaffected — the wallet is an opaque integer; where coins
+> come from (grant vs purchase) is a top-up concern outside the engine. The free
+> 25,000 welcome grant already matches row 1 of this table.

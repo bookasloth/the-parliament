@@ -10,13 +10,14 @@
 
 ## Global Constraints
 
-- **Port, don't reinvent.** The ruleset in the design's Appendix A/B is authoritative and balance-validated. Translate faithfully; do not "improve" rules.
+- **Port the MECHANICS verbatim; use the v2 DATA.** The ruleset in the design's Appendix B (cards) and the turn/rent/auction/trade *mechanics* are authoritative — translate faithfully, do not "improve." But the **city/rent data is the v2 zoned table** in the design's 2026-08-24 addendum, which **supersedes** Appendix A. The v2 numbers are **NOT balance-validated** — the M5 harness re-validates them; the engine just reads them.
 - **Determinism is mandatory.** No `Math.random`, no `Date.now`, no wall-clock inside the engine. All randomness flows through `nextRng(state)`, which mutates `state.rng`. Same inputs → identical output, always.
 - **All constants live in `data.ts`.** The balance harness (a later phase) tunes only that file. No magic numbers anywhere else in the engine.
 - **Engine is dependency-free.** Files under `engine/` import only from each other and from `data.ts`. Zero imports of Prisma, Supabase, Next, or Node built-ins beyond pure JS.
 - **Naming:** files `kebab-case`; types `PascalCase`; functions/vars `camelCase`. Double-quoted strings, semicolons (match `src/modules/games/engines/`).
 - **Player count:** `createGame` accepts **2–6** names (the design raises the reference cap of 4).
-- **cityId = index into `CITIES` (0..24).** hubIndex = index into `HUB_POS` (0..3). seat = index into `players`.
+- **Rent model:** per-city 7-rung ladder `[base,1H,2H,3H,1Hotel,2Hotel,3Hotel]` = levels `0..6`, so **`MAX_LEVEL = 6`**. Cities are grouped into 5 **zones** (the "sets"); zone control (3 of 5 unmortgaged) doubles undeveloped base rent and unlocks development. **Upgrade cost is derived** (`round(price * UPGRADE_COST_RATIO)`, default 0.1) — the table gives no house cost.
+- **cityId = index into `CITIES` (0..24)**, authored zone-grouped (North 0–4, South 5–9, East 10–14, West 15–19, Central 20–24). Board placement is cheapest-first by price (`board.ts` sorts). hubIndex = index into `HUB_POS` (0..3). seat = index into `players`.
 
 ---
 
@@ -28,32 +29,41 @@
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `GROUPS`, `RENT`, `CITIES`, `HUB_PRICE`, `HUB_RENT`, `HUB_POS`, `START_CASH`, `SALARY`, `SALARY_UNDERDOG`, `MONSOON_PAY`, `TAX_INCOME`, `GST_RATE`, `GST_CAP`, `SET_BONUS_NW`, `MAX_ROUNDS`, `SETS_TO_END`, `SET_OWN_NEEDED`, `BLEND`, `MAX_LEVEL`, `UNMORTGAGE_RATE`, `UPGRADE_SELL_RATIO`, `HEADLINE`, `UPI`, and the tile-position constants `START_POS`/`MONSOON_POS`/`MANDI_POS`/`TAXRAID_POS`/`GST_POS`/`INCOME_POS`/`UPI_POS`/`HEADLINE_POS`. Types `Group`, `RentLadder`, `CityDef`, `Card`, `CardOp`.
+- Produces: `ZONES`, `CITIES` (each with its own `rent` ladder), `upgradeCost(cityId)`, `UPGRADE_COST_RATIO`, `HUB_PRICE`, `HUB_RENT`, `HUB_POS`, `START_CASH`, `SALARY`, `SALARY_UNDERDOG`, `MONSOON_PAY`, `TAX_INCOME`, `GST_RATE`, `GST_CAP`, `SET_BONUS_NW`, `MAX_ROUNDS`, `SETS_TO_END`, `SET_OWN_NEEDED`, `BLEND`, `MAX_LEVEL`, `UNMORTGAGE_RATE`, `UPGRADE_SELL_RATIO`, `HEADLINE`, `UPI`, and the tile-position constants `START_POS`/`MONSOON_POS`/`MANDI_POS`/`TAXRAID_POS`/`GST_POS`/`INCOME_POS`/`UPI_POS`/`HEADLINE_POS`. Types `Zone`, `RentRung`, `CityDef`, `Card`, `CardOp`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/vyapaar/data.test.ts
 import { describe, it, expect } from "vitest";
-import { CITIES, RENT, GROUPS, HEADLINE, UPI, HUB_RENT } from "@/modules/vyapaar/engine/data";
+import { CITIES, ZONES, HEADLINE, UPI, HUB_RENT, upgradeCost, MAX_LEVEL } from "@/modules/vyapaar/engine/data";
 
 describe("vyapaar data", () => {
-  it("has 25 cities, 5 per group, sorted cheapest-first", () => {
+  it("has 25 cities, 5 per zone, authored zone-grouped", () => {
     expect(CITIES).toHaveLength(25);
-    for (let g = 0; g < GROUPS.length; g++) {
-      expect(CITIES.filter((c) => c.group === g)).toHaveLength(5);
+    expect(ZONES).toHaveLength(5);
+    for (let z = 0; z < ZONES.length; z++) {
+      expect(CITIES.filter((c) => c.zone === z)).toHaveLength(5);
     }
-    for (let i = 1; i < CITIES.length; i++) {
-      expect(CITIES[i].price).toBeGreaterThan(CITIES[i - 1].price);
+    // authored zone-grouped: cityIds 0-4 North, 5-9 South, etc.
+    for (let z = 0; z < ZONES.length; z++) {
+      for (let i = 0; i < 5; i++) expect(CITIES[z * 5 + i].zone).toBe(z);
     }
   });
 
-  it("has a 6-rung rent ladder per group", () => {
-    expect(RENT).toHaveLength(GROUPS.length);
-    for (const r of RENT) {
-      expect(r.s).toHaveLength(6);
-      expect(r.up).toBeGreaterThan(0);
+  it("gives each city a 7-rung rent ladder (levels 0..6) that strictly climbs", () => {
+    expect(MAX_LEVEL).toBe(6);
+    for (const c of CITIES) {
+      expect(c.rent).toHaveLength(7);
+      for (let i = 1; i < c.rent.length; i++) expect(c.rent[i]).toBeGreaterThan(c.rent[i - 1]);
+      expect(c.price).toBeGreaterThan(0);
     }
+  });
+
+  it("derives upgrade cost from buy price (10% default)", () => {
+    // Delhi (cityId 0) price 9000 → 900/level
+    expect(upgradeCost(0)).toBe(900);
+    expect(upgradeCost(0)).toBeGreaterThan(0);
   });
 
   it("has 8 cards in each deck and HUB_RENT indexed by hubs owned", () => {
@@ -76,59 +86,61 @@ Expected: FAIL — cannot resolve `@/modules/vyapaar/engine/data`.
 // Canonical Vyapaar constants — single source of truth. The balance harness
 // tunes ONLY this file; the engine reads everything from here.
 
-export type Group = number; // index into GROUPS
+export type Zone = number; // index into ZONES
 
-export const GROUPS = ["Heritage", "Emerging", "Coastal", "Tech", "Metro"] as const;
+export const ZONES = ["North", "South", "East", "West", "Central"] as const;
 
-export interface RentLadder {
-  /** [base, ctrlSet, L1, L2, L3, L4] */
-  s: [number, number, number, number, number, number];
-  /** upgrade cost per level */
-  up: number;
-}
-
-export const RENT: RentLadder[] = [
-  { s: [150, 300, 675, 1200, 1950, 2700], up: 1000 }, // Heritage
-  { s: [300, 600, 1350, 2400, 3900, 5400], up: 1800 }, // Emerging
-  { s: [470, 940, 2100, 3750, 6100, 8450], up: 2500 }, // Coastal
-  { s: [630, 1260, 2850, 5050, 8200, 11350], up: 3500 }, // Tech
-  { s: [800, 1600, 3600, 6400, 10400, 14400], up: 4000 }, // Metro
-];
+/** Per-city rent ladder, levels 0..6: [base, 1House, 2House, 3House, 1Hotel, 2Hotel, 3Hotel]. */
+export type RentRung = [number, number, number, number, number, number, number];
 
 export interface CityDef {
   name: string;
-  group: Group;
-  price: number;
+  zone: Zone;
+  price: number; // Buy
+  rent: RentRung;
 }
 
-// 25 cities, 5 per group, listed cheapest-first (cityId = index here).
+// 25 cities, authored ZONE-GROUPED so cityId 0-4 = North, 5-9 = South, 10-14 = East,
+// 15-19 = West, 20-24 = Central. (Board placement is cheapest-first — board.ts sorts by price.)
 export const CITIES: CityDef[] = [
-  { name: "Varanasi", group: 0, price: 900 },
-  { name: "Amritsar", group: 0, price: 1250 },
-  { name: "Jaipur", group: 0, price: 1600 },
-  { name: "Mysuru", group: 0, price: 2000 },
-  { name: "Bhopal", group: 0, price: 2350 },
-  { name: "Patna", group: 1, price: 2700 },
-  { name: "Lucknow", group: 1, price: 3050 },
-  { name: "Bhubaneswar", group: 1, price: 3400 },
-  { name: "Nagpur", group: 1, price: 3750 },
-  { name: "Indore", group: 1, price: 4100 },
-  { name: "Guwahati", group: 2, price: 4500 },
-  { name: "Surat", group: 2, price: 4850 },
-  { name: "Vizag", group: 2, price: 5200 },
-  { name: "Goa", group: 2, price: 5550 },
-  { name: "Kochi", group: 2, price: 5900 },
-  { name: "Coimbatore", group: 3, price: 6300 },
-  { name: "Chandigarh", group: 3, price: 6650 },
-  { name: "Ahmedabad", group: 3, price: 7000 },
-  { name: "Pune", group: 3, price: 7350 },
-  { name: "Chennai", group: 3, price: 7700 },
-  { name: "Kolkata", group: 4, price: 8050 },
-  { name: "Hyderabad", group: 4, price: 8400 },
-  { name: "Bengaluru", group: 4, price: 8800 },
-  { name: "Delhi", group: 4, price: 9150 },
-  { name: "Mumbai", group: 4, price: 9500 },
+  // North (zone 0)
+  { name: "Delhi", zone: 0, price: 9000, rent: [450, 900, 1350, 2000, 2700, 3600, 4950] },
+  { name: "Chandigarh", zone: 0, price: 6500, rent: [350, 650, 1000, 1450, 1950, 2600, 3600] },
+  { name: "Jaipur", zone: 0, price: 5800, rent: [300, 600, 850, 1300, 1750, 2300, 3200] },
+  { name: "Lucknow", zone: 0, price: 5200, rent: [250, 500, 800, 1150, 1550, 2100, 2850] },
+  { name: "Dehradun", zone: 0, price: 4200, rent: [200, 400, 650, 950, 1250, 1700, 2300] },
+  // South (zone 1)
+  { name: "Bengaluru", zone: 1, price: 8800, rent: [450, 900, 1300, 1950, 2650, 3500, 4850] },
+  { name: "Hyderabad", zone: 1, price: 8000, rent: [400, 800, 1200, 1750, 2400, 3200, 4400] },
+  { name: "Chennai", zone: 1, price: 7500, rent: [400, 750, 1100, 1650, 2250, 3000, 4100] },
+  { name: "Kochi", zone: 1, price: 4800, rent: [250, 500, 700, 1050, 1450, 1900, 2650] },
+  { name: "Coimbatore", zone: 1, price: 4500, rent: [250, 450, 700, 1000, 1350, 1800, 2500] },
+  // East (zone 2)
+  { name: "Kolkata", zone: 2, price: 7200, rent: [350, 700, 1100, 1600, 2150, 2900, 3950] },
+  { name: "Bhubaneswar", zone: 2, price: 5000, rent: [250, 500, 750, 1100, 1500, 2000, 2750] },
+  { name: "Guwahati", zone: 2, price: 4600, rent: [250, 450, 700, 1000, 1400, 1850, 2550] },
+  { name: "Patna", zone: 2, price: 4300, rent: [200, 450, 650, 950, 1300, 1700, 2350] },
+  { name: "Ranchi", zone: 2, price: 3800, rent: [200, 400, 550, 850, 1150, 1500, 2100] },
+  // West (zone 3)
+  { name: "Mumbai", zone: 3, price: 9500, rent: [500, 950, 1450, 2100, 2850, 3800, 5250] },
+  { name: "Pune", zone: 3, price: 6800, rent: [350, 700, 1000, 1500, 2050, 2700, 3750] },
+  { name: "Ahmedabad", zone: 3, price: 6200, rent: [300, 600, 950, 1350, 1850, 2500, 3400] },
+  { name: "Surat", zone: 3, price: 5500, rent: [300, 550, 850, 1200, 1650, 2200, 3000] },
+  { name: "Vadodara", zone: 3, price: 4400, rent: [200, 450, 650, 950, 1300, 1750, 2400] },
+  // Central (zone 4)
+  { name: "Indore", zone: 4, price: 5600, rent: [300, 550, 850, 1250, 1700, 2250, 3100] },
+  { name: "Bhopal", zone: 4, price: 4900, rent: [250, 500, 750, 1100, 1450, 1950, 2700] },
+  { name: "Nagpur", zone: 4, price: 4700, rent: [250, 450, 700, 1050, 1400, 1900, 2600] },
+  { name: "Raipur", zone: 4, price: 4000, rent: [200, 400, 600, 900, 1200, 1600, 2200] },
+  { name: "Jabalpur", zone: 4, price: 3500, rent: [200, 350, 500, 800, 1050, 1400, 1900] },
 ];
+
+export const UPGRADE_COST_RATIO = 0.1; // house/hotel cost per level = 10% of buy (tunable by harness)
+
+/** Cost to raise a city one level. Table gives no house cost, so derive from buy price. */
+export function upgradeCost(cityId: number): number {
+  return Math.round(CITIES[cityId].price * UPGRADE_COST_RATIO);
+}
 
 export const HUB_PRICE = 4500;
 export const HUB_RENT = [0, 750, 1500, 3000, 6000]; // indexed by hubs owner holds
@@ -146,7 +158,7 @@ export const MAX_ROUNDS = 12;
 export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;
 export const BLEND = 0.5;
-export const MAX_LEVEL = 4;
+export const MAX_LEVEL = 6; // base + 3 houses + 3 hotels (v2 rent ladder is length 7)
 export const UNMORTGAGE_RATE = 0.55; // half + 10% interest
 export const UPGRADE_SELL_RATIO = 0.5; // refund on forced upgrade sale during liquidation
 
@@ -356,9 +368,9 @@ describe("vyapaar board", () => {
   it("fills the remaining 25 tiles with cities cheapest-first by position", () => {
     const cityTiles = BOARD.filter((t) => t.kind === "city");
     expect(cityTiles).toHaveLength(25);
-    // cityId assigned in ascending board-position order, and CITIES is price-sorted
-    const ids = cityTiles.map((t) => t.cityId);
-    expect(ids).toEqual([...ids].sort((a, b) => (a as number) - (b as number)));
+    // Cheapest-first: buy price strictly increases along ascending board positions.
+    const prices = cityTiles.map((t) => CITIES[t.cityId as number].price);
+    for (let i = 1; i < prices.length; i++) expect(prices[i]).toBeGreaterThan(prices[i - 1]);
     for (const t of cityTiles) expect(CITY_POS[t.cityId as number]).toBe(t.pos);
     expect(CITIES).toHaveLength(25);
   });
@@ -419,8 +431,10 @@ function buildBoard(): { board: Tile[]; cityPos: number[] } {
   UPI_POS.forEach((p) => specials.set(p, "upi"));
   HEADLINE_POS.forEach((p) => specials.set(p, "headline"));
 
+  // CITIES is authored zone-grouped, so sort a copy by price for cheapest-first placement.
+  const byPrice = CITIES.map((_, id) => id).sort((a, b) => CITIES[a].price - CITIES[b].price);
   const cityPos: number[] = [];
-  let nextCity = 0; // CITIES is already price-sorted; assign cheapest-first by position
+  let nextCity = 0;
   for (let pos = 0; pos < 40; pos++) {
     const kind = specials.get(pos);
     if (kind === "hub") {
@@ -428,7 +442,7 @@ function buildBoard(): { board: Tile[]; cityPos: number[] } {
     } else if (kind) {
       board[pos] = { pos, kind };
     } else {
-      const cityId = nextCity++;
+      const cityId = byPrice[nextCity++];
       board[pos] = { pos, kind: "city", cityId };
       cityPos[cityId] = pos;
     }
@@ -661,9 +675,9 @@ git commit -m "feat(vyapaar): game state types and createGame"
 - Consumes: `data.ts`, `state.ts`.
 - Produces (pure functions over `GameState`):
   - `citiesOwned(s, seat): number[]` — cityIds owned by seat.
-  - `controlsSet(s, seat, group): boolean` — ≥ `SET_OWN_NEEDED` unmortgaged in the group.
-  - `controlledSets(s, seat): number` — count of controlled groups.
-  - `rentFor(s, cityId): number` — full rent incl. set-double, development, Scrappy-Landlord ×1.25.
+  - `controlsSet(s, seat, zone): boolean` — ≥ `SET_OWN_NEEDED` unmortgaged in the zone.
+  - `controlledSets(s, seat): number` — count of controlled zones.
+  - `rentFor(s, cityId): number` — full rent from the city's own ladder incl. zone-control base-double, development (`rent[level]`), Scrappy-Landlord ×1.25.
   - `hubRentFor(s, hubIndex): number` — `HUB_RENT[hubsOwnedByOwner]`.
   - `netWorth(s, seat): number` · `scoreOf(s, seat): number`.
   - `charge(s, from, amount, to): number` — moves money `from → to` with forced liquidation and shortfall-forgiveness; `to` is a seat index or `"pot"`. Returns the amount actually paid.
@@ -686,15 +700,15 @@ import {
   liquidate,
   citiesOwned,
 } from "@/modules/vyapaar/engine/helpers";
-import { CITIES, RENT, SET_BONUS_NW, BLEND } from "@/modules/vyapaar/engine/data";
+import { CITIES, SET_BONUS_NW, BLEND, upgradeCost } from "@/modules/vyapaar/engine/data";
 
-// Heritage group = cityIds 0..4.
+// North zone = cityIds 0..4 (authored zone-grouped).
 function own(s: ReturnType<typeof createGame>, seat: number, ids: number[]) {
   for (const id of ids) s.cities[id].owner = seat;
 }
 
 describe("helpers", () => {
-  it("detects set control at 3 of 5 unmortgaged", () => {
+  it("detects zone control at 3 of 5 unmortgaged", () => {
     const s = createGame(1, ["a", "b"]);
     own(s, 0, [0, 1]);
     expect(controlsSet(s, 0, 0)).toBe(false);
@@ -704,26 +718,26 @@ describe("helpers", () => {
     expect(controlsSet(s, 0, 0)).toBe(false); // mortgaged doesn't count
   });
 
-  it("computes rent: base, set-double, developed, and scrappy-landlord", () => {
+  it("computes rent: base, zone-double, developed, and scrappy-landlord", () => {
     const s = createGame(1, ["a", "b"]);
-    // Owner holds exactly 1 city (id 0) → not a set, ≤3 cities → scrappy ×1.25
+    // Owner holds exactly 1 city (id 0=Delhi) → not a set, ≤3 cities → scrappy ×1.25
     own(s, 0, [0]);
-    expect(rentFor(s, 0)).toBe(Math.round(RENT[0].s[0] * 1.25));
-    // Give owner 4 cities so scrappy no longer applies, but still no set on group 1
-    own(s, 0, [5, 6, 7]); // group 1, 3 cities → controls group 1
-    expect(rentFor(s, 5)).toBe(RENT[1].s[1]); // set-double base, >3 cities so no scrappy
-    // Develop city 5 to level 2 → s[level+1] = s[3]
-    s.cities[5].level = 2;
-    expect(rentFor(s, 5)).toBe(RENT[1].s[3]);
+    expect(rentFor(s, 0)).toBe(Math.round(CITIES[0].rent[0] * 1.25));
+    // 4 cities in North (0..3) → controls North AND >3 cities so no scrappy
+    own(s, 0, [1, 2, 3]);
+    expect(rentFor(s, 0)).toBe(CITIES[0].rent[0] * 2); // zone control doubles undeveloped base
+    // Develop city 0 to level 2 → rent[2]
+    s.cities[0].level = 2;
+    expect(rentFor(s, 0)).toBe(CITIES[0].rent[2]);
     // Mortgaged → 0
-    s.cities[5].mortgaged = true;
-    expect(rentFor(s, 5)).toBe(0);
+    s.cities[0].mortgaged = true;
+    expect(rentFor(s, 0)).toBe(0);
   });
 
   it("net worth and score use the documented formula", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].cash = 1000;
-    own(s, 0, [0, 1, 2]); // Heritage set (3 cities) → controlledSets = 1
+    own(s, 0, [0, 1, 2]); // North set (3 cities) → controlledSets = 1
     const price = CITIES[0].price + CITIES[1].price + CITIES[2].price;
     const nw = 1000 + price * 0.5 + SET_BONUS_NW * 1;
     expect(netWorth(s, 0)).toBe(nw);
@@ -735,12 +749,12 @@ describe("helpers", () => {
   it("charge liquidates then forgives an unpayable shortfall", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].cash = 100;
-    own(s, 0, [0]); // Varanasi price 900 → mortgage raises 450
-    const paid = charge(s, 0, 5000, "pot"); // owes 5000, can raise 100+450=550
-    expect(paid).toBe(550);
+    own(s, 0, [24]); // Jabalpur price 3500 → mortgage raises floor(3500/2)=1750
+    const paid = charge(s, 0, 5000, "pot"); // owes 5000, can raise 100+1750=1850
+    expect(paid).toBe(1850);
     expect(s.players[0].cash).toBe(0);
-    expect(s.cities[0].mortgaged).toBe(true);
-    expect(s.pot).toBe(550);
+    expect(s.cities[24].mortgaged).toBe(true);
+    expect(s.pot).toBe(1850);
   });
 
   it("liquidate sells the tallest upgrades before mortgaging", () => {
@@ -750,7 +764,7 @@ describe("helpers", () => {
     s.cities[0].level = 2;
     liquidate(s, 0, 1); // needs only a little → sells one upgrade off the tallest
     expect(s.cities[0].level).toBe(1);
-    expect(s.players[0].cash).toBeGreaterThan(0);
+    expect(s.players[0].cash).toBe(Math.floor(upgradeCost(0) * 0.5));
   });
 });
 ```
@@ -766,12 +780,13 @@ Expected: FAIL — module not found.
 // src/modules/vyapaar/engine/helpers.ts
 import {
   CITIES,
-  RENT,
+  ZONES,
   HUB_RENT,
   SET_OWN_NEEDED,
   SET_BONUS_NW,
   BLEND,
   UPGRADE_SELL_RATIO,
+  upgradeCost,
 } from "./data";
 import type { GameState } from "./state";
 
@@ -781,29 +796,29 @@ export function citiesOwned(s: GameState, seat: number): number[] {
   return out;
 }
 
-export function controlsSet(s: GameState, seat: number, group: number): boolean {
+export function controlsSet(s: GameState, seat: number, zone: number): boolean {
   let n = 0;
   for (let id = 0; id < CITIES.length; id++) {
     const c = s.cities[id];
-    if (CITIES[id].group === group && c.owner === seat && !c.mortgaged) n++;
+    if (CITIES[id].zone === zone && c.owner === seat && !c.mortgaged) n++;
   }
   return n >= SET_OWN_NEEDED;
 }
 
 export function controlledSets(s: GameState, seat: number): number {
   let n = 0;
-  for (let g = 0; g < RENT.length; g++) if (controlsSet(s, seat, g)) n++;
+  for (let z = 0; z < ZONES.length; z++) if (controlsSet(s, seat, z)) n++;
   return n;
 }
 
 export function rentFor(s: GameState, cityId: number): number {
   const c = s.cities[cityId];
   if (c.owner === null || c.mortgaged) return 0;
-  const g = CITIES[cityId].group;
+  const ladder = CITIES[cityId].rent; // levels 0..6
   let rent: number;
-  if (c.level >= 1) rent = RENT[g].s[c.level + 1];
-  else if (controlsSet(s, c.owner, g)) rent = RENT[g].s[1];
-  else rent = RENT[g].s[0];
+  if (c.level >= 1) rent = ladder[c.level];
+  else if (controlsSet(s, c.owner, CITIES[cityId].zone)) rent = ladder[0] * 2; // zone control doubles undeveloped base
+  else rent = ladder[0];
   // Scrappy Landlord: owner holds ≤3 cities total → ×1.25
   if (citiesOwned(s, c.owner).length <= 3) rent = Math.round(rent * 1.25);
   return rent;
@@ -825,7 +840,7 @@ export function netWorth(s: GameState, seat: number): number {
     const c = s.cities[id];
     if (c.owner !== seat) continue;
     nw += CITIES[id].price * (c.mortgaged ? 0.35 : 0.5);
-    nw += c.level * RENT[CITIES[id].group].up * 0.5;
+    nw += c.level * upgradeCost(id) * 0.5;
   }
   nw += hubsOwned(s, seat) * 4500 * 0.5;
   nw += controlledSets(s, seat) * SET_BONUS_NW;
@@ -855,7 +870,7 @@ export function liquidate(s: GameState, seat: number, need: number): void {
     }
     if (best < 0) break;
     s.cities[best].level--;
-    s.players[seat].cash += Math.floor(RENT[CITIES[best].group].up * UPGRADE_SELL_RATIO);
+    s.players[seat].cash += Math.floor(upgradeCost(best) * UPGRADE_SELL_RATIO);
   }
   // 2. Mortgage undeveloped, unmortgaged cities.
   for (const id of citiesOwned(s, seat)) {
@@ -910,7 +925,7 @@ git commit -m "feat(vyapaar): money/ownership/rent/score helpers"
 - `feePerCity` → active pays `val * citiesOwned(active).length` to the pot.
 - `feeToPot` → active pays `val` to the pot.
 - `startup` → active `+val` cash; `startupLaps = 3`, `startupPenalty = 300`.
-- `perHeritage` → active `+val * (Heritage cities owned)` (group 0).
+- `perHeritage` → active `+val * (North-zone cities owned)` (zone 0 — v2 has no "Heritage" group).
 - `perSet` → active `+val * controlledSets(active)`.
 - `skipNext` → active `halted += 1`.
 - `freeUpgrade` → auto-apply one legal even-build upgrade in a controlled set (cheapest legal city, level up by 1, free); no-op if none legal. Also increments `freeUpgrades` for audit.
@@ -991,19 +1006,19 @@ Expected: FAIL — module not found.
 
 ```ts
 // src/modules/vyapaar/engine/cards.ts
-import { CITIES, RENT, HEADLINE, UPI, MAX_LEVEL } from "./data";
+import { CITIES, ZONES, HEADLINE, UPI, MAX_LEVEL } from "./data";
 import type { Card } from "./data";
 import type { GameState, EngineEvent } from "./state";
 import { shuffle } from "./rng";
 import { credit, charge, citiesOwned, controlsSet, controlledSets } from "./helpers";
 
-/** Lowest even-build-legal level among owned cities of a controlled group, for a free build. */
+/** Lowest even-build-legal level among owned cities of a controlled zone, for a free build. */
 function firstFreeUpgradeCity(s: GameState, seat: number): number | null {
   let best: number | null = null;
-  for (let g = 0; g < RENT.length; g++) {
-    if (!controlsSet(s, seat, g)) continue;
+  for (let z = 0; z < ZONES.length; z++) {
+    if (!controlsSet(s, seat, z)) continue;
     const ids = citiesOwned(s, seat).filter(
-      (id) => CITIES[id].group === g && !s.cities[id].mortgaged,
+      (id) => CITIES[id].zone === z && !s.cities[id].mortgaged,
     );
     const minLevel = Math.min(...ids.map((id) => s.cities[id].level));
     for (const id of ids) {
@@ -1044,7 +1059,8 @@ export function applyCard(s: GameState, card: Card): EngineEvent[] {
       s.players[seat].startupPenalty = 300;
       break;
     case "perHeritage": {
-      const n = citiesOwned(s, seat).filter((id) => CITIES[id].group === 0).length;
+      // v2 has no "Heritage" group; the tourism card now counts North-zone (zone 0) cities.
+      const n = citiesOwned(s, seat).filter((id) => CITIES[id].zone === 0).length;
       credit(s, seat, val * n);
       break;
     }
@@ -1423,21 +1439,21 @@ function landActiveOnCity(s: ReturnType<typeof createGame>, cityId: number) {
 describe("buy / decline / auction", () => {
   it("buys the pending city and deducts its price", () => {
     const s = createGame(1, ["a", "b"]);
-    landActiveOnCity(s, 0);
+    landActiveOnCity(s, 24); // Jabalpur 3500 (affordable on the 7500 default)
     const r = applyIntent(s, 0, { type: "buy" });
     expect("state" in r).toBe(true);
-    expect(s.cities[0].owner).toBe(0);
-    expect(s.players[0].cash).toBe(7500 - CITIES[0].price);
+    expect(s.cities[24].owner).toBe(0);
+    expect(s.players[0].cash).toBe(7500 - CITIES[24].price);
     expect(s.phase).toBe("manage");
   });
 
   it("rejects buying when short on cash", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].cash = 10;
-    landActiveOnCity(s, 24); // Mumbai 9500
+    landActiveOnCity(s, 0); // Delhi 9000
     const r = applyIntent(s, 0, { type: "buy" });
     expect("error" in r).toBe(true);
-    expect(s.cities[24].owner).toBeNull();
+    expect(s.cities[0].owner).toBeNull();
   });
 
   it("declining a city opens an auction; highest bid wins and pays", () => {
@@ -1607,7 +1623,7 @@ git commit -m "feat(vyapaar): buy, decline, and sealed-bid auctions"
 - Produces: handlers for `develop`, `mortgage`, `unmortgage`. Internal `minSetLevel(s, seat, group)`.
 
 **Design notes:**
-- `develop` (active, phase `roll` or `manage`): city owned by active; `controlsSet(active, group)` true; not mortgaged; `level < MAX_LEVEL`; **even-building** — `level` must equal the minimum unmortgaged level in that group (can't exceed min). Cost `RENT[group].up`; require cash ≥ cost; deduct; `level++`.
+- `develop` (active, phase `roll` or `manage`): city owned by active; `controlsSet(active, zone)` true; not mortgaged; `level < MAX_LEVEL` (=6); **even-building** — `level` must equal the minimum unmortgaged level in that zone (can't exceed min). Cost `upgradeCost(cityId)`; require cash ≥ cost; deduct; `level++`.
 - `mortgage` (active, phase `roll` or `manage`): owned by active; `level === 0`; not mortgaged. `cash += floor(price/2)`; `mortgaged = true`.
 - `unmortgage` (active, phase `roll` or `manage`): owned by active; mortgaged. cost `round(price * UNMORTGAGE_RATE)`; require cash ≥ cost; deduct; `mortgaged = false`.
 - Validate `cityId` is an integer in `0..24` first; else `{ error: "bad_city" }`.
@@ -1619,20 +1635,20 @@ git commit -m "feat(vyapaar): buy, decline, and sealed-bid auctions"
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { CITIES, RENT, UNMORTGAGE_RATE } from "@/modules/vyapaar/engine/data";
+import { CITIES, UNMORTGAGE_RATE, upgradeCost } from "@/modules/vyapaar/engine/data";
 
-function ownHeritageSet(s: ReturnType<typeof createGame>) {
+function ownNorthSet(s: ReturnType<typeof createGame>) {
   s.cities[0].owner = 0;
   s.cities[1].owner = 0;
-  s.cities[2].owner = 0; // controls group 0
+  s.cities[2].owner = 0; // controls North (zone 0)
   s.phase = "manage";
 }
 
 describe("develop / mortgage", () => {
   it("develops only on a controlled set, enforcing even-building", () => {
     const s = createGame(1, ["a", "b"]);
-    ownHeritageSet(s);
-    const cost = RENT[0].up;
+    ownNorthSet(s);
+    const cost = upgradeCost(0);
     const r = applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect("state" in r).toBe(true);
     expect(s.cities[0].level).toBe(1);
@@ -1653,7 +1669,7 @@ describe("develop / mortgage", () => {
 
   it("mortgages an undeveloped city for half price and blocks mortgaging a developed one", () => {
     const s = createGame(1, ["a", "b"]);
-    ownHeritageSet(s);
+    ownNorthSet(s);
     applyIntent(s, 0, { type: "mortgage", cityId: 1 });
     expect(s.cities[1].mortgaged).toBe(true);
     expect(s.players[0].cash).toBe(7500 + Math.floor(CITIES[1].price / 2));
@@ -1695,16 +1711,16 @@ Expected: FAIL — handlers return `not_implemented`.
 Add imports (merge into existing `./data` and `./helpers` imports):
 
 ```ts
-import { RENT, MAX_LEVEL, UNMORTGAGE_RATE } from "./data";
+import { MAX_LEVEL, UNMORTGAGE_RATE, upgradeCost } from "./data";
 import { controlsSet, citiesOwned } from "./helpers";
 ```
 
 Add a helper above `applyIntent`:
 
 ```ts
-function minSetLevel(s: GameState, seat: number, group: number): number {
+function minSetLevel(s: GameState, seat: number, zone: number): number {
   const ids = citiesOwned(s, seat).filter(
-    (id) => CITIES[id].group === group && !s.cities[id].mortgaged,
+    (id) => CITIES[id].zone === zone && !s.cities[id].mortgaged,
   );
   return ids.length ? Math.min(...ids.map((id) => s.cities[id].level)) : 0;
 }
@@ -1722,13 +1738,13 @@ Add these cases to the switch (before `default`):
       const id = intent.cityId;
       if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
       const c = s.cities[id];
-      const g = CITIES[id].group;
+      const z = CITIES[id].zone;
       if (c.owner !== seat) return { error: "not_owner" };
       if (c.mortgaged) return { error: "mortgaged" };
-      if (!controlsSet(s, seat, g)) return { error: "no_set_control" };
+      if (!controlsSet(s, seat, z)) return { error: "no_set_control" };
       if (c.level >= MAX_LEVEL) return { error: "max_level" };
-      if (c.level > minSetLevel(s, seat, g)) return { error: "uneven_build" };
-      const cost = RENT[g].up;
+      if (c.level > minSetLevel(s, seat, z)) return { error: "uneven_build" };
+      const cost = upgradeCost(id);
       if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
       s.players[seat].cash -= cost;
       c.level++;
@@ -1806,8 +1822,8 @@ import { applyIntent } from "@/modules/vyapaar/engine/engine";
 describe("trades", () => {
   it("swaps cities and settles net cash on accept", () => {
     const s = createGame(1, ["a", "b"]);
-    s.cities[0].owner = 0; // a owns Varanasi
-    s.cities[6].owner = 1; // b owns Lucknow
+    s.cities[0].owner = 0; // a owns Delhi (cityId 0)
+    s.cities[6].owner = 1; // b owns Hyderabad (cityId 6)
     const r = applyIntent(s, 0, {
       type: "propose_trade",
       to: 1,
@@ -2389,8 +2405,8 @@ git commit -m "test(vyapaar): determinism replay + money-conservation invariant"
 
 ## Self-Review
 
-**Spec coverage (design §1 "Engine"):**
-- `data.ts` (all constants, both decks) → Task 1. ✓
+**Spec coverage (design §1 "Engine" + 2026-08-24 v2 data addendum):**
+- `data.ts` (v2 zoned per-city rent ladders, derived `upgradeCost`, `MAX_LEVEL=6`, both decks) → Task 1. ✓
 - `rng.ts` (seeded PRNG in state) → Task 2. ✓
 - `board.ts` (40-tile build) → Task 3. ✓
 - `state.ts` + `createGame` (2–6 players, seeded decks) → Task 4. ✓
@@ -2414,3 +2430,5 @@ git commit -m "test(vyapaar): determinism replay + money-conservation invariant"
 - `MONSOON_PAY` is defined but unused (landing on monsoon is "just visiting"); kept for balance tuning.
 - `UPGRADE_SELL_RATIO` (0.5) and forced-sale refund are a reasonable default the source spec did not pin down; the balance harness phase can tune it in `data.ts`.
 - `freeUpgrades` is auto-applied immediately (no extra player decision) for determinism; the counter is kept for audit only.
+- **v2 economy is unvalidated.** `UPGRADE_COST_RATIO = 0.1` (house cost = 10% of buy) is a derived default — the table gives no house cost. Zone control still doubles undeveloped base rent (no explicit column in the table). Salary/MAX_ROUNDS/opening-cash were validated for the OLD Appendix-A economy, not these numbers → the **M5 balance harness must re-validate and will likely tune `data.ts`**.
+- The UPI "tourism" card (`perHeritage`) now counts **North-zone** cities — v2 has no "Heritage" group.
