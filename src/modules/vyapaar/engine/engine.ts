@@ -4,6 +4,8 @@ import {
   GST_RATE,
   GST_CAP,
   TAX_INCOME,
+  CITIES,
+  HUB_PRICE,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
 import { BOARD } from "./board";
@@ -136,6 +138,29 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
   }
 }
 
+function resolveAuction(s: GameState, events: EngineEvent[]): void {
+  const a = s.auction!;
+  let winner = -1;
+  let best = 0;
+  a.bids.forEach((bid, seat) => {
+    const amt = bid ?? 0;
+    if (amt > best) {
+      best = amt;
+      winner = seat;
+    }
+  });
+  if (winner >= 0 && best > 0) {
+    s.players[winner].cash -= best;
+    s.cities[a.cityId].owner = winner;
+    events.push({ type: "auction_won", seat: winner, cityId: a.cityId, amount: best });
+  } else {
+    events.push({ type: "auction_passed", cityId: a.cityId });
+  }
+  s.auction = null;
+  s.pendingCity = null;
+  finishSegment(s);
+}
+
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
@@ -179,6 +204,59 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       resolveTile(s, events);
       return { state: s, events };
     }
+    case "buy": {
+      if (s.phase !== "buy") return { error: "nothing_to_buy" };
+      if (s.pendingCity !== null) {
+        const id = s.pendingCity;
+        const cost = CITIES[id].price;
+        if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
+        s.players[seat].cash -= cost;
+        s.cities[id].owner = seat;
+        s.pendingCity = null;
+        events.push({ type: "buy", seat, cityId: id, amount: cost });
+        finishSegment(s);
+        return { state: s, events };
+      }
+      if (s.pendingHub !== null) {
+        const hi = s.pendingHub;
+        if (s.players[seat].cash < HUB_PRICE) return { error: "insufficient_funds" };
+        s.players[seat].cash -= HUB_PRICE;
+        s.hubs[hi] = seat;
+        s.pendingHub = null;
+        events.push({ type: "buy_hub", seat, hubIndex: hi, amount: HUB_PRICE });
+        finishSegment(s);
+        return { state: s, events };
+      }
+      return { error: "nothing_to_buy" };
+    }
+
+    case "decline": {
+      if (s.phase !== "buy") return { error: "nothing_to_decline" };
+      if (s.pendingHub !== null) {
+        s.pendingHub = null; // hubs are not auctioned
+        finishSegment(s);
+        return { state: s, events };
+      }
+      if (s.pendingCity !== null) {
+        s.auction = { cityId: s.pendingCity, bids: s.players.map(() => null) };
+        s.phase = "auction";
+        events.push({ type: "auction_start", cityId: s.pendingCity });
+        return { state: s, events };
+      }
+      return { error: "nothing_to_decline" };
+    }
+
+    case "bid": {
+      if (s.phase !== "auction" || !s.auction) return { error: "no_auction" };
+      if (!Number.isInteger(intent.amount) || intent.amount < 0) return { error: "bad_bid" };
+      if (intent.amount > s.players[seat].cash) return { error: "bid_exceeds_cash" };
+      if (s.auction.bids[seat] !== null) return { error: "already_bid" };
+      s.auction.bids[seat] = intent.amount;
+      events.push({ type: "bid", seat, amount: intent.amount });
+      if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
+      return { state: s, events };
+    }
+
     default:
       return { error: "not_implemented" };
   }
