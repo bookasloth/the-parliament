@@ -6,6 +6,9 @@ import {
   TAX_INCOME,
   CITIES,
   HUB_PRICE,
+  MAX_LEVEL,
+  UNMORTGAGE_RATE,
+  upgradeCost,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
 import { BOARD } from "./board";
@@ -16,6 +19,8 @@ import {
   netWorth,
   charge,
   credit,
+  controlsSet,
+  citiesOwned,
 } from "./helpers";
 import { drawCard } from "./cards";
 
@@ -161,6 +166,17 @@ function resolveAuction(s: GameState, events: EngineEvent[]): void {
   finishSegment(s);
 }
 
+function minSetLevel(s: GameState, seat: number, zone: number): number {
+  const ids = citiesOwned(s, seat).filter(
+    (id) => CITIES[id].zone === zone && !s.cities[id].mortgaged,
+  );
+  return ids.length ? Math.min(...ids.map((id) => s.cities[id].level)) : 0;
+}
+
+function canManage(s: GameState): boolean {
+  return s.phase === "roll" || s.phase === "manage";
+}
+
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
@@ -254,6 +270,55 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       s.auction.bids[seat] = intent.amount;
       events.push({ type: "bid", seat, amount: intent.amount });
       if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
+      return { state: s, events };
+    }
+
+    case "develop": {
+      if (!canManage(s)) return { error: "cannot_manage_now" };
+      const id = intent.cityId;
+      if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
+      const c = s.cities[id];
+      const z = CITIES[id].zone;
+      if (c.owner !== seat) return { error: "not_owner" };
+      if (c.mortgaged) return { error: "mortgaged" };
+      if (!controlsSet(s, seat, z)) return { error: "no_set_control" };
+      if (c.level >= MAX_LEVEL) return { error: "max_level" };
+      if (c.level > minSetLevel(s, seat, z)) return { error: "uneven_build" };
+      const cost = upgradeCost(id);
+      if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
+      s.players[seat].cash -= cost;
+      c.level++;
+      events.push({ type: "develop", seat, cityId: id, level: c.level, amount: cost });
+      return { state: s, events };
+    }
+
+    case "mortgage": {
+      if (!canManage(s)) return { error: "cannot_manage_now" };
+      const id = intent.cityId;
+      if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
+      const c = s.cities[id];
+      if (c.owner !== seat) return { error: "not_owner" };
+      if (c.level !== 0) return { error: "sell_upgrades_first" };
+      if (c.mortgaged) return { error: "already_mortgaged" };
+      const raise = Math.floor(CITIES[id].price / 2);
+      s.players[seat].cash += raise;
+      c.mortgaged = true;
+      events.push({ type: "mortgage", seat, cityId: id, amount: raise });
+      return { state: s, events };
+    }
+
+    case "unmortgage": {
+      if (!canManage(s)) return { error: "cannot_manage_now" };
+      const id = intent.cityId;
+      if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
+      const c = s.cities[id];
+      if (c.owner !== seat) return { error: "not_owner" };
+      if (!c.mortgaged) return { error: "not_mortgaged" };
+      const cost = Math.round(CITIES[id].price * UNMORTGAGE_RATE);
+      if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
+      s.players[seat].cash -= cost;
+      c.mortgaged = false;
+      events.push({ type: "unmortgage", seat, cityId: id, amount: cost });
       return { state: s, events };
     }
 
