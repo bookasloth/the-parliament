@@ -11,6 +11,7 @@ import {
   upgradeCost,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
+import type { TradeSide } from "./state";
 import { BOARD } from "./board";
 import { rollDie } from "./rng";
 import {
@@ -177,6 +178,20 @@ function canManage(s: GameState): boolean {
   return s.phase === "roll" || s.phase === "manage";
 }
 
+function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
+  if (!Number.isInteger(side.cash) || side.cash < 0) return false;
+  if (side.cash > s.players[seat].cash) return false;
+  const seen = new Set<number>();
+  for (const id of side.cities) {
+    if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return false;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    const c = s.cities[id];
+    if (c.owner !== seat || c.level !== 0 || c.mortgaged) return false;
+  }
+  return true;
+}
+
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
@@ -319,6 +334,42 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       s.players[seat].cash -= cost;
       c.mortgaged = false;
       events.push({ type: "unmortgage", seat, cityId: id, amount: cost });
+      return { state: s, events };
+    }
+
+    case "propose_trade": {
+      if (s.trade !== null) return { error: "trade_pending" };
+      const to = intent.to;
+      if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat) {
+        return { error: "bad_recipient" };
+      }
+      if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
+      if (!validTradeSide(s, to, intent.get)) return { error: "bad_get" };
+      s.trade = { from: seat, to, give: intent.give, get: intent.get };
+      events.push({ type: "trade_proposed", seat, to });
+      return { state: s, events };
+    }
+
+    case "respond_trade": {
+      if (!s.trade) return { error: "no_trade" };
+      if (seat !== s.trade.to) return { error: "not_recipient" };
+      const t = s.trade;
+      if (!intent.accept) {
+        s.trade = null;
+        events.push({ type: "trade_declined", seat });
+        return { state: s, events };
+      }
+      // Atomic re-validation — assets may have changed since the proposal.
+      if (!validTradeSide(s, t.from, t.give) || !validTradeSide(s, t.to, t.get)) {
+        s.trade = null;
+        return { error: "trade_invalid" };
+      }
+      for (const id of t.give.cities) s.cities[id].owner = t.to;
+      for (const id of t.get.cities) s.cities[id].owner = t.from;
+      s.players[t.from].cash += t.get.cash - t.give.cash;
+      s.players[t.to].cash += t.give.cash - t.get.cash;
+      s.trade = null;
+      events.push({ type: "trade_accepted", from: t.from, to: t.to });
       return { state: s, events };
     }
 
