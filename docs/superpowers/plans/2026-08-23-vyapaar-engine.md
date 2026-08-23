@@ -1242,7 +1242,7 @@ function isUnderdog(s: GameState, seat: number): boolean {
   const mine = nws[seat];
   const max = Math.max(...nws);
   if (max <= 0) return false;
-  const isMin = nws.every((v, i) => i === seat || v >= mine) && nws.some((v, i) => i !== seat && v > mine);
+  const isMin = nws.every((v, i) => i === seat || mine < v); // strict unique minimum
   return isMin && mine < 0.6 * max;
 }
 
@@ -1280,6 +1280,7 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
     case "taxraid":
       s.players[seat].pos = 10;
       s.players[seat].halted = 2;
+      s.players[seat].doubles = 0;
       s.pendingDouble = false;
       events.push({ type: "taxraid", seat });
       s.phase = "manage";
