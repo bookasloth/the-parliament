@@ -4,6 +4,8 @@ import { ensureVyapaarEnrollment } from "./wallet"
 import { createGame } from "./engine/state"
 import type { GameState, Intent } from "./engine/state"
 import { applyIntent } from "./engine/engine"
+import { publicView, type PublicView } from "./engine/view"
+import { scoreOf, netWorth, controlledSets } from "./engine/helpers"
 import crypto from "node:crypto"
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
@@ -73,4 +75,97 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     prisma.vyapaarRoom.update({ where: { id: room.id }, data: { status: "in_game" } }),
   ])
   return { matchId: match.id }
+}
+
+/** Seats ordered best-first: score desc, then controlledSets desc, then seat asc. */
+function rankSeats(state: GameState): number[] {
+  return state.players
+    .map((_, seat) => seat)
+    .sort((a, b) => {
+      const sa = scoreOf(state, a), sb = scoreOf(state, b)
+      if (sb !== sa) return sb - sa
+      const ca = controlledSets(state, a), cb = controlledSets(state, b)
+      if (cb !== ca) return cb - ca
+      return a - b
+    })
+}
+
+/** Set final wallets/placements/stats from the ended game state. One `$transaction` with the caller. */
+async function settleMatch(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  matchId: string,
+  state: GameState,
+  players: { userId: string; seat: number; openingCash: number }[],
+): Promise<void> {
+  const order = rankSeats(state)
+  const placementBySeat = new Map<number, number>()
+  order.forEach((seat, i) => placementBySeat.set(seat, i + 1))
+
+  for (const p of players) {
+    const resultCash = state.players[p.seat].cash
+    await tx.vyapaarMatchPlayer.update({
+      where: { matchId_seat: { matchId, seat: p.seat } },
+      data: { resultCash, placement: placementBySeat.get(p.seat)! },
+    })
+    // VyapaarLedger has no matchId column (M1 schema: userId/delta/reason/refId) — refId carries the match id.
+    await tx.vyapaarLedger.create({
+      data: { userId: p.userId, delta: resultCash - p.openingCash, reason: "game_settlement", refId: matchId },
+    })
+    await tx.user.update({
+      where: { id: p.userId },
+      data: {
+        vyapaarWallet: resultCash,
+        vyapaarGamesPlayed: { increment: 1 },
+        vyapaarWins: p.seat === state.winner ? { increment: 1 } : undefined,
+      },
+    })
+    // bestNetWorth is a max against the current value — guarded conditional update.
+    const nw = Math.round(netWorth(state, p.seat))
+    await tx.user.updateMany({
+      where: { id: p.userId, vyapaarBestNetWorth: { lt: nw } },
+      data: { vyapaarBestNetWorth: nw },
+    })
+  }
+}
+
+export async function applyMatchIntent(
+  userId: string,
+  matchId: string,
+  intent: Intent,
+): Promise<{ view: PublicView } | { error: string }> {
+  const match = await prisma.vyapaarMatch.findUnique({
+    where: { id: matchId },
+    select: {
+      id: true, roomId: true, status: true, state: true, actionLog: true,
+      players: { select: { userId: true, seat: true, openingCash: true } },
+    },
+  })
+  if (!match || match.status !== "active") throw new ForbiddenError("Match not found")
+  const me = match.players.find((p) => p.userId === userId)
+  if (!me) throw new ForbiddenError("not_a_player")
+
+  const state = match.state as unknown as GameState
+  const r = applyIntent(state, me.seat, intent)
+  if ("error" in r) return { error: r.error }
+
+  const log = [...(match.actionLog as { seat: number; intent: Intent }[]), { seat: me.seat, intent }]
+  await prisma.$transaction(async (tx) => {
+    await tx.vyapaarMatch.update({
+      where: { id: matchId },
+      data: {
+        state: r.state as unknown as object,
+        actionLog: log as unknown as object,
+        activeSeat: r.state.active,
+        ...(r.state.ended
+          ? { status: "over", winnerSeat: r.state.winner, endedAt: new Date() }
+          : {}),
+      },
+    })
+    if (r.state.ended) {
+      await settleMatch(tx, matchId, r.state, match.players)
+      // Reopen the room for a rematch.
+      await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
+    }
+  })
+  return { view: publicView(r.state, me.seat) }
 }
