@@ -228,9 +228,11 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       const isDouble = a === b;
       events.push({ type: "roll", seat, a, b });
 
+      let brokeOut = false;
       if (p.halted > 0) {
         if (isDouble) {
           p.halted = 0;
+          brokeOut = true;
         } else {
           p.halted--;
           s.pendingDouble = false;
@@ -239,9 +241,11 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
         }
       }
 
-      p.doubles += isDouble ? 1 : 0;
-      s.pendingDouble = isDouble;
-      if (isDouble && p.doubles >= 3) {
+      // Jail-break roll on doubles: player moves this roll but gets no bonus
+      // re-roll, and it doesn't count toward the 3-doubles jail rule.
+      if (!brokeOut) p.doubles += isDouble ? 1 : 0;
+      s.pendingDouble = isDouble && !brokeOut;
+      if (!brokeOut && isDouble && p.doubles >= 3) {
         p.pos = 10;
         p.halted = 2;
         p.doubles = 0;
