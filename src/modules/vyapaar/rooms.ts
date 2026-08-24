@@ -6,31 +6,32 @@ import { MAX_SEATS, ROOM_TTL_DAYS } from "@/config/vyapaar-rooms"
 
 type Visibility = "private" | "public"
 
-async function uniqueCode(): Promise<string> {
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const code = generateRoomCode()
-    const clash = await prisma.vyapaarRoom.findFirst({
-      where: { code, status: { in: ["open", "in_game"] } },
-      select: { id: true },
-    })
-    if (!clash) return code
-  }
-  throw new Error("could not allocate a unique room code")
+function isUniqueViolation(e: unknown): boolean {
+  return !!e && typeof e === "object" && (e as { code?: string }).code === "P2002"
 }
 
 export async function createRoom(userId: string, visibility: Visibility): Promise<{ code: string }> {
   await ensureVyapaarEnrollment(userId)
-  const code = await uniqueCode()
-  await prisma.vyapaarRoom.create({
-    data: {
-      code,
-      hostId: userId,
-      visibility,
-      status: "open",
-      members: { create: { userId, seat: 0 } },
-    },
-  })
-  return { code }
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const code = generateRoomCode()
+    try {
+      await prisma.vyapaarRoom.create({
+        data: {
+          code,
+          hostId: userId,
+          visibility,
+          status: "open",
+          members: { create: { userId, seat: 0 } },
+        },
+      })
+      return { code }
+    } catch (e) {
+      // code is globally @unique — a clash (incl. a long-expired room, or a
+      // concurrent create) means retry with a fresh code, not a pre-check.
+      if (!isUniqueViolation(e) || attempt === 5) throw e
+    }
+  }
+  throw new Error("could not allocate a unique room code")
 }
 
 export async function joinRoom(userId: string, code: string): Promise<{ seat: number }> {
@@ -42,7 +43,10 @@ export async function joinRoom(userId: string, code: string): Promise<{ seat: nu
     })
     if (!room || room.status === "expired") throw new ForbiddenError("Room not found")
     const mine = room.members.find((m) => m.userId === userId)
-    if (mine) return { seat: mine.seat } // rejoin resumes seat
+    if (mine) {
+      await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
+      return { seat: mine.seat } // rejoin resumes seat
+    }
     const seat = lowestFreeSeat(room.members.map((m) => m.seat))
     if (seat === null) throw new ForbiddenError("Room is full")
     await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId, seat } })
@@ -71,13 +75,15 @@ export async function leaveRoom(userId: string, roomId: string): Promise<void> {
 }
 
 export async function setRoomVisibility(userId: string, roomId: string, visibility: Visibility): Promise<void> {
-  const room = await prisma.vyapaarRoom.findUnique({ where: { id: roomId }, select: { hostId: true } })
-  if (!room) throw new ForbiddenError("Room not found")
-  if (room.hostId !== userId) throw new ForbiddenError("Only the host can change visibility")
-  await prisma.vyapaarRoom.update({ where: { id: roomId }, data: { visibility } })
+  // Atomic check-and-update: a findUnique-then-update would race a concurrent
+  // host handoff and let a stale host slip through between the two calls.
+  const res = await prisma.vyapaarRoom.updateMany({ where: { id: roomId, hostId: userId }, data: { visibility } })
+  if (res.count === 0) throw new ForbiddenError("Only the host can change visibility")
 }
 
 export async function listPublicRooms() {
+  // ponytail: JS-filter full rooms after take:100 — fine at launch scale; add
+  // a denormalized seatCount column + where-filter if public-room volume grows.
   const rooms = await prisma.vyapaarRoom.findMany({
     where: { status: "open", visibility: "public" },
     orderBy: { lastActiveAt: "desc" },
@@ -86,11 +92,11 @@ export async function listPublicRooms() {
       host: { select: { displayName: true, legalName: true } },
       _count: { select: { members: true } },
     },
-    take: 50,
+    take: 100,
   })
   return rooms
     .filter((r) => r._count.members < MAX_SEATS)
-    .map((r) => ({ code: r.code, host: r.host.displayName ?? r.host.legalName, seats: r._count.members }))
+    .map((r) => ({ code: r.code, host: r.host.displayName || r.host.legalName, seats: r._count.members }))
 }
 
 export async function getRoom(code: string) {
