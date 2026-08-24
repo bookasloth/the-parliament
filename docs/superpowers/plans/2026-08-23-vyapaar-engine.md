@@ -2436,3 +2436,19 @@ git commit -m "test(vyapaar): determinism replay + money-conservation invariant"
 - `freeUpgrades` is auto-applied immediately (no extra player decision) for determinism; the counter is kept for audit only.
 - **v2 economy is unvalidated.** `UPGRADE_COST_RATIO = 0.1` (house cost = 10% of buy) is a derived default — the table gives no house cost. Zone control still doubles undeveloped base rent (no explicit column in the table). Salary/MAX_ROUNDS/opening-cash were validated for the OLD Appendix-A economy, not these numbers → the **M5 balance harness must re-validate and will likely tune `data.ts`**.
 - The UPI "tourism" card (`perHeritage`) now counts **North-zone** cities — v2 has no "Heritage" group.
+
+## Post-implementation amendments (from review)
+
+- **Task 5/7/13 — forced liquidation is now event-tagged.** `helpers.liquidate` and
+  `charge` take an optional `events?: EngineEvent[]`; each forced upgrade-sale pushes
+  `forced_sale` and each forced mortgage pushes `forced_mortgage`. Every `charge(...)`
+  call site in `resolveTile` (gst/income/hub_rent/rent) and `applyCard`
+  (collectEach/feePerCity/feeToPot) threads its `events` array through. This makes the
+  money-conservation invariant *sound*: the mint that `liquidate` performs is now
+  visible in the event stream instead of being an invisible increase to `Σcash+pot`.
+- **Task 13 — the conservation test is no longer vacuous.** The determinism/fuzz driver
+  is a deterministic buy-capable stepper (buy if affordable, else decline) run at a low
+  opening stack so ownership, rent, and forced liquidation actually occur; the test
+  asserts ≥1 rent/hub_rent event AND ≥1 forced_sale/forced_mortgage event across the run
+  (observed rent=17, liquidation=2). `forced_sale`/`forced_mortgage` are in the
+  test's MINT/BURN set.
