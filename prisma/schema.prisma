@@ -134,6 +134,8 @@ model User {
   membershipData       Json?     @map("membership_data")
   eggBalance           Int       @default(20) @map("egg_balance")
   shellBalance         Int       @default(0) @map("shell_balance")
+  vyapaarWallet        Int       @default(0) @map("vyapaar_wallet")
+  vyapaarGranted       Boolean   @default(false) @map("vyapaar_granted")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -207,6 +209,7 @@ model User {
   eggThrowsSent            EggThrow[]    @relation("egg_thrower")
   eggThrowsReceived        EggThrow[]    @relation("egg_target")
   shellLedger              ShellLedger[]
+  vyapaarLedger            VyapaarLedger[]
 
   @@unique([email])
   @@index([status])
@@ -2428,6 +2431,21 @@ model ShellLedger {
 
   @@index([userId, createdAt])
   @@map("shell_ledger")
+}
+
+// ── Economy: Vyapaar wallet (play-money game coins) ─────────
+model VyapaarLedger {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  delta     Int
+  reason    String   @db.VarChar(60)
+  refId     String?  @map("ref_id") @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("vyapaar_ledger")
 }
 
 // Public photo gallery, grouped into albums. Admin-managed; images live in the
