@@ -85,6 +85,35 @@ export default async function GamesLandingPage() {
           );
         })}
       </div>
+
+      {GAMES.filter((g) => g.kind === "multiplayer" && g.status === "live").length > 0 && (
+        <div>
+          <h2 className="font-heading text-lg font-bold text-gray-900">Multiplayer</h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {GAMES.filter((g) => g.kind === "multiplayer" && g.status === "live").map((g) => (
+              <Link
+                key={g.key}
+                href={`/games/${g.slug}`}
+                className={`group relative overflow-hidden rounded-[5px] border border-gray-200 bg-gradient-to-br ${g.tint} p-6 transition-shadow hover:shadow-md`}
+              >
+                <span className="absolute right-4 top-4 rounded-[3px] bg-amber-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                  Live
+                </span>
+                <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-amber-600 text-white">
+                  <Gamepad2 className="h-6 w-6" />
+                </div>
+                <h2 className="mt-4 font-heading text-lg font-bold text-gray-900">{g.name}</h2>
+                <p className="mt-1 text-[13.5px] text-gray-600">{g.tag}.</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-600">
+                    <Trophy className="h-4 w-4" /> Play &amp; compete →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

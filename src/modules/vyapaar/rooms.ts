@@ -47,11 +47,25 @@ export async function joinRoom(userId: string, code: string): Promise<{ seat: nu
       await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
       return { seat: mine.seat } // rejoin resumes seat
     }
-    const seat = lowestFreeSeat(room.members.map((m) => m.seat))
-    if (seat === null) throw new ForbiddenError("Room is full")
-    await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId, seat } })
-    await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
-    return { seat }
+    // Two concurrent joins can compute the same lowestFreeSeat and race the
+    // [roomId, seat] unique constraint — retry with a fresh read on collision.
+    let members = room.members
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const seat = lowestFreeSeat(members.map((m) => m.seat))
+      if (seat === null) throw new ForbiddenError("Room is full")
+      try {
+        await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId, seat } })
+        await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
+        return { seat }
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e
+        members = await tx.vyapaarRoomMember.findMany({
+          where: { roomId: room.id },
+          select: { userId: true, seat: true },
+        })
+      }
+    }
+    throw new ForbiddenError("Room is full")
   })
 }
 
