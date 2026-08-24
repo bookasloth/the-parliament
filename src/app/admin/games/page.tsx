@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { LIVE_GAMES } from "@/config/games"
+import { DAILY_GAMES } from "@/config/games"
 import GamesClient, { type GameRow, type TournamentRow, type ChampionRow, type EngagementRow } from "./games-client"
 
 export const dynamic = "force-dynamic"
@@ -63,7 +63,7 @@ export default async function AdminGamesPage() {
   }))
 
   // Today's engagement for each live daily game (source='daily' = the live puzzle).
-  const liveKeys = new Set<string>(LIVE_GAMES.map((g) => g.key))
+  const liveKeys = new Set<string>(DAILY_GAMES.map((g) => g.key))
   const today = todayUtc()
   const engagement: EngagementRow[] = await Promise.all(
     games

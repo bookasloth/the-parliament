@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Type, Binary, Sigma, Trophy, Flame, Play, CheckCircle2, ChevronRight, History, type LucideIcon } from "lucide-react";
+import { Type, Binary, Sigma, Gamepad2, Trophy, Flame, Play, CheckCircle2, ChevronRight, History, type LucideIcon } from "lucide-react";
 import { requireUser } from "@/modules/auth/session";
 import { prisma } from "@/lib/prisma";
 import { gameBySlug, launchDate, type GameKey } from "@/config/games";
@@ -14,7 +14,7 @@ import NudgePanel from "@/components/games/NudgePanel";
 
 export const dynamic = "force-dynamic";
 
-const ICONS: Record<GameKey, LucideIcon> = { alfazy: Type, hit_and_blow: Binary, integra: Sigma };
+const ICONS: Partial<Record<GameKey, LucideIcon>> = { alfazy: Type, hit_and_blow: Binary, integra: Sigma };
 
 function todayUtc(): Date {
   const n = new Date();
@@ -30,7 +30,7 @@ export default async function GameLandingPage({ params }: { params: Promise<{ sl
   const id = await gameId(cfg.key);
   const engine = getEngine(cfg.key);
   const puzzleNo = puzzleNumber(todayUtc(), launchDate(cfg.key));
-  const Icon = ICONS[cfg.key];
+  const Icon = ICONS[cfg.key] ?? Gamepad2;
 
   const [playedToday, gamesPlayed, board, trophies, streak, viewerProfile] = await Promise.all([
     prisma.gameScore.findUnique({

@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { type GameKey, LIVE_GAMES, launchDate } from "@/config/games";
+import { type GameKey, DAILY_GAMES, launchDate } from "@/config/games";
 import { Period, anchorFor, justClosedAnchor, windowFor } from "./periods";
 import { SCOPES, Scope, gameId, leaderboard } from "./leaderboard";
 
@@ -42,12 +42,12 @@ export async function freezeAnchor(key: GameKey, period: Period, anchor: string)
   return written;
 }
 
-/** Cron entry: freeze every period that just closed as of `now`, for every live game. */
+/** Cron entry: freeze every period that just closed as of `now`, for every live daily game. */
 export async function closeJustEnded(
   now: Date = new Date(),
 ): Promise<{ key: GameKey; period: Period; anchor: string }[]> {
   const done: { key: GameKey; period: Period; anchor: string }[] = [];
-  for (const game of LIVE_GAMES) {
+  for (const game of DAILY_GAMES) {
     for (const period of FROZEN_PERIODS) {
       const anchor = justClosedAnchor(period, now, launchDate(game.key));
       if (!anchor) continue;

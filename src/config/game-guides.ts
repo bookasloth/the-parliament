@@ -31,7 +31,8 @@ export interface Guide {
   rules: string[];
 }
 
-export const GAME_GUIDES: Record<GameKey, Guide> = {
+/** Guide content per game key — only daily-puzzle games have one (a multiplayer game has no puzzle guide). */
+export const GAME_GUIDES: Partial<Record<GameKey, Guide>> = {
   alfazy: {
     example: {
       kind: "tiles",

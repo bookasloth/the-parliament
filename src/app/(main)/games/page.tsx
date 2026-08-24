@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Type, Binary, Sigma, Gamepad2, Trophy, Flame, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { GAMES, type GameKey } from "@/config/games";
+import { GAMES, DAILY_GAMES, type GameKey } from "@/config/games";
 import { getAccentHex } from "@/config/game-themes";
 import { gameId } from "@/modules/games/leaderboard";
 
 export const metadata = { title: "Games · The Parliament" };
 export const dynamic = "force-dynamic";
 
-const ICONS: Record<GameKey, LucideIcon> = {
+const ICONS: Partial<Record<GameKey, LucideIcon>> = {
   alfazy: Type,
   hit_and_blow: Binary,
   integra: Sigma,
@@ -20,9 +20,9 @@ function todayUtc(): Date {
 }
 
 export default async function GamesLandingPage() {
-  // Plays-today per live game (best-effort; a missing game row just yields 0).
+  // Plays-today per live daily game (best-effort; a missing game row just yields 0).
   const liveCounts = await Promise.all(
-    GAMES.filter((g) => g.status === "live").map(async (g) => {
+    DAILY_GAMES.map(async (g) => {
       try {
         const id = await gameId(g.key);
         return [g.key, await prisma.gameScore.count({ where: { gameId: id, puzzleDate: todayUtc() } })] as const;
@@ -43,8 +43,8 @@ export default async function GamesLandingPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {GAMES.map((g) => {
-          const Icon = ICONS[g.key];
+        {GAMES.filter((g) => g.kind === "daily").map((g) => {
+          const Icon = ICONS[g.key] ?? Gamepad2;
           if (g.status !== "live") {
             return (
               <div key={g.key} className="rounded-[5px] border border-dashed border-gray-200 bg-white p-6 opacity-70">

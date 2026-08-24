@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-import { LIVE_GAMES } from "@/config/games";
+import { DAILY_GAMES } from "@/config/games";
 import { closeJustEnded } from "@/modules/games/champions";
 import { cacheTag } from "@/modules/games/leaderboard";
 
@@ -16,6 +16,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const closed = await closeJustEnded();
-  for (const game of LIVE_GAMES) revalidateTag(cacheTag(game.key), "max");
+  for (const game of DAILY_GAMES) revalidateTag(cacheTag(game.key), "max");
   return NextResponse.json({ ok: true, closed });
 }
