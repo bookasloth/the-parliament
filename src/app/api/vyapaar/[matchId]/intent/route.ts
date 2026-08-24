@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireUser } from "@/modules/auth/session"
 import { ForbiddenError } from "@/lib/errors"
+import { handleError } from "@/lib/api"
 import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
@@ -9,7 +10,12 @@ const INTENT_TYPES = new Set([
 ])
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch (e) {
+    return handleError(e)
+  }
   const { matchId } = await params
   let body: unknown
   try {
