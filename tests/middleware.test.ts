@@ -9,7 +9,6 @@ describe("isProtectedPath", () => {
       "/community",
       "/groups",
       "/groups/batch-2010",
-      "/business",
       "/business/new",
       "/membership/checkout",
       "/settings",
@@ -24,7 +23,6 @@ describe("isProtectedPath", () => {
       "/network",
       "/network/chapters/nagpur",
       "/profile/edit",
-      "/business/new",
       "/ama",
       "/ama/xyz",
       "/games",
@@ -45,6 +43,8 @@ describe("isProtectedPath", () => {
       "/events", // public
       "/events/reunion", // public
       "/membership", // public pricing (only /membership/checkout is private)
+      "/business", // public company directory (only /business/new is gated)
+      "/business/acme-corp", // public company page at /business/[slug]
       "/someusername", // public profile at /[username]
       "/auth/signin",
       "/auth/signup",
