@@ -210,6 +210,8 @@ model User {
   eggThrowsReceived        EggThrow[]    @relation("egg_target")
   shellLedger              ShellLedger[]
   vyapaarLedger            VyapaarLedger[]
+  vyapaarRoomsHosted       VyapaarRoom[]
+  vyapaarRoomMemberships   VyapaarRoomMember[]
 
   @@unique([email])
   @@index([status])
@@ -2446,6 +2448,37 @@ model VyapaarLedger {
 
   @@index([userId, createdAt])
   @@map("vyapaar_ledger")
+}
+
+model VyapaarRoom {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique @db.VarChar(6)
+  hostId       String   @map("host_id") @db.Uuid
+  visibility   String   @default("private") @db.VarChar(10)
+  status       String   @default("open") @db.VarChar(10)
+  lastActiveAt DateTime @default(now()) @map("last_active_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  host    User                @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  members VyapaarRoomMember[]
+
+  @@index([status, visibility, lastActiveAt])
+  @@index([status, lastActiveAt])
+  @@map("vyapaar_room")
+}
+
+model VyapaarRoomMember {
+  roomId   String   @map("room_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  seat     Int
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  room VyapaarRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@unique([roomId, seat])
+  @@map("vyapaar_room_member")
 }
 
 // Public photo gallery, grouped into albums. Admin-managed; images live in the
