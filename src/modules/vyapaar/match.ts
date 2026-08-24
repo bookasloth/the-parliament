@@ -133,23 +133,27 @@ export async function applyMatchIntent(
   matchId: string,
   intent: Intent,
 ): Promise<{ view: PublicView } | { error: string }> {
-  const match = await prisma.vyapaarMatch.findUnique({
-    where: { id: matchId },
-    select: {
-      id: true, roomId: true, status: true, state: true, actionLog: true,
-      players: { select: { userId: true, seat: true, openingCash: true } },
-    },
-  })
-  if (!match || match.status !== "active") throw new ForbiddenError("Match not found")
-  const me = match.players.find((p) => p.userId === userId)
-  if (!me) throw new ForbiddenError("not_a_player")
+  return prisma.$transaction(async (tx) => {
+    // Serialize concurrent intents on this match (prevents lost-update + double-settle
+    // when two calls — double-click, retry, or legal concurrent bid/trade-response from
+    // a non-active seat — race the same snapshot).
+    await tx.$executeRaw`SELECT id FROM "vyapaar_match" WHERE id = ${matchId}::uuid FOR UPDATE`
+    const match = await tx.vyapaarMatch.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true, roomId: true, status: true, state: true, actionLog: true,
+        players: { select: { userId: true, seat: true, openingCash: true } },
+      },
+    })
+    if (!match || match.status !== "active") throw new ForbiddenError("Match not found")
+    const me = match.players.find((p) => p.userId === userId)
+    if (!me) throw new ForbiddenError("not_a_player")
 
-  const state = match.state as unknown as GameState
-  const r = applyIntent(state, me.seat, intent)
-  if ("error" in r) return { error: r.error }
+    const state = match.state as unknown as GameState
+    const r = applyIntent(state, me.seat, intent)
+    if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
 
-  const log = [...(match.actionLog as { seat: number; intent: Intent }[]), { seat: me.seat, intent }]
-  await prisma.$transaction(async (tx) => {
+    const log = [...(match.actionLog as { seat: number; intent: Intent }[]), { seat: me.seat, intent }]
     await tx.vyapaarMatch.update({
       where: { id: matchId },
       data: {
@@ -166,6 +170,6 @@ export async function applyMatchIntent(
       // Reopen the room for a rematch.
       await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
     }
+    return { view: publicView(r.state, me.seat) }
   })
-  return { view: publicView(r.state, me.seat) }
 }
