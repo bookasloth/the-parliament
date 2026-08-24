@@ -78,16 +78,20 @@ export interface EngineEvent {
   [k: string]: unknown;
 }
 
-export function createGame(seed: number, names: string[], openingCash = START_CASH): GameState {
+export function createGame(seed: number, names: string[], openingCash: number | number[] = START_CASH): GameState {
   if (names.length < 2 || names.length > 6) {
     throw new Error("vyapaar: players must be 2..6");
   }
+  if (Array.isArray(openingCash) && openingCash.length !== names.length) {
+    throw new Error("vyapaar: openingCash array length must equal names length");
+  }
+  const cashFor = (i: number): number => (Array.isArray(openingCash) ? openingCash[i] : openingCash);
   const state: GameState = {
     seed,
     rng: seed >>> 0,
-    players: names.map((name) => ({
+    players: names.map((name, i) => ({
       name,
-      cash: openingCash,
+      cash: cashFor(i),
       pos: 0,
       halted: 0,
       doubles: 0,

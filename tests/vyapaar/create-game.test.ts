@@ -26,4 +26,18 @@ describe("createGame", () => {
     expect([...a.headlineDeck].sort()).toEqual(HEADLINE.map((_, i) => i));
     expect([...a.upiDeck].sort()).toEqual(UPI.map((_, i) => i));
   });
+
+  it("assigns per-player opening cash from an array", () => {
+    const g = createGame(1, ["a", "b", "c"], [1000, 2000, 3000])
+    expect(g.players.map((p) => p.cash)).toEqual([1000, 2000, 3000])
+  })
+
+  it("still accepts a single number for all players", () => {
+    const g = createGame(1, ["a", "b"], 5000)
+    expect(g.players.map((p) => p.cash)).toEqual([5000, 5000])
+  })
+
+  it("throws when the openingCash array length != names", () => {
+    expect(() => createGame(1, ["a", "b"], [1000])).toThrow()
+  })
 });
