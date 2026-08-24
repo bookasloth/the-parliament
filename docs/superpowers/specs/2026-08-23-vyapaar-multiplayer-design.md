@@ -358,30 +358,40 @@ cheapest-first cities) is **replaced** by a per-city, zoned table: 5 **zones**
 > `data.ts` constants. The engine mechanics are still ported verbatim — only the
 > data changed.
 
-### B. Monetization — coin store (⚠ reverses "play money only")
+### B. Monetization — coins topped up with SHELLS (no direct real-money path)
 
-Owner-supplied INR→coin pricing:
+**Owner decision (2026-08-24):** the INR→coin store is dropped. Coins are bought
+with **shells** — Parliament's existing commercial currency (`src/config/shells.ts`,
+`ShellLedger`, `User.shellBalance`) — **not** with INR directly, and the top-up is
+**one-way and non-cashable**: shells → coins only; coins never convert back to
+shells or money.
 
-| Price (INR) | Coins | Bonus | Total |
-|---|--:|--:|--:|
-| Free | 25,000 | Welcome | 25,000 |
-| ₹100 | 15,000 | 0 | 15,000 |
-| ₹250 | 40,000 | +2,500 | 42,500 |
-| ₹500 | 85,000 | +10,000 | 95,000 |
-| ₹1,000 | 180,000 | +30,000 | 210,000 |
-| ₹2,000 | 400,000 | +80,000 | 480,000 |
+Why this defuses the gambling concern: the real-money boundary stays where it
+already is (the Shell Store, which sells shells for INR and is already live). Vyapaar
+coins sit *behind* that boundary — they have **no cash-out path**, so coins won or
+lost on dice are never redeemable for value. That keeps Vyapaar "play money" in the
+legally relevant sense even though a shell-rich player can top up. (The wider
+real-money-gaming review still belongs to whoever owns the shell economy, not to
+Vyapaar.)
 
-> 🚩 **Flag — this is a real-money path the source spec explicitly prohibited.**
-> Buying coins with INR, then winning/losing them on dice, is **gambling-adjacent**:
-> Vyapaar is a game of **chance** (dice), and real-money chance gaming is restricted
-> or banned across several Indian states, and increasingly regulated nationally.
-> Before building this: (1) legal review for real-money gaming compliance in the
-> target states; (2) decide whether coins are ever cashable (if never redeemable,
-> the gambling exposure drops but consumer-law/IAP rules still apply); (3) Razorpay
-> product/category approval for the coin SKU.
->
-> **Decision for this build:** the coin store is **recorded, not built** in the
-> engine phase. It becomes its **own later phase** (spec → legal check → plan). The
-> engine and wallet are unaffected — the wallet is an opaque integer; where coins
-> come from (grant vs purchase) is a top-up concern outside the engine. The free
-> 25,000 welcome grant already matches row 1 of this table.
+**Shell → coin table** (mirrors the old coin totals, priced in shells; ~₹1 ≈ 1 shell
+today, so the rupee cost is unchanged for the player, with a bulk bonus that scales
+150 → 240 coins/shell):
+
+| Shells | Coins | Bonus | Total coins |
+|--:|--:|--:|--:|
+| Free (welcome) | 25,000 | — | 25,000 |
+| 100 | 15,000 | 0 | 15,000 |
+| 250 | 40,000 | +2,500 | 42,500 |
+| 500 | 85,000 | +10,000 | 95,000 |
+| 1,000 | 180,000 | +30,000 | 210,000 |
+| 2,000 | 400,000 | +80,000 | 480,000 |
+
+**Build placement:** the shell→coin top-up is a **wallet feature → built in M1**
+(accounts + wallet), not a separate phase. Concretely in M1: a server action debits
+`shellBalance` (writing a `ShellLedger` row) and credits `vyapaarWallet` (writing a
+`VyapaarLedger` row, reason `shell_topup`) atomically in one transaction; reject if
+`shellBalance` is insufficient; the exchange table lives in a config module
+(`src/config/vyapaar-coins.ts`) alongside the free 25,000 grant. Respect the existing
+shell conventions where they apply. No INR, no Razorpay SKU, no coin→shell reversal.
+The engine is unaffected — the wallet stays an opaque integer.
