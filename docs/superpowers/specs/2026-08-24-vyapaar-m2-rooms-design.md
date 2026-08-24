@@ -37,7 +37,7 @@
 - `leaveRoom(userId, roomId): Promise<void>` — remove the membership; if the host left and members remain, promote the lowest-seat member to `hostId`; if the room is now empty, set `status = "expired"`; bump `lastActiveAt`.
 - `setRoomVisibility(userId, roomId, visibility)` — host-only (`ForbiddenError` otherwise); update visibility.
 - `listPublicRooms(): Promise<PublicRoomCard[]>` — `status = "open"`, `visibility = "public"`, member count < 6, not expired; returns code, host display name, seat count. (Simple; add pagination only if needed — YAGNI.)
-- `getRoom(code)` / `getRoomForMember(userId, code)` — room + members (seat, displayName) for the room page; non-members can view a public room's lobby, private rooms only for members.
+- `getRoom(code)` — room + members (seat, displayName) for the room page. **Private-room access is capability-URL / invite-code (owner decision 2026-08-24):** the 6-char code (~887M combos, unguessable) IS the invite — any logged-in user who holds the code may view the room's seat grid and join it. Private only means "unlisted from the public lobby," not "members-only view." (Member real names are already public in the alumni directory, so pre-join name exposure to a code-holder is acceptable.) No separate `getRoomForMember` gate is built.
 - `sweepExpiredRooms(now): Promise<number>` — mark `open`/`in_game` rooms with `lastActiveAt < now - ROOM_TTL_DAYS` as `expired`; returns count. Pure cutoff logic unit-testable; the cron route calls it.
 - Actions wrap these with `requireUser()` (server-derived actor, never client userId) and map `ForbiddenError` → `{ ok:false, error }`.
 
