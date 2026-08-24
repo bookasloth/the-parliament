@@ -29,6 +29,12 @@ export async function getVyapaarWallet(userId: string): Promise<number> {
   return u.vyapaarWallet
 }
 
+/** Pure balance read — does NOT grant. Callers that must grant use ensureVyapaarEnrollment first. */
+export async function getVyapaarBalance(userId: string): Promise<number> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { vyapaarWallet: true } })
+  return u?.vyapaarWallet ?? 0
+}
+
 /** Buy coins with shells. One-way, atomic, race-safe. */
 export async function topUpVyapaarCoins(
   userId: string,
