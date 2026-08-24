@@ -27,7 +27,7 @@ export function TopUpPanel() {
           className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
         >
           <span>{coinsForPack(p).toLocaleString("en-IN")} coins</span>
-          <span className="text-gray-500">{p.shells} shells</span>
+          <span className="text-gray-500">{p.shells.toLocaleString("en-IN")} shells</span>
         </button>
       ))}
       {msg && <p className="text-sm text-gray-600">{msg}</p>}
