@@ -12,8 +12,8 @@ export default async function VyapaarHub() {
   await ensureVyapaarEnrollment(user.id) // one deliberate idempotent write; badge is a pure read
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Vyapaar</h1>
         <WalletBadge userId={user.id} />
       </div>

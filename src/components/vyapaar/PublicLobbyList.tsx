@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { listPublicRooms } from "@/modules/vyapaar/rooms"
+import { MAX_SEATS } from "@/config/vyapaar-rooms"
 
 export async function PublicLobbyList() {
   const rooms = await listPublicRooms()
@@ -13,7 +14,7 @@ export async function PublicLobbyList() {
             className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50"
           >
             <span className="font-medium">{r.host}&rsquo;s room</span>
-            <span className="text-gray-500">{r.seats}/6 · {r.code}</span>
+            <span className="text-gray-500">{r.seats}/{MAX_SEATS} · {r.code}</span>
           </Link>
         </li>
       ))}

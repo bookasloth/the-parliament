@@ -17,8 +17,8 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
   const seats = Array.from({ length: MAX_SEATS }, (_, i) => room.members.find((m) => m.seat === i) ?? null)
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Room {room.code}</h1>
           <p className="text-sm text-gray-500">{room.visibility} · {room.status}</p>
