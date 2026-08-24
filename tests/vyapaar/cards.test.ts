@@ -57,4 +57,41 @@ describe("card opcodes", () => {
     applyCard(s, { id: "demolition", op: "downgradeRival" });
     expect(s.cities[5].level).toBe(2);
   });
+
+  it("cash credits the active player", () => {
+    const s = createGame(1, ["a", "b"]);
+    const before = s.players[0].cash;
+    applyCard(s, { id: "windfall", op: "cash", val: 600 });
+    expect(s.players[0].cash).toBe(before + 600);
+  });
+
+  it("feeToPot charges the active player into the pot, conserving total money", () => {
+    const s = createGame(1, ["a", "b"]);
+    const totalBefore = s.players.reduce((n, p) => n + p.cash, 0) + s.pot;
+    const cashBefore = s.players[0].cash;
+    applyCard(s, { id: "audit", op: "feeToPot", val: 600 });
+    expect(s.pot).toBe(600);
+    expect(s.players[0].cash).toBe(cashBefore - 600);
+    const totalAfter = s.players.reduce((n, p) => n + p.cash, 0) + s.pot;
+    expect(totalAfter).toBe(totalBefore);
+  });
+
+  it("perHeritage pays per North-zone city owned", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.cities[0].owner = 0;
+    s.cities[1].owner = 0;
+    const before = s.players[0].cash;
+    applyCard(s, { id: "tourism", op: "perHeritage", val: 450 });
+    expect(s.players[0].cash).toBe(before + 900);
+  });
+
+  it("perSet pays per controlled set", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.cities[0].owner = 0;
+    s.cities[1].owner = 0;
+    s.cities[2].owner = 0; // North set controlled
+    const before = s.players[0].cash;
+    applyCard(s, { id: "wedding", op: "perSet", val: 300 });
+    expect(s.players[0].cash).toBe(before + 300);
+  });
 });

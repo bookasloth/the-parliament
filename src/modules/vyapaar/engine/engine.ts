@@ -102,14 +102,14 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       finishSegment(s);
       break;
     case "upi": {
-      const { card } = drawCard(s, "upi");
-      events.push({ type: "draw", seat, deck: "upi", card: card.id });
+      const { card, events: cardEvents } = drawCard(s, "upi");
+      events.push({ type: "draw", seat, deck: "upi", card: card.id }, ...cardEvents);
       finishSegment(s);
       break;
     }
     case "headline": {
-      const { card } = drawCard(s, "headline");
-      events.push({ type: "draw", seat, deck: "headline", card: card.id });
+      const { card, events: cardEvents } = drawCard(s, "headline");
+      events.push({ type: "draw", seat, deck: "headline", card: card.id }, ...cardEvents);
       finishSegment(s);
       break;
     }
@@ -360,6 +360,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
     }
 
     case "propose_trade": {
+      if (s.auction) return { error: "auction_in_progress" };
       if (s.trade !== null) return { error: "trade_pending" };
       const to = intent.to;
       if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat) {
@@ -373,6 +374,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
     }
 
     case "respond_trade": {
+      if (s.auction) return { error: "auction_in_progress" };
       if (!s.trade) return { error: "no_trade" };
       if (seat !== s.trade.to) return { error: "not_recipient" };
       const t = s.trade;
