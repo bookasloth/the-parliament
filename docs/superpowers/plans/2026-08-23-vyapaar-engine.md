@@ -2452,3 +2452,9 @@ git commit -m "test(vyapaar): determinism replay + money-conservation invariant"
   asserts ≥1 rent/hub_rent event AND ≥1 forced_sale/forced_mortgage event across the run
   (observed rent=17, liquidation=2). `forced_sale`/`forced_mortgage` are in the
   test's MINT/BURN set.
+- **Final-review wave.** `resolveTile`'s upi/headline arms now spread `drawCard`'s
+  returned events into the event stream (card sub-effects were being dropped);
+  `propose_trade`/`respond_trade` reject with `auction_in_progress` while an auction
+  is live (a mid-auction trade could otherwise drive the winner's cash negative);
+  added `cards.test.ts` coverage for `cash`/`feeToPot`/`perHeritage`/`perSet` and a
+  genuine `winnerOf` controlled-sets-tiebreak test (real score tie). Suite: 59 tests.
