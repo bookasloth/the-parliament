@@ -136,6 +136,9 @@ model User {
   shellBalance         Int       @default(0) @map("shell_balance")
   vyapaarWallet        Int       @default(0) @map("vyapaar_wallet")
   vyapaarGranted       Boolean   @default(false) @map("vyapaar_granted")
+  vyapaarGamesPlayed   Int       @default(0) @map("vyapaar_games_played")
+  vyapaarWins          Int       @default(0) @map("vyapaar_wins")
+  vyapaarBestNetWorth  Int       @default(0) @map("vyapaar_best_net_worth")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -212,6 +215,7 @@ model User {
   vyapaarLedger            VyapaarLedger[]
   vyapaarRoomsHosted       VyapaarRoom[]
   vyapaarRoomMemberships   VyapaarRoomMember[]
+  vyapaarMatchPlayers      VyapaarMatchPlayer[]
 
   @@unique([email])
   @@index([status])
@@ -2461,6 +2465,7 @@ model VyapaarRoom {
 
   host    User                @relation(fields: [hostId], references: [id], onDelete: Cascade)
   members VyapaarRoomMember[]
+  matches VyapaarMatch[]
 
   @@index([status, visibility, lastActiveAt])
   @@index([status, lastActiveAt])
@@ -2479,6 +2484,43 @@ model VyapaarRoomMember {
   @@id([roomId, userId])
   @@unique([roomId, seat])
   @@map("vyapaar_room_member")
+}
+
+model VyapaarMatch {
+  id           String   @id @default(uuid()) @db.Uuid
+  roomId       String   @map("room_id") @db.Uuid
+  seed         BigInt
+  state        Json
+  actionLog    Json     @default("[]") @map("action_log")
+  status       String   @default("active") @db.VarChar(10)
+  activeSeat   Int      @default(0) @map("active_seat")
+  turnExpiresAt DateTime? @map("turn_expires_at") @db.Timestamptz
+  winnerSeat   Int?     @map("winner_seat")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz
+
+  room    VyapaarRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  players VyapaarMatchPlayer[]
+
+  @@index([roomId, status])
+  @@index([status])
+  @@map("vyapaar_match")
+}
+
+model VyapaarMatchPlayer {
+  matchId     String @map("match_id") @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  seat        Int
+  openingCash Int    @map("opening_cash")
+  resultCash  Int?   @map("result_cash")
+  placement   Int?
+
+  match VyapaarMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, seat])
+  @@unique([matchId, userId])
+  @@map("vyapaar_match_player")
 }
 
 // Public photo gallery, grouped into albums. Admin-managed; images live in the
