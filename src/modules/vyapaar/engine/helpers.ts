@@ -9,7 +9,7 @@ import {
   UPGRADE_SELL_RATIO,
   upgradeCost,
 } from "./data";
-import type { GameState } from "./state";
+import type { GameState, EngineEvent } from "./state";
 
 export function citiesOwned(s: GameState, seat: number): number[] {
   const out: number[] = [];
@@ -78,7 +78,12 @@ export function credit(s: GameState, seat: number, amount: number): void {
 }
 
 /** Sell upgrades (tallest first) then mortgage undeveloped until cash ≥ need or nothing left. */
-export function liquidate(s: GameState, seat: number, need: number): void {
+export function liquidate(
+  s: GameState,
+  seat: number,
+  need: number,
+  events?: EngineEvent[],
+): void {
   // 1. Sell upgrades — always take from the currently tallest owned city (keeps levels even).
   while (s.players[seat].cash < need) {
     let best = -1;
@@ -91,7 +96,9 @@ export function liquidate(s: GameState, seat: number, need: number): void {
     }
     if (best < 0) break;
     s.cities[best].level--;
-    s.players[seat].cash += Math.floor(upgradeCost(best) * UPGRADE_SELL_RATIO);
+    const refund = Math.floor(upgradeCost(best) * UPGRADE_SELL_RATIO);
+    s.players[seat].cash += refund;
+    events?.push({ type: "forced_sale", seat, cityId: best, amount: refund });
   }
   // 2. Mortgage undeveloped, unmortgaged cities.
   for (const id of citiesOwned(s, seat)) {
@@ -99,14 +106,22 @@ export function liquidate(s: GameState, seat: number, need: number): void {
     const c = s.cities[id];
     if (c.level === 0 && !c.mortgaged) {
       c.mortgaged = true;
-      s.players[seat].cash += Math.floor(CITIES[id].price / 2);
+      const raise = Math.floor(CITIES[id].price / 2);
+      s.players[seat].cash += raise;
+      events?.push({ type: "forced_mortgage", seat, cityId: id, amount: raise });
     }
   }
 }
 
 /** Move money from `from` to `to` (seat or "pot"), liquidating as needed; forgives any shortfall. Returns amount actually paid. */
-export function charge(s: GameState, from: number, amount: number, to: number | "pot"): number {
-  if (s.players[from].cash < amount) liquidate(s, from, amount);
+export function charge(
+  s: GameState,
+  from: number,
+  amount: number,
+  to: number | "pot",
+  events?: EngineEvent[],
+): number {
+  if (s.players[from].cash < amount) liquidate(s, from, amount, events);
   const paid = Math.min(amount, s.players[from].cash);
   s.players[from].cash -= paid;
   if (to === "pot") s.pot += paid;

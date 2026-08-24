@@ -91,13 +91,13 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       break;
     case "gst": {
       const amt = Math.min(GST_CAP, Math.round(s.players[seat].cash * GST_RATE));
-      charge(s, seat, amt, "pot");
+      charge(s, seat, amt, "pot", events);
       events.push({ type: "gst", seat, amount: amt });
       finishSegment(s);
       break;
     }
     case "income":
-      charge(s, seat, TAX_INCOME, "pot");
+      charge(s, seat, TAX_INCOME, "pot", events);
       events.push({ type: "income", seat, amount: TAX_INCOME });
       finishSegment(s);
       break;
@@ -121,7 +121,7 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.phase = "buy";
       } else if (owner !== seat) {
         const rent = hubRentFor(s, hi);
-        charge(s, seat, rent, owner);
+        charge(s, seat, rent, owner, events);
         events.push({ type: "hub_rent", seat, hubIndex: hi, amount: rent });
         finishSegment(s);
       } else {
@@ -137,7 +137,7 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.phase = "buy";
       } else if (owner !== seat) {
         const rent = rentFor(s, id);
-        charge(s, seat, rent, owner);
+        charge(s, seat, rent, owner, events);
         events.push({ type: "rent", seat, cityId: id, to: owner, amount: rent });
         finishSegment(s);
       } else {

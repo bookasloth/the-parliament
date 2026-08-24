@@ -36,14 +36,14 @@ export function applyCard(s: GameState, card: Card): EngineEvent[] {
       break;
     case "collectEach":
       s.players.forEach((_, i) => {
-        if (i !== seat) charge(s, i, val, seat);
+        if (i !== seat) charge(s, i, val, seat, events);
       });
       break;
     case "feePerCity":
-      charge(s, seat, val * citiesOwned(s, seat).length, "pot");
+      charge(s, seat, val * citiesOwned(s, seat).length, "pot", events);
       break;
     case "feeToPot":
-      charge(s, seat, val, "pot");
+      charge(s, seat, val, "pot", events);
       break;
     case "startup":
       credit(s, seat, val);
