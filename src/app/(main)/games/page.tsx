@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Type, Binary, Sigma, Gamepad2, Trophy, Flame, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { GAMES, type GameKey } from "@/config/games";
+import { GAMES, DAILY_GAMES, type GameKey } from "@/config/games";
 import { getAccentHex } from "@/config/game-themes";
 import { gameId } from "@/modules/games/leaderboard";
 
 export const metadata = { title: "Games · The Parliament" };
 export const dynamic = "force-dynamic";
 
-const ICONS: Record<GameKey, LucideIcon> = {
+const ICONS: Partial<Record<GameKey, LucideIcon>> = {
   alfazy: Type,
   hit_and_blow: Binary,
   integra: Sigma,
@@ -20,9 +20,9 @@ function todayUtc(): Date {
 }
 
 export default async function GamesLandingPage() {
-  // Plays-today per live game (best-effort; a missing game row just yields 0).
+  // Plays-today per live daily game (best-effort; a missing game row just yields 0).
   const liveCounts = await Promise.all(
-    GAMES.filter((g) => g.status === "live").map(async (g) => {
+    DAILY_GAMES.map(async (g) => {
       try {
         const id = await gameId(g.key);
         return [g.key, await prisma.gameScore.count({ where: { gameId: id, puzzleDate: todayUtc() } })] as const;
@@ -43,8 +43,8 @@ export default async function GamesLandingPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {GAMES.map((g) => {
-          const Icon = ICONS[g.key];
+        {GAMES.filter((g) => g.kind === "daily").map((g) => {
+          const Icon = ICONS[g.key] ?? Gamepad2;
           if (g.status !== "live") {
             return (
               <div key={g.key} className="rounded-[5px] border border-dashed border-gray-200 bg-white p-6 opacity-70">
@@ -85,6 +85,35 @@ export default async function GamesLandingPage() {
           );
         })}
       </div>
+
+      {GAMES.filter((g) => g.kind === "multiplayer" && g.status === "live").length > 0 && (
+        <div>
+          <h2 className="font-heading text-lg font-bold text-gray-900">Multiplayer</h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {GAMES.filter((g) => g.kind === "multiplayer" && g.status === "live").map((g) => (
+              <Link
+                key={g.key}
+                href={`/games/${g.slug}`}
+                className={`group relative overflow-hidden rounded-[5px] border border-gray-200 bg-gradient-to-br ${g.tint} p-6 transition-shadow hover:shadow-md`}
+              >
+                <span className="absolute right-4 top-4 rounded-[3px] bg-amber-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                  Live
+                </span>
+                <div className="flex h-12 w-12 items-center justify-center rounded-[5px] bg-amber-600 text-white">
+                  <Gamepad2 className="h-6 w-6" />
+                </div>
+                <h2 className="mt-4 font-heading text-lg font-bold text-gray-900">{g.name}</h2>
+                <p className="mt-1 text-[13.5px] text-gray-600">{g.tag}.</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-600">
+                    <Trophy className="h-4 w-4" /> Play &amp; compete →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

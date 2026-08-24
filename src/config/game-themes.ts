@@ -65,24 +65,26 @@ export function getBoardTheme(key: GameKey): BoardTheme {
 }
 
 /** Per-game accent hex (the brand-500 override) — for canvas/inline use where CSS vars don't reach. */
-export const ACCENT_HEX: Record<GameKey, string> = {
+export const ACCENT_HEX: Partial<Record<GameKey, string>> = {
   alfazy: "#10b981", // emerald
   hit_and_blow: "#0ea5e9", // sky
   integra: "#8b5cf6", // violet
 };
+const DEFAULT_ACCENT_HEX = ACCENT_HEX.alfazy!;
 
 export function getAccentHex(key: GameKey): string {
-  return ACCENT_HEX[key];
+  return ACCENT_HEX[key] ?? DEFAULT_ACCENT_HEX;
 }
 
 /** Hex tile/peg colours for the shared result image (canvas can't read CSS classes). */
-const TILE_HEX: Record<GameKey, { correct: string; present: string; absent: string }> = {
+const TILE_HEX: Partial<Record<GameKey, { correct: string; present: string; absent: string }>> = {
   alfazy: { correct: "#10b981", present: "#d4a017", absent: "#9aa3af" },
   hit_and_blow: { correct: "#10b981", present: "#0ea5e9", absent: "#cbd5e1" },
   integra: { correct: "#10b981", present: "#8b5cf6", absent: "#4b5563" },
 };
+const DEFAULT_TILE_HEX = TILE_HEX.alfazy!;
 const PEG = { hit: "#10b981", blow: "#d4a017" };
 
 export function getPalette(key: GameKey) {
-  return { ...(TILE_HEX[key] ?? TILE_HEX.alfazy), ...PEG };
+  return { ...(TILE_HEX[key] ?? DEFAULT_TILE_HEX), ...PEG };
 }

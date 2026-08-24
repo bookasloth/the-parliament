@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HelpCircle, Gamepad2, Target, Wind, Type, Binary, Sigma, ChevronRight, type LucideIcon } from "lucide-react";
-import { LIVE_GAMES, gameBySlug, type GameKey } from "@/config/games";
+import { DAILY_GAMES, gameBySlug, type GameKey } from "@/config/games";
 import { GAME_GUIDES, type TileState } from "@/config/game-guides";
 import { getBoardTheme } from "@/config/game-themes";
 
-const ICONS: Record<GameKey, LucideIcon> = { alfazy: Type, hit_and_blow: Binary, integra: Sigma };
+const ICONS: Partial<Record<GameKey, LucideIcon>> = { alfazy: Type, hit_and_blow: Binary, integra: Sigma };
 
 /** Small coloured cell used in the worked example + legend. */
 function Cell({ char, state, gameKey }: { char?: string; state: TileState; gameKey: GameKey }) {
@@ -27,7 +27,8 @@ export default function GameGuideRail() {
   if (!cfg || cfg.status !== "live") return null; // only on a live game's pages
 
   const guide = GAME_GUIDES[cfg.key];
-  const others = LIVE_GAMES.filter((g) => g.key !== cfg.key);
+  if (!guide) return null; // no guide content for this game (e.g. a multiplayer game)
+  const others = DAILY_GAMES.filter((g) => g.key !== cfg.key);
 
   return (
     <div className="space-y-4">
@@ -95,7 +96,7 @@ export default function GameGuideRail() {
           </h2>
           <div className="mt-3 space-y-2">
             {others.map((g) => {
-              const Icon = ICONS[g.key];
+              const Icon = ICONS[g.key] ?? Gamepad2;
               return (
                 <Link
                   key={g.key}

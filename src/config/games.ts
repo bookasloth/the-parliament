@@ -7,12 +7,14 @@
  * routes until flipped to "live".
  */
 
-export type GameKey = "alfazy" | "hit_and_blow" | "integra";
+export type GameKey = "alfazy" | "hit_and_blow" | "integra" | "vyapaar";
 
 export interface GameConfig {
   key: GameKey;
   /** URL segment under /games/<slug>. */
   slug: string;
+  /** "daily" feeds the puzzle/period/leaderboard machinery; "multiplayer" (e.g. Vyapaar rooms) does not. */
+  kind: "daily" | "multiplayer";
   name: string;
   /** One-line hub-card tagline. */
   tag: string;
@@ -33,6 +35,7 @@ export const GAMES: GameConfig[] = [
   {
     key: "alfazy",
     slug: "alfazy",
+    kind: "daily",
     name: "Alfazy",
     tag: "Guess the 5-letter word",
     tint: "from-emerald-50 to-white",
@@ -49,6 +52,7 @@ export const GAMES: GameConfig[] = [
   {
     key: "hit_and_blow",
     slug: "hit-and-blow",
+    kind: "daily",
     name: "Hit and Blow",
     tag: "Crack the 4-digit code",
     tint: "from-sky-50 to-white",
@@ -65,6 +69,7 @@ export const GAMES: GameConfig[] = [
   {
     key: "integra",
     slug: "integra",
+    kind: "daily",
     name: "Integra",
     tag: "Guess the hidden equation",
     tint: "from-violet-50 to-white",
@@ -78,9 +83,25 @@ export const GAMES: GameConfig[] = [
       "Fewer guesses = higher score. Keep your streak alive!",
     ],
   },
+  {
+    key: "vyapaar",
+    slug: "vyapaar",
+    kind: "multiplayer",
+    name: "Vyapaar",
+    tag: "Multiplayer property-trading board game",
+    tint: "from-amber-50 to-white",
+    code: "vyap",
+    launchISO: "2026-08-24",
+    status: "live",
+    howTo: ["Create or join a room", "Roll, buy cities, build, trade", "Highest net worth wins"],
+    unit: "match",
+  },
 ];
 
 export const LIVE_GAMES = GAMES.filter((g) => g.status === "live");
+
+/** Live games that feed the daily-puzzle machinery (periods/leaderboard/[slug] routes). Excludes multiplayer games like Vyapaar. */
+export const DAILY_GAMES = LIVE_GAMES.filter((g) => g.kind === "daily");
 
 /** Membership tiers that unlock the full puzzle archive (older than yesterday). */
 export const PAID_TIERS = ["associate", "premium", "life", "committee"];
