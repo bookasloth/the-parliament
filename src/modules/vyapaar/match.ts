@@ -114,7 +114,11 @@ async function settleMatch(
     await tx.user.update({
       where: { id: p.userId },
       data: {
-        vyapaarWallet: resultCash,
+        // Increment (not set): a concurrent topUpVyapaarCoins mid-match grows wallet+ledger
+        // together, and this must add the game P&L on top rather than clobber it. Delta
+        // equals the ledger row above, so wallet == Σledger holds. No-op on the happy path
+        // (wallet still == openingCash → increment lands exactly on resultCash).
+        vyapaarWallet: { increment: resultCash - p.openingCash },
         vyapaarGamesPlayed: { increment: 1 },
         vyapaarWins: p.seat === state.winner ? { increment: 1 } : undefined,
       },
@@ -171,5 +175,5 @@ export async function applyMatchIntent(
       await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
     }
     return { view: publicView(r.state, me.seat) }
-  })
+  }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
 }
