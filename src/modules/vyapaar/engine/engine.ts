@@ -426,23 +426,28 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
   }
 }
 
-/** One minimal-legal step for a timed-out player. Caller loops until active changes or game ends. */
-export function autoResolve(s: GameState): { state: GameState; events: EngineEvent[] } {
-  if (s.ended) return { state: s, events: [] };
-  const active = s.active;
+/** The minimal-legal step for a stuck/timed-out position, or null if the game is over. */
+export function nextAutoIntent(s: GameState): { seat: number; intent: Intent } | null {
+  if (s.ended) return null;
   switch (s.phase) {
     case "roll":
-      return applyIntent(s, active, { type: "roll" }) as { state: GameState; events: EngineEvent[] };
+      return { seat: s.active, intent: { type: "roll" } };
     case "buy":
-      return applyIntent(s, active, { type: "decline" }) as { state: GameState; events: EngineEvent[] };
+      return { seat: s.active, intent: { type: "decline" } };
     case "auction": {
-      // make every seat that hasn't bid pass, so the auction resolves
-      const seat = s.auction!.bids.findIndex((b) => b === null);
-      return applyIntent(s, seat, { type: "bid", amount: 0 }) as { state: GameState; events: EngineEvent[] };
+      const seat = s.auction ? s.auction.bids.findIndex((b) => b === null) : -1;
+      return seat >= 0 ? { seat, intent: { type: "bid", amount: 0 } } : null;
     }
     case "manage":
-      return applyIntent(s, active, { type: "end_turn" }) as { state: GameState; events: EngineEvent[] };
+      return { seat: s.active, intent: { type: "end_turn" } };
     default:
-      return { state: s, events: [] };
+      return null;
   }
+}
+
+/** One minimal-legal step for a timed-out player. Caller loops until active changes or game ends. */
+export function autoResolve(s: GameState): { state: GameState; events: EngineEvent[] } {
+  const step = nextAutoIntent(s);
+  if (!step) return { state: s, events: [] };
+  return applyIntent(s, step.seat, step.intent) as { state: GameState; events: EngineEvent[] };
 }

@@ -69,4 +69,13 @@ describe("applyMatchIntent", () => {
     const room = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { room: { select: { status: true } } } })
     expect(room!.room.status).toBe("open")
   })
+
+  it("sets turnExpiresAt on start and after a move, null at game-over", async () => {
+    const { host, matchId } = await twoPlayerMatch()
+    const m0 = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { turnExpiresAt: true } })
+    expect(m0!.turnExpiresAt).not.toBeNull() // set at start
+    await applyMatchIntent(host, matchId, { type: "roll" })
+    const m1 = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { turnExpiresAt: true } })
+    expect(m1!.turnExpiresAt).not.toBeNull()
+  })
 })

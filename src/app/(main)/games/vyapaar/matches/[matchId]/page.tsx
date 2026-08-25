@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic"
 export default async function MatchPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params
   const user = await requireUser()
-  let view
+  let view, turnExpiresAt
   try {
-    view = await getMatchView(user.id, matchId)
+    ;({ view, turnExpiresAt } = await getMatchView(user.id, matchId))
   } catch (e) {
     if (e instanceof ForbiddenError) notFound()
     throw e
   }
-  return <MatchBoard matchId={matchId} initialView={view} />
+  return <MatchBoard matchId={matchId} initialView={view} initialTurnExpiresAt={turnExpiresAt} />
 }

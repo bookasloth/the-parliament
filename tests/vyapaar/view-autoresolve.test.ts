@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
-import { applyIntent, autoResolve } from "@/modules/vyapaar/engine/engine";
+import { applyIntent, autoResolve, nextAutoIntent } from "@/modules/vyapaar/engine/engine";
 import { publicView } from "@/modules/vyapaar/engine/view";
 
 describe("publicView", () => {
@@ -21,6 +21,32 @@ describe("publicView", () => {
     expect((publicView(s, 0) as unknown as Record<string, unknown>).trade).not.toBeNull();
     expect((publicView(s, 1) as unknown as Record<string, unknown>).trade).not.toBeNull();
     expect((publicView(s, 2) as unknown as Record<string, unknown>).trade).toBeNull();
+  });
+});
+
+describe("nextAutoIntent", () => {
+  it("picks the minimal-legal step per phase", () => {
+    const s = createGame(1, ["a", "b"]);
+    expect(nextAutoIntent(s)).toEqual({ seat: 0, intent: { type: "roll" } });
+    s.phase = "buy";
+    s.pendingCity = 0;
+    expect(nextAutoIntent(s)).toEqual({ seat: 0, intent: { type: "decline" } });
+    s.phase = "manage";
+    s.pendingCity = null;
+    expect(nextAutoIntent(s)).toEqual({ seat: 0, intent: { type: "end_turn" } });
+  });
+  it("bids 0 for the first un-bid seat during an auction", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.phase = "auction";
+    s.auction = { cityId: 0, bids: [null, null] };
+    expect(nextAutoIntent(s)).toEqual({ seat: 0, intent: { type: "bid", amount: 0 } });
+    s.auction.bids[0] = 0;
+    expect(nextAutoIntent(s)).toEqual({ seat: 1, intent: { type: "bid", amount: 0 } });
+  });
+  it("returns null when the game is over", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.ended = true;
+    expect(nextAutoIntent(s)).toBeNull();
   });
 });
 
