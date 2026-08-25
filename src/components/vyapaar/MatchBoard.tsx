@@ -103,13 +103,12 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       <style>{VB_CSS}</style>
 
       <header className="vb-top">
-        <div className="vb-logo">व्यापार<b>.</b></div>
-        <div className="vb-meta">Round {view.round} · pot <b>{inr(view.pot)}</b>{view.ended ? ` · over — winner ${seatName(view.winner) ?? `seat ${view.winner}`}` : ""}</div>
         <div className="vb-you">
           {playerImages[you]
             ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
             : <span className="vb-you-init" style={{ background: SEAT_COL[you % 6], color: you % 6 === 1 ? "#0F1111" : "#fff" }}>{(view.players[you]?.name ?? "?").charAt(0).toUpperCase()}</span>}
           <span className="vb-you-name">{(view.players[you]?.name ?? "").split(" ")[0]}</span>
+          <span className="vb-you-cash">{inr(view.players[you]?.cash ?? 0)}</span>
         </div>
       </header>
 
@@ -194,10 +193,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
                   : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
-                <span className="vb-plst">
-                  <span className="vb-cash">{inr(p.cash)}</span>
-                  <span className="vb-sub">net {inr(Math.round(p.netWorth))}{p.halted ? " · halted" : ""}</span>
-                </span>
+                {p.halted ? <span className="vb-halt">halted</span> : null}
               </div>
             ))}
           </div>
@@ -426,16 +422,16 @@ const VB_CSS = `
 .vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); }
 .vb *{box-sizing:border-box;}
 .vb svg{display:block;width:100%;height:100%;}
-.vb-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:14px;flex-wrap:wrap;}
-.vb-logo{font-weight:800;font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-.02em;color:#fff;}.vb-logo b{color:var(--accent);}
-.vb-meta{font-size:.86rem;color:var(--dim);font-weight:500;margin-right:auto;margin-left:14px;}.vb-meta b{color:var(--yellow);}
+.vb-top{display:flex;align-items:center;justify-content:flex-end;gap:1rem;margin-bottom:8px;}
 .vb-you{display:flex;align-items:center;gap:8px;}
 .vb-you-img{width:30px;height:30px;border-radius:2px;object-fit:cover;}
 .vb-you-init{width:30px;height:30px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.85rem;}
 .vb-you-name{font-weight:600;font-size:.9rem;color:var(--cream);}
+.vb-you-cash{font-weight:700;font-size:.9rem;color:var(--yellow);font-variant-numeric:tabular-nums;padding-left:4px;}
+.vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
 .vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
-.vb-board{aspect-ratio:5/4;width:100%;background:var(--panel-2);border-radius:2px;padding:8px;}
+.vb-board{aspect-ratio:5/4;width:min(100%,calc((100dvh - 120px) * 1.25));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto;}
 .vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
 .vb-tile{position:relative;background:var(--milk);min-width:0;display:flex;flex-direction:column;overflow:hidden;}
 .vb-city,.vb-company{cursor:pointer;}
