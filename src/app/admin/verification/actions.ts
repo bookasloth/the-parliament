@@ -28,9 +28,9 @@ export async function rejectVerificationAction(verificationId: string, reason: s
 export async function startUserReviewAction(userId: string) {
   const admin = await requirePermission("verification:review")
   z.string().uuid().parse(userId)
-  await startAdminReview({ userId, adminId: admin.id })
+  const { id } = await startAdminReview({ userId, adminId: admin.id })
   revalidatePath("/admin/verification")
-  return { ok: true }
+  return { ok: true, verificationId: id }
 }
 
 export async function verifyUserNowAction(userId: string) {
