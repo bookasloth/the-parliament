@@ -250,7 +250,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
               <div className="vb-hub">
                 <div className="vb-hub-name">व्यापार</div>
-                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}-${view.round}-${view.active}-${view.phase}` : "none"} />
+                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} />
                 <button
                   className="vb-roll"
                   disabled={busy || !myTurn || view.phase !== "roll"}
@@ -455,9 +455,12 @@ function Die3D({ n, variant, animate }: { n: number; variant: number; animate: b
 
 function Dice({ roll, seq }: { roll: [number, number] | null; seq: string }) {
   const reduce = useReducedMotion()
-  // key on seq → real rolls (incl. opponents') replay the tumble; identical polls do not.
-  // ponytail: seq misses the rare doubles-with-identical-values re-roll — final face still
-  // correct, just skips one replay. Add an engine rollSeq counter if that ever matters.
+  // key on the roll VALUES only → the tumble plays only when the number changes (an actual
+  // roll, incl. an opponent's). Phase/turn/poll updates keep the same values, so the dice
+  // sits still after a roll instead of re-bouncing on every state change.
+  // ponytail: two identical consecutive rolls (doubles, or the same pair rolled next turn)
+  // share a key and skip one replay — final face still correct. Add an engine rollSeq
+  // counter if per-roll replay ever has to be exact.
   return (
     <div className="vb-dice" key={seq}>
       <Die3D n={roll ? roll[0] : 6} variant={0} animate={!!roll && !reduce} />
