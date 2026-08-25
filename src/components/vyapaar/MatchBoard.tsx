@@ -491,7 +491,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
     return (
       <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div className="vb-deed">
-          <div className="vb-crown" style={{ background: "linear-gradient(135deg,#4b515c,#3f4550)", color: "#fff" }}>
+          <div className="vb-deed-hd" style={{ background: "linear-gradient(135deg,#4b515c,#3f4550)", color: "#fff" }}>
             <div className="vb-zone">{COMPANY_CATS[co.category]} · company</div>
             <h3>{co.name}</h3>
             <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(co.buy)}</div></div>
@@ -532,7 +532,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
   return (
     <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="vb-deed">
-        <div className="vb-crown" style={{ background: ZONE_BG[city.zone], color: dark ? "#0F1111" : "#fff" }}>
+        <div className="vb-deed-hd" style={{ background: ZONE_BG[city.zone], color: dark ? "#0F1111" : "#fff" }}>
           <div className="vb-zone">{["North", "South", "East", "West", "Central"][city.zone]} zone · title deed</div>
           <h3>{city.name}</h3>
           <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(city.price)}</div></div>
@@ -822,9 +822,9 @@ const VB_CSS = `
 .vb-prop-sub{font-size:.66rem;color:var(--dim);}
 .vb-scrim{position:fixed;inset:0;background:rgba(15,17,17,.8);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
 .vb-deed{width:min(370px,100%);background:#fff;color:var(--ink);border-radius:2px;overflow:hidden;max-height:90vh;overflow-y:auto;}
-.vb-crown{padding:16px 18px 15px;position:relative;}
+.vb-deed-hd{padding:16px 18px 15px;position:relative;}
 .vb-zone{font-size:.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.16em;opacity:.95;}
-.vb-crown h3{font-size:1.6rem;font-weight:800;margin:2px 0 0;line-height:1.05;padding-right:66px;}
+.vb-deed-hd h3{font-size:1.6rem;font-weight:800;margin:2px 0 0;line-height:1.05;padding-right:66px;}
 .vb-dprice{position:absolute;top:14px;right:16px;text-align:right;}.vb-dprice .k{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;opacity:.9;}.vb-dprice .v{font-weight:700;font-size:1.1rem;}
 .vb-owned{display:flex;align-items:center;gap:8px;padding:8px 18px;background:#eaeaea;font-size:.74rem;color:var(--ink-2);font-weight:500;}
 .vb-owned .chip{width:14px;height:14px;border-radius:2px;background:#c9c9c9;}
