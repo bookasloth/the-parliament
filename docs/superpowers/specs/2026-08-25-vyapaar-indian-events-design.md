@@ -175,33 +175,73 @@ Add/adjust vitest in `tests/vyapaar/`. Every new op gets a case:
   the mandi`.
 - Remove the pot HUD readout (~line 268).
 
-### 8b. Landing effect (per-event burst)
+### 8b. Landing effects (bespoke per-event)
 
-Small celebratory/impact burst over the landed token when an event fires — flavor per event, no new
-dependency.
+Each event fires a distinct effect on landing. Flavor-only.
 
-- **Reuse, don't add:** the festive keyframes already in `globals.css` (`festive-rise`,
-  `festive-twinkle`, `festive-flicker`) and framer-motion (already imported in MatchBoard for the
-  dice). No confetti library. `// ponytail: reuse festive glyph burst, add a lib only if a designer
-  demands physics.`
-- **Glyph + tone per event:**
-  | Event | Glyphs | Tone |
-  |---|---|---|
-  | Tax Return | 💸 coins | positive (green) |
-  | Got Married | 💐 ❤️ petals | positive (pink) |
-  | Celebrate Festival | 🎉 🪔 confetti | positive (gold) |
-  | ED Raided | 🚨 💥 | negative (red) + brief token shake |
-  | JNV Revisit | 🎓 🎊 | neutral/positive (brand) |
-- **Trigger:** the engine pushes `{ type: "event", seat, event: eventId }` (§5). The client fires
-  the burst when a new `type:"event"` entry appears at the tail of `view.log`; track the last-seen
-  log index in a `useRef` so a refetch/realtime re-render doesn't replay old bursts. Position the
-  burst over the acting seat's token cell.
-- **Shape:** ~4–6 glyphs, ~1.2s, index-derived offsets (deterministic; no `Math.random` needed since
-  it's a transient client-only effect). Auto-unmount after the animation.
-- **Reduced motion:** honor `prefers-reduced-motion` (MatchBoard already reads `reduce` for the
-  dice) — skip the burst or show a single static glyph fade.
-- **Scope guard:** this is decoration only. It must not gate turn flow, block input, or affect engine
-  state; if it errors it fails silent.
+**Shared mechanics (all five):**
+- **No new dependency.** CSS keyframes (extend `globals.css`, reuse `festive-rise`/`festive-twinkle`/
+  `festive-flicker` and the festive decoration renderer) + framer-motion (already in MatchBoard).
+  `// ponytail: hand-rolled CSS particles; add a physics/confetti lib only if a designer rejects these.`
+- **Trigger:** engine pushes `{ type: "event", seat, event: eventId }` (§5). Client fires the effect
+  when a new `type:"event"` entry appears at the tail of `view.log`; a `useRef` holds the last-seen
+  log index so refetch/realtime re-renders never replay an old effect.
+- **Target:** the effect plays on/over the acting seat's tile cell (the cell the token is on).
+- **Determinism:** index/seat-derived offsets — no `Math.random` (transient client-only, but keep it
+  deterministic so it reads consistently). Festival pick (below) may use a seed derived from
+  seat+round so it's stable across re-renders of the same landing.
+- **Reduced motion:** honor `prefers-reduced-motion` (MatchBoard already reads `reduce`) — collapse
+  each effect to a static 1-frame state (coloured BG + label, no particles/pulse/sweep).
+- **Scope guard:** decoration only — never gates turn flow, blocks input, or mutates engine state;
+  fails silent on error; auto-unmounts when done.
+
+**Per event:**
+
+1. **Tax Return** — *full-cell gold panel.* The whole tile ("shell") fills **gold-yellow BG** with
+   **black text**, a large **₹ rupee mark on the right**, and the **cell border glows** (gold). Hold
+   ~3s, fade out. Reduced-motion: static gold cell, no glow pulse.
+
+2. **Got Married** — *corner firecracker skyshots → confetti.* Two short skyshots launch from the
+   **bottom-left and bottom-right corners upward**, bursting near the top (~0–2s), then transition to
+   **paper-style confetti** drifting down; fire + paper resolve over **~4s total**. Two side-by-side
+   short bursts. Fire = warm sparks (`festive-twinkle`), paper = falling coloured rects
+   (`festive-rise` reversed / a new `festive-fall`). Reduced-motion: two static burst glyphs that fade.
+
+3. **Celebrate Festival** — *random festival card.* On landing, pick one festival at random (seeded
+   by seat+round for render-stability) from a fixed 10-festival list; show its name + a themed
+   micro-effect (reuse the festive decoration renderer's glyph sets where possible). List
+   (5 Hindu / 2 Muslim / 1 Christian / 1 Sikh / 1 Navodaya):
+   | Festival | Faith | Effect |
+   |---|---|---|
+   | Diwali | Hindu | diya glow + gold sparks (`festive-flicker`, diwali-diya deco) |
+   | Holi | Hindu | multicolour powder splash burst |
+   | Navratri / Durga Puja | Hindu | swirling gold/red petals |
+   | Ganesh Chaturthi | Hindu | saffron petals rising |
+   | Raksha Bandhan | Hindu | falling rakhi threads (ribbon rects) |
+   | Eid ul-Fitr | Muslim | green + gold crescent twinkle |
+   | Eid ul-Adha | Muslim | crescent + star sparkle |
+   | Christmas | Christian | snowfall (`festive-snowfall` deco) |
+   | Guru Nanak Jayanti (Gurpurab) | Sikh | soft saffron/blue glow + Khanda-tone sparks |
+   | Navodaya Day | Navodaya | brand-blue + RGBY confetti (JNV pride) |
+   Reduced-motion: festival name + single static glyph.
+
+4. **ED Raided** — *police aura border.* The cell border glows an animated **blue↔red police pulse
+   for ~4s** — a soft conic/gradient aura sweeping the border (the "new-Google-AI aura" look), not a
+   hard blink. Reduced-motion: static red border, no sweep.
+
+5. **JNV Revisit** — *Happy Homecoming banner.* The cell **BG changes for ~5s** showing
+   **"Happy Homecoming!"**. BG = the **acting player's House colour** (`--color-house-*`:
+   aravali/nilgiri/shiwalik/udaigiri/indira/laxmi). **If the player's house is unknown → black BG
+   with RGBY text** (red/green/blue/yellow, cycling per letter or word). Reduced-motion: static
+   coloured BG + text, no transition.
+
+**Open data dependency (JNV Revisit):** the engine/`view` does not currently carry a player's House.
+House lives on the user profile, not in `GameState`. To colour the homecoming banner we must plumb an
+optional `house?: string` per player into the match view (resolved once at match start from each
+seat's profile), OR have the client resolve it from a seat→user map it already holds. If neither is
+wired, the effect **degrades to the black+RGBY default** — so House plumbing is a *nice-to-have*, not
+a blocker. Decide during planning: (a) plumb house into `view.players[]`, or (b) ship black+RGBY for
+everyone now and add House colour later.
 
 ## 9. Rebalance (final phase)
 
