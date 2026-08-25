@@ -9,6 +9,17 @@ import { netWorth } from "./engine/helpers"
 import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
 import crypto from "node:crypto"
 
+export async function getMatchView(userId: string, matchId: string): Promise<PublicView> {
+  const match = await prisma.vyapaarMatch.findUnique({
+    where: { id: matchId },
+    select: { state: true, players: { select: { userId: true, seat: true } } },
+  })
+  if (!match) throw new ForbiddenError("Match not found")
+  const me = match.players.find((p) => p.userId === userId)
+  if (!me) throw new ForbiddenError("not_a_player")
+  return publicView(match.state as unknown as GameState, me.seat)
+}
+
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
 export function rebuildMatchState(
   seed: number,
