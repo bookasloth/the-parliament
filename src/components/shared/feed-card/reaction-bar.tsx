@@ -55,12 +55,14 @@ function AwardModal({
   const [selected, setSelected] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [given, setGiven] = useState(false)
   const prev = useRef(open)
 
   useEffect(() => {
     if (prev.current && !open) {
       setSelected(null)
       setError(null)
+      setGiven(false)
     }
     prev.current = open
   }, [open])
@@ -81,7 +83,9 @@ function AwardModal({
       setError(r.error || "Failed to give award")
       return
     }
-    onClose()
+    // Confirm success in-modal, then auto-close — the feed has no toast system.
+    setGiven(true)
+    setTimeout(onClose, 1200)
   }
 
   if (!open) return null
@@ -96,6 +100,16 @@ function AwardModal({
             <X className="h-4 w-4" />
           </button>
         </div>
+        {given ? (
+          <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+              <CheckCheck className="h-7 w-7 text-emerald-500" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Award given!</p>
+            <p className="text-xs text-gray-500">Thanks for rewarding this post.</p>
+          </div>
+        ) : (
+        <>
         <div className="px-5 py-4">
           <p className="mb-4 text-xs text-gray-500">Each award costs karma points. Choose one to reward this post.</p>
           <div className="grid grid-cols-3 gap-2">
@@ -133,6 +147,8 @@ function AwardModal({
             {submitting ? "Giving…" : "Give Award"}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   )
