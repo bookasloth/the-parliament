@@ -52,7 +52,7 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
   const room0 = await prisma.vyapaarRoom.findUnique({ where: { id: roomId }, select: { members: { select: { userId: true } } } })
   if (!room0) throw new ForbiddenError("Room not found")
   const memberIds = room0.members.map((m) => m.userId).sort()
-  for (const id of memberIds) await ensureVyapaarEnrollment(id)
+  await Promise.all(memberIds.map(ensureVyapaarEnrollment))
 
   return prisma.$transaction(async (tx) => {
     // Lock the participating users' rows so concurrent starts sharing a member serialize.
@@ -138,12 +138,16 @@ async function settleMatch(
  */
 async function commitMatchState(
   tx: Prisma.TransactionClient,
-  match: { id: string; roomId: string; actionLog: unknown; players: { userId: string; seat: number; openingCash: number }[] },
+  match: { id: string; roomId: string; actionLog: unknown; turnExpiresAt: Date | null; players: { userId: string; seat: number; openingCash: number }[] },
   state: GameState,
   appendedLog: { seat: number; intent: Intent }[],
+  resetTimer: boolean,
 ): Promise<Date | null> {
   const log = [...(match.actionLog as { seat: number; intent: Intent }[]), ...appendedLog]
-  const expiresAt = turnExpiresAtFor(state, Date.now())
+  // Only refresh the 30s deadline when the ACTIVE player's turn actually advanced. An
+  // off-turn trade/bid from a non-active seat must NOT extend the active player's clock —
+  // otherwise two colluders could keep resetting it and stall an AFK player forever.
+  const expiresAt = state.ended ? null : resetTimer ? turnExpiresAtFor(state, Date.now()) : match.turnExpiresAt
   await tx.vyapaarMatch.update({
     where: { id: match.id },
     data: {
@@ -175,7 +179,7 @@ export async function applyMatchIntent(
     const match = await tx.vyapaarMatch.findUnique({
       where: { id: matchId },
       select: {
-        id: true, roomId: true, status: true, state: true, actionLog: true,
+        id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true,
         players: { select: { userId: true, seat: true, openingCash: true } },
       },
     })
@@ -184,10 +188,14 @@ export async function applyMatchIntent(
     if (!me) throw new ForbiddenError("not_a_player")
 
     const state = match.state as unknown as GameState
+    const activeBefore = state.active
     const r = applyIntent(state, me.seat, intent)
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
 
-    const expiresAt = await commitMatchState(tx, match, r.state, [{ seat: me.seat, intent }])
+    // Refresh the deadline only when the active player's turn advanced — an off-turn
+    // trade/bid (non-active seat, same active player) must not reset the clock.
+    const resetTimer = me.seat === activeBefore || r.state.active !== activeBefore
+    const expiresAt = await commitMatchState(tx, match, r.state, [{ seat: me.seat, intent }], resetTimer)
     return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
   if ("view" in result) {
@@ -221,11 +229,14 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
       while (!state.ended && state.active === startSeat && guard++ < 40) {
         const step = nextAutoIntent(state)
         if (!step) break
-        applyIntent(state, step.seat, step.intent)
+        const r = applyIntent(state, step.seat, step.intent)
+        if ("error" in r) break // defensive: a non-advancing auto-step would otherwise busy-loop
         appended.push(step)
       }
       if (appended.length === 0) return null
-      await commitMatchState(tx, match, state, appended)
+      // Auto-resolve always plays a full turn (loops until active changes or ended), so the
+      // active player's turn has advanced → refresh the deadline for the next seat.
+      await commitMatchState(tx, match, state, appended, true)
       return { activeSeat: state.active, ended: state.ended }
     }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
     if (result) {
