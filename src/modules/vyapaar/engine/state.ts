@@ -70,6 +70,7 @@ export interface GameState {
   ended: boolean;
   winner: number | null;
   lastRoll: [number, number] | null; // most recent dice roll, for the UI
+  log: EngineEvent[]; // rolling recent-events log (capped) for the client game-log panel
 }
 
 /** One thing that happened during an intent — for the UI log and tests. */
@@ -116,6 +117,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     ended: false,
     winner: null,
     lastRoll: null,
+    log: [],
   };
   // Seed the decks so draws are deterministic from game start.
   state.headlineDeck = shuffle(HEADLINE.map((_, i) => i), state);

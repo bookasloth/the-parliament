@@ -1,4 +1,4 @@
-import type { GameState } from "./state";
+import type { GameState, EngineEvent } from "./state";
 import { scoreOf, netWorth } from "./helpers";
 
 export interface PublicView {
@@ -25,6 +25,7 @@ export interface PublicView {
   ended: boolean;
   winner: number | null;
   lastRoll: [number, number] | null;
+  log: EngineEvent[];
   you: number;
 }
 
@@ -56,6 +57,7 @@ export function publicView(s: GameState, seat: number): PublicView {
     ended: s.ended,
     winner: s.winner,
     lastRoll: s.lastRoll,
+    log: (s.log ?? []).slice(-12),
     you: seat,
   };
 }
