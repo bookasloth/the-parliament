@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CITIES, ZONES, HEADLINE, UPI, HUB_RENT, upgradeCost, MAX_LEVEL } from "@/modules/vyapaar/engine/data";
+import { CITIES, ZONES, HEADLINE, UPI, COMPANIES, upgradeCost, MAX_LEVEL } from "@/modules/vyapaar/engine/data";
 
 describe("vyapaar data", () => {
   it("has 25 cities, 5 per zone, authored zone-grouped", () => {
@@ -29,9 +29,11 @@ describe("vyapaar data", () => {
     expect(upgradeCost(0)).toBeGreaterThan(0);
   });
 
-  it("has 8 cards in each deck and HUB_RENT indexed by hubs owned", () => {
+  it("has 8 cards in each deck and 6 companies in 3 reciprocal pairs", () => {
     expect(HEADLINE).toHaveLength(8);
     expect(UPI).toHaveLength(8);
-    expect(HUB_RENT).toEqual([0, 750, 1500, 3000, 6000]);
+    expect(COMPANIES).toHaveLength(6);
+    for (let i = 0; i < COMPANIES.length; i++) expect(COMPANIES[COMPANIES[i].partner].partner).toBe(i);
+    for (const c of COMPANIES) expect(c.pair).toBeGreaterThan(c.single); // pair rate always higher
   });
 });

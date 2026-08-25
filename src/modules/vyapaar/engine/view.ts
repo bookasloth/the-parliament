@@ -11,14 +11,14 @@ export interface PublicView {
     netWorth: number;
   }[];
   cities: { owner: number | null; level: number; mortgaged: boolean }[];
-  hubs: (number | null)[];
+  companies: (number | null)[];
   pot: number;
   active: number;
   phase: string;
   round: number;
   pendingCity: number | null;
-  pendingHub: number | null;
-  auction: { cityId: number; bidded: boolean[] } | null;
+  pendingCompany: number | null;
+  auction: { kind: "city" | "company"; index: number; bidded: boolean[] } | null;
   trade: { from: number; to: number; give: unknown; get: unknown } | null;
   headlineLeft: number;
   upiLeft: number;
@@ -39,15 +39,15 @@ export function publicView(s: GameState, seat: number): PublicView {
       netWorth: netWorth(s, i),
     })),
     cities: s.cities.map((c) => ({ owner: c.owner, level: c.level, mortgaged: c.mortgaged })),
-    hubs: [...s.hubs],
+    companies: [...s.companies],
     pot: s.pot,
     active: s.active,
     phase: s.phase,
     round: s.round,
     pendingCity: s.pendingCity,
-    pendingHub: s.pendingHub,
+    pendingCompany: s.pendingCompany,
     auction: s.auction
-      ? { cityId: s.auction.cityId, bidded: s.auction.bids.map((b) => b !== null) }
+      ? { kind: s.auction.kind, index: s.auction.index, bidded: s.auction.bids.map((b) => b !== null) }
       : null,
     trade: showTrade ? { from: s.trade!.from, to: s.trade!.to, give: s.trade!.give, get: s.trade!.get } : null,
     headlineLeft: s.headlineDeck.length,

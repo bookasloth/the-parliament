@@ -1,8 +1,7 @@
 import {
   CITIES,
   ZONES,
-  HUB_RENT,
-  HUB_PRICE,
+  COMPANIES,
   SET_OWN_NEEDED,
   SET_BONUS_NW,
   BLEND,
@@ -48,14 +47,16 @@ export function rentFor(s: GameState, cityId: number): number {
   return rent;
 }
 
-export function hubsOwned(s: GameState, seat: number): number {
-  return s.hubs.filter((o) => o === seat).length;
+export function companiesOwned(s: GameState, seat: number): number {
+  return s.companies.filter((o) => o === seat).length;
 }
 
-export function hubRentFor(s: GameState, hubIndex: number): number {
-  const owner = s.hubs[hubIndex];
+/** Service fee when someone lands on company `i`: the pair rate if that owner holds BOTH of the pair, else the single rate. */
+export function companyServiceFee(s: GameState, i: number): number {
+  const owner = s.companies[i];
   if (owner === null) return 0;
-  return HUB_RENT[hubsOwned(s, owner)];
+  const bothOwned = s.companies[COMPANIES[i].partner] === owner;
+  return bothOwned ? COMPANIES[i].pair : COMPANIES[i].single;
 }
 
 export function netWorth(s: GameState, seat: number): number {
@@ -66,7 +67,7 @@ export function netWorth(s: GameState, seat: number): number {
     nw += CITIES[id].price * (c.mortgaged ? 0.35 : 0.5);
     nw += c.level * upgradeCost(id) * 0.5;
   }
-  nw += hubsOwned(s, seat) * HUB_PRICE * 0.5;
+  for (let i = 0; i < s.companies.length; i++) if (s.companies[i] === seat) nw += COMPANIES[i].buy * 0.5;
   nw += controlledSets(s, seat) * SET_BONUS_NW;
   return nw;
 }

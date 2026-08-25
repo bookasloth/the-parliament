@@ -5,7 +5,7 @@ import {
   GST_CAP,
   TAX_INCOME,
   CITIES,
-  HUB_PRICE,
+  COMPANIES,
   MAX_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
@@ -20,7 +20,7 @@ import { BOARD } from "./board";
 import { rollDie } from "./rng";
 import {
   rentFor,
-  hubRentFor,
+  companyServiceFee,
   netWorth,
   charge,
   credit,
@@ -115,16 +115,16 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       finishSegment(s);
       break;
     }
-    case "hub": {
-      const hi = tile.hubIndex as number;
-      const owner = s.hubs[hi];
+    case "company": {
+      const ci = tile.companyIndex as number;
+      const owner = s.companies[ci];
       if (owner === null) {
-        s.pendingHub = hi;
+        s.pendingCompany = ci;
         s.phase = "buy";
       } else if (owner !== seat) {
-        const rent = hubRentFor(s, hi);
-        charge(s, seat, rent, owner, events);
-        events.push({ type: "hub_rent", seat, hubIndex: hi, amount: rent });
+        const fee = companyServiceFee(s, ci);
+        charge(s, seat, fee, owner, events);
+        events.push({ type: "company_fee", seat, companyIndex: ci, amount: fee });
         finishSegment(s);
       } else {
         finishSegment(s);
@@ -163,13 +163,15 @@ function resolveAuction(s: GameState, events: EngineEvent[]): void {
   });
   if (winner >= 0 && best > 0) {
     s.players[winner].cash -= best;
-    s.cities[a.cityId].owner = winner;
-    events.push({ type: "auction_won", seat: winner, cityId: a.cityId, amount: best });
+    if (a.kind === "city") s.cities[a.index].owner = winner;
+    else s.companies[a.index] = winner;
+    events.push({ type: "auction_won", seat: winner, kind: a.kind, index: a.index, amount: best });
   } else {
-    events.push({ type: "auction_passed", cityId: a.cityId });
+    events.push({ type: "auction_passed", kind: a.kind, index: a.index });
   }
   s.auction = null;
   s.pendingCity = null;
+  s.pendingCompany = null;
   finishSegment(s);
 }
 
@@ -282,13 +284,14 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
         finishSegment(s);
         return { state: s, events };
       }
-      if (s.pendingHub !== null) {
-        const hi = s.pendingHub;
-        if (s.players[seat].cash < HUB_PRICE) return { error: "insufficient_funds" };
-        s.players[seat].cash -= HUB_PRICE;
-        s.hubs[hi] = seat;
-        s.pendingHub = null;
-        events.push({ type: "buy_hub", seat, hubIndex: hi, amount: HUB_PRICE });
+      if (s.pendingCompany !== null) {
+        const ci = s.pendingCompany;
+        const cost = COMPANIES[ci].buy;
+        if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
+        s.players[seat].cash -= cost;
+        s.companies[ci] = seat;
+        s.pendingCompany = null;
+        events.push({ type: "buy_company", seat, companyIndex: ci, amount: cost });
         finishSegment(s);
         return { state: s, events };
       }
@@ -297,15 +300,16 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
 
     case "decline": {
       if (s.phase !== "buy") return { error: "nothing_to_decline" };
-      if (s.pendingHub !== null) {
-        s.pendingHub = null; // hubs are not auctioned
-        finishSegment(s);
+      if (s.pendingCity !== null) {
+        s.auction = { kind: "city", index: s.pendingCity, bids: s.players.map(() => null) };
+        s.phase = "auction";
+        events.push({ type: "auction_start", kind: "city", index: s.pendingCity });
         return { state: s, events };
       }
-      if (s.pendingCity !== null) {
-        s.auction = { cityId: s.pendingCity, bids: s.players.map(() => null) };
+      if (s.pendingCompany !== null) {
+        s.auction = { kind: "company", index: s.pendingCompany, bids: s.players.map(() => null) };
         s.phase = "auction";
-        events.push({ type: "auction_start", cityId: s.pendingCity });
+        events.push({ type: "auction_start", kind: "company", index: s.pendingCompany });
         return { state: s, events };
       }
       return { error: "nothing_to_decline" };

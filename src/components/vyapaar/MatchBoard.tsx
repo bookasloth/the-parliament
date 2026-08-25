@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, HUB_PRICE, HUB_RENT } from "@/modules/vyapaar/engine/data"
+import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
@@ -32,7 +32,7 @@ function cellPos(i: number): [number, number] {
 
 const SPECIAL_LABEL: Record<string, string> = {
   start: "START", monsoon: "MONSOON", mandi: "MANDI", taxraid: "TAX RAID",
-  hub: "HUB", gst: "GST", income: "INCOME", upi: "UPI", headline: "NEWS",
+  gst: "GST", income: "INCOME", upi: "UPI", headline: "NEWS",
 }
 
 // minimal inline icons
@@ -131,14 +131,15 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
                     </div>
                   )
                 }
-                if (t.kind === "hub") {
-                  const hi = t.hubIndex as number
-                  const owner = view.hubs[hi]
+                if (t.kind === "company") {
+                  const ci = t.companyIndex as number
+                  const co = COMPANIES[ci]
+                  const owner = view.companies[ci]
                   return (
                     <div key={t.pos} className="vb-tile vb-company" style={style} onClick={() => setOpenTile(t.pos)}>
-                      <div className="vb-strip vb-grey"><span className="vb-nm">HUB</span></div>
-                      <div className="vb-mid"><span className="vb-cat" dangerouslySetInnerHTML={{ __html: HUB_ICON }} /></div>
-                      <div className="vb-price vb-co">{inr(HUB_PRICE)}</div>
+                      <div className="vb-strip vb-grey"><span className="vb-nm">{co.short}</span></div>
+                      <div className="vb-mid"><span className="vb-cat" dangerouslySetInnerHTML={{ __html: CAT_ICON[co.category] }} /></div>
+                      <div className="vb-price vb-co">{inr(co.buy)}</div>
                       {owner !== null && <span className="vb-own" style={{ background: SEAT_COL[owner % 6] }} />}
                       {tokens}
                     </div>
@@ -195,11 +196,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
             {myTurn && view.phase === "buy" && view.pendingCity !== null && (
               <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(CITY_POS[view.pendingCity!])}>Buy {CITIES[view.pendingCity].name}</button>
             )}
-            {myTurn && view.phase === "buy" && view.pendingHub !== null && (
-              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "buy" }, true)}>Buy hub ({inr(HUB_PRICE)})</button>
-            )}
-            {myTurn && view.phase === "buy" && view.pendingHub !== null && (
-              <button className="vb-act" disabled={busy} onClick={() => send({ type: "decline" })}>Decline</button>
+            {myTurn && view.phase === "buy" && view.pendingCompany !== null && (
+              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(COMPANY_POS[view.pendingCompany!])}>Buy {COMPANIES[view.pendingCompany].short}</button>
             )}
             {myTurn && view.phase === "manage" && <button className="vb-act" disabled={busy} onClick={() => send({ type: "end_turn" })}>End turn</button>}
             {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
@@ -255,28 +253,28 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
   onClose: () => void; onAction: (i: Intent, close?: boolean) => void
 }) {
   const tile = BOARD[pos]
-  if (tile.kind === "hub") {
-    const hi = tile.hubIndex as number
-    const owner = view.hubs[hi]
-    const isPending = myTurn && view.phase === "buy" && view.pendingHub === hi
+  if (tile.kind === "company") {
+    const ci = tile.companyIndex as number
+    const co = COMPANIES[ci]
+    const owner = view.companies[ci]
+    const isPending = myTurn && view.phase === "buy" && view.pendingCompany === ci
     return (
       <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div className="vb-deed">
           <div className="vb-crown" style={{ background: "linear-gradient(135deg,#4b515c,#3f4550)", color: "#fff" }}>
-            <div className="vb-zone">Transport · company</div>
-            <h3>Hub</h3>
-            <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(HUB_PRICE)}</div></div>
+            <div className="vb-zone">{COMPANY_CATS[co.category]} · company</div>
+            <h3>{co.name}</h3>
+            <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(co.buy)}</div></div>
           </div>
-          <div className="vb-owned"><span className="chip" style={owner !== null ? { background: SEAT_COL[owner % 6] } : undefined} />{owner === null ? "Unowned" : `Owned by ${view.players[owner]?.name}`}</div>
+          <div className="vb-owned"><span className="chip" style={owner !== null ? { background: SEAT_COL[owner % 6] } : undefined} />{owner === null ? "Unowned — buy or auction it" : `Owned by ${view.players[owner]?.name}`}</div>
           <div className="vb-rents">
-            {[1, 2, 3, 4].map((n) => (
-              <div className="vb-r" key={n}><span className="lab">{n} hub{n > 1 ? "s" : ""} owned</span><span className="amt">{inr(HUB_RENT[n])}</span></div>
-            ))}
+            <div className="vb-r"><span className="lab">Service fee</span><span className="amt">{inr(co.single)}</span></div>
+            <div className="vb-r set"><span className="lab">Own both (pair rate)</span><span className="amt">{inr(co.pair)}</span></div>
           </div>
-          <div className="vb-note">Rent scales with how many hubs the owner holds. No building.</div>
+          <div className="vb-note">{co.sub}. No houses or hotels. Own <b>{COMPANIES[co.partner].name}</b> too and the fee jumps to the pair rate.</div>
           <div className="vb-cta">
             {isPending
-              ? <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(HUB_PRICE)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>
+              ? <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(co.buy)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>
               : <button className="pass" onClick={onClose}>Close</button>}
           </div>
         </div>
@@ -374,7 +372,12 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
   )
 }
 
-const HUB_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="3" width="10" height="11" rx="2"/><path d="M5 9h10M8 17l-1.5 1M12 17l1.5 1"/><circle cx="8" cy="12" r=".5" fill="currentColor"/><circle cx="12" cy="12" r=".5" fill="currentColor"/></svg>`
+// company category icons, indexed by COMPANY_CATS: 0 Travel, 1 Communication, 2 Food
+const CAT_ICON = [
+  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2.5c.9 0 1.3 1 1.3 2.7v2.6l5.2 3v1.8l-5.2-1.4v3.4l1.8 1.4v1.3L10 17.3 6.9 18.3v-1.3l1.8-1.4v-3.4l-5.2 1.4V11.8l5.2-3V5.2c0-1.7.4-2.7 1.3-2.7Z"/></svg>`,
+  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><path d="M6.6 11.2a5 5 0 0 1 6.8 0M4 8.4a9 9 0 0 1 12 0"/></svg>`,
+  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 7.5h10l-1.1 9.5H6.1Z"/><path d="M7.2 7.5V5.5a2.8 2.8 0 0 1 5.6 0v2"/></svg>`,
+]
 const SPECIAL_ICON: Record<string, string> = {
   start: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M5 4h9l-2 3 2 3H5"/></svg>`,
   monsoon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 10a3 3 0 0 1 .3-6 4 4 0 0 1 7.5 1.2A2.7 2.7 0 0 1 14 10Z"/><path d="M7 13l-1 3M11 13l-1 3M14 13l-1 2"/></svg>`,

@@ -119,7 +119,7 @@ describe("vyapaar out-of-turn rejection", () => {
   it("allows out-of-turn bids during an auction (bids are not active-only)", () => {
     const s = createGame(1, ["a", "b"]);
     s.phase = "auction";
-    s.auction = { cityId: 0, bids: [null, null] };
+    s.auction = { kind: "city", index: 0, bids: [null, null] };
     const res = applyIntent(s, 1, { type: "bid", amount: 100 }); // seat 1, active is 0
     expect("error" in res).toBe(false);
   });

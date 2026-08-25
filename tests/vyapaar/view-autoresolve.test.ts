@@ -45,9 +45,9 @@ describe("nextAutoIntent", () => {
   it("bids 0 for the first un-bid seat during an auction", () => {
     const s = createGame(1, ["a", "b"]);
     s.phase = "auction";
-    s.auction = { cityId: 0, bids: [null, null] };
+    s.auction = { kind: "city", index: 0, bids: [null, null] };
     expect(nextAutoIntent(s)).toEqual({ seat: 0, intent: { type: "bid", amount: 0 } });
-    s.auction.bids[0] = 0;
+    s.auction!.bids[0] = 0;
     expect(nextAutoIntent(s)).toEqual({ seat: 1, intent: { type: "bid", amount: 0 } });
   });
   it("returns null when the game is over", () => {
