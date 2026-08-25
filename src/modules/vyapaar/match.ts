@@ -9,6 +9,11 @@ import { netWorth } from "./engine/helpers"
 import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
 import crypto from "node:crypto"
 
+export async function activeMatchId(roomId: string): Promise<string | null> {
+  const match = await prisma.vyapaarMatch.findFirst({ where: { roomId, status: "active" }, select: { id: true } })
+  return match?.id ?? null
+}
+
 export async function getMatchView(userId: string, matchId: string): Promise<PublicView> {
   const match = await prisma.vyapaarMatch.findUnique({
     where: { id: matchId },
