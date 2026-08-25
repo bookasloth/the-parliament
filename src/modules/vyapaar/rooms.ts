@@ -3,6 +3,12 @@ import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { generateRoomCode, lowestFreeSeat, pickNewHost } from "./rooms-logic"
 import { MAX_SEATS, ROOM_TTL_DAYS } from "@/config/vyapaar-rooms"
+import { broadcastToTopic, roomTopic } from "@/lib/supabase-realtime"
+
+// Fire-and-forget lobby ping so every member's room page updates live (join/leave/visibility).
+function pingLobby(roomId: string): void {
+  void broadcastToTopic(roomTopic(roomId), "lobby", {}).catch(() => {})
+}
 
 type Visibility = "private" | "public"
 
@@ -42,7 +48,7 @@ export async function joinRoom(userId: string, code: string): Promise<{ seat: nu
   // fresh $transaction, not a re-read inside the failed one.
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await prisma.$transaction(async (tx) => {
+      const res = await prisma.$transaction(async (tx) => {
         const room = await tx.vyapaarRoom.findUnique({
           where: { code },
           select: { id: true, status: true, members: { select: { userId: true, seat: true } } },
@@ -51,14 +57,16 @@ export async function joinRoom(userId: string, code: string): Promise<{ seat: nu
         const mine = room.members.find((m) => m.userId === userId)
         if (mine) {
           await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
-          return { seat: mine.seat } // rejoin resumes seat
+          return { seat: mine.seat, roomId: room.id } // rejoin resumes seat
         }
         const seat = lowestFreeSeat(room.members.map((m) => m.seat))
         if (seat === null) throw new ForbiddenError("Room is full")
         await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId, seat } })
         await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
-        return { seat }
+        return { seat, roomId: room.id }
       })
+      pingLobby(res.roomId)
+      return { seat: res.seat }
     } catch (e) {
       if (isUniqueViolation(e) && attempt < 2) continue // lost the seat race; retry with a fresh transaction
       throw e
@@ -84,6 +92,7 @@ export async function leaveRoom(userId: string, roomId: string): Promise<void> {
     if (room.hostId === userId) data.hostId = pickNewHost(remaining)!
     await tx.vyapaarRoom.update({ where: { id: roomId }, data })
   })
+  pingLobby(roomId)
 }
 
 export async function setRoomVisibility(userId: string, roomId: string, visibility: Visibility): Promise<void> {
@@ -91,6 +100,7 @@ export async function setRoomVisibility(userId: string, roomId: string, visibili
   // host handoff and let a stale host slip through between the two calls.
   const res = await prisma.vyapaarRoom.updateMany({ where: { id: roomId, hostId: userId }, data: { visibility } })
   if (res.count === 0) throw new ForbiddenError("Only the host can change visibility")
+  pingLobby(roomId)
 }
 
 export async function listPublicRooms() {

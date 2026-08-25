@@ -7,7 +7,7 @@ import type { GameState, Intent } from "./engine/state"
 import { applyIntent, nextAutoIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
-import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
+import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS } from "@/config/vyapaar-match"
 import crypto from "node:crypto"
 
@@ -54,7 +54,7 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
   const memberIds = room0.members.map((m) => m.userId).sort()
   await Promise.all(memberIds.map(ensureVyapaarEnrollment))
 
-  return prisma.$transaction(async (tx) => {
+  const res = await prisma.$transaction(async (tx) => {
     // Lock the participating users' rows so concurrent starts sharing a member serialize.
     await tx.$executeRaw`SELECT id FROM "users" WHERE id = ANY(${memberIds}::uuid[]) ORDER BY id FOR UPDATE`
     const room = await tx.vyapaarRoom.findUnique({
@@ -87,6 +87,9 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     await tx.vyapaarRoom.update({ where: { id: room.id }, data: { status: "in_game" } })
     return { matchId: match.id }
   })
+  // Push every room member into the match screen the moment the host starts.
+  void broadcastToTopic(roomTopic(roomId), "started", { matchId: res.matchId }).catch(() => {})
+  return res
 }
 
 /** Set final wallets/placements/stats from the ended game state. One `$transaction` with the caller. */

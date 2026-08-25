@@ -60,6 +60,10 @@ export function matchTopic(matchId: string): string {
   return `vyapaar-match:${matchId}`
 }
 
+export function roomTopic(roomId: string): string {
+  return `vyapaar-room:${roomId}`
+}
+
 /**
  * Push an event to any private topic. Best-effort: callers must not let a
  * Realtime hiccup fail the underlying DB write, so this swallows errors (the
