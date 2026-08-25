@@ -19,6 +19,32 @@ const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd
 
 const inr = (n: number) => n.toLocaleString("en-IN")
 
+// Human-readable engine error codes (the API returns raw codes). Anything not
+// listed falls through to the raw code so nothing is silently swallowed.
+const ERR_MSG: Record<string, string> = {
+  not_your_turn: "It's not your turn yet.",
+  cannot_roll_now: "You can't roll right now.",
+  nothing_to_buy: "There's nothing to buy here.",
+  nothing_to_decline: "There's nothing to decline.",
+  insufficient_funds: "You don't have enough cash.",
+  cannot_manage_now: "You can only build right after you land on your own property.",
+  cannot_end_now: "You can't end your turn right now.",
+  not_owner: "You don't own this property.",
+  no_set_control: "You need the whole colour set before you can build.",
+  uneven_build: "Build evenly across the set first.",
+  max_level: "This property is already fully developed.",
+  mortgaged: "This property is mortgaged — clear it first.",
+  already_mortgaged: "This property is already mortgaged.",
+  sell_upgrades_first: "Sell the buildings before mortgaging.",
+  bid_exceeds_cash: "Your bid is more than your cash.",
+  already_bid: "You've already bid in this auction.",
+  rate_limited: "You're going too fast — try again in a moment.",
+  game_over: "The game is over.",
+}
+// Errors that mean "you can't build/manage that here" — handled softly (close the
+// deed + gentle hint) rather than shown as a red error.
+const SOFT_ERRORS = new Set(["cannot_manage_now", "max_level", "uneven_build", "no_set_control", "mortgaged"])
+
 // Wide 13×9 ring cell → [col,row]. Corners: 0 Start, 12 Monsoon, 20 Mandi, 32 Tax Raid.
 function cellPos(i: number): [number, number] {
   if (i === 0) return [13, 9]
@@ -51,7 +77,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
   const rup = (n: unknown) => `₹${Number(n).toLocaleString("en-IN")}`
   const city = (i: unknown) => CITIES[i as number]?.name ?? "?"
   switch (e.type) {
-    case "roll": return `${nm(e.seat)} rolled ${Number(e.a) + Number(e.b)}`
+    // Rolls are intentionally NOT logged — the game log shows actions only.
     case "buy": return `${nm(e.seat)} bought ${city(e.cityId)} for ${rup(e.amount)}`
     case "buy_company": return `${nm(e.seat)} bought ${COMPANIES[e.companyIndex as number]?.short ?? "?"} for ${rup(e.amount)}`
     case "rent_pending": return `${nm(e.seat)} owes ${rup(e.amount)} rent to ${nm(e.to)} — ${nm(e.to)} can collect`
@@ -81,7 +107,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
   }
 }
 
-export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [] }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[] }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [err, setErr] = useState<string | null>(null)
@@ -89,6 +115,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [openTile, setOpenTile] = useState<number | null>(null) // board position of the open deed
   const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
   const [showProps, setShowProps] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [copied, setCopied] = useState(false)
   const you = view.you
   // Timestamp of our last successful own action. The server broadcasts a "state"
   // nudge to everyone including us, but our POST already returned the fresh view —
@@ -140,24 +168,37 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     ? (view.pendingCity !== null ? CITY_POS[view.pendingCity]
       : view.pendingCompany !== null ? COMPANY_POS[view.pendingCompany] : null)
     : null
+  // After landing on your own developable city the turn pauses in `manage` — pop its
+  // deed open so Develop is one glance away (mirrors the buy auto-open).
+  const manageTarget = view.active === you && !view.ended && view.phase === "manage" && BOARD[view.players[you]?.pos ?? -1]?.kind === "city"
+    ? view.players[you].pos : null
+  const autoTarget = buyTarget ?? manageTarget
   const autoOpenedRef = useRef<number | null>(null)
   useEffect(() => {
-    if (buyTarget !== null && autoOpenedRef.current !== buyTarget) {
-      setOpenTile(buyTarget); autoOpenedRef.current = buyTarget
-    } else if (buyTarget === null) {
+    if (autoTarget !== null && autoOpenedRef.current !== autoTarget) {
+      setOpenTile(autoTarget); autoOpenedRef.current = autoTarget
+    } else if (autoTarget === null) {
       autoOpenedRef.current = null
     }
-  }, [buyTarget])
+  }, [autoTarget])
 
-  const send = useCallback(async (intent: Intent, closeDeed = false) => {
+  const send = useCallback(async (intent: Intent, closeDeed = false, action?: string) => {
     setErr(null); setBusy(true)
     try {
       const res = await fetch(`/api/vyapaar/${matchId}/intent`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intent }),
       })
       const data = await res.json()
-      if (!res.ok) setErr(data.error ?? "error")
-      else { lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
+      if (!res.ok) {
+        const code = data.error ?? "error"
+        // Develop/manage rejections aren't errors the player did wrong — close the
+        // deed and give a gentle nudge instead of a red error box.
+        if (SOFT_ERRORS.has(code)) { setOpenTile(null); setErr("Nothing to build here — roll the dice to continue.") }
+        else {
+          const msg = ERR_MSG[code] ?? code
+          setErr(action ? `${action}: ${msg}` : msg)
+        }
+      } else { lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
     } finally { setBusy(false) }
   }, [matchId])
 
@@ -170,8 +211,20 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myCompanies = view.companies.filter((c) => c === you).length
   const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
   const leaderSeat = view.players.reduce((b, p, i) => (!p.left && p.score > view.players[b].score ? i : b), 0)
-  const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
+  // Last 5 meaningful actions (rolls are excluded in logLine), oldest → newest so
+  // the freshest line sits at the bottom.
+  const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-5)
   const iLeft = view.players[you]?.left ?? false
+
+  // Who rolled the dice currently shown — the dice only tumble when it was YOU.
+  const lastRollSeat = (() => { for (let i = view.log.length - 1; i >= 0; i--) { if ((view.log[i] as { type?: string }).type === "roll") return (view.log[i] as { seat?: number }).seat ?? null } return null })()
+  const rollStatus = view.ended ? "Game over"
+    : !myTurn ? `Waiting for ${view.players[view.active]?.name?.split(" ")[0] ?? "…"}`
+    : view.phase === "roll" ? "Your turn — roll the dice"
+    : view.phase === "buy" ? "Buy it or decline"
+    : view.phase === "manage" ? "Develop, then end your turn"
+    : view.phase === "auction" ? "Auction in progress"
+    : ""
 
   // Leaving forfeits: assets return to the bank server-side, then we navigate out.
   const leaveGame = useCallback(async () => {
@@ -187,6 +240,15 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
       <header className="vb-top">
         <button type="button" onClick={leaveGame} disabled={busy} className="vb-exit">{iLeft || view.ended ? "← Exit" : "← Leave"}</button>
+        <div className="vb-top-mid">
+          {roomCode && (
+            <button type="button" className="vb-code" title="Copy room code" onClick={() => { navigator.clipboard?.writeText(roomCode); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>
+              <span className="vb-code-lab">Room</span><b>{roomCode}</b>
+              <span className="vb-code-ic" dangerouslySetInnerHTML={{ __html: copied ? CHECK_IC : COPY_IC }} />
+            </button>
+          )}
+          <button type="button" className="vb-report-btn" onClick={() => setShowReport(true)}>Report a bug</button>
+        </div>
         <div className="vb-you">
           {playerImages[you]
             ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
@@ -202,10 +264,17 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             <div className="vb-grid">
               {BOARD.map((t) => {
                 const [c, r] = cellPos(t.pos)
-                // only the current player's own token is shown on the board
-                const tokens = view.players[you]?.pos === t.pos
-                  ? <span className="vb-tok" style={{ background: SEAT_COL[you % 6] }} />
-                  : null
+                // Every player's piece sits inside its cell — a CDN image token if the
+                // seat has one, else a seat-colour dot. On the 4 big corner cells the
+                // piece shrinks to dot-size (see .vb-tok-corner). Stacked left-offset.
+                const isCorner = ["start", "monsoon", "mandi", "taxraid"].includes(t.kind)
+                const here = view.players.map((p, seat) => ({ p, seat })).filter((x) => !x.p.left && x.p.pos === t.pos)
+                const tokens = here.map(({ seat }, idx) => {
+                  const pos = { left: `${4 + idx * 22}%`, zIndex: 4 + idx } as const
+                  return playerTokens[seat]
+                    ? <img key={seat} src={playerTokens[seat]!} alt="" className={`vb-tok-img${isCorner ? " vb-tok-corner" : ""}`} style={pos} />
+                    : <span key={seat} className={`vb-tok${isCorner ? " vb-tok-corner" : ""}`} style={{ ...pos, background: SEAT_COL[seat % 6] }} />
+                })
                 const style = { gridColumn: c, gridRow: r }
 
                 if (t.kind === "city") {
@@ -251,12 +320,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
               <div className="vb-hub">
                 <div className="vb-hub-name">व्यापार</div>
-                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} />
-                <button
-                  className="vb-roll"
-                  disabled={busy || !myTurn || view.phase !== "roll"}
-                  onClick={() => send({ type: "roll" })}
-                >Roll</button>
+                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} animate={lastRollSeat === you} />
+                {myTurn && view.phase === "manage"
+                  ? <button className="vb-roll" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
+                  : <button className="vb-roll" disabled={busy || !myTurn || view.phase !== "roll"} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
+                {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
               </div>
             </div>
           </div>
@@ -307,7 +375,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
           {myRents.map((r) => (
             <div key={r.id} className="vb-rent">
-              <p className="vb-rent-head">Someone just visited your city</p>
               <p className="vb-rent-body">
                 <b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b>
               </p>
@@ -326,9 +393,12 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           )}
 
           <div className="vb-actions">
-            {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" })}>Roll</button>}
+            {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
             {myTurn && view.phase === "buy" && (
               <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
+            )}
+            {myTurn && view.phase === "manage" && (
+              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
             )}
             {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
               <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
@@ -372,6 +442,40 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           </div>
         </div>
       )}
+
+      {showReport && <ReportBug matchId={matchId} onClose={() => setShowReport(false)} />}
+    </div>
+  )
+}
+
+function ReportBug({ matchId, onClose }: { matchId: string; onClose: () => void }) {
+  const [text, setText] = useState("")
+  const [state, setState] = useState<"idle" | "sending" | "done">("idle")
+  const submit = async () => {
+    if (!text.trim() || state === "sending") return
+    setState("sending")
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entityType: "vyapaar_bug", entityId: matchId, reason: "bug", details: text.trim() }),
+      })
+      setState(res.ok ? "done" : "idle")
+    } catch { setState("idle") }
+  }
+  return (
+    <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="vb-report">
+        <div className="vb-report-hd"><span>Report a bug</span><button className="vb-props-x" onClick={onClose}>✕</button></div>
+        {state === "done" ? (
+          <div className="vb-report-body"><p className="vb-report-ok">Thanks — your report reached the admins.</p><button className="vb-act primary" onClick={onClose}>Close</button></div>
+        ) : (
+          <div className="vb-report-body">
+            <p className="vb-report-sub">Describe what went wrong. Your match id is attached automatically.</p>
+            <textarea className="vb-report-ta" value={text} maxLength={2000} placeholder="e.g. I rolled but my token never moved…" onChange={(e) => setText(e.target.value)} />
+            <button className="vb-act primary" disabled={!text.trim() || state === "sending"} onClick={submit}>{state === "sending" ? "Sending…" : "Send report"}</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -462,7 +566,7 @@ function Die3D({ n, variant, animate }: { n: number; variant: number; animate: b
   )
 }
 
-function Dice({ roll, seq }: { roll: [number, number] | null; seq: string }) {
+function Dice({ roll, seq, animate = true }: { roll: [number, number] | null; seq: string; animate?: boolean }) {
   const reduce = useReducedMotion()
   // key on the roll VALUES only → the tumble plays only when the number changes (an actual
   // roll, incl. an opponent's). Phase/turn/poll updates keep the same values, so the dice
@@ -472,8 +576,8 @@ function Dice({ roll, seq }: { roll: [number, number] | null; seq: string }) {
   // counter if per-roll replay ever has to be exact.
   return (
     <div className="vb-dice" key={seq}>
-      <Die3D n={roll ? roll[0] : 6} variant={0} animate={!!roll && !reduce} />
-      <Die3D n={roll ? roll[1] : 6} variant={1} animate={!!roll && !reduce} />
+      <Die3D n={roll ? roll[0] : 6} variant={0} animate={!!roll && !reduce && animate} />
+      <Die3D n={roll ? roll[1] : 6} variant={1} animate={!!roll && !reduce && animate} />
     </div>
   )
 }
@@ -573,6 +677,8 @@ function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on:
 }
 
 const CROWN = `<svg viewBox="0 0 20 16" fill="currentColor"><path d="M2.5 13.5h15l1.3-8.6-4.9 3-4-6-4 6-4.9-3z"/></svg>`
+const COPY_IC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M4 13V5a1 1 0 0 1 1-1h8"/></svg>`
+const CHECK_IC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/></svg>`
 
 function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (n: number) => void }) {
   const [amt, setAmt] = useState(0)
@@ -840,4 +946,21 @@ const VB_CSS = `
 .vb-cta button{flex:1;font-family:"Poppins";font-weight:700;font-size:.88rem;padding:.68rem;border-radius:2px;border:none;cursor:pointer;}
 .vb-cta .buy{color:#fff;background:var(--accent);}.vb-cta .pass{background:#fff;border:1px solid #d9d9d9;color:var(--ink-2);}
 .vb-cta button:disabled{opacity:.5;cursor:not-allowed;}
+.vb-top-mid{display:flex;align-items:center;gap:8px;margin-left:12px;margin-right:auto;}
+.vb-code{display:inline-flex;align-items:center;gap:6px;font-family:"Poppins";font-size:.8rem;color:var(--cream);border:1px solid var(--line);background:var(--panel);border-radius:2px;padding:.35rem .6rem;cursor:pointer;}
+.vb-code b{font-variant-numeric:tabular-nums;letter-spacing:.06em;}
+.vb-code-lab{color:var(--dim);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;}
+.vb-code-ic{width:14px;height:14px;color:var(--dim);}
+.vb-code:hover{border-color:var(--accent);}
+.vb-report-btn{font-family:"Poppins";font-weight:600;font-size:.78rem;color:var(--dim);border:1px solid var(--line);background:transparent;border-radius:2px;padding:.35rem .6rem;cursor:pointer;}
+.vb-report-btn:hover{color:#c0392b;border-color:#c0392b;}
+.vb-roll-status{font-size:.8rem;font-weight:600;color:var(--dim);text-align:center;margin-top:2px;}
+.vb-tok-img{position:absolute;width:34%;max-width:18px;aspect-ratio:1;bottom:2px;border-radius:50%;object-fit:cover;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.vb-tok-img.vb-tok-corner{width:22%;max-width:12px;}
+.vb-report{width:min(420px,100%);background:var(--panel);color:var(--cream);border:1px solid var(--line);border-radius:2px;overflow:hidden;}
+.vb-report-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-weight:700;border-bottom:1px solid var(--line);}
+.vb-report-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+.vb-report-sub{margin:0;font-size:.8rem;color:var(--dim);}
+.vb-report-ta{width:100%;min-height:110px;resize:vertical;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.6rem;font-family:"Poppins";font-size:.85rem;}
+.vb-report-ok{margin:0;font-size:.9rem;color:#2E9455;font-weight:600;}
 `
