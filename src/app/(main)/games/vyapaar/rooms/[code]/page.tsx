@@ -4,6 +4,7 @@ import { requireUser } from "@/modules/auth/session"
 import { getRoom } from "@/modules/vyapaar/rooms"
 import { activeMatchId } from "@/modules/vyapaar/match"
 import { RoomActions } from "@/components/vyapaar/RoomActions"
+import { RoomRealtime } from "@/components/vyapaar/RoomRealtime"
 import { StartGameButton } from "@/components/vyapaar/StartGameButton"
 import { MAX_SEATS } from "@/config/vyapaar-rooms"
 
@@ -22,6 +23,7 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
 
   return (
     <div className="space-y-4">
+      {isMember && <RoomRealtime roomId={room.id} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Room {room.code}</h1>
