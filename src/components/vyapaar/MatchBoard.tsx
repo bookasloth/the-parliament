@@ -216,13 +216,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             <span>{view.players.length} players</span>
             <span>pot <b>₹{inr(view.pot)}</b></span>
           </div>
-          <div className="vb-turn">
-            <div className="vb-turn-row">
-              <b>{view.ended ? "Game over" : `${seatName(view.active)}'s turn`}</b>
-              <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
-            </div>
-          </div>
-
           <div className="vb-players">
             {view.players.map((p, seat) => (
               <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
@@ -230,7 +223,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
                   : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
-                {p.halted ? <span className="vb-halt">halted</span> : null}
+                {seat === view.active && !view.ended
+                  ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
+                  : p.halted ? <span className="vb-halt">halted</span> : null}
               </div>
             ))}
           </div>
@@ -357,7 +352,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
           <div className="vb-note">{co.sub}. No houses or hotels. Own <b>{COMPANIES[co.partner].name}</b> too and the fee jumps to the pair rate.</div>
           <div className="vb-cta">
             {isPending
-              ? <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(co.buy)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>
+              ? <><button className="buy" disabled={busy || view.players[view.you].cash < co.buy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(co.buy)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>
               : <button className="pass" onClick={onClose}>Close</button>}
           </div>
         </div>
@@ -401,7 +396,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
           <div><div className="k">Mortgage</div><div className="v">{inr(Math.floor(city.price / 2))}</div></div>
         </div>
         <div className="vb-cta">
-          {isPendingBuy && <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(city.price)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>}
+          {isPendingBuy && <><button className="buy" disabled={busy || view.players[view.you].cash < city.price} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(city.price)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>}
           {!isPendingBuy && iOwn && canManage && <>
             {!cs.mortgaged && cs.level === 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
             {!cs.mortgaged && cs.level > 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
@@ -447,8 +442,20 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
             {view.players.map((p, seat) => seat !== you ? <option key={seat} value={seat}>{p.name}</option> : null)}
           </select>
         </label>
-        <div>Give: {mine.map((c) => <label key={c.id}><input type="checkbox" checked={give.includes(c.id)} onChange={() => toggle(give, setGive, c.id)} /> {CITIES[c.id].name}</label>)} + <input type="number" min={0} value={giveCash} onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} /></div>
-        <div>Get: {theirs.map((c) => <label key={c.id}><input type="checkbox" checked={get.includes(c.id)} onChange={() => toggle(get, setGet, c.id)} /> {CITIES[c.id].name}</label>)} + <input type="number" min={0} value={getCash} onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} /></div>
+        <div className="vb-tp-row">
+          <span className="vb-tp-lab">Give</span>
+          <div className="vb-tp-pills">
+            {mine.length ? mine.map((c) => <button key={c.id} type="button" className={`vb-tp-pill ${give.includes(c.id) ? "on" : ""}`} onClick={() => toggle(give, setGive, c.id)}>{CITIES[c.id].name}</button>) : <span className="vb-tp-none">no tradable property</span>}
+            <input className="vb-tp-cash" type="number" min={0} value={giveCash} placeholder="cash" onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} />
+          </div>
+        </div>
+        <div className="vb-tp-row">
+          <span className="vb-tp-lab">Get</span>
+          <div className="vb-tp-pills">
+            {theirs.map((c) => <button key={c.id} type="button" className={`vb-tp-pill ${get.includes(c.id) ? "on" : ""}`} onClick={() => toggle(get, setGet, c.id)}>{CITIES[c.id].name}</button>)}
+            <input className="vb-tp-cash" type="number" min={0} value={getCash} placeholder="cash" onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} />
+          </div>
+        </div>
         <button className="vb-act primary" disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })}>Send offer</button>
       </div>
     </details>
@@ -552,6 +559,15 @@ const VB_CSS = `
 .vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
 .vb-trade{background:var(--panel-2);border:1px solid var(--yellow);border-radius:2px;padding:10px 12px;font-size:.84rem;}
 .vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;}
+.vb-pl-count{margin-left:auto;}
+.vb-pl-count .vb-count{font-size:.95rem;}
+.vb-tp-row{display:flex;flex-direction:column;gap:5px;}
+.vb-tp-lab{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);}
+.vb-tp-pills{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.vb-tp-pill{border:1px solid var(--line);background:transparent;color:var(--cream);border-radius:2px;padding:.25rem .55rem;font-family:"Poppins";font-size:.72rem;font-weight:500;cursor:pointer;}
+.vb-tp-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+.vb-tp-cash{width:70px;background:var(--panel);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.25rem .4rem;font-family:"Poppins";font-size:.72rem;}
+.vb-tp-none{font-size:.72rem;color:var(--ink-2);}
 .vb-tp{background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:10px 12px;font-size:.82rem;}
 .vb-tp summary{cursor:pointer;font-weight:600;}
 .vb-tp-body{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
