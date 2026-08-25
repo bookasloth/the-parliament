@@ -9,15 +9,16 @@ import type { Intent } from "@/modules/vyapaar/engine/state"
 
 const MATCH_TOPIC = (id: string) => `vyapaar-match:${id}`
 
-export function MatchBoard({ matchId, initialView }: { matchId: string; initialView: PublicView }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
+  const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const you = view.you
 
   const refetch = useCallback(async () => {
     const res = await fetch(`/api/vyapaar/${matchId}/view`, { cache: "no-store" })
-    if (res.ok) { setView((await res.json()).view); setErr(null) }
+    if (res.ok) { const d = await res.json(); setView(d.view); setTurnExpiresAt(d.turnExpiresAt ?? null); setErr(null) }
   }, [matchId])
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
       })
       const data = await res.json()
       if (!res.ok) setErr(data.error ?? "error")
-      else setView(data.view)
+      else { setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null) }
     } finally {
       setBusy(false)
     }
@@ -69,7 +70,10 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
     <div className="space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Vyapaar match</h1>
-        <span className="text-sm text-gray-500">Round {view.round} · pot {view.pot.toLocaleString("en-IN")} · {view.ended ? `over — winner seat ${view.winner}` : `seat ${view.active}'s turn`}</span>
+        <span className="flex items-center gap-2 text-sm text-gray-500">
+          <span>Round {view.round} · pot {view.pot.toLocaleString("en-IN")} · {view.ended ? `over — winner seat ${view.winner}` : `seat ${view.active}'s turn`}</span>
+          <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
+        </span>
       </header>
 
       <section className="grid gap-2 sm:grid-cols-2">
@@ -129,6 +133,21 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
       <TradePropose view={view} you={you} busy={busy} onPropose={(intent) => send(intent)} />
     </div>
   )
+}
+
+// now === null until mounted → renders nothing on SSR/first paint, avoiding a
+// server/client hydration mismatch on the per-second value.
+function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: boolean }) {
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    if (!expiresAt || ended) { setNow(null); return }
+    setNow(Date.now())
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [expiresAt, ended])
+  if (!expiresAt || ended || now === null) return null
+  const secs = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000))
+  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${secs <= 5 ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-600"}`}>{secs > 0 ? `${secs}s` : "resolving…"}</span>
 }
 
 function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (n: number) => void }) {
