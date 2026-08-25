@@ -41,6 +41,7 @@ const ACTIVE_ONLY = new Set<Intent["type"]>([
   "develop",
   "mortgage",
   "unmortgage",
+  "sell",
   "end_turn",
 ]);
 
@@ -385,6 +386,24 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       s.players[seat].cash -= cost;
       c.mortgaged = false;
       events.push({ type: "unmortgage", seat, cityId: id, amount: cost });
+      return { state: s, events };
+    }
+
+    case "sell": {
+      if (!canManage(s)) return { error: "cannot_manage_now" };
+      const id = intent.cityId;
+      if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
+      const c = s.cities[id];
+      if (c.owner !== seat) return { error: "not_owner" };
+      if (c.level !== 0) return { error: "sell_upgrades_first" };
+      // Sell an undeveloped city back to the bank for half its buy price; a mortgaged one nets
+      // half less the outstanding mortgage (you never banked that half).
+      const gross = Math.floor(CITIES[id].price / 2);
+      const proceeds = c.mortgaged ? 0 : gross;
+      s.players[seat].cash += proceeds;
+      c.owner = null;
+      c.mortgaged = false;
+      events.push({ type: "sell", seat, cityId: id, amount: proceeds });
       return { state: s, events };
     }
 

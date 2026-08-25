@@ -16,6 +16,7 @@ export type Intent =
   | { type: "develop"; cityId: number }
   | { type: "mortgage"; cityId: number }
   | { type: "unmortgage"; cityId: number }
+  | { type: "sell"; cityId: number }
   | { type: "propose_trade"; to: number; give: TradeSide; get: TradeSide }
   | { type: "respond_trade"; accept: boolean }
   | { type: "end_turn" };
