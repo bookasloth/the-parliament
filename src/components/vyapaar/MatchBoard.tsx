@@ -76,6 +76,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [openTile, setOpenTile] = useState<number | null>(null) // board position of the open deed
+  const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
+  const [showProps, setShowProps] = useState(false)
   const you = view.you
 
   const refetch = useCallback(async () => {
@@ -94,8 +96,16 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       await sb.realtime.setAuth(auth.token)
       refreshTimer = setTimeout(connect, 55 * 60 * 1000)
       if (channel) return
-      channel = sb.channel(MATCH_TOPIC(matchId), { config: { private: true } })
-      channel.on("broadcast", { event: "state" }, () => { void refetch() }).subscribe()
+      channel = sb.channel(MATCH_TOPIC(matchId), { config: { private: true, presence: { key: String(you) } } })
+      channel
+        .on("broadcast", { event: "state" }, () => { void refetch() })
+        .on("presence", { event: "sync" }, () => {
+          const st = channel!.presenceState() as Record<string, Array<{ seat?: number }>>
+          const seats = new Set<number>()
+          Object.values(st).forEach((arr) => arr.forEach((m) => { if (typeof m.seat === "number") seats.add(m.seat) }))
+          setOnlineSeats(seats)
+        })
+        .subscribe((status: string) => { if (status === "SUBSCRIBED") void channel!.track({ seat: you }) })
     }
     connect()
     return () => { cancelled = true; clearTimeout(refreshTimer); if (channel) { void sb.removeChannel(channel); channel = null } }
@@ -127,6 +137,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myHouses = myCities.reduce((n, c) => n + Math.min(c.level, 3), 0)
   const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
   const myCompanies = view.companies.filter((c) => c === you).length
+  const leaderSeat = view.players.reduce((b, p, i) => (p.score > view.players[b].score ? i : b), 0)
   const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
 
   return (
@@ -223,6 +234,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
                   : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
+                {seat === leaderSeat && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
+                {onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
                 {seat === view.active && !view.ended
                   ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
                   : p.halted ? <span className="vb-halt">halted</span> : null}
@@ -261,6 +274,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
               <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
             )}
+            <button className="vb-act" onClick={() => setShowProps(true)}>My Properties</button>
           </div>
 
           {view.trade && view.trade.to === you && (
@@ -288,6 +302,22 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           onClose={() => setOpenTile(null)}
           onAction={send}
         />
+      )}
+
+      {showProps && (
+        <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) setShowProps(false) }}>
+          <div className="vb-props">
+            <div className="vb-props-head"><span>Your properties</span><button className="vb-props-x" onClick={() => setShowProps(false)}>✕</button></div>
+            <div className="vb-props-list">
+              {myCities.length ? myCities.map((c) => (
+                <button key={c.id} className="vb-prop-card" style={{ borderLeftColor: ZONE_BG[CITIES[c.id].zone] }} onClick={() => { setShowProps(false); setOpenTile(CITY_POS[c.id]) }}>
+                  <span className="vb-prop-nm">{CITIES[c.id].name}</span>
+                  <span className="vb-prop-sub">{c.mortgaged ? "mortgaged" : c.level === 0 ? "unbuilt" : `level ${c.level}`}</span>
+                </button>
+              )) : <div className="vb-tp-none">You don&apos;t own any property yet</div>}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -403,6 +433,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
               : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
+            {cs.level === 0 && <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr(cs.mortgaged ? 0 : Math.floor(city.price / 2))}</button>}
             <button className="pass" onClick={onClose}>Close</button>
           </>}
           {!isPendingBuy && !(iOwn && canManage) && <button className="pass" onClick={onClose}>Close</button>}
@@ -411,6 +442,15 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
     </div>
   )
 }
+
+function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on: boolean; onClick: () => void }) {
+  const style = on
+    ? { background: ZONE_BG[zone], borderColor: ZONE_BG[zone], color: ZONE_DARK[zone] ? "#0F1111" : "#fff" }
+    : { background: "transparent", borderColor: ZONE_TX[zone], color: ZONE_TX[zone] }
+  return <button type="button" className="vb-tp-pill" style={style} onClick={onClick}>{name}</button>
+}
+
+const CROWN = `<svg viewBox="0 0 20 16" fill="currentColor"><path d="M2.5 13.5h15l1.3-8.6-4.9 3-4-6-4 6-4.9-3z"/></svg>`
 
 function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (n: number) => void }) {
   const [amt, setAmt] = useState(0)
@@ -445,14 +485,14 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
         <div className="vb-tp-row">
           <span className="vb-tp-lab">Give</span>
           <div className="vb-tp-pills">
-            {mine.length ? mine.map((c) => <button key={c.id} type="button" className={`vb-tp-pill ${give.includes(c.id) ? "on" : ""}`} onClick={() => toggle(give, setGive, c.id)}>{CITIES[c.id].name}</button>) : <span className="vb-tp-none">no tradable property</span>}
+            {mine.length ? mine.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={give.includes(c.id)} onClick={() => toggle(give, setGive, c.id)} />) : <span className="vb-tp-none">no tradable property</span>}
             <input className="vb-tp-cash" type="number" min={0} value={giveCash} placeholder="cash" onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} />
           </div>
         </div>
         <div className="vb-tp-row">
           <span className="vb-tp-lab">Get</span>
           <div className="vb-tp-pills">
-            {theirs.map((c) => <button key={c.id} type="button" className={`vb-tp-pill ${get.includes(c.id) ? "on" : ""}`} onClick={() => toggle(get, setGet, c.id)}>{CITIES[c.id].name}</button>)}
+            {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
             <input className="vb-tp-cash" type="number" min={0} value={getCash} placeholder="cash" onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} />
           </div>
         </div>
@@ -573,6 +613,16 @@ const VB_CSS = `
 .vb-tp-body{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
 .vb-tp select,.vb-tp input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.3rem;font-family:"Poppins";}
 .vb-tp input[type=number]{width:80px;}.vb-tp label{margin-right:8px;}
+.vb-crown{width:15px;height:12px;color:var(--yellow);display:inline-flex;flex:none;}
+.vb-crown svg{width:100%;height:100%;}
+.vb-dot{width:7px;height:7px;border-radius:50%;background:#3ec46d;flex:none;}
+.vb-props{width:min(360px,100%);background:var(--panel);color:var(--cream);border:1px solid var(--line);border-radius:2px;overflow:hidden;max-height:80vh;display:flex;flex-direction:column;}
+.vb-props-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-weight:700;border-bottom:1px solid var(--line);}
+.vb-props-x{background:transparent;border:none;color:var(--dim);font-size:1rem;cursor:pointer;}
+.vb-props-list{padding:10px 12px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
+.vb-prop-card{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:2px;padding:9px 12px;cursor:pointer;text-align:left;font-family:"Poppins";}
+.vb-prop-nm{font-weight:600;font-size:.86rem;color:var(--cream);}
+.vb-prop-sub{font-size:.66rem;color:var(--dim);}
 .vb-scrim{position:fixed;inset:0;background:rgba(15,17,17,.8);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
 .vb-deed{width:min(370px,100%);background:#fff;color:var(--ink);border-radius:2px;overflow:hidden;max-height:90vh;overflow-y:auto;}
 .vb-crown{padding:16px 18px 15px;position:relative;}

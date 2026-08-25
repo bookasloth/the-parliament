@@ -64,4 +64,35 @@ describe("develop / mortgage", () => {
     const r = applyIntent(s, 0, { type: "develop", cityId: 999 });
     expect("error" in r).toBe(true);
   });
+
+  it("sells an undeveloped city back to the bank for half its price", () => {
+    const s = createGame(1, ["a", "b"], 25000);
+    s.cities[5].owner = 0;
+    s.phase = "manage";
+    const before = s.players[0].cash;
+    const r = applyIntent(s, 0, { type: "sell", cityId: 5 });
+    expect("error" in r).toBe(false);
+    expect(s.cities[5].owner).toBeNull();
+    expect(s.players[0].cash).toBe(before + Math.floor(CITIES[5].price / 2));
+  });
+
+  it("refuses to sell a developed city (sell upgrades first)", () => {
+    const s = createGame(1, ["a", "b"], 25000);
+    s.cities[5].owner = 0;
+    s.cities[5].level = 1;
+    s.phase = "manage";
+    expect("error" in applyIntent(s, 0, { type: "sell", cityId: 5 })).toBe(true);
+    expect(s.cities[5].owner).toBe(0);
+  });
+
+  it("a mortgaged city sells for nothing (the half was already drawn) and clears", () => {
+    const s = createGame(1, ["a", "b"], 25000);
+    s.cities[5].owner = 0;
+    s.cities[5].mortgaged = true;
+    s.phase = "manage";
+    const before = s.players[0].cash;
+    applyIntent(s, 0, { type: "sell", cityId: 5 });
+    expect(s.cities[5].owner).toBeNull();
+    expect(s.players[0].cash).toBe(before);
+  });
 });
