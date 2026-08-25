@@ -18,16 +18,16 @@ const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd
 
 const inr = (n: number) => n.toLocaleString("en-IN")
 
-// 11×11 ring cell → [col,row]. Corners: 0 Start, 10 Monsoon, 20 Mandi, 30 Tax Raid.
+// Wide 13×9 ring cell → [col,row]. Corners: 0 Start, 12 Monsoon, 20 Mandi, 32 Tax Raid.
 function cellPos(i: number): [number, number] {
-  if (i === 0) return [11, 11]
-  if (i < 10) return [11 - i, 11]
-  if (i === 10) return [1, 11]
-  if (i < 20) return [1, 11 - (i - 10)]
+  if (i === 0) return [13, 9]
+  if (i < 12) return [13 - i, 9]         // bottom row 1..11 → cols 12..2
+  if (i === 12) return [1, 9]
+  if (i < 20) return [1, 9 - (i - 12)]   // left col 13..19 → rows 8..2
   if (i === 20) return [1, 1]
-  if (i < 30) return [1 + (i - 20), 1]
-  if (i === 30) return [11, 1]
-  return [11, 1 + (i - 30)]
+  if (i < 32) return [1 + (i - 20), 1]   // top row 21..31 → cols 2..12
+  if (i === 32) return [13, 1]
+  return [13, 1 + (i - 32)]              // right col 33..39 → rows 2..8
 }
 
 const SPECIAL_LABEL: Record<string, string> = {
@@ -494,8 +494,8 @@ const VB_CSS = `
 .vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
 .vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
-.vb-board{aspect-ratio:5/4;width:min(100%,calc((100dvh - 72px) * 1.25));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto;}
-.vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
+.vb-board{aspect-ratio:13/9;width:min(100%,calc((100dvh - 72px) * 1.444));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto 0 0;}
+.vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(9,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
 .vb-tile{position:relative;background:var(--milk);min-width:0;display:flex;flex-direction:column;overflow:hidden;}
 .vb-city,.vb-company{cursor:pointer;}
 .vb-city:hover,.vb-company:hover{outline:2px solid var(--accent);outline-offset:-2px;z-index:3;}
@@ -520,7 +520,7 @@ const VB_CSS = `
 .vb-taxraid .vb-sic,.vb-taxraid .vb-slb{color:#FF4D93;}
 .vb-tok{position:absolute;width:22%;max-width:12px;aspect-ratio:1;border-radius:2px;border:1.5px solid #fff;bottom:2px;left:2px;}
 .vb-tok:nth-of-type(2){left:28%;}.vb-tok:nth-of-type(3){left:54%;}.vb-tok:nth-of-type(4){left:auto;right:2px;}
-.vb-hub{grid-column:2/11;grid-row:2/11;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
+.vb-hub{grid-column:2/13;grid-row:2/9;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
 .vb-dice{display:flex;gap:10px;}
 .vb-die{width:clamp(30px,4.6vw,48px);aspect-ratio:1;background:#fff;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 2px 5px rgba(0,0,0,.35);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:15%;gap:6%;animation:vb-tumble .42s ease-out;}

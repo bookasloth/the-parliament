@@ -6,17 +6,17 @@ describe("vyapaar board", () => {
   it("has 40 tiles with the corners fixed", () => {
     expect(BOARD).toHaveLength(40);
     expect(BOARD[0].kind).toBe("start");
-    expect(BOARD[10].kind).toBe("monsoon");
+    expect(BOARD[12].kind).toBe("monsoon"); // wide 13×9 corners
     expect(BOARD[20].kind).toBe("mandi");
-    expect(BOARD[30].kind).toBe("taxraid");
+    expect(BOARD[32].kind).toBe("taxraid");
   });
 
   it("places companies (3 pairs), gst, income, and card tiles", () => {
     for (const p of [3, 9, 15, 21, 27, 33]) expect(BOARD[p].kind).toBe("company");
     expect(BOARD[17].kind).toBe("gst");
     expect(BOARD[37].kind).toBe("income");
-    for (const p of [23]) expect(BOARD[p].kind).toBe("upi");
-    for (const p of [7, 13]) expect(BOARD[p].kind).toBe("headline");
+    for (const p of [6]) expect(BOARD[p].kind).toBe("upi");
+    for (const p of [24, 30]) expect(BOARD[p].kind).toBe("headline");
   });
 
   it("fills the remaining 25 tiles with cities alphabetically by position", () => {
