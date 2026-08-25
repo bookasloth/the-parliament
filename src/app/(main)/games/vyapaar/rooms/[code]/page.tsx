@@ -1,7 +1,10 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireUser } from "@/modules/auth/session"
 import { getRoom } from "@/modules/vyapaar/rooms"
+import { activeMatchId } from "@/modules/vyapaar/match"
 import { RoomActions } from "@/components/vyapaar/RoomActions"
+import { StartGameButton } from "@/components/vyapaar/StartGameButton"
 import { MAX_SEATS } from "@/config/vyapaar-rooms"
 
 export const dynamic = "force-dynamic"
@@ -15,6 +18,7 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
   const isMember = room.members.some((m) => m.userId === user.id)
   const isHost = room.hostId === user.id
   const seats = Array.from({ length: MAX_SEATS }, (_, i) => room.members.find((m) => m.seat === i) ?? null)
+  const matchId = room.status === "in_game" ? await activeMatchId(room.id) : null
 
   return (
     <div className="space-y-4">
@@ -23,7 +27,15 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
           <h1 className="text-xl font-bold">Room {room.code}</h1>
           <p className="text-sm text-gray-500">{room.visibility} · {room.status}</p>
         </div>
-        {isMember && <RoomActions roomId={room.id} isHost={isHost} visibility={room.visibility as "private" | "public"} />}
+        <div className="flex items-center gap-3">
+          {isHost && room.status === "open" && room.members.length >= 2 && <StartGameButton roomId={room.id} />}
+          {isMember && room.status === "in_game" && matchId && (
+            <Link href={`/games/vyapaar/matches/${matchId}`} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+              Enter game
+            </Link>
+          )}
+          {isMember && <RoomActions roomId={room.id} isHost={isHost} visibility={room.visibility as "private" | "public"} />}
+        </div>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {seats.map((m, i) => (

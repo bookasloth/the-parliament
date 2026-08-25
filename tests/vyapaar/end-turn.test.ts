@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
-import { applyIntent, winnerOf } from "@/modules/vyapaar/engine/engine";
+import { applyIntent, winnerOf, rankSeats } from "@/modules/vyapaar/engine/engine";
 import { scoreOf } from "@/modules/vyapaar/engine/helpers";
 
 describe("end_turn and end conditions", () => {
@@ -55,5 +55,15 @@ describe("end_turn and end conditions", () => {
     for (let id = 0; id <= 2; id++) s.cities[id].owner = 1; // seat 1 controls a set, seat 0 owns nothing
     expect(scoreOf(s, 0)).toBe(scoreOf(s, 1)); // genuine tie on score
     expect(winnerOf(s)).toBe(1);
+  });
+
+  it("rankSeats is best-first and agrees with winnerOf", () => {
+    const s = createGame(1, ["a", "b"]);
+    s.players[0].cash = 7075;
+    s.players[1].cash = 1000;
+    for (let id = 0; id <= 2; id++) s.cities[id].owner = 1; // seat 1 controls North → tie broken by sets
+    const order = rankSeats(s);
+    expect(order[0]).toBe(winnerOf(s));
+    expect(new Set(order)).toEqual(new Set([0, 1]));
   });
 });

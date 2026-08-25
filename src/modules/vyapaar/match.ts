@@ -3,10 +3,27 @@ import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { createGame } from "./engine/state"
 import type { GameState, Intent } from "./engine/state"
-import { applyIntent } from "./engine/engine"
+import { applyIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
-import { scoreOf, netWorth, controlledSets } from "./engine/helpers"
+import { netWorth } from "./engine/helpers"
+import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
 import crypto from "node:crypto"
+
+export async function activeMatchId(roomId: string): Promise<string | null> {
+  const match = await prisma.vyapaarMatch.findFirst({ where: { roomId, status: "active" }, select: { id: true } })
+  return match?.id ?? null
+}
+
+export async function getMatchView(userId: string, matchId: string): Promise<PublicView> {
+  const match = await prisma.vyapaarMatch.findUnique({
+    where: { id: matchId },
+    select: { state: true, players: { select: { userId: true, seat: true } } },
+  })
+  if (!match) throw new ForbiddenError("Match not found")
+  const me = match.players.find((p) => p.userId === userId)
+  if (!me) throw new ForbiddenError("not_a_player")
+  return publicView(match.state as unknown as GameState, me.seat)
+}
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
 export function rebuildMatchState(
@@ -21,73 +38,44 @@ export function rebuildMatchState(
 }
 
 export async function startMatch(userId: string, roomId: string): Promise<{ matchId: string }> {
-  const room = await prisma.vyapaarRoom.findUnique({
-    where: { id: roomId },
-    select: {
-      id: true, hostId: true, status: true,
-      members: {
-        orderBy: { seat: "asc" },
-        select: { userId: true, seat: true, user: { select: { displayName: true, legalName: true } } },
-      },
-    },
-  })
-  if (!room) throw new ForbiddenError("Room not found")
-  if (room.hostId !== userId) throw new ForbiddenError("Only the host can start the game")
-  if (room.status !== "open") throw new ForbiddenError("Room is not open")
-  if (room.members.length < 2 || room.members.length > 6) throw new ForbiddenError("Need 2 to 6 players")
-
-  const memberIds = room.members.map((m) => m.userId)
-  // One-active-match rule (double-spend guard).
-  const busy = await prisma.vyapaarMatchPlayer.findFirst({
-    where: { userId: { in: memberIds }, match: { status: "active" } },
-    select: { user: { select: { displayName: true, legalName: true } } },
-  })
-  if (busy) throw new ForbiddenError(`${busy.user.displayName || busy.user.legalName} is already in a game`)
-
+  const room0 = await prisma.vyapaarRoom.findUnique({ where: { id: roomId }, select: { members: { select: { userId: true } } } })
+  if (!room0) throw new ForbiddenError("Room not found")
+  const memberIds = room0.members.map((m) => m.userId).sort()
   for (const id of memberIds) await ensureVyapaarEnrollment(id)
-  const fresh = await prisma.user.findMany({
-    where: { id: { in: memberIds } },
-    select: { id: true, vyapaarWallet: true },
-  })
-  const walletById = new Map(fresh.map((u) => [u.id, u.vyapaarWallet]))
 
-  const seated = room.members // already ordered by room seat
-  const names = seated.map((m) => m.user.displayName || m.user.legalName)
-  const openingCash = seated.map((m) => walletById.get(m.userId) ?? 0)
-  const seed = crypto.randomInt(2 ** 31)
-  const state = createGame(seed, names, openingCash)
+  return prisma.$transaction(async (tx) => {
+    // Lock the participating users' rows so concurrent starts sharing a member serialize.
+    await tx.$executeRaw`SELECT id FROM "users" WHERE id = ANY(${memberIds}::uuid[]) ORDER BY id FOR UPDATE`
+    const room = await tx.vyapaarRoom.findUnique({
+      where: { id: roomId },
+      select: { id: true, hostId: true, status: true, members: { orderBy: { seat: "asc" }, select: { userId: true, user: { select: { displayName: true, legalName: true, vyapaarWallet: true } } } } },
+    })
+    if (!room) throw new ForbiddenError("Room not found")
+    if (room.hostId !== userId) throw new ForbiddenError("Only the host can start the game")
+    if (room.status !== "open") throw new ForbiddenError("Room is not open")
+    if (room.members.length < 2 || room.members.length > 6) throw new ForbiddenError("Need 2 to 6 players")
+    const busy = await tx.vyapaarMatchPlayer.findFirst({
+      where: { userId: { in: room.members.map((m) => m.userId) }, match: { status: "active" } },
+      select: { user: { select: { displayName: true, legalName: true } } },
+    })
+    if (busy) throw new ForbiddenError(`${busy.user.displayName || busy.user.legalName} is already in a game`)
 
-  const [match] = await prisma.$transaction([
-    prisma.vyapaarMatch.create({
+    const seated = room.members
+    const names = seated.map((m) => m.user.displayName || m.user.legalName)
+    const openingCash = seated.map((m) => m.user.vyapaarWallet)
+    const seed = crypto.randomInt(2 ** 31)
+    const state = createGame(seed, names, openingCash)
+    const match = await tx.vyapaarMatch.create({
       data: {
-        roomId: room.id,
-        seed: BigInt(seed),
-        state: state as unknown as object,
-        actionLog: [],
-        status: "active",
-        activeSeat: 0,
-        players: {
-          create: seated.map((m, i) => ({ userId: m.userId, seat: i, openingCash: openingCash[i] })),
-        },
+        roomId: room.id, seed: BigInt(seed), state: state as unknown as object, actionLog: [],
+        status: "active", activeSeat: 0,
+        players: { create: seated.map((m, i) => ({ userId: m.userId, seat: i, openingCash: openingCash[i] })) },
       },
       select: { id: true },
-    }),
-    prisma.vyapaarRoom.update({ where: { id: room.id }, data: { status: "in_game" } }),
-  ])
-  return { matchId: match.id }
-}
-
-/** Seats ordered best-first: score desc, then controlledSets desc, then seat asc. */
-function rankSeats(state: GameState): number[] {
-  return state.players
-    .map((_, seat) => seat)
-    .sort((a, b) => {
-      const sa = scoreOf(state, a), sb = scoreOf(state, b)
-      if (sb !== sa) return sb - sa
-      const ca = controlledSets(state, a), cb = controlledSets(state, b)
-      if (cb !== ca) return cb - ca
-      return a - b
     })
+    await tx.vyapaarRoom.update({ where: { id: room.id }, data: { status: "in_game" } })
+    return { matchId: match.id }
+  })
 }
 
 /** Set final wallets/placements/stats from the ended game state. One `$transaction` with the caller. */
@@ -137,7 +125,7 @@ export async function applyMatchIntent(
   matchId: string,
   intent: Intent,
 ): Promise<{ view: PublicView } | { error: string }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView } | { error: string }> => {
     // Serialize concurrent intents on this match (prevents lost-update + double-settle
     // when two calls — double-click, retry, or legal concurrent bid/trade-response from
     // a non-active seat — race the same snapshot).
@@ -176,4 +164,8 @@ export async function applyMatchIntent(
     }
     return { view: publicView(r.state, me.seat) }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
+  if ("view" in result) {
+    await broadcastToTopic(matchTopic(matchId), "state", { activeSeat: result.view.active, ended: result.view.ended })
+  }
+  return result
 }

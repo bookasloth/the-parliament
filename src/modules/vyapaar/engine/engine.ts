@@ -196,15 +196,21 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
   return true;
 }
 
+/** Seats best-first: score desc, then controlledSets desc, then seat asc. */
+export function rankSeats(s: GameState): number[] {
+  return s.players
+    .map((_, seat) => seat)
+    .sort((a, b) => {
+      const sa = scoreOf(s, a), sb = scoreOf(s, b);
+      if (sb !== sa) return sb - sa;
+      const ca = controlledSets(s, a), cb = controlledSets(s, b);
+      if (cb !== ca) return cb - ca;
+      return a - b;
+    });
+}
+
 export function winnerOf(s: GameState): number {
-  let best = 0;
-  for (let i = 1; i < s.players.length; i++) {
-    const si = scoreOf(s, i);
-    const sb = scoreOf(s, best);
-    if (si > sb) best = i;
-    else if (si === sb && controlledSets(s, i) > controlledSets(s, best)) best = i;
-  }
-  return best;
+  return rankSeats(s)[0];
 }
 
 function endGame(s: GameState, events: EngineEvent[]): void {

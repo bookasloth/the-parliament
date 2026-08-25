@@ -55,22 +55,32 @@ async function postToTopic(topic: string, event: string, payload: unknown): Prom
   }
 }
 
+/** Vyapaar match's private channel — used for the board-state realtime nudge. */
+export function matchTopic(matchId: string): string {
+  return `vyapaar-match:${matchId}`
+}
+
 /**
- * Push a broadcast event to a private conversation channel. Best-effort:
- * callers must not let a Realtime hiccup fail the underlying DB write, so this
- * swallows errors (the client's initial fetch + reconnect covers any drop).
+ * Push an event to any private topic. Best-effort: callers must not let a
+ * Realtime hiccup fail the underlying DB write, so this swallows errors (the
+ * client's initial fetch + reconnect covers any drop).
  *
  * Runs via `after()` so the ~200-300ms Realtime REST roundtrip lands *after* the
  * response is flushed — the sender's action returns as soon as the DB write is
  * durable, and the peer still gets the event on the same request.
  */
-export async function broadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
+export async function broadcastToTopic(topic: string, event: string, payload: unknown): Promise<void> {
   try {
-    after(() => postToTopic(conversationTopic(conversationId), event, payload))
+    after(() => postToTopic(topic, event, payload))
   } catch {
     // outside a request scope (scripts, tests) — just send inline
-    await postToTopic(conversationTopic(conversationId), event, payload)
+    await postToTopic(topic, event, payload)
   }
+}
+
+/** Push a broadcast event to a private conversation channel. See broadcastToTopic. */
+export async function broadcast(conversationId: string, event: string, payload: unknown): Promise<void> {
+  await broadcastToTopic(conversationTopic(conversationId), event, payload)
 }
 
 /**

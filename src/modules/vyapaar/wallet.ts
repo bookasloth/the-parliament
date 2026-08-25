@@ -40,6 +40,8 @@ export async function topUpVyapaarCoins(
   userId: string,
   packId: string,
 ): Promise<{ wallet: number; shells: number }> {
+  const inGame = await prisma.vyapaarMatchPlayer.findFirst({ where: { userId, match: { status: "active" } }, select: { matchId: true } })
+  if (inGame) throw new ForbiddenError("You're in a game — finish it before buying coins")
   await ensureVyapaarEnrollment(userId)
   return prisma.$transaction(async (tx) => {
     const u = await tx.user.findUnique({ where: { id: userId }, select: { shellBalance: true } })

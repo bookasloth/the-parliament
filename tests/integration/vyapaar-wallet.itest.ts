@@ -68,4 +68,16 @@ describe("vyapaar wallet", () => {
     const u = await makeUser(9999)
     await expect(topUpVyapaarCoins(u.id, "nope")).rejects.toThrow()
   })
+
+  it("blocks a coin top-up while the user is in an active match", async () => {
+    const host = await makeUser(9999)
+    const other = await makeUser()
+    const { createRoom, joinRoom } = await import("@/modules/vyapaar/rooms")
+    const { startMatch } = await import("@/modules/vyapaar/match")
+    const { code } = await createRoom(host.id, "public")
+    await joinRoom(other.id, code)
+    const room = await prisma.vyapaarRoom.findUnique({ where: { code }, select: { id: true } })
+    await startMatch(host.id, room!.id)
+    await expect(topUpVyapaarCoins(host.id, "coins_15k")).rejects.toThrow(/in a game/i)
+  })
 })
