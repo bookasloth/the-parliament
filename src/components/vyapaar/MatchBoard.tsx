@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { motion, useReducedMotion } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
 import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS } from "@/modules/vyapaar/engine/data"
@@ -210,7 +211,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
               <div className="vb-hub">
                 <div className="vb-hub-name">व्यापार</div>
-                <Dice roll={view.lastRoll} />
+                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}-${view.round}-${view.active}-${view.phase}` : "none"} />
                 <button
                   className="vb-roll"
                   disabled={busy || !myTurn || view.phase !== "roll"}
@@ -337,21 +338,87 @@ function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: bool
 }
 
 const DIE_FACES: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
-function Die({ n }: { n: number | null }) {
+// Cube rotation (deg) that brings each face value to the front. Faces are laid out so
+// opposite sides sum to 7 (a real die): front1/back6, right2/left5, top3/bottom4.
+const FACE_ROT: Record<number, { x: number; y: number }> = {
+  1: { x: 0, y: 0 }, 2: { x: 0, y: -90 }, 3: { x: -90, y: 0 },
+  4: { x: 90, y: 0 }, 5: { x: 0, y: 90 }, 6: { x: 0, y: 180 },
+}
+const CUBE_FACES = [1, 6, 2, 5, 3, 4] // matches FACE_CLASS order below
+const FACE_CLASS = ["f-front", "f-back", "f-right", "f-left", "f-top", "f-bottom"]
+
+function Pips({ n }: { n: number }) {
   return (
-    <span className="vb-die">
+    <>
       {Array.from({ length: 9 }, (_, i) => (
-        <i key={i} className="vb-pip" style={{ opacity: n && DIE_FACES[n].includes(i) ? 1 : 0 }} />
+        <i key={i} className="vb-pip" style={{ opacity: DIE_FACES[n].includes(i) ? 1 : 0 }} />
       ))}
-    </span>
+    </>
   )
 }
-function Dice({ roll }: { roll: [number, number] | null }) {
-  // keyed by the roll value → a new roll remounts the dice and replays the tumble animation
+
+function CubeFaces() {
   return (
-    <div className="vb-dice" key={roll ? `${roll[0]}-${roll[1]}` : "none"}>
-      <Die n={roll ? roll[0] : null} />
-      <Die n={roll ? roll[1] : null} />
+    <>
+      {CUBE_FACES.map((v, i) => (
+        <div key={i} className={`vb-face ${FACE_CLASS[i]}`}><Pips n={v} /></div>
+      ))}
+    </>
+  )
+}
+
+// One physical die. `n` is the authoritative server result — the cube always lands on
+// FACE_ROT[n], so the final face is guaranteed correct. Only the tumble PATH is randomized
+// (client-side, on mount) so repeated rolls and the two dice never look identical.
+function Die3D({ n, variant, animate }: { n: number; variant: number; animate: boolean }) {
+  const t = FACE_ROT[n]
+  if (!animate) {
+    return (
+      <div className="vb-die3d">
+        <div className="vb-cube" style={{ transform: `rotateX(${t.x}deg) rotateY(${t.y}deg)` }}><CubeFaces /></div>
+        <span className="vb-die-shadow" />
+      </div>
+    )
+  }
+  const dir = variant === 0 ? 1 : -1
+  const spinX = 360 * (2 + Math.floor(Math.random() * 2)) + (Math.random() * 40 - 20)
+  const spinY = 360 * (2 + Math.floor(Math.random() * 2)) + (Math.random() * 40 - 20)
+  const wobbleZ = (Math.random() * 14 + 6) * (Math.random() < 0.5 ? 1 : -1)
+  const throwH = 24 + Math.random() * 12
+  const ease: [number, number, number, number] = [0.16, 0.72, 0.18, 1] // fast launch → weighty settle
+  return (
+    <div className="vb-die3d">
+      <motion.div
+        className="vb-cube"
+        initial={{ rotateX: t.x - spinX * dir, rotateY: t.y - spinY, rotateZ: wobbleZ, y: 0, scale: 0.86 }}
+        animate={{ rotateX: t.x, rotateY: t.y, rotateZ: 0, y: [0, -throwH, 3, 0], scale: [0.86, 1.06, 0.97, 1] }}
+        transition={{
+          rotateX: { duration: 0.92, ease }, rotateY: { duration: 0.92, ease }, rotateZ: { duration: 0.92, ease },
+          y: { duration: 0.92, times: [0, 0.42, 0.8, 1], ease: "easeOut" },
+          scale: { duration: 0.92, times: [0, 0.42, 0.82, 1] },
+        }}
+      >
+        <CubeFaces />
+      </motion.div>
+      <motion.span
+        className="vb-die-shadow"
+        initial={{ scaleX: 0.62, opacity: 0.16 }}
+        animate={{ scaleX: [0.62, 0.5, 1, 0.9], opacity: [0.16, 0.1, 0.42, 0.32] }}
+        transition={{ duration: 0.92, times: [0, 0.42, 0.8, 1] }}
+      />
+    </div>
+  )
+}
+
+function Dice({ roll, seq }: { roll: [number, number] | null; seq: string }) {
+  const reduce = useReducedMotion()
+  // key on seq → real rolls (incl. opponents') replay the tumble; identical polls do not.
+  // ponytail: seq misses the rare doubles-with-identical-values re-roll — final face still
+  // correct, just skips one replay. Add an engine rollSeq counter if that ever matters.
+  return (
+    <div className="vb-dice" key={seq}>
+      <Die3D n={roll ? roll[0] : 6} variant={0} animate={!!roll && !reduce} />
+      <Die3D n={roll ? roll[1] : 6} variant={1} animate={!!roll && !reduce} />
     </div>
   )
 }
@@ -562,11 +629,18 @@ const VB_CSS = `
 .vb-tok:nth-of-type(2){left:28%;}.vb-tok:nth-of-type(3){left:54%;}.vb-tok:nth-of-type(4){left:auto;right:2px;}
 .vb-hub{grid-column:2/13;grid-row:2/9;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
-.vb-dice{display:flex;gap:10px;}
-.vb-die{width:clamp(30px,4.6vw,48px);aspect-ratio:1;background:#fff;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 2px 5px rgba(0,0,0,.35);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:15%;gap:6%;animation:vb-tumble .42s ease-out;}
-.vb-pip{align-self:center;justify-self:center;width:82%;aspect-ratio:1;border-radius:50%;background:#0F1111;}
-@keyframes vb-tumble{0%{transform:rotate(-20deg) scale(.65);}55%{transform:rotate(14deg) scale(1.1);}100%{transform:rotate(0) scale(1);}}
-@media (prefers-reduced-motion: reduce){.vb-die{animation:none;}}
+.vb-dice{display:flex;gap:16px;perspective:560px;perspective-origin:50% 42%;}
+.vb-die3d{--ds:clamp(30px,4.6vw,48px);position:relative;width:var(--ds);height:var(--ds);transform-style:preserve-3d;}
+.vb-cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;}
+.vb-face{position:absolute;inset:0;background:linear-gradient(150deg,#fff,#f0f0f0 60%,#e2e2e2);border-radius:calc(var(--ds)*.15);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:15%;gap:6%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06),inset 0 -2px 3px rgba(0,0,0,.12);backface-visibility:hidden;}
+.vb-face.f-front{transform:translateZ(calc(var(--ds)/2));}
+.vb-face.f-back{transform:rotateY(180deg) translateZ(calc(var(--ds)/2));}
+.vb-face.f-right{transform:rotateY(90deg) translateZ(calc(var(--ds)/2));}
+.vb-face.f-left{transform:rotateY(-90deg) translateZ(calc(var(--ds)/2));}
+.vb-face.f-top{transform:rotateX(90deg) translateZ(calc(var(--ds)/2));}
+.vb-face.f-bottom{transform:rotateX(-90deg) translateZ(calc(var(--ds)/2));}
+.vb-pip{align-self:center;justify-self:center;width:80%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 34% 30%,#454545,#0F1111 72%);box-shadow:inset 0 -1px 1px rgba(255,255,255,.14);}
+.vb-die-shadow{position:absolute;left:50%;bottom:calc(var(--ds)*-.2);width:82%;height:calc(var(--ds)*.22);translate:-50% 0;background:radial-gradient(ellipse at center,rgba(0,0,0,.42),transparent 70%);border-radius:50%;filter:blur(1px);pointer-events:none;}
 .vb-roll{font-family:"Poppins";font-weight:700;font-size:clamp(.72rem,1.3vw,.9rem);border:none;cursor:pointer;color:#fff;background:var(--accent);padding:.5rem 1.6rem;border-radius:2px;}
 .vb-roll:disabled{opacity:.4;cursor:not-allowed;}
 .vb-rail{display:flex;flex-direction:column;gap:12px;min-width:0;}
