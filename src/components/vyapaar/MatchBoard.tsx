@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS } from "@/modules/vyapaar/engine/data"
+import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
@@ -73,6 +73,8 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "trade_countered": return `${nm(e.seat)} countered with a new offer`
     case "trade_withdrawn": return `${nm(e.seat)} withdrew a trade`
     case "trade_expired": return `a trade offer expired`
+    case "trade_cancelled": return `a trade was cancelled`
+    case "left": return `${nm(e.seat)} left the game`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
   }
@@ -166,15 +168,24 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
   const myCompanies = view.companies.filter((c) => c === you).length
   const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
-  const leaderSeat = view.players.reduce((b, p, i) => (p.score > view.players[b].score ? i : b), 0)
+  const leaderSeat = view.players.reduce((b, p, i) => (!p.left && p.score > view.players[b].score ? i : b), 0)
   const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
+  const iLeft = view.players[you]?.left ?? false
+
+  // Leaving forfeits: assets return to the bank server-side, then we navigate out.
+  const leaveGame = useCallback(async () => {
+    if (view.ended || iLeft) { window.location.href = "/games/vyapaar"; return }
+    if (!window.confirm("Leave the game? Your properties return to the bank and you forfeit this match.")) return
+    await send({ type: "leave_game" })
+    window.location.href = "/games/vyapaar"
+  }, [view.ended, iLeft, send])
 
   return (
     <div className="vb">
       <style>{VB_CSS}</style>
 
       <header className="vb-top">
-        <a href="/games/vyapaar" className="vb-exit">← Leave</a>
+        <button type="button" onClick={leaveGame} disabled={busy} className="vb-exit">{iLeft || view.ended ? "← Exit" : "← Leave"}</button>
         <div className="vb-you">
           {playerImages[you]
             ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
@@ -258,16 +269,18 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           </div>
           <div className="vb-players">
             {view.players.map((p, seat) => (
-              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
+              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""} ${p.left ? "left" : ""}`}>
                 {playerImages[seat]
                   ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
                   : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
-                {seat === leaderSeat && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
-                {onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
-                {seat === view.active && !view.ended
-                  ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
-                  : p.halted ? <span className="vb-halt">halted</span> : null}
+                {seat === leaderSeat && !p.left && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
+                {!p.left && onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
+                {p.left
+                  ? <span className="vb-halt">left</span>
+                  : seat === view.active && !view.ended
+                    ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
+                    : p.halted ? <span className="vb-halt">halted</span> : null}
               </div>
             ))}
           </div>
@@ -530,7 +543,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
               : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
-            {cs.level === 0 && <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr(cs.mortgaged ? 0 : Math.floor(city.price / 2))}</button>}
+            <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr((cs.mortgaged ? 0 : Math.floor(city.price / 2)) + Math.floor(cs.level * upgradeCost(id) * UPGRADE_SELL_RATIO))}</button>
             <button className="pass" onClick={onClose}>Close</button>
           </>}
           {!isPendingBuy && !(iOwn && canManage) && <button className="pass" onClick={onClose}>Close</button>}
@@ -675,7 +688,9 @@ const SPECIAL_ICON: Record<string, string> = {
 
 const VB_CSS = `
 .vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); position:fixed; inset:0; z-index:60; overflow-y:auto; background:var(--bg); padding:8px 12px; }
-.vb-exit{font-family:"Poppins";font-weight:600;font-size:.82rem;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:2px;padding:.35rem .7rem;}
+.vb-exit{font-family:"Poppins";font-weight:600;font-size:.82rem;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:2px;padding:.35rem .7rem;background:transparent;cursor:pointer;}
+.vb-exit:disabled{opacity:.5;cursor:default;}
+.vb-pl.left{opacity:.45;}
 .vb-exit:hover{color:var(--cream);border-color:var(--accent);}
 .vb *{box-sizing:border-box;}
 .vb svg{display:block;width:100%;height:100%;}

@@ -72,6 +72,18 @@ export function netWorth(s: GameState, seat: number): number {
   return nw;
 }
 
+/**
+ * Cash a city returns when sold to the bank: card value (half buy price, or 0 if
+ * mortgaged) + property/building value (levels refunded at UPGRADE_SELL_RATIO).
+ * Single source of truth for the sell-to-bank and leave-liquidation payouts.
+ */
+export function cityLiquidationValue(s: GameState, id: number): number {
+  const c = s.cities[id];
+  const cardValue = c.mortgaged ? 0 : Math.floor(CITIES[id].price / 2);
+  const buildingValue = Math.floor(c.level * upgradeCost(id) * UPGRADE_SELL_RATIO);
+  return cardValue + buildingValue;
+}
+
 export function scoreOf(s: GameState, seat: number): number {
   const cash = s.players[seat].cash;
   return cash + BLEND * (netWorth(s, seat) - cash);

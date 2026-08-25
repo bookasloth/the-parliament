@@ -9,6 +9,7 @@ import {
   MAX_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
+  UPGRADE_SELL_RATIO,
   SETS_TO_END,
   MAX_ROUNDS,
   UNDERDOG_RATIO,
@@ -29,6 +30,7 @@ import {
   citiesOwned,
   controlledSets,
   scoreOf,
+  cityLiquidationValue,
 } from "./helpers";
 import { drawCard } from "./cards";
 
@@ -101,14 +103,68 @@ function advanceTurn(s: GameState, events: EngineEvent[]): void {
   const seat = s.active;
   ageAndAutoSettleRents(s, events);
   if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
-  const wrapped = seat + 1 >= s.players.length;
-  s.active = (seat + 1) % s.players.length;
+  // Advance to the next seat that hasn't left; count a round wrap when we pass the end.
+  let next = seat, wrapped = false, hops = 0;
+  do {
+    next += 1;
+    if (next >= s.players.length) { next = 0; wrapped = true; }
+  } while (s.players[next].left && ++hops < s.players.length);
+  s.active = next;
   if (wrapped) s.round++;
   s.players[s.active].doubles = 0;
   s.pendingDouble = false;
   s.phase = "roll";
   events.push({ type: "end_turn", seat });
   if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+}
+
+/**
+ * Remove a player from the game, returning every asset to the bank and cleaning up
+ * anything that referenced them so nothing is left stuck:
+ *  - cancel every trade they're party to
+ *  - void every pending rent they owe or are owed
+ *  - pass any auction bid still waiting on them (and resolve if that completes it)
+ *  - return all their cities (reset) and companies to the bank
+ *  - end the game if fewer than two players remain
+ *  - if it was their turn, advance so no turn is left stuck
+ */
+function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
+  if (s.trades?.length) {
+    for (const t of s.trades) {
+      if (t.from === seat || t.to === seat) events.push({ type: "trade_cancelled", tradeId: t.id, from: t.from, to: t.to });
+    }
+    s.trades = s.trades.filter((t) => t.from !== seat && t.to !== seat);
+  }
+  if (s.pendingRents?.length) {
+    for (const r of s.pendingRents) {
+      if (r.payer === seat || r.owner === seat) events.push({ type: "rent_void", seat: r.payer, cityId: r.cityId, to: r.owner, rentId: r.id });
+    }
+    s.pendingRents = s.pendingRents.filter((r) => r.payer !== seat && r.owner !== seat);
+  }
+  if (s.auction && s.auction.bids[seat] === null) {
+    s.auction.bids[seat] = 0; // pass on their behalf
+    if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
+  }
+  for (const id of citiesOwned(s, seat)) {
+    const c = s.cities[id];
+    c.owner = null;
+    c.level = 0;
+    c.mortgaged = false;
+  }
+  for (let ci = 0; ci < s.companies.length; ci++) if (s.companies[ci] === seat) s.companies[ci] = null;
+  s.players[seat].left = true;
+  events.push({ type: "left", seat });
+
+  if (s.players.filter((p) => !p.left).length <= 1) {
+    if (!s.ended) endGame(s, events);
+    return;
+  }
+  // If it was the leaver's turn (and the auction resolution above didn't already move on).
+  if (!s.ended && s.active === seat) {
+    s.pendingCity = null;
+    s.pendingCompany = null;
+    advanceTurn(s, events);
+  }
 }
 
 /**
@@ -274,11 +330,13 @@ function applyTradeSwap(s: GameState, t: TradeOffer): void {
   for (const id of t.get.cities) s.cities[id].owner = t.from;
 }
 
-/** Seats best-first: score desc, then controlledSets desc, then seat asc. */
+/** Seats best-first: left players always rank last, then score desc, controlledSets desc, seat asc. */
 export function rankSeats(s: GameState): number[] {
   return s.players
     .map((_, seat) => seat)
     .sort((a, b) => {
+      const la = s.players[a].left, lb = s.players[b].left;
+      if (la !== lb) return la ? 1 : -1; // a player who left can never win
       const sa = scoreOf(s, a), sb = scoreOf(s, b);
       if (sb !== sa) return sb - sa;
       const ca = controlledSets(s, a), cb = controlledSets(s, b);
@@ -316,6 +374,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
 
 function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
+  if (s.players[seat]?.left) return { error: "you_left" }; // a player who left can't act (also blocks double-leave)
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
   const events: EngineEvent[] = [];
 
@@ -472,13 +531,13 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
       const c = s.cities[id];
       if (c.owner !== seat) return { error: "not_owner" };
-      if (c.level !== 0) return { error: "sell_upgrades_first" };
-      // Sell an undeveloped city back to the bank for half its buy price; a mortgaged one nets
-      // half less the outstanding mortgage (you never banked that half).
-      const gross = Math.floor(CITIES[id].price / 2);
-      const proceeds = c.mortgaged ? 0 : gross;
+      // Sell the whole card back to the bank: card value + building value (see
+      // cityLiquidationValue). Buildings are refunded so a developed city can be sold
+      // outright; the tile returns to the bank fully reset.
+      const proceeds = cityLiquidationValue(s, id);
       s.players[seat].cash += proceeds;
       c.owner = null;
+      c.level = 0;
       c.mortgaged = false;
       events.push({ type: "sell", seat, cityId: id, amount: proceeds });
       return { state: s, events };
@@ -491,7 +550,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!s.trades) s.trades = [];
       if (s.trades.some((t) => t.from === seat)) return { error: "trade_exists" };
       const to = intent.to;
-      if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat) {
+      if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat || s.players[to].left) {
         return { error: "bad_recipient" };
       }
       if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
@@ -573,6 +632,13 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (rent.owner !== seat) return { error: "not_your_rent" };
       settleRent(s, rent, events, "collected");
       s.pendingRents = list.filter((_, i) => i !== idx);
+      return { state: s, events };
+    }
+
+    case "leave_game": {
+      // Legal at any time (off-turn included). The left-guard at the top makes a
+      // second leave a no-op error, so this is idempotent.
+      leaveGame(s, seat, events);
       return { state: s, events };
     }
 

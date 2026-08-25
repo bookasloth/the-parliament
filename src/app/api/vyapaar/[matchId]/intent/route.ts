@@ -10,7 +10,7 @@ import type { Intent } from "@/modules/vyapaar/engine/state"
 // server's trade-expiry sweep, never accepted from a client (a player could grief others' trades).
 const INTENT_TYPES = new Set([
   "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
-  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent", "end_turn",
+  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent", "leave_game", "end_turn",
 ])
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v)

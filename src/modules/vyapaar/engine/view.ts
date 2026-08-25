@@ -9,6 +9,7 @@ export interface PublicView {
     halted: number;
     score: number;
     netWorth: number;
+    left: boolean;
   }[];
   cities: { owner: number | null; level: number; mortgaged: boolean }[];
   companies: (number | null)[];
@@ -39,6 +40,7 @@ export function publicView(s: GameState, seat: number): PublicView {
       halted: p.halted,
       score: scoreOf(s, i),
       netWorth: netWorth(s, i),
+      left: p.left ?? false,
     })),
     cities: s.cities.map((c) => ({ owner: c.owner, level: c.level, mortgaged: c.mortgaged })),
     companies: [...s.companies],

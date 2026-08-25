@@ -23,6 +23,7 @@ export type Intent =
   | { type: "withdraw_trade"; tradeId: number }
   | { type: "expire_trade"; tradeId: number }
   | { type: "collect_rent"; rentId: number }
+  | { type: "leave_game" }
   | { type: "end_turn" };
 
 export interface PlayerState {
@@ -33,6 +34,7 @@ export interface PlayerState {
   doubles: number; // doubles rolled so far this turn
   startupLaps: number; // laps remaining with reduced salary
   startupPenalty: number; // salary reduction per lap while startupLaps>0
+  left: boolean; // player left/forfeited — skipped in turn rotation, can't win
 }
 
 export interface CityState {
@@ -125,6 +127,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
       doubles: 0,
       startupLaps: 0,
       startupPenalty: 0,
+      left: false,
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
     companies: [null, null, null, null, null, null],
