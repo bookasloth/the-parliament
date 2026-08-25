@@ -90,6 +90,12 @@ export const SCRAPPY_MAX_CITIES = 3; // "few" = this many or fewer
 export const ZONE_DOUBLE = 2; // undeveloped base rent ×this when the owner controls the zone
 export const STARTUP_LAPS = 3; // laps the 'startup' card reduces salary for
 export const STARTUP_PENALTY = 300; // salary reduction per lap while startupLaps > 0
+// Comeback "Restructure": a one-time emergency advance for the underdog, repaid by a
+// reduced salary over the next RESTRUCTURE_LAPS laps (reuses the startup machinery).
+// ADVANCE = LAPS × PENALTY so it's self-repaying (net-neutral if you complete the laps).
+export const RESTRUCTURE_ADVANCE = 3600; // ≈ one cheap property / 3× base salary
+export const RESTRUCTURE_LAPS = 3;
+export const RESTRUCTURE_PENALTY = 1200; // per-lap salary cut (3 × 1200 = 3600 repaid)
 export const JAIL_TURNS = 2; // turns halted by Tax Raid / three doubles
 export const TAX_INCOME = 1200;
 export const GST_RATE = 0.1;

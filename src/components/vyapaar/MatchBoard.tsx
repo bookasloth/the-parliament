@@ -75,6 +75,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "trade_expired": return `a trade offer expired`
     case "trade_cancelled": return `a trade was cancelled`
     case "left": return `${nm(e.seat)} left the game`
+    case "restructure": return `${nm(e.seat)} restructured (+${rup(e.amount)})`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
   }
@@ -315,6 +316,14 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
               </button>
             </div>
           ))}
+
+          {myTurn && view.youCanRestructure && (
+            <div className="vb-rescue">
+              <p className="vb-rescue-head">Falling behind?</p>
+              <p className="vb-rescue-body">Take ₹{inr(view.restructure.advance)} now — a reduced salary over your next {view.restructure.laps} laps repays it. One-time.</p>
+              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "restructure" })}>Restructure · +₹{inr(view.restructure.advance)}</button>
+            </div>
+          )}
 
           <div className="vb-actions">
             {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" })}>Roll</button>}
@@ -780,6 +789,10 @@ const VB_CSS = `
 .vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;flex-wrap:wrap;}
 .vb-trade-sum{font-size:.8rem;color:var(--ink-2,#6b7280);}
 .vb-rent{background:var(--panel-2);border:1px solid var(--green);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+.vb-rescue{background:var(--panel-2);border:1px dashed var(--yellow);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+.vb-rescue-head{margin:0 0 4px;font-weight:700;}
+.vb-rescue-body{margin:0 0 8px;color:var(--dim);}
+.vb-rescue .vb-act{width:100%;}
 .vb-rent-head{margin:0 0 4px;font-weight:700;color:var(--green);}
 .vb-rent-body{margin:0 0 8px;}
 .vb-rent .vb-act{width:100%;}

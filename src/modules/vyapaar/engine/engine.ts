@@ -10,6 +10,9 @@ import {
   UNMORTGAGE_RATE,
   upgradeCost,
   UPGRADE_SELL_RATIO,
+  RESTRUCTURE_ADVANCE,
+  RESTRUCTURE_LAPS,
+  RESTRUCTURE_PENALTY,
   SETS_TO_END,
   MAX_ROUNDS,
   UNDERDOG_RATIO,
@@ -44,6 +47,7 @@ const ACTIVE_ONLY = new Set<Intent["type"]>([
   "mortgage",
   "unmortgage",
   "sell",
+  "restructure",
   "end_turn",
 ]);
 
@@ -54,6 +58,17 @@ function isUnderdog(s: GameState, seat: number): boolean {
   if (max <= 0) return false;
   const isMin = nws.every((v, i) => i === seat || mine < v);
   return isMin && mine < UNDERDOG_RATIO * max;
+}
+
+/**
+ * Whether a seat may take the one-time comeback advance: must be the underdog
+ * (see isUnderdog), not have taken it already, not be mid-repayment of a startup
+ * or prior restructure, and still be in the game.
+ */
+export function canRestructure(s: GameState, seat: number): boolean {
+  const p = s.players[seat];
+  if (!p || p.left || p.restructured || p.startupLaps > 0) return false;
+  return isUnderdog(s, seat);
 }
 
 function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): void {
@@ -632,6 +647,20 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (rent.owner !== seat) return { error: "not_your_rent" };
       settleRent(s, rent, events, "collected");
       s.pendingRents = list.filter((_, i) => i !== idx);
+      return { state: s, events };
+    }
+
+    case "restructure": {
+      // One-time comeback advance for the underdog, repaid via reduced salary over
+      // the next RESTRUCTURE_LAPS laps (reuses the startup-penalty machinery).
+      if (!canManage(s)) return { error: "cannot_manage_now" };
+      if (!canRestructure(s, seat)) return { error: "cannot_restructure" };
+      const p = s.players[seat];
+      p.cash += RESTRUCTURE_ADVANCE;
+      p.startupLaps = RESTRUCTURE_LAPS;
+      p.startupPenalty = RESTRUCTURE_PENALTY;
+      p.restructured = true;
+      events.push({ type: "restructure", seat, amount: RESTRUCTURE_ADVANCE });
       return { state: s, events };
     }
 

@@ -23,6 +23,7 @@ export type Intent =
   | { type: "withdraw_trade"; tradeId: number }
   | { type: "expire_trade"; tradeId: number }
   | { type: "collect_rent"; rentId: number }
+  | { type: "restructure" }
   | { type: "leave_game" }
   | { type: "end_turn" };
 
@@ -35,6 +36,7 @@ export interface PlayerState {
   startupLaps: number; // laps remaining with reduced salary
   startupPenalty: number; // salary reduction per lap while startupLaps>0
   left: boolean; // player left/forfeited — skipped in turn rotation, can't win
+  restructured: boolean; // has already taken the one-time comeback advance
 }
 
 export interface CityState {
@@ -128,6 +130,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
       startupLaps: 0,
       startupPenalty: 0,
       left: false,
+      restructured: false,
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
     companies: [null, null, null, null, null, null],
