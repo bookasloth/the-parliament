@@ -66,9 +66,34 @@ function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): voi
   events.push({ type: "salary", seat, amount: pay });
 }
 
-/** Finish the current move segment: roll again on a double, else manage phase. */
-function finishSegment(s: GameState): void {
-  s.phase = s.pendingDouble ? "roll" : "manage";
+/**
+ * Advance to the next player's turn. Shared by finishSegment (auto-end) and the
+ * explicit end_turn intent. Emits an `end_turn` event for logs/clients.
+ */
+function advanceTurn(s: GameState, events: EngineEvent[]): void {
+  const seat = s.active;
+  if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
+  const wrapped = seat + 1 >= s.players.length;
+  s.active = (seat + 1) % s.players.length;
+  if (wrapped) s.round++;
+  s.players[s.active].doubles = 0;
+  s.pendingDouble = false;
+  s.phase = "roll";
+  events.push({ type: "end_turn", seat });
+  if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+}
+
+/**
+ * Finish the current move segment. Roll again on a double; otherwise the turn is
+ * over and we auto-advance — there is no idle "manage" park state and no forced
+ * End-turn click. Players manage (develop/mortgage/sell) during their roll phase.
+ */
+function finishSegment(s: GameState, events: EngineEvent[]): void {
+  if (s.pendingDouble) {
+    s.phase = "roll";
+    return;
+  }
+  advanceTurn(s, events);
 }
 
 function resolveTile(s: GameState, events: EngineEvent[]): void {
@@ -77,13 +102,13 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
   switch (tile.kind) {
     case "start":
     case "monsoon": // just visiting
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "mandi":
       credit(s, seat, s.pot);
       events.push({ type: "mandi", seat, amount: s.pot });
       s.pot = 0;
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "taxraid":
       s.players[seat].pos = MONSOON_POS;
@@ -91,30 +116,30 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       s.players[seat].doubles = 0;
       s.pendingDouble = false;
       events.push({ type: "taxraid", seat });
-      s.phase = "manage";
+      finishSegment(s, events);
       break;
     case "gst": {
       const amt = Math.min(GST_CAP, Math.round(s.players[seat].cash * GST_RATE));
       charge(s, seat, amt, "pot", events);
       events.push({ type: "gst", seat, amount: amt });
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "income":
       charge(s, seat, TAX_INCOME, "pot", events);
       events.push({ type: "income", seat, amount: TAX_INCOME });
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "upi": {
       const { card, events: cardEvents } = drawCard(s, "upi");
       events.push({ type: "draw", seat, deck: "upi", card: card.id }, ...cardEvents);
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "headline": {
       const { card, events: cardEvents } = drawCard(s, "headline");
       events.push({ type: "draw", seat, deck: "headline", card: card.id }, ...cardEvents);
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "company": {
@@ -127,9 +152,9 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         const fee = companyServiceFee(s, ci);
         charge(s, seat, fee, owner, events);
         events.push({ type: "company_fee", seat, companyIndex: ci, amount: fee });
-        finishSegment(s);
+        finishSegment(s, events);
       } else {
-        finishSegment(s);
+        finishSegment(s, events);
       }
       break;
     }
@@ -143,9 +168,9 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         const rent = rentFor(s, id);
         charge(s, seat, rent, owner, events);
         events.push({ type: "rent", seat, cityId: id, to: owner, amount: rent });
-        finishSegment(s);
+        finishSegment(s, events);
       } else {
-        finishSegment(s);
+        finishSegment(s, events);
       }
       break;
     }
@@ -174,7 +199,7 @@ function resolveAuction(s: GameState, events: EngineEvent[]): void {
   s.auction = null;
   s.pendingCity = null;
   s.pendingCompany = null;
-  finishSegment(s);
+  finishSegment(s, events);
 }
 
 function minSetLevel(s: GameState, seat: number, zone: number): number {
@@ -260,7 +285,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         } else {
           p.halted--;
           s.pendingDouble = false;
-          s.phase = "manage";
+          finishSegment(s, events);
           return { state: s, events };
         }
       }
@@ -274,8 +299,8 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         p.halted = JAIL_TURNS;
         p.doubles = 0;
         s.pendingDouble = false;
-        s.phase = "manage";
         events.push({ type: "jail_doubles", seat });
+        finishSegment(s, events);
         return { state: s, events };
       }
 
@@ -295,7 +320,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         s.cities[id].owner = seat;
         s.pendingCity = null;
         events.push({ type: "buy", seat, cityId: id, amount: cost });
-        finishSegment(s);
+        finishSegment(s, events);
         return { state: s, events };
       }
       if (s.pendingCompany !== null) {
@@ -306,7 +331,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         s.companies[ci] = seat;
         s.pendingCompany = null;
         events.push({ type: "buy_company", seat, companyIndex: ci, amount: cost });
-        finishSegment(s);
+        finishSegment(s, events);
         return { state: s, events };
       }
       return { error: "nothing_to_buy" };
@@ -446,16 +471,10 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
     }
 
     case "end_turn": {
-      if (s.phase !== "manage") return { error: "cannot_end_now" };
-      if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
-      const wrapped = seat + 1 >= s.players.length;
-      s.active = (seat + 1) % s.players.length;
-      if (wrapped) s.round++;
-      s.players[s.active].doubles = 0;
-      s.pendingDouble = false;
-      s.phase = "roll";
-      events.push({ type: "end_turn", seat });
-      if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+      // Turns auto-advance on landing (see finishSegment); an explicit end_turn is
+      // only legal in the vestigial manage state and otherwise a no-op error.
+      if (s.phase !== "manage" || s.ended) return { error: "cannot_end_now" };
+      advanceTurn(s, events);
       return { state: s, events };
     }
 

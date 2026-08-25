@@ -18,7 +18,9 @@ describe("buy / decline / auction", () => {
     expect("state" in r).toBe(true);
     expect(s.cities[24].owner).toBe(0);
     expect(s.players[0].cash).toBe(7500 - CITIES[24].price);
-    expect(s.phase).toBe("manage");
+    // turn auto-advances after buying — no manage park, no End-turn click
+    expect(s.phase).toBe("roll");
+    expect(s.active).toBe(1);
   });
 
   it("rejects buying when short on cash", () => {
@@ -41,7 +43,9 @@ describe("buy / decline / auction", () => {
     expect(s.cities[0].owner).toBe(1);
     expect(s.players[1].cash).toBe(7500 - 500);
     expect(s.auction).toBeNull();
-    expect(s.phase).toBe("manage");
+    // auction resolution ends the lander's turn and auto-advances
+    expect(s.phase).toBe("roll");
+    expect(s.active).toBe(1);
   });
 
   it("all-zero auction leaves the city unowned", () => {
@@ -51,7 +55,8 @@ describe("buy / decline / auction", () => {
     applyIntent(s, 0, { type: "bid", amount: 0 });
     applyIntent(s, 1, { type: "bid", amount: 0 });
     expect(s.cities[0].owner).toBeNull();
-    expect(s.phase).toBe("manage");
+    expect(s.phase).toBe("roll");
+    expect(s.active).toBe(1);
   });
 
   it("ties go to the lowest seat index", () => {

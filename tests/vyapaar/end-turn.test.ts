@@ -25,6 +25,26 @@ describe("end_turn and end conditions", () => {
     expect("error" in r).toBe(true);
   });
 
+  it("a plain roll auto-advances the turn — never parks in manage, no End-turn click", () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = createGame(seed, ["a", "b"]);
+      applyIntent(s, 0, { type: "roll" });
+      if (s.ended) continue; // won't happen on turn 1, but be safe
+      // The turn is either: awaiting a buy decision, mid-double reroll (same seat),
+      // or auto-advanced to the next seat. It must NEVER sit idle in "manage".
+      expect(s.phase).not.toBe("manage");
+      if (s.phase === "buy") {
+        expect(s.active).toBe(0); // decision still owed by the roller
+      } else {
+        expect(s.phase).toBe("roll");
+        // roll phase with the same seat only ever means a pending double-reroll;
+        // otherwise the turn auto-advanced to the next seat with no End-turn click.
+        if (s.active === 0) expect(s.pendingDouble).toBe(true);
+        else expect(s.active).toBe(1);
+      }
+    }
+  });
+
   it("ends the game after MAX_ROUNDS", () => {
     const s = createGame(1, ["a", "b"]);
     s.round = MAX_ROUNDS; // ending this turn wraps → round MAX_ROUNDS+1 > MAX_ROUNDS
