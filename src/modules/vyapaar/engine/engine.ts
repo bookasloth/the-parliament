@@ -224,7 +224,18 @@ function endGame(s: GameState, events: EngineEvent[]): void {
   events.push({ type: "game_over", seat: s.winner });
 }
 
+const LOG_CAP = 40; // rolling event log kept on the state for the client game-log panel
+
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
+  const r = applyIntentInner(s, seat, intent);
+  // Append this step's events to a capped, deterministic log (part of state → replay-safe).
+  if ("state" in r && r.events.length) {
+    s.log = [...(s.log ?? []), ...r.events].slice(-LOG_CAP);
+  }
+  return r;
+}
+
+function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
   const events: EngineEvent[] = [];

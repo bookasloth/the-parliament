@@ -44,6 +44,32 @@ const buildIcons = (level: number) => {
   return hotelSVG.repeat(hotels) + houseSVG.repeat(houses)
 }
 
+// Turn an engine event into a human game-log line (₹, first names). Unknown events → null.
+function logLine(e: Record<string, unknown>, players: PublicView["players"]): string | null {
+  const nm = (s: unknown) => (typeof s === "number" ? (players[s]?.name.split(" ")[0] ?? `seat ${s}`) : "?")
+  const rup = (n: unknown) => `₹${Number(n).toLocaleString("en-IN")}`
+  const city = (i: unknown) => CITIES[i as number]?.name ?? "?"
+  switch (e.type) {
+    case "roll": return `${nm(e.seat)} rolled ${Number(e.a) + Number(e.b)}`
+    case "buy": return `${nm(e.seat)} bought ${city(e.cityId)} for ${rup(e.amount)}`
+    case "buy_company": return `${nm(e.seat)} bought ${COMPANIES[e.companyIndex as number]?.short ?? "?"} for ${rup(e.amount)}`
+    case "rent": return `${nm(e.seat)} paid ${rup(e.amount)} rent to ${nm(e.to)}`
+    case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
+    case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
+    case "mandi": return `${nm(e.seat)} scooped the ${rup(e.amount)} pot`
+    case "gst": return `${nm(e.seat)} paid ${rup(e.amount)} GST`
+    case "income": return `${nm(e.seat)} paid ${rup(e.amount)} income tax`
+    case "auction_won": return `${nm(e.seat)} won an auction for ${rup(e.amount)}`
+    case "develop": return `${nm(e.seat)} built on ${city(e.cityId)}`
+    case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
+    case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
+    case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
+    case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
+    case "game_over": return `${nm(e.seat)} won the game`
+    default: return null
+  }
+}
+
 export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [] }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[] }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
@@ -97,6 +123,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myTurn = view.active === you && !view.ended
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
   const seatName = (seat: number | null) => (seat === null ? null : view.players[seat]?.name)
+  const myCities = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you)
+  const myHouses = myCities.reduce((n, c) => n + Math.min(c.level, 3), 0)
+  const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
+  const myCompanies = view.companies.filter((c) => c === you).length
+  const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
 
   return (
     <div className="vb">
@@ -180,6 +211,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
         </div>
 
         <div className="vb-rail">
+          <div className="vb-ginfo">
+            <span>Round <b>{view.round}</b></span>
+            <span>{view.players.length} players</span>
+            <span>pot <b>₹{inr(view.pot)}</b></span>
+          </div>
           <div className="vb-turn">
             <div className="vb-turn-row">
               <b>{view.ended ? "Game over" : `${seatName(view.active)}'s turn`}</b>
@@ -197,6 +233,23 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 {p.halted ? <span className="vb-halt">halted</span> : null}
               </div>
             ))}
+          </div>
+
+          <div className="vb-yinfo">
+            <div className="vb-panel-head">Your info</div>
+            <div className="vb-yi-grid">
+              <div><b>{myCities.length}</b>Properties</div>
+              <div><b>{myHouses}</b>Houses</div>
+              <div><b>{myHotels}</b>Hotels</div>
+              <div><b>{myCompanies}</b>Companies</div>
+            </div>
+          </div>
+
+          <div className="vb-log">
+            <div className="vb-panel-head">Game log</div>
+            <div className="vb-log-list">
+              {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
+            </div>
           </div>
 
           {err && <p className="vb-err">{err}</p>}
@@ -480,6 +533,17 @@ const VB_CSS = `
 .vb-av-img{object-fit:cover;}
 .vb-plnm{font-weight:600;font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vb-plst{margin-left:auto;text-align:right;}.vb-cash{font-weight:700;font-size:.82rem;color:var(--yellow);display:block;}.vb-sub{font-size:.62rem;color:var(--dim);}
+.vb-ginfo{display:flex;gap:12px;flex-wrap:wrap;font-size:.72rem;color:var(--dim);font-weight:500;padding:0 2px 2px;}
+.vb-ginfo b{color:var(--cream);}
+.vb-panel-head{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin-bottom:6px;}
+.vb-yinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:10px 12px;}
+.vb-yi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.vb-yi-grid div{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.54rem;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.02em;text-align:center;}
+.vb-yi-grid div b{font-size:1.15rem;color:var(--cream);font-weight:700;}
+.vb-log{background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:10px 12px;}
+.vb-log-list{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;}
+.vb-log-line{font-size:.74rem;color:var(--dim);line-height:1.3;}
+.vb-log-empty{font-size:.74rem;color:var(--ink-2);}
 .vb-err{background:#3a1f1a;color:#FF8f7f;border:1px solid #5a2f28;border-radius:2px;padding:8px 11px;font-size:.8rem;margin:0;}
 .vb-actions{display:flex;flex-wrap:wrap;gap:8px;}
 .vb-act{font-family:"Poppins";font-weight:600;font-size:.84rem;padding:.55rem .9rem;border-radius:2px;border:1px solid var(--line);background:var(--panel-2);color:var(--cream);cursor:pointer;}
