@@ -64,7 +64,13 @@ export const HUB_POS = [5, 15, 25, 35];
 export const START_CASH = 7500; // fallback/bot opening stack (wallet mode overrides)
 export const SALARY = 1200;
 export const SALARY_UNDERDOG = 2100;
-export const MONSOON_PAY = 450; // reserved for balance tuning; landing on monsoon is "just visiting"
+export const UNDERDOG_RATIO = 0.6; // underdog if your net worth < this × the leader's
+export const SCRAPPY_MULT = 1.25; // rent ×this when the owner holds few cities
+export const SCRAPPY_MAX_CITIES = 3; // "few" = this many or fewer
+export const ZONE_DOUBLE = 2; // undeveloped base rent ×this when the owner controls the zone
+export const STARTUP_LAPS = 3; // laps the 'startup' card reduces salary for
+export const STARTUP_PENALTY = 300; // salary reduction per lap while startupLaps > 0
+export const JAIL_TURNS = 2; // turns halted by Tax Raid / three doubles
 export const TAX_INCOME = 1200;
 export const GST_RATE = 0.1;
 export const GST_CAP = 3000;

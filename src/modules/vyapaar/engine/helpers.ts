@@ -7,6 +7,9 @@ import {
   SET_BONUS_NW,
   BLEND,
   UPGRADE_SELL_RATIO,
+  SCRAPPY_MULT,
+  SCRAPPY_MAX_CITIES,
+  ZONE_DOUBLE,
   upgradeCost,
 } from "./data";
 import type { GameState, EngineEvent } from "./state";
@@ -38,10 +41,10 @@ export function rentFor(s: GameState, cityId: number): number {
   const ladder = CITIES[cityId].rent; // levels 0..6
   let rent: number;
   if (c.level >= 1) rent = ladder[c.level];
-  else if (controlsSet(s, c.owner, CITIES[cityId].zone)) rent = ladder[0] * 2; // zone control doubles undeveloped base
+  else if (controlsSet(s, c.owner, CITIES[cityId].zone)) rent = ladder[0] * ZONE_DOUBLE; // zone control doubles undeveloped base
   else rent = ladder[0];
-  // Scrappy Landlord: owner holds ≤3 cities total → ×1.25
-  if (citiesOwned(s, c.owner).length <= 3) rent = Math.round(rent * 1.25);
+  // Scrappy Landlord: owner holds few cities → rent multiplier
+  if (citiesOwned(s, c.owner).length <= SCRAPPY_MAX_CITIES) rent = Math.round(rent * SCRAPPY_MULT);
   return rent;
 }
 

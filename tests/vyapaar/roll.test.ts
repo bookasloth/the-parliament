@@ -29,6 +29,24 @@ describe("roll intent", () => {
     expect(s.players[0].cash).toBeGreaterThanOrEqual(7500); // salary added (unless it landed on a fee tile that took more — assert ≥ opening minus max fee is fragile; salary path covered explicitly below)
   });
 
+  it("pays the UNDERDOG salary to the clear poorest player", () => {
+    const s = createGame(5, ["a", "b"], 25000);
+    s.players[0].cash = 1000;   // seat 0 net worth (no property) = 1000
+    s.players[1].cash = 100000; // seat 0 < 60% of the leader → underdog
+    s.players[0].pos = 38;      // any roll ≥2 passes Start
+    const r = applyIntent(s, 0, { type: "roll" });
+    const salary = ("events" in r ? r.events : []).find((e) => e.type === "salary");
+    expect(salary?.amount).toBe(2100); // SALARY_UNDERDOG, not the default 1200
+  });
+
+  it("pays the normal salary when nobody is behind (equal stacks)", () => {
+    const s = createGame(5, ["a", "b"], 25000); // equal → no underdog
+    s.players[0].pos = 38;
+    const r = applyIntent(s, 0, { type: "roll" });
+    const salary = ("events" in r ? r.events : []).find((e) => e.type === "salary");
+    expect(salary?.amount).toBe(1200);
+  });
+
   it("frees a halted player only on doubles, else decrements halt", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].halted = 2;

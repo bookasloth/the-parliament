@@ -28,7 +28,6 @@ export interface PlayerState {
   doubles: number; // doubles rolled so far this turn
   startupLaps: number; // laps remaining with reduced salary
   startupPenalty: number; // salary reduction per lap while startupLaps>0
-  freeUpgrades: number; // unused credits (from 'boom'); applied immediately, kept for audit
 }
 
 export interface CityState {
@@ -97,7 +96,6 @@ export function createGame(seed: number, names: string[], openingCash: number | 
       doubles: 0,
       startupLaps: 0,
       startupPenalty: 0,
-      freeUpgrades: 0,
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
     hubs: [null, null, null, null],

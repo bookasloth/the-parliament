@@ -11,6 +11,8 @@ import {
   upgradeCost,
   SETS_TO_END,
   MAX_ROUNDS,
+  UNDERDOG_RATIO,
+  JAIL_TURNS,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
 import type { TradeSide } from "./state";
@@ -47,7 +49,7 @@ function isUnderdog(s: GameState, seat: number): boolean {
   const max = Math.max(...nws);
   if (max <= 0) return false;
   const isMin = nws.every((v, i) => i === seat || mine < v);
-  return isMin && mine < 0.6 * max;
+  return isMin && mine < UNDERDOG_RATIO * max;
 }
 
 function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): void {
@@ -83,7 +85,7 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       break;
     case "taxraid":
       s.players[seat].pos = 10;
-      s.players[seat].halted = 2;
+      s.players[seat].halted = JAIL_TURNS;
       s.players[seat].doubles = 0;
       s.pendingDouble = false;
       events.push({ type: "taxraid", seat });
@@ -253,7 +255,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       s.pendingDouble = isDouble && !brokeOut;
       if (!brokeOut && isDouble && p.doubles >= 3) {
         p.pos = 10;
-        p.halted = 2;
+        p.halted = JAIL_TURNS;
         p.doubles = 0;
         s.pendingDouble = false;
         s.phase = "manage";
@@ -443,11 +445,4 @@ export function nextAutoIntent(s: GameState): { seat: number; intent: Intent } |
     default:
       return null;
   }
-}
-
-/** One minimal-legal step for a timed-out player. Caller loops until active changes or game ends. */
-export function autoResolve(s: GameState): { state: GameState; events: EngineEvent[] } {
-  const step = nextAutoIntent(s);
-  if (!step) return { state: s, events: [] };
-  return applyIntent(s, step.seat, step.intent) as { state: GameState; events: EngineEvent[] };
 }

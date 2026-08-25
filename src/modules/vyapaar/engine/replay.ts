@@ -6,7 +6,7 @@ export function replay(
   seed: number,
   names: string[],
   log: { seat: number; intent: Intent }[],
-  openingCash?: number,
+  openingCash?: number | number[], // scalar or per-seat, matching a real match's opening stacks
 ): GameState {
   const s = createGame(seed, names, openingCash);
   for (const { seat, intent } of log) {
