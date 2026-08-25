@@ -25,22 +25,20 @@ describe("end_turn and end conditions", () => {
     expect("error" in r).toBe(true);
   });
 
-  it("a plain roll auto-advances the turn — never parks in manage, no End-turn click", () => {
+  it("a plain roll ends the move: a buy decision or an auto-advance — never a bonus reroll", () => {
     for (let seed = 1; seed <= 60; seed++) {
       const s = createGame(seed, ["a", "b"]);
       applyIntent(s, 0, { type: "roll" });
       if (s.ended) continue; // won't happen on turn 1, but be safe
-      // The turn is either: awaiting a buy decision, mid-double reroll (same seat),
-      // or auto-advanced to the next seat. It must NEVER sit idle in "manage".
+      expect(s.pendingDouble).toBe(false); // one roll per turn — doubles grant no reroll
+      // Fresh game: seat 0 owns nothing, so a self-developable landing (which would
+      // park in "manage") can't happen here — see turn-model.test.ts for that path.
       expect(s.phase).not.toBe("manage");
       if (s.phase === "buy") {
         expect(s.active).toBe(0); // decision still owed by the roller
       } else {
         expect(s.phase).toBe("roll");
-        // roll phase with the same seat only ever means a pending double-reroll;
-        // otherwise the turn auto-advanced to the next seat with no End-turn click.
-        if (s.active === 0) expect(s.pendingDouble).toBe(true);
-        else expect(s.active).toBe(1);
+        expect(s.active).toBe(1); // auto-advanced to the next seat, no reroll
       }
     }
   });

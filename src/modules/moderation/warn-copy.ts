@@ -7,6 +7,7 @@ export const WARN_LABEL: Record<ReportableEntity, string> = {
   profile: "profile",
   business: "business listing",
   message: "message",
+  vyapaar_bug: "game bug report",
 }
 
 /**

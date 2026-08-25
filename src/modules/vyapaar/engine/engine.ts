@@ -183,15 +183,12 @@ function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
 }
 
 /**
- * Finish the current move segment. Roll again on a double; otherwise the turn is
- * over and we auto-advance — there is no idle "manage" park state and no forced
- * End-turn click. Players manage (develop/mortgage/sell) during their roll phase.
+ * Finish the current move segment. One roll per turn — doubles grant no bonus
+ * roll — so landing always ends the segment and we auto-advance. The exception is
+ * a landing on your own developable city, which pauses in `manage` first (handled
+ * in resolveTile, not here) so you can build before ending the turn.
  */
 function finishSegment(s: GameState, events: EngineEvent[]): void {
-  if (s.pendingDouble) {
-    s.phase = "roll";
-    return;
-  }
   advanceTurn(s, events);
 }
 
@@ -277,7 +274,14 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         }
         finishSegment(s, events);
       } else {
-        finishSegment(s, events);
+        // Landed on your own city. Smart pause: if it's part of a set you control
+        // and not yet maxed, hold in `manage` so you can develop it this turn
+        // before ending (see end_turn). Nothing to build → just auto-advance.
+        if (controlsSet(s, seat, CITIES[id].zone) && s.cities[id].level < MAX_LEVEL) {
+          s.phase = "manage";
+        } else {
+          finishSegment(s, events);
+        }
       }
       break;
     }
@@ -416,19 +420,9 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         }
       }
 
-      // Jail-break roll on doubles: player moves this roll but gets no bonus
-      // re-roll, and it doesn't count toward the 3-doubles jail rule.
-      if (!brokeOut) p.doubles += isDouble ? 1 : 0;
-      s.pendingDouble = isDouble && !brokeOut;
-      if (!brokeOut && isDouble && p.doubles >= 3) {
-        p.pos = MONSOON_POS;
-        p.halted = JAIL_TURNS;
-        p.doubles = 0;
-        s.pendingDouble = false;
-        events.push({ type: "jail_doubles", seat });
-        finishSegment(s, events);
-        return { state: s, events };
-      }
+      // One roll per turn: doubles grant no bonus roll and there is no
+      // three-doubles jail rule. (Doubles still break you out of jail, above.)
+      s.pendingDouble = false;
 
       const sum = p.pos + a + b;
       if (sum >= 40) passStartSalary(s, seat, events);

@@ -6,7 +6,7 @@ import { fileReport } from "@/modules/moderation/service"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
 const schema = z.object({
-  entityType: z.enum(["post", "comment", "profile", "business", "message"]),
+  entityType: z.enum(["post", "comment", "profile", "business", "message", "vyapaar_bug"]),
   entityId: z.string().uuid(),
   reason: z.string().min(1).max(40),
   details: z.string().max(2000).optional(),

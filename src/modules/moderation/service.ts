@@ -5,7 +5,7 @@ import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
 import { buildWarnPayload } from "./warn-copy"
 
-export type ReportableEntity = "post" | "comment" | "profile" | "business" | "message"
+export type ReportableEntity = "post" | "comment" | "profile" | "business" | "message" | "vyapaar_bug"
 
 export { buildWarnPayload }
 
@@ -38,6 +38,9 @@ async function resolveEntityAuthor(
       const x = await prisma.user.findUnique({ where: { id: entityId }, select: { id: true, displayName: true, legalName: true } })
       return x ? { userId: x.id, name: pick(x) } : null
     }
+    case "vyapaar_bug":
+      // A game bug report has no content author to warn — admins triage/dismiss it.
+      return null
   }
 }
 
