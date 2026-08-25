@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   try {
     const res = await applyMatchIntent(user.id, matchId, intent)
     if ("error" in res) return NextResponse.json({ error: res.error }, { status: 400 })
-    return NextResponse.json({ view: res.view })
+    return NextResponse.json({ view: res.view, turnExpiresAt: res.turnExpiresAt })
   } catch (e) {
     if (e instanceof ForbiddenError) {
       const status = e.message === "Match not found" ? 404 : 403

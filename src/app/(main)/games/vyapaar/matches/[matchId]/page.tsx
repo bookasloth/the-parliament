@@ -11,7 +11,7 @@ export default async function MatchPage({ params }: { params: Promise<{ matchId:
   const user = await requireUser()
   let view
   try {
-    view = await getMatchView(user.id, matchId)
+    ;({ view } = await getMatchView(user.id, matchId))
   } catch (e) {
     if (e instanceof ForbiddenError) notFound()
     throw e

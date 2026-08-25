@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma/client"
 import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { createGame } from "./engine/state"
@@ -7,22 +8,32 @@ import { applyIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
 import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
+import { TURN_SECONDS } from "@/config/vyapaar-match"
 import crypto from "node:crypto"
+
+/** Deadline for the next player action; null once the game has ended. */
+function turnExpiresAtFor(state: GameState, nowMs: number): Date | null {
+  return state.ended ? null : new Date(nowMs + TURN_SECONDS * 1000)
+}
 
 export async function activeMatchId(roomId: string): Promise<string | null> {
   const match = await prisma.vyapaarMatch.findFirst({ where: { roomId, status: "active" }, select: { id: true } })
   return match?.id ?? null
 }
 
-export async function getMatchView(userId: string, matchId: string): Promise<PublicView> {
+export async function getMatchView(
+  userId: string,
+  matchId: string,
+): Promise<{ view: PublicView; turnExpiresAt: string | null }> {
   const match = await prisma.vyapaarMatch.findUnique({
     where: { id: matchId },
-    select: { state: true, players: { select: { userId: true, seat: true } } },
+    select: { state: true, turnExpiresAt: true, players: { select: { userId: true, seat: true } } },
   })
   if (!match) throw new ForbiddenError("Match not found")
   const me = match.players.find((p) => p.userId === userId)
   if (!me) throw new ForbiddenError("not_a_player")
-  return publicView(match.state as unknown as GameState, me.seat)
+  const state = match.state as unknown as GameState
+  return { view: publicView(state, me.seat), turnExpiresAt: match.turnExpiresAt?.toISOString() ?? null }
 }
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
@@ -68,7 +79,7 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     const match = await tx.vyapaarMatch.create({
       data: {
         roomId: room.id, seed: BigInt(seed), state: state as unknown as object, actionLog: [],
-        status: "active", activeSeat: 0,
+        status: "active", activeSeat: 0, turnExpiresAt: turnExpiresAtFor(state, Date.now()),
         players: { create: seated.map((m, i) => ({ userId: m.userId, seat: i, openingCash: openingCash[i] })) },
       },
       select: { id: true },
@@ -120,12 +131,43 @@ async function settleMatch(
   }
 }
 
+/**
+ * Persist the post-intent state, advance the turn deadline, and settle the match if it
+ * just ended. Shared by applyMatchIntent (and future intent-producing paths, e.g. the
+ * turn-timer cron) so every write path stamps turnExpiresAt and settles the same way.
+ */
+async function commitMatchState(
+  tx: Prisma.TransactionClient,
+  match: { id: string; roomId: string; actionLog: unknown; players: { userId: string; seat: number; openingCash: number }[] },
+  state: GameState,
+  appendedLog: { seat: number; intent: Intent }[],
+): Promise<Date | null> {
+  const log = [...(match.actionLog as { seat: number; intent: Intent }[]), ...appendedLog]
+  const expiresAt = turnExpiresAtFor(state, Date.now())
+  await tx.vyapaarMatch.update({
+    where: { id: match.id },
+    data: {
+      state: state as unknown as object,
+      actionLog: log as unknown as object,
+      activeSeat: state.active,
+      turnExpiresAt: expiresAt,
+      ...(state.ended ? { status: "over", winnerSeat: state.winner, endedAt: new Date() } : {}),
+    },
+  })
+  if (state.ended) {
+    await settleMatch(tx, match.id, state, match.players)
+    // Reopen the room for a rematch.
+    await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
+  }
+  return expiresAt
+}
+
 export async function applyMatchIntent(
   userId: string,
   matchId: string,
   intent: Intent,
-): Promise<{ view: PublicView } | { error: string }> {
-  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView } | { error: string }> => {
+): Promise<{ view: PublicView; turnExpiresAt: string | null } | { error: string }> {
+  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView; turnExpiresAt: Date | null } | { error: string }> => {
     // Serialize concurrent intents on this match (prevents lost-update + double-settle
     // when two calls — double-click, retry, or legal concurrent bid/trade-response from
     // a non-active seat — race the same snapshot).
@@ -145,27 +187,12 @@ export async function applyMatchIntent(
     const r = applyIntent(state, me.seat, intent)
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
 
-    const log = [...(match.actionLog as { seat: number; intent: Intent }[]), { seat: me.seat, intent }]
-    await tx.vyapaarMatch.update({
-      where: { id: matchId },
-      data: {
-        state: r.state as unknown as object,
-        actionLog: log as unknown as object,
-        activeSeat: r.state.active,
-        ...(r.state.ended
-          ? { status: "over", winnerSeat: r.state.winner, endedAt: new Date() }
-          : {}),
-      },
-    })
-    if (r.state.ended) {
-      await settleMatch(tx, matchId, r.state, match.players)
-      // Reopen the room for a rematch.
-      await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
-    }
-    return { view: publicView(r.state, me.seat) }
+    const expiresAt = await commitMatchState(tx, match, r.state, [{ seat: me.seat, intent }])
+    return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
   if ("view" in result) {
     await broadcastToTopic(matchTopic(matchId), "state", { activeSeat: result.view.active, ended: result.view.ended })
+    return { view: result.view, turnExpiresAt: result.turnExpiresAt?.toISOString() ?? null }
   }
   return result
 }

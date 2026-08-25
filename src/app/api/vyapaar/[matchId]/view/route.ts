@@ -13,8 +13,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ mat
   }
   const { matchId } = await params
   try {
-    const view = await getMatchView(user.id, matchId)
-    return NextResponse.json({ view })
+    const { view, turnExpiresAt } = await getMatchView(user.id, matchId)
+    return NextResponse.json({ view, turnExpiresAt })
   } catch (e) {
     if (e instanceof ForbiddenError) {
       return NextResponse.json({ error: e.message }, { status: e.message === "Match not found" ? 404 : 403 })
