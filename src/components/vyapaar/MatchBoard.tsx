@@ -44,7 +44,7 @@ const buildIcons = (level: number) => {
   return hotelSVG.repeat(hotels) + houseSVG.repeat(houses)
 }
 
-export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, youImage }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; youImage?: string | null }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [] }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[] }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [err, setErr] = useState<string | null>(null)
@@ -106,8 +106,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, youImag
         <div className="vb-logo">व्यापार<b>.</b></div>
         <div className="vb-meta">Round {view.round} · pot <b>{inr(view.pot)}</b>{view.ended ? ` · over — winner ${seatName(view.winner) ?? `seat ${view.winner}`}` : ""}</div>
         <div className="vb-you">
-          {youImage
-            ? <img src={youImage} alt="" className="vb-you-img" />
+          {playerImages[you]
+            ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
             : <span className="vb-you-init" style={{ background: SEAT_COL[you % 6], color: you % 6 === 1 ? "#0F1111" : "#fff" }}>{(view.players[you]?.name ?? "?").charAt(0).toUpperCase()}</span>}
           <span className="vb-you-name">{(view.players[you]?.name ?? "").split(" ")[0]}</span>
         </div>
@@ -190,7 +190,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, youImag
           <div className="vb-players">
             {view.players.map((p, seat) => (
               <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
-                <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>
+                {playerImages[seat]
+                  ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
+                  : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
                 <span className="vb-plst">
                   <span className="vb-cash">{inr(p.cash)}</span>
@@ -476,6 +478,7 @@ const VB_CSS = `
 .vb-pl{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:8px 11px;}
 .vb-pl.active{border-color:var(--accent);}
 .vb-av{width:28px;height:28px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none;}
+.vb-av-img{object-fit:cover;}
 .vb-plnm{font-weight:600;font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vb-plst{margin-left:auto;text-align:right;}.vb-cash{font-weight:700;font-size:.82rem;color:var(--yellow);display:block;}.vb-sub{font-size:.62rem;color:var(--dim);}
 .vb-err{background:#3a1f1a;color:#FF8f7f;border:1px solid #5a2f28;border-radius:2px;padding:8px 11px;font-size:.8rem;margin:0;}
