@@ -4,7 +4,7 @@ import type { GameState, Intent } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { replay } from "@/modules/vyapaar/engine/replay";
 import { nextRng } from "@/modules/vyapaar/engine/rng";
-import { CITIES, HUB_PRICE } from "@/modules/vyapaar/engine/data";
+import { CITIES, COMPANIES } from "@/modules/vyapaar/engine/data";
 
 function total(s: GameState): number {
   return s.players.reduce((n, p) => n + p.cash, 0) + s.pot;
@@ -20,7 +20,7 @@ const MINT_BURN = new Set([
   "mortgage",
   "unmortgage",
   "buy",
-  "buy_hub",
+  "buy_company",
   "auction_won",
   "free_upgrade",
   "downgrade",
@@ -39,7 +39,9 @@ function pickIntent(s: GameState): { seat: number; intent: Intent } {
     const afford =
       s.pendingCity !== null
         ? s.players[seat].cash >= CITIES[s.pendingCity].price
-        : s.players[seat].cash >= HUB_PRICE;
+        : s.pendingCompany !== null
+          ? s.players[seat].cash >= COMPANIES[s.pendingCompany].buy
+          : false;
     return { seat, intent: afford ? { type: "buy" } : { type: "decline" } };
   }
   if (s.phase === "auction") {
@@ -87,7 +89,7 @@ describe("determinism + money conservation", () => {
         const r = applyIntent(s, seat, intent);
         const events = "events" in r ? r.events : [];
         for (const e of events) {
-          if (e.type === "rent" || e.type === "hub_rent") rentEvents++;
+          if (e.type === "rent" || e.type === "company_fee") rentEvents++;
           if (e.type === "forced_sale" || e.type === "forced_mortgage") liquidationEvents++;
         }
         const touchedBank = events.some((e) => MINT_BURN.has(e.type));

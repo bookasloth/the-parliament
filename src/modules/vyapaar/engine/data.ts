@@ -57,9 +57,29 @@ export function upgradeCost(cityId: number): number {
   return Math.round(CITIES[cityId].price * UPGRADE_COST_RATIO);
 }
 
-export const HUB_PRICE = 4500;
-export const HUB_RENT = [0, 750, 1500, 3000, 6000]; // indexed by hubs owner holds
-export const HUB_POS = [5, 15, 25, 35];
+// Companies replace the old generic hubs: 6 named companies in 3 pairs. No building —
+// they charge a flat service fee, doubled to the pair rate when one owner holds both of a pair.
+export const COMPANY_CATS = ["Travel", "Communication", "Food"] as const;
+export interface CompanyDef {
+  name: string;
+  short: string;
+  category: number; // index into COMPANY_CATS
+  sub: string;
+  partner: number; // index of the paired company
+  buy: number;
+  single: number; // service fee when the owner holds one of the pair
+  pair: number; // service fee when the owner holds both
+}
+export const COMPANIES: CompanyDef[] = [
+  { name: "Udta Firta Travels", short: "Udta Firta", category: 0, sub: "Travel Agency", partner: 1, buy: 5000, single: 500, pair: 2500 },
+  { name: "The Bogus Airlines", short: "Bogus Airlines", category: 0, sub: "Airline", partner: 0, buy: 5000, single: 500, pair: 2500 },
+  { name: "Timewheel Internet Pvt Ltd", short: "Timewheel", category: 1, sub: "Tech & Marketing", partner: 3, buy: 6000, single: 600, pair: 3000 },
+  { name: "Book A Sloth", short: "Book A Sloth", category: 1, sub: "Appointment Booking", partner: 2, buy: 6000, single: 600, pair: 3000 },
+  { name: "Fox and Bew", short: "Fox & Bew", category: 2, sub: "Cafe", partner: 5, buy: 4000, single: 400, pair: 2000 },
+  { name: "Dabba", short: "Dabba", category: 2, sub: "Tiffin Delivery", partner: 4, buy: 4000, single: 400, pair: 2000 },
+];
+// Board positions per company index; each pair sits 6 tiles apart.
+export const COMPANY_POS = [3, 9, 15, 21, 27, 33];
 
 export const START_CASH = 7500; // fallback/bot opening stack (wallet mode overrides)
 export const SALARY = 1200;
@@ -90,8 +110,8 @@ export const MANDI_POS = 20;
 export const TAXRAID_POS = 30;
 export const GST_POS = 17;
 export const INCOME_POS = 37;
-export const UPI_POS = [3, 23];
-export const HEADLINE_POS = [7, 13, 27];
+export const UPI_POS = [23]; // pos 3 is now a company tile
+export const HEADLINE_POS = [7, 13]; // pos 27 is now a company tile
 
 export type CardOp =
   | "cash"

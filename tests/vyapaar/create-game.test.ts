@@ -13,7 +13,7 @@ describe("createGame", () => {
     expect(g.players).toHaveLength(3);
     expect(g.players.every((p) => p.cash === 25000 && p.pos === 0)).toBe(true);
     expect(g.cities).toHaveLength(25);
-    expect(g.hubs).toEqual([null, null, null, null]);
+    expect(g.companies).toEqual([null, null, null, null, null, null]);
     expect(g.active).toBe(0);
     expect(g.phase).toBe("roll");
   });

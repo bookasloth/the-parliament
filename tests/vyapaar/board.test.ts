@@ -11,20 +11,20 @@ describe("vyapaar board", () => {
     expect(BOARD[30].kind).toBe("taxraid");
   });
 
-  it("places hubs, gst, income, and card tiles", () => {
-    for (const p of [5, 15, 25, 35]) expect(BOARD[p].kind).toBe("hub");
+  it("places companies (3 pairs), gst, income, and card tiles", () => {
+    for (const p of [3, 9, 15, 21, 27, 33]) expect(BOARD[p].kind).toBe("company");
     expect(BOARD[17].kind).toBe("gst");
     expect(BOARD[37].kind).toBe("income");
-    for (const p of [3, 23]) expect(BOARD[p].kind).toBe("upi");
-    for (const p of [7, 13, 27]) expect(BOARD[p].kind).toBe("headline");
+    for (const p of [23]) expect(BOARD[p].kind).toBe("upi");
+    for (const p of [7, 13]) expect(BOARD[p].kind).toBe("headline");
   });
 
-  it("fills the remaining 25 tiles with cities cheapest-first by position", () => {
+  it("fills the remaining 25 tiles with cities alphabetically by position", () => {
     const cityTiles = BOARD.filter((t) => t.kind === "city");
     expect(cityTiles).toHaveLength(25);
-    // Cheapest-first: buy price strictly increases along ascending board positions.
-    const prices = cityTiles.map((t) => CITIES[t.cityId as number].price);
-    for (let i = 1; i < prices.length; i++) expect(prices[i]).toBeGreaterThan(prices[i - 1]);
+    // Alphabetical: names ascend along ascending board positions (BOARD is position-ordered).
+    const names = cityTiles.map((t) => CITIES[t.cityId as number].name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     for (const t of cityTiles) expect(CITY_POS[t.cityId as number]).toBe(t.pos);
     expect(CITIES).toHaveLength(25);
   });

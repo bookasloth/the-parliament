@@ -1,6 +1,6 @@
 import {
   CITIES,
-  HUB_POS,
+  COMPANY_POS,
   START_POS,
   MONSOON_POS,
   MANDI_POS,
@@ -16,7 +16,7 @@ export type TileKind =
   | "monsoon"
   | "mandi"
   | "taxraid"
-  | "hub"
+  | "company"
   | "gst"
   | "income"
   | "upi"
@@ -27,7 +27,7 @@ export interface Tile {
   pos: number;
   kind: TileKind;
   cityId?: number;
-  hubIndex?: number;
+  companyIndex?: number;
 }
 
 function buildBoard(): { board: Tile[]; cityPos: number[] } {
@@ -39,22 +39,23 @@ function buildBoard(): { board: Tile[]; cityPos: number[] } {
   specials.set(TAXRAID_POS, "taxraid");
   specials.set(GST_POS, "gst");
   specials.set(INCOME_POS, "income");
-  HUB_POS.forEach((p) => specials.set(p, "hub"));
   UPI_POS.forEach((p) => specials.set(p, "upi"));
   HEADLINE_POS.forEach((p) => specials.set(p, "headline"));
+  const companyAt = new Map<number, number>();
+  COMPANY_POS.forEach((p, i) => companyAt.set(p, i));
 
-  // CITIES is authored zone-grouped, so sort a copy by price for cheapest-first placement.
-  const byPrice = CITIES.map((_, id) => id).sort((a, b) => CITIES[a].price - CITIES[b].price);
+  // Cities are placed in ALPHABETICAL order around the board.
+  const byName = CITIES.map((_, id) => id).sort((a, b) => CITIES[a].name.localeCompare(CITIES[b].name));
   const cityPos: number[] = [];
   let nextCity = 0;
   for (let pos = 0; pos < 40; pos++) {
     const kind = specials.get(pos);
-    if (kind === "hub") {
-      board[pos] = { pos, kind, hubIndex: HUB_POS.indexOf(pos) };
+    if (companyAt.has(pos)) {
+      board[pos] = { pos, kind: "company", companyIndex: companyAt.get(pos) };
     } else if (kind) {
       board[pos] = { pos, kind };
     } else {
-      const cityId = byPrice[nextCity++];
+      const cityId = byName[nextCity++];
       board[pos] = { pos, kind: "city", cityId };
       cityPos[cityId] = pos;
     }

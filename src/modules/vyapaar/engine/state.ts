@@ -37,7 +37,8 @@ export interface CityState {
 }
 
 export interface AuctionState {
-  cityId: number;
+  kind: "city" | "company";
+  index: number; // cityId or companyIndex, per `kind`
   bids: (number | null)[]; // per seat; null = not yet bid
 }
 
@@ -53,13 +54,13 @@ export interface GameState {
   rng: number; // live PRNG state
   players: PlayerState[];
   cities: CityState[]; // length 25, indexed by cityId
-  hubs: (number | null)[]; // length 4, indexed by hubIndex
+  companies: (number | null)[]; // length 6, indexed by companyIndex
   pot: number;
   active: number; // active seat
   phase: Phase;
   round: number; // starts at 1
   pendingCity: number | null; // city just landed on, awaiting buy/decline
-  pendingHub: number | null; // hub just landed on, awaiting buy/decline
+  pendingCompany: number | null; // company just landed on, awaiting buy/decline
   pendingDouble: boolean; // last roll was a double → roll again after resolution
   auction: AuctionState | null;
   trade: TradeOffer | null;
@@ -98,13 +99,13 @@ export function createGame(seed: number, names: string[], openingCash: number | 
       startupPenalty: 0,
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
-    hubs: [null, null, null, null],
+    companies: [null, null, null, null, null, null],
     pot: 0,
     active: 0,
     phase: "roll",
     round: 1,
     pendingCity: null,
-    pendingHub: null,
+    pendingCompany: null,
     pendingDouble: false,
     auction: null,
     trade: null,
