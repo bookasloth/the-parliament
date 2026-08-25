@@ -3,17 +3,53 @@
 import { useCallback, useEffect, useState } from "react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, HUB_PRICE } from "@/modules/vyapaar/engine/data"
+import { CITIES, HUB_PRICE, HUB_RENT } from "@/modules/vyapaar/engine/data"
+import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
 const MATCH_TOPIC = (id: string) => `vyapaar-match:${id}`
+
+// bright zone palette (strip bg) + darkened text-on-milk variant
+const ZONE_BG = ["#FE5100", "#4AB765", "#FF4D93", "#269CEF", "#FFCC1C"]
+const ZONE_TX = ["#E04800", "#2E9455", "#E43D80", "#1E86D0", "#C08A00"]
+const ZONE_DARK = [false, false, false, false, true] // yellow → dark text on strip
+const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd0"]
+
+const inr = (n: number) => n.toLocaleString("en-IN")
+
+// 11×11 ring cell → [col,row]. Corners: 0 Start, 10 Monsoon, 20 Mandi, 30 Tax Raid.
+function cellPos(i: number): [number, number] {
+  if (i === 0) return [11, 11]
+  if (i < 10) return [11 - i, 11]
+  if (i === 10) return [1, 11]
+  if (i < 20) return [1, 11 - (i - 10)]
+  if (i === 20) return [1, 1]
+  if (i < 30) return [1 + (i - 20), 1]
+  if (i === 30) return [11, 1]
+  return [11, 1 + (i - 30)]
+}
+
+const SPECIAL_LABEL: Record<string, string> = {
+  start: "START", monsoon: "MONSOON", mandi: "MANDI", taxraid: "TAX RAID",
+  hub: "HUB", gst: "GST", income: "INCOME", upi: "UPI", headline: "NEWS",
+}
+
+// minimal inline icons
+const houseSVG = `<svg viewBox="0 0 16 16" style="color:#4AB765"><path d="M8 2 14.5 7.5V14.5H1.5V7.5Z" fill="currentColor"/></svg>`
+const hotelSVG = `<svg viewBox="0 0 16 16" style="color:#FE5100"><path d="M2 15V5h6v10Zm7 0V8h5v7Z" fill="currentColor"/></svg>`
+const buildIcons = (level: number) => {
+  const hotels = Math.max(0, level - 3)
+  const houses = level <= 3 ? level : 0
+  return hotelSVG.repeat(hotels) + houseSVG.repeat(houses)
+}
 
 export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [openTile, setOpenTile] = useState<number | null>(null) // board position of the open deed
   const you = view.you
 
   const refetch = useCallback(async () => {
@@ -26,10 +62,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
     let cancelled = false
     let refreshTimer: ReturnType<typeof setTimeout>
     const sb = getSupabaseBrowser()
-
-    // Mirrors ConversationView's connect(): self-reschedules via setTimeout to
-    // re-mint + re-apply the realtime auth token every 55min (token TTL is 1h),
-    // without re-subscribing the channel (guarded by the `channel` closure var).
     async function connect() {
       const auth = await realtimeTokenAction()
       if (!auth || cancelled) return
@@ -39,16 +71,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
       channel = sb.channel(MATCH_TOPIC(matchId), { config: { private: true } })
       channel.on("broadcast", { event: "state" }, () => { void refetch() }).subscribe()
     }
-
     connect()
-    return () => {
-      cancelled = true
-      clearTimeout(refreshTimer)
-      if (channel) { void sb.removeChannel(channel); channel = null }
-    }
+    return () => { cancelled = true; clearTimeout(refreshTimer); if (channel) { void sb.removeChannel(channel); channel = null } }
   }, [matchId, refetch])
 
-  const send = useCallback(async (intent: Intent) => {
+  const send = useCallback(async (intent: Intent, closeDeed = false) => {
     setErr(null); setBusy(true)
     try {
       const res = await fetch(`/api/vyapaar/${matchId}/intent`, {
@@ -56,87 +83,160 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
       })
       const data = await res.json()
       if (!res.ok) setErr(data.error ?? "error")
-      else { setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null) }
-    } finally {
-      setBusy(false)
-    }
+      else { setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
+    } finally { setBusy(false) }
   }, [matchId])
 
   const myTurn = view.active === you && !view.ended
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
-  const myCities = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you)
+  const seatName = (seat: number | null) => (seat === null ? null : view.players[seat]?.name)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Vyapaar match</h1>
-        <span className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Round {view.round} · pot {view.pot.toLocaleString("en-IN")} · {view.ended ? `over — winner seat ${view.winner}` : `seat ${view.active}'s turn`}</span>
-          <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
-        </span>
+    <div className="vb">
+      <style>{VB_CSS}</style>
+
+      <header className="vb-top">
+        <div className="vb-logo">व्यापार<b>.</b></div>
+        <div className="vb-meta">
+          Round {view.round} · pot <b>{inr(view.pot)}</b> · {view.ended ? `over — winner ${seatName(view.winner) ?? `seat ${view.winner}`}` : `${seatName(view.active)}'s turn`}
+        </div>
       </header>
 
-      <section className="grid gap-2 sm:grid-cols-2">
-        {view.players.map((p, seat) => (
-          <div key={seat} className={`rounded-lg border p-3 text-sm ${seat === view.active ? "border-brand" : "border-gray-200"}`}>
-            <div className="font-medium">{p.name} {seat === you && "(you)"}</div>
-            <div className="text-gray-600">cash {p.cash.toLocaleString("en-IN")} · pos {p.pos} · net {Math.round(p.netWorth).toLocaleString("en-IN")}{p.halted ? " · halted" : ""}</div>
+      <div className="vb-stage">
+        <div className="vb-board-outer">
+          <div className="vb-board">
+            <div className="vb-grid">
+              {BOARD.map((t) => {
+                const [c, r] = cellPos(t.pos)
+                const tokens = view.players
+                  .map((p, seat) => ({ p, seat }))
+                  .filter((x) => x.p.pos === t.pos)
+                  .map((x) => <span key={x.seat} className="vb-tok" style={{ background: SEAT_COL[x.seat % 6] }} />)
+                const style = { gridColumn: c, gridRow: r }
+
+                if (t.kind === "city") {
+                  const id = t.cityId as number
+                  const city = CITIES[id]
+                  const cs = view.cities[id]
+                  const dark = ZONE_DARK[city.zone]
+                  return (
+                    <div key={t.pos} className="vb-tile vb-city" style={style} onClick={() => setOpenTile(t.pos)}>
+                      <div className="vb-strip" style={{ background: ZONE_BG[city.zone], color: dark ? "#0F1111" : "#fff" }}>
+                        <span className="vb-nm">{city.name}</span>
+                      </div>
+                      <div className="vb-mid" dangerouslySetInnerHTML={{ __html: cs.mortgaged ? "" : buildIcons(cs.level) }} />
+                      <div className="vb-price" style={{ color: ZONE_TX[city.zone] }}>{cs.mortgaged ? "mortgaged" : inr(city.price)}</div>
+                      {cs.owner !== null && <span className="vb-own" style={{ background: SEAT_COL[cs.owner % 6] }} />}
+                      {tokens}
+                    </div>
+                  )
+                }
+                if (t.kind === "hub") {
+                  const hi = t.hubIndex as number
+                  const owner = view.hubs[hi]
+                  return (
+                    <div key={t.pos} className="vb-tile vb-company" style={style} onClick={() => setOpenTile(t.pos)}>
+                      <div className="vb-strip vb-grey"><span className="vb-nm">HUB</span></div>
+                      <div className="vb-mid"><span className="vb-cat" dangerouslySetInnerHTML={{ __html: HUB_ICON }} /></div>
+                      <div className="vb-price vb-co">{inr(HUB_PRICE)}</div>
+                      {owner !== null && <span className="vb-own" style={{ background: SEAT_COL[owner % 6] }} />}
+                      {tokens}
+                    </div>
+                  )
+                }
+                const corner = ["start", "monsoon", "mandi", "taxraid"].includes(t.kind)
+                return (
+                  <div key={t.pos} className={`vb-tile ${corner ? "vb-corner vb-" + t.kind : "vb-special"}`} style={style}>
+                    <span className="vb-sic" dangerouslySetInnerHTML={{ __html: SPECIAL_ICON[t.kind] ?? "" }} />
+                    <span className="vb-slb">{SPECIAL_LABEL[t.kind]}</span>
+                    {tokens}
+                  </div>
+                )
+              })}
+
+              <div className="vb-hub">
+                <div className="vb-hub-name">व्यापार</div>
+                <div className="vb-dice"><span className="vb-die" /><span className="vb-die" /></div>
+                <button
+                  className="vb-roll"
+                  disabled={busy || !myTurn || view.phase !== "roll"}
+                  onClick={() => send({ type: "roll" })}
+                >Roll</button>
+              </div>
+            </div>
           </div>
-        ))}
-      </section>
+        </div>
 
-      {err && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</p>}
+        <div className="vb-rail">
+          <div className="vb-turn">
+            <div className="vb-turn-row">
+              <b>{view.ended ? "Game over" : `${seatName(view.active)}'s turn`}</b>
+              <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
+            </div>
+          </div>
 
-      <section className="flex flex-wrap gap-2">
-        {myTurn && view.phase === "roll" && <button disabled={busy} onClick={() => send({ type: "roll" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Roll</button>}
-        {myTurn && view.phase === "buy" && view.pendingCity !== null && <>
-          <button disabled={busy} onClick={() => send({ type: "buy" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Buy {CITIES[view.pendingCity].name} ({CITIES[view.pendingCity].price})</button>
-          <button disabled={busy} onClick={() => send({ type: "decline" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Decline</button>
-        </>}
-        {myTurn && view.phase === "buy" && view.pendingHub !== null && <>
-          <button disabled={busy} onClick={() => send({ type: "buy" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Buy hub ({HUB_PRICE})</button>
-          <button disabled={busy} onClick={() => send({ type: "decline" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Decline</button>
-        </>}
-        {view.phase === "auction" && view.auction && !view.auction.bidded[you] && <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />}
-        {myTurn && view.phase === "manage" && <button disabled={busy} onClick={() => send({ type: "end_turn" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">End turn</button>}
-      </section>
-
-      {canManage && myCities.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Your cities</h2>
-          <ul className="grid gap-1">
-            {myCities.map((c) => (
-              <li key={c.id} className="flex items-center justify-between rounded border border-gray-200 px-3 py-1.5 text-sm">
-                <span>{CITIES[c.id].name} · L{c.level}{c.mortgaged ? " · mortgaged" : ""}</span>
-                <span className="flex gap-1">
-                  <button disabled={busy} onClick={() => send({ type: "develop", cityId: c.id })} className="rounded border px-2 py-0.5 text-xs disabled:opacity-50">Develop</button>
-                  {c.mortgaged
-                    ? <button disabled={busy} onClick={() => send({ type: "unmortgage", cityId: c.id })} className="rounded border px-2 py-0.5 text-xs disabled:opacity-50">Unmortgage</button>
-                    : <button disabled={busy} onClick={() => send({ type: "mortgage", cityId: c.id })} className="rounded border px-2 py-0.5 text-xs disabled:opacity-50">Mortgage</button>}
+          <div className="vb-players">
+            {view.players.map((p, seat) => (
+              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
+                <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>
+                <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
+                <span className="vb-plst">
+                  <span className="vb-cash">{inr(p.cash)}</span>
+                  <span className="vb-sub">net {inr(Math.round(p.netWorth))}{p.halted ? " · halted" : ""}</span>
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
-        </section>
-      )}
-
-      {view.trade && view.trade.to === you && (
-        <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
-          <p className="mb-2 font-medium">Seat {view.trade.from} proposed a trade.</p>
-          <div className="flex gap-2">
-            <button disabled={busy} onClick={() => send({ type: "respond_trade", accept: true })} className="rounded-lg bg-brand px-3 py-1.5 text-white disabled:opacity-50">Accept</button>
-            <button disabled={busy} onClick={() => send({ type: "respond_trade", accept: false })} className="rounded-lg border px-3 py-1.5 disabled:opacity-50">Decline</button>
           </div>
-        </section>
-      )}
 
-      <TradePropose view={view} you={you} busy={busy} onPropose={(intent) => send(intent)} />
+          {err && <p className="vb-err">{err}</p>}
+
+          <div className="vb-actions">
+            {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" })}>Roll</button>}
+            {myTurn && view.phase === "buy" && view.pendingCity !== null && (
+              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(CITY_POS[view.pendingCity!])}>Buy {CITIES[view.pendingCity].name}</button>
+            )}
+            {myTurn && view.phase === "buy" && view.pendingHub !== null && (
+              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "buy" }, true)}>Buy hub ({inr(HUB_PRICE)})</button>
+            )}
+            {myTurn && view.phase === "buy" && view.pendingHub !== null && (
+              <button className="vb-act" disabled={busy} onClick={() => send({ type: "decline" })}>Decline</button>
+            )}
+            {myTurn && view.phase === "manage" && <button className="vb-act" disabled={busy} onClick={() => send({ type: "end_turn" })}>End turn</button>}
+            {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
+              <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
+            )}
+          </div>
+
+          {view.trade && view.trade.to === you && (
+            <div className="vb-trade">
+              <p>Seat {view.trade.from} proposed a trade.</p>
+              <div className="vb-trade-btns">
+                <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "respond_trade", accept: true })}>Accept</button>
+                <button className="vb-act" disabled={busy} onClick={() => send({ type: "respond_trade", accept: false })}>Decline</button>
+              </div>
+            </div>
+          )}
+
+          <TradePropose view={view} you={you} busy={busy} onPropose={(i) => send(i)} />
+        </div>
+      </div>
+
+      {openTile !== null && (
+        <Deed
+          pos={openTile}
+          view={view}
+          you={you}
+          busy={busy}
+          canManage={canManage}
+          myTurn={myTurn}
+          onClose={() => setOpenTile(null)}
+          onAction={send}
+        />
+      )}
     </div>
   )
 }
 
-// now === null until mounted → renders nothing on SSR/first paint, avoiding a
-// server/client hydration mismatch on the per-second value.
 function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: boolean }) {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
@@ -147,15 +247,101 @@ function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: bool
   }, [expiresAt, ended])
   if (!expiresAt || ended || now === null) return null
   const secs = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000))
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${secs <= 5 ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-600"}`}>{secs > 0 ? `${secs}s` : "resolving…"}</span>
+  return <span className={`vb-count ${secs <= 5 ? "low" : ""}`}>{secs > 0 ? `0:${String(secs).padStart(2, "0")}` : "resolving…"}</span>
+}
+
+function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
+  pos: number; view: PublicView; you: number; busy: boolean; canManage: boolean; myTurn: boolean
+  onClose: () => void; onAction: (i: Intent, close?: boolean) => void
+}) {
+  const tile = BOARD[pos]
+  if (tile.kind === "hub") {
+    const hi = tile.hubIndex as number
+    const owner = view.hubs[hi]
+    const isPending = myTurn && view.phase === "buy" && view.pendingHub === hi
+    return (
+      <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+        <div className="vb-deed">
+          <div className="vb-crown" style={{ background: "linear-gradient(135deg,#4b515c,#3f4550)", color: "#fff" }}>
+            <div className="vb-zone">Transport · company</div>
+            <h3>Hub</h3>
+            <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(HUB_PRICE)}</div></div>
+          </div>
+          <div className="vb-owned"><span className="chip" style={owner !== null ? { background: SEAT_COL[owner % 6] } : undefined} />{owner === null ? "Unowned" : `Owned by ${view.players[owner]?.name}`}</div>
+          <div className="vb-rents">
+            {[1, 2, 3, 4].map((n) => (
+              <div className="vb-r" key={n}><span className="lab">{n} hub{n > 1 ? "s" : ""} owned</span><span className="amt">{inr(HUB_RENT[n])}</span></div>
+            ))}
+          </div>
+          <div className="vb-note">Rent scales with how many hubs the owner holds. No building.</div>
+          <div className="vb-cta">
+            {isPending
+              ? <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(HUB_PRICE)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>
+              : <button className="pass" onClick={onClose}>Close</button>}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const id = tile.cityId as number
+  const city = CITIES[id]
+  const cs = view.cities[id]
+  const dark = ZONE_DARK[city.zone]
+  const rent = city.rent
+  const iOwn = cs.owner === you
+  const isPendingBuy = myTurn && view.phase === "buy" && view.pendingCity === id
+  const rows: { ic: string; lab: string; amt: number; hl?: boolean }[] = [
+    { ic: "", lab: "Base rent", amt: rent[0] },
+    { ic: "", lab: "With zone set", amt: rent[0] * 2, hl: true },
+    { ic: houseSVG, lab: "1 house", amt: rent[1] },
+    { ic: houseSVG.repeat(2), lab: "2 houses", amt: rent[2] },
+    { ic: houseSVG.repeat(3), lab: "3 houses", amt: rent[3] },
+    { ic: hotelSVG, lab: "1 hotel", amt: rent[4] },
+    { ic: hotelSVG.repeat(2), lab: "2 hotels", amt: rent[5] },
+    { ic: hotelSVG.repeat(3), lab: "3 hotels", amt: rent[6] },
+  ]
+  return (
+    <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="vb-deed">
+        <div className="vb-crown" style={{ background: ZONE_BG[city.zone], color: dark ? "#0F1111" : "#fff" }}>
+          <div className="vb-zone">{["North", "South", "East", "West", "Central"][city.zone]} zone · title deed</div>
+          <h3>{city.name}</h3>
+          <div className="vb-dprice"><div className="k">Buy</div><div className="v">{inr(city.price)}</div></div>
+        </div>
+        <div className="vb-owned"><span className="chip" style={cs.owner !== null ? { background: SEAT_COL[cs.owner % 6] } : undefined} />{cs.owner === null ? "Unowned — land here to buy or auction it" : `Owned by ${view.players[cs.owner]?.name}${cs.mortgaged ? " · mortgaged" : ""}`}</div>
+        <div className="vb-rents">
+          {rows.map((r, i) => (
+            <div className={`vb-r ${r.hl ? "set" : ""}`} key={i}><span className="ic" dangerouslySetInnerHTML={{ __html: r.ic }} /><span className="lab">{r.lab}</span><span className="amt">{inr(r.amt)}</span></div>
+          ))}
+        </div>
+        <div className="vb-meta">
+          <div><div className="k">House cost</div><div className="v">{inr(Math.round(city.price * 0.1))}</div></div>
+          <div><div className="k">Mortgage</div><div className="v">{inr(Math.floor(city.price / 2))}</div></div>
+        </div>
+        <div className="vb-cta">
+          {isPendingBuy && <><button className="buy" disabled={busy} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(city.price)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>}
+          {!isPendingBuy && iOwn && canManage && <>
+            {!cs.mortgaged && cs.level === 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
+            {!cs.mortgaged && cs.level > 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
+            {cs.mortgaged
+              ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
+              : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
+            <button className="pass" onClick={onClose}>Close</button>
+          </>}
+          {!isPendingBuy && !(iOwn && canManage) && <button className="pass" onClick={onClose}>Close</button>}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (n: number) => void }) {
   const [amt, setAmt] = useState(0)
   return (
-    <span className="flex items-center gap-1">
-      <input type="number" min={0} max={max} value={amt} onChange={(e) => setAmt(Math.max(0, Math.min(max, Math.floor(Number(e.target.value)))))} className="w-24 rounded border px-2 py-1 text-sm" />
-      <button disabled={busy} onClick={() => onBid(amt)} className="rounded-lg bg-brand px-3 py-1.5 text-sm text-white disabled:opacity-50">Bid</button>
+    <span className="vb-bid">
+      <input type="number" min={0} max={max} value={amt} onChange={(e) => setAmt(Math.max(0, Math.min(max, Math.floor(Number(e.target.value)))))} />
+      <button className="vb-act primary" disabled={busy} onClick={() => onBid(amt)}>Bid</button>
     </span>
   )
 }
@@ -171,19 +357,117 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
   const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === to && c.level === 0 && !c.mortgaged)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
   return (
-    <details className="rounded-lg border border-gray-200 p-3 text-sm">
-      <summary className="cursor-pointer font-semibold">Propose a trade</summary>
-      <div className="mt-2 grid gap-2">
-        <label>To seat:{" "}
-          <select value={to} onChange={(e) => { setTo(e.target.value === "" ? "" : Number(e.target.value)); setGet([]) }} className="rounded border px-2 py-1">
+    <details className="vb-tp">
+      <summary>Propose a trade</summary>
+      <div className="vb-tp-body">
+        <label>To:{" "}
+          <select value={to} onChange={(e) => { setTo(e.target.value === "" ? "" : Number(e.target.value)); setGet([]) }}>
             <option value="">—</option>
-            {view.players.map((p, seat) => seat !== you ? <option key={seat} value={seat}>{seat}: {p.name}</option> : null)}
+            {view.players.map((p, seat) => seat !== you ? <option key={seat} value={seat}>{p.name}</option> : null)}
           </select>
         </label>
-        <div>You give: {mine.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={give.includes(c.id)} onChange={() => toggle(give, setGive, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={giveCash} onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} className="w-20 rounded border px-1" /></div>
-        <div>You get: {theirs.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={get.includes(c.id)} onChange={() => toggle(get, setGet, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={getCash} onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} className="w-20 rounded border px-1" /></div>
-        <button disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })} className="justify-self-start rounded-lg bg-brand px-3 py-1.5 text-white disabled:opacity-50">Send offer</button>
+        <div>Give: {mine.map((c) => <label key={c.id}><input type="checkbox" checked={give.includes(c.id)} onChange={() => toggle(give, setGive, c.id)} /> {CITIES[c.id].name}</label>)} + <input type="number" min={0} value={giveCash} onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} /></div>
+        <div>Get: {theirs.map((c) => <label key={c.id}><input type="checkbox" checked={get.includes(c.id)} onChange={() => toggle(get, setGet, c.id)} /> {CITIES[c.id].name}</label>)} + <input type="number" min={0} value={getCash} onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} /></div>
+        <button className="vb-act primary" disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })}>Send offer</button>
       </div>
     </details>
   )
 }
+
+const HUB_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="3" width="10" height="11" rx="2"/><path d="M5 9h10M8 17l-1.5 1M12 17l1.5 1"/><circle cx="8" cy="12" r=".5" fill="currentColor"/><circle cx="12" cy="12" r=".5" fill="currentColor"/></svg>`
+const SPECIAL_ICON: Record<string, string> = {
+  start: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M5 4h9l-2 3 2 3H5"/></svg>`,
+  monsoon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 10a3 3 0 0 1 .3-6 4 4 0 0 1 7.5 1.2A2.7 2.7 0 0 1 14 10Z"/><path d="M7 13l-1 3M11 13l-1 3M14 13l-1 2"/></svg>`,
+  mandi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="10" cy="5.5" rx="6" ry="2.5"/><path d="M4 5.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4M4 9.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4"/></svg>`,
+  taxraid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 2 16h16Z"/><path d="M10 8v4"/><circle cx="10" cy="14.2" r=".4" fill="currentColor"/></svg>`,
+  gst: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>`,
+  income: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.5L10 17l-2.5-1.5L5 17Z"/><path d="M8 7h4M8 10h4"/></svg>`,
+  upi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="3" width="8" height="14" rx="1.5"/><path d="M9 14.5h2"/></svg>`,
+  headline: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="12" rx="1"/><path d="M6 7h5M6 10h5M6 13h3M13 7v6"/></svg>`,
+}
+
+const VB_CSS = `
+.vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); }
+.vb *{box-sizing:border-box;}
+.vb svg{display:block;width:100%;height:100%;}
+.vb-top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:14px;flex-wrap:wrap;}
+.vb-logo{font-weight:800;font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-.02em;color:#fff;}.vb-logo b{color:var(--accent);}
+.vb-meta{font-size:.86rem;color:var(--dim);font-weight:500;}.vb-meta b{color:var(--yellow);}
+.vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
+@media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
+.vb-board{aspect-ratio:5/4;width:100%;background:var(--panel-2);border-radius:2px;padding:8px;}
+.vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
+.vb-tile{position:relative;background:var(--milk);min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+.vb-city,.vb-company{cursor:pointer;}
+.vb-city:hover,.vb-company:hover{outline:2px solid var(--accent);outline-offset:-2px;z-index:3;}
+.vb-strip{height:34%;min-height:12px;display:flex;align-items:center;justify-content:center;padding:0 2px;}
+.vb-strip.vb-grey{background:var(--grey);color:#fff;}
+.vb-nm{font-weight:700;font-size:clamp(5px,.7vw,9px);line-height:1;letter-spacing:-.01em;text-align:center;}
+.vb-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:1px;padding:1px;}
+.vb-mid svg{width:clamp(7px,.95vw,11px);height:clamp(7px,.95vw,11px);}
+.vb-cat{color:var(--grey);width:clamp(10px,1.3vw,15px);height:clamp(10px,1.3vw,15px);}
+.vb-price{text-align:center;font-size:clamp(4px,.62vw,8px);font-weight:700;padding:0 2px 2px;line-height:1.1;}
+.vb-price.vb-co{color:var(--grey-2);}
+.vb-own{position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:2px;border:1px solid #fff;}
+.vb-special{background:#F2F2F2;align-items:center;justify-content:center;gap:2px;padding:2px;}
+.vb-special .vb-sic{color:var(--ink);width:clamp(11px,1.5vw,20px);height:clamp(11px,1.5vw,20px);}
+.vb-slb{font-size:clamp(4px,.6vw,7px);font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-2);text-align:center;line-height:1;}
+.vb-corner{background:var(--ink);align-items:center;justify-content:center;gap:3px;padding:4px;}
+.vb-corner .vb-sic{width:clamp(14px,2vw,26px);height:clamp(14px,2vw,26px);}
+.vb-corner .vb-slb{color:var(--cream);font-size:clamp(5px,.7vw,9px);font-weight:700;}
+.vb-start .vb-sic,.vb-start .vb-slb{color:var(--accent);}
+.vb-mandi .vb-sic,.vb-mandi .vb-slb{color:var(--yellow);}
+.vb-monsoon .vb-sic{color:#269CEF;}
+.vb-taxraid .vb-sic,.vb-taxraid .vb-slb{color:#FF4D93;}
+.vb-tok{position:absolute;width:22%;max-width:12px;aspect-ratio:1;border-radius:2px;border:1.5px solid #fff;bottom:2px;left:2px;}
+.vb-tok:nth-of-type(2){left:28%;}.vb-tok:nth-of-type(3){left:54%;}.vb-tok:nth-of-type(4){left:auto;right:2px;}
+.vb-hub{grid-column:2/11;grid-row:2/11;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
+.vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
+.vb-dice{display:flex;gap:8px;}
+.vb-die{width:clamp(26px,4.2vw,42px);aspect-ratio:1;background:#fff;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+.vb-roll{font-family:"Poppins";font-weight:700;font-size:clamp(.72rem,1.3vw,.9rem);border:none;cursor:pointer;color:#fff;background:var(--accent);padding:.5rem 1.6rem;border-radius:2px;}
+.vb-roll:disabled{opacity:.4;cursor:not-allowed;}
+.vb-rail{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.vb-turn{background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:12px 14px;}
+.vb-turn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}.vb-turn-row b{font-size:1rem;}
+.vb-count{font-weight:700;font-size:1.15rem;color:var(--accent);font-variant-numeric:tabular-nums;}.vb-count.low{color:#FF4D93;}
+.vb-players{display:flex;flex-direction:column;gap:8px;}
+.vb-pl{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:8px 11px;}
+.vb-pl.active{border-color:var(--accent);}
+.vb-av{width:28px;height:28px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none;}
+.vb-plnm{font-weight:600;font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vb-plst{margin-left:auto;text-align:right;}.vb-cash{font-weight:700;font-size:.82rem;color:var(--yellow);display:block;}.vb-sub{font-size:.62rem;color:var(--dim);}
+.vb-err{background:#3a1f1a;color:#FF8f7f;border:1px solid #5a2f28;border-radius:2px;padding:8px 11px;font-size:.8rem;margin:0;}
+.vb-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.vb-act{font-family:"Poppins";font-weight:600;font-size:.84rem;padding:.55rem .9rem;border-radius:2px;border:1px solid var(--line);background:var(--panel-2);color:var(--cream);cursor:pointer;}
+.vb-act.primary{border:none;color:#fff;background:var(--accent);}
+.vb-act:disabled{opacity:.5;cursor:not-allowed;}
+.vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
+.vb-trade{background:var(--panel-2);border:1px solid var(--yellow);border-radius:2px;padding:10px 12px;font-size:.84rem;}
+.vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;}
+.vb-tp{background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:10px 12px;font-size:.82rem;}
+.vb-tp summary{cursor:pointer;font-weight:600;}
+.vb-tp-body{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.vb-tp select,.vb-tp input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.3rem;font-family:"Poppins";}
+.vb-tp input[type=number]{width:80px;}.vb-tp label{margin-right:8px;}
+.vb-scrim{position:fixed;inset:0;background:rgba(15,17,17,.8);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+.vb-deed{width:min(370px,100%);background:#fff;color:var(--ink);border-radius:2px;overflow:hidden;max-height:90vh;overflow-y:auto;}
+.vb-crown{padding:16px 18px 15px;position:relative;}
+.vb-zone{font-size:.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.16em;opacity:.95;}
+.vb-crown h3{font-size:1.6rem;font-weight:800;margin:2px 0 0;line-height:1.05;padding-right:66px;}
+.vb-dprice{position:absolute;top:14px;right:16px;text-align:right;}.vb-dprice .k{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;opacity:.9;}.vb-dprice .v{font-weight:700;font-size:1.1rem;}
+.vb-owned{display:flex;align-items:center;gap:8px;padding:8px 18px;background:#eaeaea;font-size:.74rem;color:var(--ink-2);font-weight:500;}
+.vb-owned .chip{width:14px;height:14px;border-radius:2px;background:#c9c9c9;}
+.vb-rents{padding:10px 18px;}
+.vb-r{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #eee;font-size:.84rem;}.vb-r:last-child{border:none;}
+.vb-r .ic{width:72px;display:flex;gap:2px;}.vb-r .ic svg{width:14px;height:14px;}
+.vb-r .lab{color:var(--ink-2);}.vb-r .amt{margin-left:auto;font-weight:700;}
+.vb-r.set{background:#fff5e6;margin:0 -18px;padding:6px 18px;}
+.vb-note{font-size:.72rem;color:var(--ink-2);padding:0 18px 10px;line-height:1.4;}
+.vb-meta{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#e6e6e6;border-top:1px solid #e6e6e6;}
+.vb-meta div{background:#fff;padding:9px 18px;}.vb-meta .k{font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-2);font-weight:600;}.vb-meta .v{font-weight:700;}
+.vb-cta{display:flex;gap:8px;padding:13px 18px 16px;}
+.vb-cta button{flex:1;font-family:"Poppins";font-weight:700;font-size:.88rem;padding:.68rem;border-radius:2px;border:none;cursor:pointer;}
+.vb-cta .buy{color:#fff;background:var(--accent);}.vb-cta .pass{background:#fff;border:1px solid #d9d9d9;color:var(--ink-2);}
+.vb-cta button:disabled{opacity:.5;cursor:not-allowed;}
+`
