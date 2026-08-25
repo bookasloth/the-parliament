@@ -34,11 +34,22 @@ Extend/att new `tests/integration/vyapaar-hardening.itest.ts`:
   protection and a deterministic race test isn't worth the flakiness; sequential re-entry
   covers the guard. `// ponytail:` noted.)
 
-### Task 4 — RLS audit
-Read the 4 applied `supabase/vyapaar-*-rls.sql`; confirm `vyapaar_match_player` +
-`vyapaar_ledger` are self/participant-read-only and no table grants a client direct
-write that bypasses the server RPC. Findings → short note appended here. Ship
-`supabase/vyapaar-m5-rls-audit.sql` **only if** a gap is found (owner applies manually).
+### Task 4 — RLS audit  ✅ done — one gap found + closed
+
+**Audited** all 5 tables + realtime. Writes: every table has RLS enabled with **no**
+INSERT/UPDATE/DELETE policy → non-owner roles default-deny; only Prisma's owner role
+(bypasses RLS) mutates. Reads: `vyapaar_match_player`, `vyapaar_ledger`,
+`vyapaar_room_member` are participant/self-scoped; `vyapaar_room` public-SELECT is limited
+to `open`+`public` (intentional lobby discovery); realtime `messages` gated to match
+players. All correct.
+
+**GAP FOUND (hidden-information leak):** the `vyapaar_match` row-SELECT policy lets a
+player read the row's `seed`/`state`/`action_log` columns via raw supabase-js. `seed`
+deterministically generates every future die + card draw → a player could precompute the
+whole game. The app never reads these via supabase-js (MatchBoard uses the server
+`/view` + realtime subscribe only), so **column-revoking** them from `anon`/`authenticated`
+closes it with zero app impact. Shipped `supabase/vyapaar-m5-rls-audit.sql` (owner applies
+manually on prod). Row SELECT stays intact so the realtime EXISTS gate still resolves.
 
 ### Gate
 tsc + build + `npm test` green → commit per task → PR when CI green (user merges).

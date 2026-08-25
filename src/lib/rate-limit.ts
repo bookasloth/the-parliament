@@ -41,3 +41,20 @@ export async function enforceRateLimit(input: RateLimitInput): Promise<void> {
     throw new RateLimitedError(result.resetAt)
   }
 }
+
+/**
+ * Fail-open rate-limit check: returns false ONLY when the caller is definitively over the
+ * limit. If Redis is unreachable, logs and returns true (allow) — for paths where staying
+ * available matters more than perfect flood-protection (e.g. play-money game actions).
+ * ponytail: fail-open by design; do not use for anything security-critical.
+ */
+export async function rateLimitOk(input: RateLimitInput): Promise<boolean> {
+  try {
+    await enforceRateLimit(input)
+    return true
+  } catch (e) {
+    if (e instanceof RateLimitedError) return false
+    console.error(`rate-limit check failed for ${input.bucket}, allowing:`, e)
+    return true
+  }
+}

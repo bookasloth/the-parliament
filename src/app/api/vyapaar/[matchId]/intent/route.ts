@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireUser } from "@/modules/auth/session"
 import { ForbiddenError } from "@/lib/errors"
 import { handleError } from "@/lib/api"
+import { rateLimitOk } from "@/lib/rate-limit"
 import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
@@ -58,6 +59,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   }
   if (!validIntentShape(intent as { type: string; [k: string]: unknown })) {
     return NextResponse.json({ error: "bad_intent" }, { status: 400 })
+  }
+  // Rate-limit the one write a client drives in a tight loop (fail-open, see rateLimitOk).
+  if (!(await rateLimitOk({ bucket: "vyapaar:intent", identifier: user.id, limit: 30, windowSec: 10 }))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 })
   }
   try {
     const res = await applyMatchIntent(user.id, matchId, intent)
