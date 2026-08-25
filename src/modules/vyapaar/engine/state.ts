@@ -69,6 +69,7 @@ export interface GameState {
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
   ended: boolean;
   winner: number | null;
+  lastRoll: [number, number] | null; // most recent dice roll, for the UI
 }
 
 /** One thing that happened during an intent — for the UI log and tests. */
@@ -114,6 +115,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     endRequested: false,
     ended: false,
     winner: null,
+    lastRoll: null,
   };
   // Seed the decks so draws are deterministic from game start.
   state.headlineDeck = shuffle(HEADLINE.map((_, i) => i), state);
