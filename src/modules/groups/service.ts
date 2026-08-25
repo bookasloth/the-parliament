@@ -256,6 +256,7 @@ export async function getAdminGroupRows(): Promise<AdminGroupRow[]> {
     orderBy: { createdAt: "desc" },
     select: {
       id: true, name: true, type: true, visibility: true, createdAt: true, isPermanent: true,
+      refHouseId: true, refBatchId: true, refDepartment: true,
       _count: { select: { members: { where: { status: "active" } } } },
     },
   })
@@ -264,13 +265,18 @@ export async function getAdminGroupRows(): Promise<AdminGroupRow[]> {
   const now = new Date()
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000)
 
-  const [admins, postsWeek, lastPost] = await Promise.all([
+  // Group posting isn't wired to a composer, so post.groupId is always null.
+  // Instead, attribute weekly activity by the poster's PROFILE TRAIT that defines
+  // the group (house / batch / department) — using data that actually exists.
+  const [admins, weekPosts] = await Promise.all([
     prisma.groupMember.findMany({
       where: { groupId: { in: ids }, role: "admin", status: "active" },
       select: { groupId: true, user: { select: { displayName: true, legalName: true, username: true } } },
     }),
-    prisma.post.groupBy({ by: ["groupId"], where: { groupId: { in: ids }, createdAt: { gte: weekAgo } }, _count: true }),
-    prisma.post.groupBy({ by: ["groupId"], where: { groupId: { in: ids } }, _max: { createdAt: true } }),
+    prisma.post.findMany({
+      where: { createdAt: { gte: weekAgo }, deletedAt: null, status: "visible" },
+      select: { createdAt: true, author: { select: { profile: { select: { houseId: true, batchId: true, department: true } } } } },
+    }),
   ])
 
   const adminMap = new Map<string, string[]>()
@@ -281,11 +287,33 @@ export async function getAdminGroupRows(): Promise<AdminGroupRow[]> {
     if (list.length < 2) list.push(name)
     adminMap.set(a.groupId, list)
   }
-  const postsMap = new Map(postsWeek.map((p) => [p.groupId, p._count]))
-  const lastMap = new Map(lastPost.map((p) => [p.groupId, p._max.createdAt]))
+
+  // Tally this week's posts by each trait; track latest per trait for "last activity".
+  // A post by a user who has both a house and a batch counts toward both cohorts.
+  const count = { house: new Map<string, number>(), batch: new Map<string, number>(), dept: new Map<string, number>() }
+  const latest = { house: new Map<string, Date>(), batch: new Map<string, Date>(), dept: new Map<string, Date>() }
+  const bump = (c: Map<string, number>, l: Map<string, Date>, key: string | null, at: Date) => {
+    if (!key) return
+    c.set(key, (c.get(key) ?? 0) + 1)
+    if (!l.has(key) || at > l.get(key)!) l.set(key, at)
+  }
+  for (const p of weekPosts) {
+    const pr = p.author?.profile
+    if (!pr) continue
+    bump(count.house, latest.house, pr.houseId, p.createdAt)
+    bump(count.batch, latest.batch, pr.batchId, p.createdAt)
+    bump(count.dept, latest.dept, pr.department, p.createdAt)
+  }
 
   return groups.map((g): AdminGroupRow => {
-    const last = lastMap.get(g.id) ?? null
+    // Resolve the group's own trait → its cohort's weekly count + last post.
+    const [n, last] = g.refHouseId
+      ? [count.house.get(g.refHouseId) ?? 0, latest.house.get(g.refHouseId) ?? null]
+      : g.refBatchId
+        ? [count.batch.get(g.refBatchId) ?? 0, latest.batch.get(g.refBatchId) ?? null]
+        : g.refDepartment
+          ? [count.dept.get(g.refDepartment) ?? 0, latest.dept.get(g.refDepartment) ?? null]
+          : [0, null as Date | null]
     return {
       id: g.id,
       name: g.name,
@@ -293,8 +321,8 @@ export async function getAdminGroupRows(): Promise<AdminGroupRow[]> {
       privacy: g.visibility === "private" ? "private" : "public",
       members: g._count.members,
       admins: adminMap.get(g.id) ?? [],
-      postsThisWeek: postsMap.get(g.id) ?? 0,
-      lastActivity: last ? relativeTime(last, now) : "no posts yet",
+      postsThisWeek: n,
+      lastActivity: last ? relativeTime(last, now) : "no posts this week",
       created: g.createdAt.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
       isPermanent: g.isPermanent,
     }

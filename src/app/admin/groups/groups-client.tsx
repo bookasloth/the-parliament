@@ -35,7 +35,10 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
   )
 
   const totalMembers = visible.reduce((s, g) => s + g.members, 0)
-  const postsThisWeek = visible.reduce((s, g) => s + g.postsThisWeek, 0)
+  // Count groups active this week, not a sum of per-group counts — a single post
+  // is attributed to both its author's house and batch cohort, so summing would
+  // double-count. Distinct active groups is the honest headline number.
+  const activeGroups = visible.filter(g => g.postsThisWeek > 0).length
   const publicGroups = visible.filter(g => g.privacy === "public").length
 
   return (
@@ -53,7 +56,7 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Groups" value={String(visible.length)} icon={<UsersThree className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
         <StatCard label="Total Memberships" value={totalMembers.toLocaleString("en-IN")} icon={<UserGear className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
-        <StatCard label="Posts This Week" value={String(postsThisWeek)} icon={<ChatCircle className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
+        <StatCard label="Active This Week" value={String(activeGroups)} icon={<ChatCircle className="h-4.5 w-4.5" weight="duotone" />} accent="sky" />
         <StatCard label="Public Groups" value={String(publicGroups)} icon={<Globe className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
       </div>
 
