@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent, winnerOf, rankSeats } from "@/modules/vyapaar/engine/engine";
 import { scoreOf } from "@/modules/vyapaar/engine/helpers";
+import { MAX_ROUNDS } from "@/modules/vyapaar/engine/data";
 
 describe("end_turn and end conditions", () => {
   it("advances the seat and bumps the round on wrap", () => {
@@ -26,8 +27,8 @@ describe("end_turn and end conditions", () => {
 
   it("ends the game after MAX_ROUNDS", () => {
     const s = createGame(1, ["a", "b"]);
-    s.round = 12; // MAX_ROUNDS
-    s.active = 1; // ending this turn wraps → round 13 > 12
+    s.round = MAX_ROUNDS; // ending this turn wraps → round MAX_ROUNDS+1 > MAX_ROUNDS
+    s.active = 1;
     s.phase = "manage";
     applyIntent(s, 1, { type: "end_turn" });
     expect(s.ended).toBe(true);
