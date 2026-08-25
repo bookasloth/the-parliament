@@ -4,7 +4,7 @@ import { shuffle } from "./rng";
 export type Phase = "roll" | "buy" | "auction" | "manage";
 
 export interface TradeSide {
-  cash: number;
+  cash: number; // must be 0 — cash is never part of a player trade (kept for wire shape)
   cities: number[]; // cityIds
 }
 
@@ -18,7 +18,10 @@ export type Intent =
   | { type: "unmortgage"; cityId: number }
   | { type: "sell"; cityId: number }
   | { type: "propose_trade"; to: number; give: TradeSide; get: TradeSide }
-  | { type: "respond_trade"; accept: boolean }
+  | { type: "respond_trade"; tradeId: number; accept: boolean }
+  | { type: "counter_trade"; tradeId: number; give: TradeSide; get: TradeSide }
+  | { type: "withdraw_trade"; tradeId: number }
+  | { type: "expire_trade"; tradeId: number }
   | { type: "collect_rent"; rentId: number }
   | { type: "end_turn" };
 
@@ -45,10 +48,12 @@ export interface AuctionState {
 }
 
 export interface TradeOffer {
+  id: number;
   from: number;
   to: number;
-  give: TradeSide; // from → to
-  get: TradeSide; // to → from
+  give: TradeSide; // from → to (cities only)
+  get: TradeSide; // to → from (cities only)
+  expiresAt: number; // epoch ms; 0 until the server stamps it (see match.ts). Live for 60s.
 }
 
 /**
@@ -81,7 +86,8 @@ export interface GameState {
   pendingCompany: number | null; // company just landed on, awaiting buy/decline
   pendingDouble: boolean; // last roll was a double → roll again after resolution
   auction: AuctionState | null;
-  trade: TradeOffer | null;
+  trades: TradeOffer[]; // active proposals; at most one outgoing per player
+  nextTradeId: number; // monotonic id source for trades
   pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
   nextRentId: number; // monotonic id source for pendingRents
   headlineDeck: number[]; // draw order of HEADLINE indices; refilled+shuffled when empty
@@ -130,7 +136,8 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     pendingCompany: null,
     pendingDouble: false,
     auction: null,
-    trade: null,
+    trades: [],
+    nextTradeId: 1,
     pendingRents: [],
     nextRentId: 1,
     headlineDeck: [],

@@ -67,7 +67,12 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
     case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
     case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
+    case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
+    case "trade_declined": return `a trade was declined`
+    case "trade_countered": return `${nm(e.seat)} countered with a new offer`
+    case "trade_withdrawn": return `${nm(e.seat)} withdrew a trade`
+    case "trade_expired": return `a trade offer expired`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
   }
@@ -309,17 +314,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             <button className="vb-act" onClick={() => setShowProps(true)}>My Properties</button>
           </div>
 
-          {view.trade && view.trade.to === you && (
-            <div className="vb-trade">
-              <p>Seat {view.trade.from} proposed a trade.</p>
-              <div className="vb-trade-btns">
-                <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "respond_trade", accept: true })}>Accept</button>
-                <button className="vb-act" disabled={busy} onClick={() => send({ type: "respond_trade", accept: false })}>Decline</button>
-              </div>
-            </div>
-          )}
+          {(view.trades ?? []).map((t) => (
+            <TradeCard key={t.id} trade={t} view={view} you={you} busy={busy} onAction={send} />
+          ))}
 
-          <TradePropose view={view} you={you} busy={busy} onPropose={(i) => send(i)} />
+          <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
         </div>
       </div>
 
@@ -560,16 +559,18 @@ function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (
   )
 }
 
-function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: number; busy: boolean; onPropose: (i: Intent) => void }) {
+// Property-only trade builder. Cash is never part of a player trade. You can only
+// propose on someone else's turn, and only one outgoing offer at a time.
+function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView; you: number; myTurn: boolean; busy: boolean; onPropose: (i: Intent) => void }) {
   const [to, setTo] = useState<number | "">("")
   const [give, setGive] = useState<number[]>([])
   const [get, setGet] = useState<number[]>([])
-  const [giveCash, setGiveCash] = useState(0)
-  const [getCash, setGetCash] = useState(0)
-  if (view.ended || view.trade) return null
+  const hasOutgoing = (view.trades ?? []).some((t) => t.from === you)
+  if (view.ended || myTurn || hasOutgoing) return null
   const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
   const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === to && c.level === 0 && !c.mortgaged)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
+  const ready = to !== "" && give.length > 0 && get.length > 0
   return (
     <details className="vb-tp">
       <summary>Propose a trade</summary>
@@ -584,19 +585,74 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
           <span className="vb-tp-lab">Give</span>
           <div className="vb-tp-pills">
             {mine.length ? mine.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={give.includes(c.id)} onClick={() => toggle(give, setGive, c.id)} />) : <span className="vb-tp-none">no tradable property</span>}
-            <input className="vb-tp-cash" type="number" min={0} value={giveCash} placeholder="cash" onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} />
           </div>
         </div>
         <div className="vb-tp-row">
           <span className="vb-tp-lab">Get</span>
           <div className="vb-tp-pills">
-            {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
-            <input className="vb-tp-cash" type="number" min={0} value={getCash} placeholder="cash" onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} />
+            {to === "" ? <span className="vb-tp-none">pick a player</span> : theirs.length ? theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />) : <span className="vb-tp-none">they have no tradable property</span>}
           </div>
         </div>
-        <button className="vb-act primary" disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })}>Send offer</button>
+        <button className="vb-act primary" disabled={busy || !ready} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send offer</button>
       </div>
     </details>
+  )
+}
+
+// One active trade in the rail. Incoming (you're the recipient) → Accept / Decline /
+// Counter; outgoing (yours) → summary + Withdraw. Both show a live 60s countdown.
+function TradeCard({ trade, view, you, busy, onAction }: {
+  trade: PublicView["trades"][number]; view: PublicView; you: number; busy: boolean; onAction: (i: Intent) => void
+}) {
+  const [countering, setCountering] = useState(false)
+  const [give, setGive] = useState<number[]>([])
+  const [get, setGet] = useState<number[]>([])
+  const nm = (s: number) => view.players[s]?.name.split(" ")[0] ?? `seat ${s}`
+  const names = (ids: number[]) => ids.length ? ids.map((id) => CITIES[id].name).join(", ") : "nothing"
+  const expiry = trade.expiresAt ? new Date(trade.expiresAt).toISOString() : null
+  const incoming = trade.to === you
+
+  if (!incoming) {
+    return (
+      <div className="vb-trade">
+        <p>Your offer to <b>{nm(trade.to)}</b> · <Countdown expiresAt={expiry} ended={view.ended} /></p>
+        <p className="vb-trade-sum">You give {names(trade.give.cities)} → get {names(trade.get.cities)}</p>
+        <div className="vb-trade-btns">
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "withdraw_trade", tradeId: trade.id })}>Withdraw</button>
+        </div>
+      </div>
+    )
+  }
+
+  // recipient view — Counter picker uses my level-0 cities to give and the proposer's to get
+  const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
+  const theirs = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === trade.from && c.level === 0 && !c.mortgaged)
+  const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
+  return (
+    <div className="vb-trade">
+      <p><b>{nm(trade.from)}</b> offers you a trade · <Countdown expiresAt={expiry} ended={view.ended} /></p>
+      <p className="vb-trade-sum">You get {names(trade.give.cities)} → give {names(trade.get.cities)}</p>
+      {!countering ? (
+        <div className="vb-trade-btns">
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: true })}>Accept</button>
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: false })}>Decline</button>
+          <button className="vb-act" disabled={busy} onClick={() => setCountering(true)}>Counter</button>
+        </div>
+      ) : (
+        <div className="vb-tp-body">
+          <div className="vb-tp-row"><span className="vb-tp-lab">You give</span><div className="vb-tp-pills">
+            {mine.length ? mine.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={give.includes(c.id)} onClick={() => toggle(give, setGive, c.id)} />) : <span className="vb-tp-none">no tradable property</span>}
+          </div></div>
+          <div className="vb-tp-row"><span className="vb-tp-lab">You get</span><div className="vb-tp-pills">
+            {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
+          </div></div>
+          <div className="vb-trade-btns">
+            <button className="vb-act primary" disabled={busy || give.length === 0 || get.length === 0} onClick={() => onAction({ type: "counter_trade", tradeId: trade.id, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send counter</button>
+            <button className="vb-act" disabled={busy} onClick={() => setCountering(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -703,7 +759,8 @@ const VB_CSS = `
 .vb-act:disabled{opacity:.5;cursor:not-allowed;}
 .vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
 .vb-trade{background:var(--panel-2);border:1px solid var(--yellow);border-radius:2px;padding:10px 12px;font-size:.84rem;}
-.vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;}
+.vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.vb-trade-sum{font-size:.8rem;color:var(--ink-2,#6b7280);}
 .vb-rent{background:var(--panel-2);border:1px solid var(--green);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
 .vb-rent-head{margin:0 0 4px;font-weight:700;color:var(--green);}
 .vb-rent-body{margin:0 0 8px;}

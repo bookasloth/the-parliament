@@ -15,7 +15,7 @@ import {
   JAIL_TURNS,
   MONSOON_POS,
 } from "./data";
-import type { GameState, Intent, EngineEvent, PendingRent } from "./state";
+import type { GameState, Intent, EngineEvent, PendingRent, TradeOffer } from "./state";
 import type { TradeSide } from "./state";
 import { BOARD } from "./board";
 import { rollDie } from "./rng";
@@ -249,9 +249,14 @@ function canManage(s: GameState): boolean {
   return s.phase === "roll" || s.phase === "manage";
 }
 
+/**
+ * A trade side is valid when it is CITIES ONLY (never cash), non-empty, and every
+ * city is owned by this seat, undeveloped and unmortgaged. Cash is never part of a
+ * player trade, so any non-zero cash is rejected outright.
+ */
 function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
-  if (!Number.isInteger(side.cash) || side.cash < 0) return false;
-  if (side.cash > s.players[seat].cash) return false;
+  if (side.cash !== 0) return false; // cash is never part of a player trade
+  if (!Array.isArray(side.cities) || side.cities.length === 0) return false; // card(s) ↔ card(s)
   const seen = new Set<number>();
   for (const id of side.cities) {
     if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return false;
@@ -261,6 +266,12 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
     if (c.owner !== seat || c.level !== 0 || c.mortgaged) return false;
   }
   return true;
+}
+
+/** Move traded cities between owners. Assumes both sides already re-validated. */
+function applyTradeSwap(s: GameState, t: TradeOffer): void {
+  for (const id of t.give.cities) s.cities[id].owner = t.to;
+  for (const id of t.get.cities) s.cities[id].owner = t.from;
 }
 
 /** Seats best-first: score desc, then controlledSets desc, then seat asc. */
@@ -474,40 +485,81 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
     }
 
     case "propose_trade": {
+      // You may only propose on someone else's turn, and only one outgoing at a time.
       if (s.auction) return { error: "auction_in_progress" };
-      if (s.trade !== null) return { error: "trade_pending" };
+      if (seat === s.active) return { error: "not_while_your_turn" };
+      if (!s.trades) s.trades = [];
+      if (s.trades.some((t) => t.from === seat)) return { error: "trade_exists" };
       const to = intent.to;
       if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat) {
         return { error: "bad_recipient" };
       }
       if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
       if (!validTradeSide(s, to, intent.get)) return { error: "bad_get" };
-      s.trade = { from: seat, to, give: intent.give, get: intent.get };
-      events.push({ type: "trade_proposed", seat, to });
+      const id = s.nextTradeId ?? 1;
+      s.nextTradeId = id + 1;
+      // expiresAt is stamped by the server on commit (engine has no clock).
+      s.trades.push({ id, from: seat, to, give: intent.give, get: intent.get, expiresAt: 0 });
+      events.push({ type: "trade_proposed", seat, to, tradeId: id });
       return { state: s, events };
     }
 
     case "respond_trade": {
-      if (s.auction) return { error: "auction_in_progress" };
-      if (!s.trade) return { error: "no_trade" };
-      if (seat !== s.trade.to) return { error: "not_recipient" };
-      const t = s.trade;
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      if (seat !== t.to) return { error: "not_recipient" };
+      s.trades = list.filter((x) => x.id !== t.id);
       if (!intent.accept) {
-        s.trade = null;
-        events.push({ type: "trade_declined", seat });
+        events.push({ type: "trade_declined", seat, tradeId: t.id });
         return { state: s, events };
       }
       // Atomic re-validation — assets may have changed since the proposal.
       if (!validTradeSide(s, t.from, t.give) || !validTradeSide(s, t.to, t.get)) {
-        s.trade = null;
         return { error: "trade_invalid" };
       }
-      for (const id of t.give.cities) s.cities[id].owner = t.to;
-      for (const id of t.get.cities) s.cities[id].owner = t.from;
-      s.players[t.from].cash += t.get.cash - t.give.cash;
-      s.players[t.to].cash += t.give.cash - t.get.cash;
-      s.trade = null;
-      events.push({ type: "trade_accepted", from: t.from, to: t.to });
+      applyTradeSwap(s, t);
+      events.push({ type: "trade_accepted", from: t.from, to: t.to, tradeId: t.id });
+      return { state: s, events };
+    }
+
+    case "counter_trade": {
+      // Reply to an incoming trade with a fresh one going the other way. Reactive,
+      // so it's allowed even on your own turn — but you still can't have two outgoing.
+      const list = s.trades ?? [];
+      const incoming = list.find((x) => x.id === intent.tradeId);
+      if (!incoming) return { error: "no_trade" };
+      if (seat !== incoming.to) return { error: "not_recipient" };
+      const other = incoming.from;
+      // remove the incoming offer + any existing outgoing of ours, then add the counter
+      const rest = list.filter((x) => x.id !== incoming.id && x.from !== seat);
+      if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
+      if (!validTradeSide(s, other, intent.get)) return { error: "bad_get" };
+      const id = s.nextTradeId ?? 1;
+      s.nextTradeId = id + 1;
+      rest.push({ id, from: seat, to: other, give: intent.give, get: intent.get, expiresAt: 0 });
+      s.trades = rest;
+      events.push({ type: "trade_countered", seat, to: other, tradeId: id, wasId: incoming.id });
+      return { state: s, events };
+    }
+
+    case "withdraw_trade": {
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      if (seat !== t.from) return { error: "not_proposer" };
+      s.trades = list.filter((x) => x.id !== t.id);
+      events.push({ type: "trade_withdrawn", seat, tradeId: t.id });
+      return { state: s, events };
+    }
+
+    case "expire_trade": {
+      // System-only removal (server applies it when a trade passes its 60s deadline).
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      s.trades = list.filter((x) => x.id !== t.id);
+      events.push({ type: "trade_expired", tradeId: t.id, from: t.from, to: t.to });
       return { state: s, events };
     }
 

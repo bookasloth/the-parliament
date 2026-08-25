@@ -1,4 +1,4 @@
-import type { GameState, EngineEvent } from "./state";
+import type { GameState, EngineEvent, TradeSide } from "./state";
 import { scoreOf, netWorth } from "./helpers";
 
 export interface PublicView {
@@ -19,7 +19,7 @@ export interface PublicView {
   pendingCity: number | null;
   pendingCompany: number | null;
   auction: { kind: "city" | "company"; index: number; bidded: boolean[] } | null;
-  trade: { from: number; to: number; give: unknown; get: unknown } | null;
+  trades: { id: number; from: number; to: number; give: TradeSide; get: TradeSide; expiresAt: number }[];
   pendingRents: { id: number; payer: number; owner: number; cityId: number; amount: number }[];
   headlineLeft: number;
   upiLeft: number;
@@ -31,7 +31,6 @@ export interface PublicView {
 }
 
 export function publicView(s: GameState, seat: number): PublicView {
-  const showTrade = s.trade && (seat === s.trade.to || seat === s.trade.from);
   return {
     players: s.players.map((p, i) => ({
       name: p.name,
@@ -52,7 +51,10 @@ export function publicView(s: GameState, seat: number): PublicView {
     auction: s.auction
       ? { kind: s.auction.kind, index: s.auction.index, bidded: s.auction.bids.map((b) => b !== null) }
       : null,
-    trade: showTrade ? { from: s.trade!.from, to: s.trade!.to, give: s.trade!.give, get: s.trade!.get } : null,
+    // only trades you're party to (mask others' negotiations)
+    trades: (s.trades ?? [])
+      .filter((t) => t.from === seat || t.to === seat)
+      .map((t) => ({ id: t.id, from: t.from, to: t.to, give: t.give, get: t.get, expiresAt: t.expiresAt })),
     pendingRents: (s.pendingRents ?? []).map((r) => ({ id: r.id, payer: r.payer, owner: r.owner, cityId: r.cityId, amount: r.amount })),
     headlineLeft: s.headlineDeck.length,
     upiLeft: s.upiDeck.length,
