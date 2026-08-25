@@ -2504,6 +2504,7 @@ model VyapaarMatch {
 
   @@index([roomId, status])
   @@index([status])
+  @@index([status, turnExpiresAt]) // cron due-query: WHERE status='active' AND turnExpiresAt <= now
   @@map("vyapaar_match")
 }
 
@@ -2520,6 +2521,7 @@ model VyapaarMatchPlayer {
 
   @@id([matchId, seat])
   @@unique([matchId, userId])
+  @@index([userId]) // "already in a game?" check filters by userId alone (start + top-up)
   @@map("vyapaar_match_player")
 }
 

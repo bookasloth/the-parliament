@@ -4,6 +4,13 @@ import { applyCard } from "@/modules/vyapaar/engine/cards";
 import { citiesOwned } from "@/modules/vyapaar/engine/helpers";
 
 describe("card opcodes", () => {
+  it("skipNext increments the active player's halt counter", () => {
+    const s = createGame(1, ["a", "b"]);
+    const before = s.players[0].halted;
+    applyCard(s, { id: "jam", op: "skipNext" });
+    expect(s.players[0].halted).toBe(before + 1);
+  });
+
   it("cashAll credits every player", () => {
     const s = createGame(1, ["a", "b", "c"]);
     const before = s.players.map((p) => p.cash);

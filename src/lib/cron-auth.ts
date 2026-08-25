@@ -5,7 +5,12 @@
  * header doesn't match, the endpoint refuses — so a cron route can never be
  * triggered by an anonymous internet request to hammer the DB.
  */
+import crypto from "node:crypto"
+
 export function isAuthorizedCron(authHeader: string | null, secret: string | undefined): boolean {
-  if (!secret) return false
-  return authHeader === `Bearer ${secret}`
+  if (!secret) return false // fail closed on unset secret
+  const a = Buffer.from(authHeader ?? "")
+  const b = Buffer.from(`Bearer ${secret}`)
+  // Constant-time compare (length-guarded) so the bearer can't be recovered via response timing.
+  return a.length === b.length && crypto.timingSafeEqual(a, b)
 }

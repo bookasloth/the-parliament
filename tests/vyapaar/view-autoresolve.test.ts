@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
-import { applyIntent, autoResolve, nextAutoIntent } from "@/modules/vyapaar/engine/engine";
+import { applyIntent, nextAutoIntent } from "@/modules/vyapaar/engine/engine";
+import type { GameState } from "@/modules/vyapaar/engine/state";
+
+// The prod auto-resolve loop (match.ts) is just nextAutoIntent → applyIntent per step.
+const autoResolve = (s: GameState) => {
+  const step = nextAutoIntent(s);
+  if (step) applyIntent(s, step.seat, step.intent);
+};
 import { publicView } from "@/modules/vyapaar/engine/view";
 
 describe("publicView", () => {

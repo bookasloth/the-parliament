@@ -1,4 +1,4 @@
-import { CITIES, ZONES, HEADLINE, UPI, MAX_LEVEL } from "./data";
+import { CITIES, ZONES, HEADLINE, UPI, MAX_LEVEL, STARTUP_LAPS, STARTUP_PENALTY } from "./data";
 import type { Card } from "./data";
 import type { GameState, EngineEvent } from "./state";
 import { shuffle } from "./rng";
@@ -47,8 +47,8 @@ export function applyCard(s: GameState, card: Card): EngineEvent[] {
       break;
     case "startup":
       credit(s, seat, val);
-      s.players[seat].startupLaps = 3;
-      s.players[seat].startupPenalty = 300;
+      s.players[seat].startupLaps = STARTUP_LAPS;
+      s.players[seat].startupPenalty = STARTUP_PENALTY;
       break;
     case "perHeritage": {
       // v2 has no "Heritage" group; the tourism card now counts North-zone (zone 0) cities.
@@ -64,7 +64,6 @@ export function applyCard(s: GameState, card: Card): EngineEvent[] {
       break;
     case "freeUpgrade": {
       const id = firstFreeUpgradeCity(s, seat);
-      s.players[seat].freeUpgrades += 1;
       if (id !== null) {
         s.cities[id].level += 1;
         events.push({ type: "free_upgrade", seat, cityId: id });

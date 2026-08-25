@@ -11,7 +11,7 @@ export async function createRoomAction(visibility: "private" | "public") {
   redirect(`/games/vyapaar/rooms/${code}`)
 }
 
-export async function joinRoomAction(code: string): Promise<{ ok: false; error: string }> {
+export async function joinRoomAction(code: string): Promise<{ ok: false; error: string } | void> {
   const user = await requireUser()
   const clean = code.trim().toUpperCase()
   try {
