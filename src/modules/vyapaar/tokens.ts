@@ -2,10 +2,11 @@
 // account; everyone else gets a stable piece derived from the matchId so it never
 // reshuffles between renders/refetches (no hydration flicker).
 //
-// ⚠️ Upload the 7 images at these exact names, OR edit this list to match your
-// uploads. Index 0 is the PERMANENT piece for PERMANENT_EMAIL; 1..6 are the pool
-// randomly (but deterministically) assigned to the other seats.
-const CDN = "https://company-assets.bookasloth.in/nnawc/images/tokens"
+// 7 pieces. Index 0 is the PERMANENT piece for PERMANENT_EMAIL; indices 1..6 are
+// the pool assigned to the other seats deterministically by matchId (a table is at
+// most 6 players, so the 6-piece pool always covers the non-permanent seats). Edit
+// this list if the uploaded names/base change.
+const CDN = "https://company-assets.bookasloth.in/nnawca/images/tokens"
 export const TOKENS = [
   `${CDN}/token-1.png`, // permanent — PERMANENT_EMAIL
   `${CDN}/token-2.png`,
@@ -39,9 +40,9 @@ function shuffled(pool: number[], seed: number): number[] {
 
 /**
  * Assign a token URL per seat. `sndatarkar@gmail.com` always gets the permanent
- * piece (index 0); every other seat draws a distinct piece from the 6-piece pool,
- * ordered deterministically by the matchId. Returns an array indexed by seat.
- * Up to 6 players fit the pool exactly, so there are never collisions.
+ * piece (index 0); every other seat draws a distinct piece from the 6-piece pool
+ * (indices 1..6), ordered deterministically by the matchId. A table is at most 6
+ * players, so the pool covers all non-permanent seats with no collisions.
  */
 export function assignTokens(players: { seat: number; email: string | null }[], matchId: string): (string | null)[] {
   const out: (string | null)[] = []
