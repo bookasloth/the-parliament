@@ -15,7 +15,7 @@ import {
   JAIL_TURNS,
   MONSOON_POS,
 } from "./data";
-import type { GameState, Intent, EngineEvent } from "./state";
+import type { GameState, Intent, EngineEvent, PendingRent } from "./state";
 import type { TradeSide } from "./state";
 import { BOARD } from "./board";
 import { rollDie } from "./rng";
@@ -67,11 +67,39 @@ function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): voi
 }
 
 /**
+ * Settle one pending rent: pay it (auto-liquidating the payer if short), unless
+ * the owner no longer owns the city (traded/sold since) — then it's voided.
+ * `reason` distinguishes a manual collect from the one-lap auto-settle for logs.
+ */
+function settleRent(s: GameState, rent: PendingRent, events: EngineEvent[], reason: "collected" | "auto"): void {
+  if (s.cities[rent.cityId]?.owner !== rent.owner) {
+    events.push({ type: "rent_void", seat: rent.payer, cityId: rent.cityId, to: rent.owner, rentId: rent.id });
+    return;
+  }
+  const paid = charge(s, rent.payer, rent.amount, rent.owner, events);
+  events.push({ type: "rent", seat: rent.payer, cityId: rent.cityId, to: rent.owner, amount: paid, rentId: rent.id, reason });
+}
+
+/** Age pending rents by one turn; auto-settle any that have waited a full lap. */
+function ageAndAutoSettleRents(s: GameState, events: EngineEvent[]): void {
+  if (!s.pendingRents?.length) return;
+  const lap = s.players.length;
+  const keep: PendingRent[] = [];
+  for (const r of s.pendingRents) {
+    r.age++;
+    if (r.age >= lap) settleRent(s, r, events, "auto");
+    else keep.push(r);
+  }
+  s.pendingRents = keep;
+}
+
+/**
  * Advance to the next player's turn. Shared by finishSegment (auto-end) and the
  * explicit end_turn intent. Emits an `end_turn` event for logs/clients.
  */
 function advanceTurn(s: GameState, events: EngineEvent[]): void {
   const seat = s.active;
+  ageAndAutoSettleRents(s, events);
   if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
   const wrapped = seat + 1 >= s.players.length;
   s.active = (seat + 1) % s.players.length;
@@ -165,9 +193,17 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.pendingCity = id;
         s.phase = "buy";
       } else if (owner !== seat) {
+        // Don't charge now — the owner gets a "someone visited your city" prompt
+        // and collects. Auto-settles after one lap (see advanceTurn) so an AFK
+        // owner can never stall the game. Amount is snapshotted here.
         const rent = rentFor(s, id);
-        charge(s, seat, rent, owner, events);
-        events.push({ type: "rent", seat, cityId: id, to: owner, amount: rent });
+        if (rent > 0) {
+          if (!s.pendingRents) s.pendingRents = [];
+          const rentId = s.nextRentId ?? 1;
+          s.nextRentId = rentId + 1;
+          s.pendingRents.push({ id: rentId, payer: seat, owner, cityId: id, amount: rent, age: 0 });
+          events.push({ type: "rent_pending", seat, cityId: id, to: owner, amount: rent, rentId });
+        }
         finishSegment(s, events);
       } else {
         finishSegment(s, events);
@@ -245,6 +281,11 @@ export function winnerOf(s: GameState): number {
 }
 
 function endGame(s: GameState, events: EngineEvent[]): void {
+  // Settle any outstanding rents before scoring so no money is left in limbo.
+  if (s.pendingRents?.length) {
+    for (const r of s.pendingRents) settleRent(s, r, events, "auto");
+    s.pendingRents = [];
+  }
   s.ended = true;
   s.winner = winnerOf(s);
   s.phase = "manage";
@@ -467,6 +508,19 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       s.players[t.to].cash += t.give.cash - t.get.cash;
       s.trade = null;
       events.push({ type: "trade_accepted", from: t.from, to: t.to });
+      return { state: s, events };
+    }
+
+    case "collect_rent": {
+      // Owner collects an owed rent from the notification. Off-turn: legal anytime.
+      // Idempotent — the id is removed on collect, so a double-click errors.
+      const list = s.pendingRents ?? [];
+      const idx = list.findIndex((r) => r.id === intent.rentId);
+      if (idx < 0) return { error: "no_such_rent" };
+      const rent = list[idx];
+      if (rent.owner !== seat) return { error: "not_your_rent" };
+      settleRent(s, rent, events, "collected");
+      s.pendingRents = list.filter((_, i) => i !== idx);
       return { state: s, events };
     }
 

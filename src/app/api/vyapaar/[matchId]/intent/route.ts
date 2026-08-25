@@ -7,7 +7,7 @@ import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
 const INTENT_TYPES = new Set([
-  "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell", "propose_trade", "respond_trade", "end_turn",
+  "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell", "propose_trade", "respond_trade", "collect_rent", "end_turn",
 ])
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v)
@@ -35,6 +35,8 @@ function validIntentShape(intent: { type: string; [k: string]: unknown }): boole
     }
     case "respond_trade":
       return typeof intent.accept === "boolean"
+    case "collect_rent":
+      return finite(intent.rentId)
     default: // roll, buy, decline, end_turn — no extra fields required
       return true
   }

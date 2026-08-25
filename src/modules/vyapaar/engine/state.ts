@@ -19,6 +19,7 @@ export type Intent =
   | { type: "sell"; cityId: number }
   | { type: "propose_trade"; to: number; give: TradeSide; get: TradeSide }
   | { type: "respond_trade"; accept: boolean }
+  | { type: "collect_rent"; rentId: number }
   | { type: "end_turn" };
 
 export interface PlayerState {
@@ -50,6 +51,22 @@ export interface TradeOffer {
   get: TradeSide; // to → from
 }
 
+/**
+ * An owed-but-not-yet-collected rent. When A lands on B's city we don't charge
+ * immediately — B gets a "someone visited your city" prompt and clicks Collect.
+ * `age` counts turns elapsed; at one full lap (age >= players.length) it
+ * auto-settles so the game never stalls on an AFK owner. `amount` is snapshotted
+ * at landing so B is paid exactly what the notification showed.
+ */
+export interface PendingRent {
+  id: number;
+  payer: number; // seat that owes
+  owner: number; // seat that is owed
+  cityId: number;
+  amount: number;
+  age: number; // turns elapsed since it was created
+}
+
 export interface GameState {
   seed: number;
   rng: number; // live PRNG state
@@ -65,6 +82,8 @@ export interface GameState {
   pendingDouble: boolean; // last roll was a double → roll again after resolution
   auction: AuctionState | null;
   trade: TradeOffer | null;
+  pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
+  nextRentId: number; // monotonic id source for pendingRents
   headlineDeck: number[]; // draw order of HEADLINE indices; refilled+shuffled when empty
   upiDeck: number[]; // draw order of UPI indices
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
@@ -112,6 +131,8 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     pendingDouble: false,
     auction: null,
     trade: null,
+    pendingRents: [],
+    nextRentId: 1,
     headlineDeck: [],
     upiDeck: [],
     endRequested: false,

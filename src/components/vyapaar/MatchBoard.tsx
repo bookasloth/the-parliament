@@ -54,7 +54,9 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "roll": return `${nm(e.seat)} rolled ${Number(e.a) + Number(e.b)}`
     case "buy": return `${nm(e.seat)} bought ${city(e.cityId)} for ${rup(e.amount)}`
     case "buy_company": return `${nm(e.seat)} bought ${COMPANIES[e.companyIndex as number]?.short ?? "?"} for ${rup(e.amount)}`
-    case "rent": return `${nm(e.seat)} paid ${rup(e.amount)} rent to ${nm(e.to)}`
+    case "rent_pending": return `${nm(e.seat)} owes ${rup(e.amount)} rent to ${nm(e.to)} — ${nm(e.to)} can collect`
+    case "rent": return Number(e.amount) > 0 ? `${nm(e.to)} collected ${rup(e.amount)} rent from ${nm(e.seat)}` : `${nm(e.to)} collected rent from ${nm(e.seat)}`
+    case "rent_void": return `rent to ${nm(e.to)} was voided`
     case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
     case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
     case "mandi": return `${nm(e.seat)} scooped the ${rup(e.amount)} pot`
@@ -158,6 +160,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myHouses = myCities.reduce((n, c) => n + Math.min(c.level, 3), 0)
   const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
   const myCompanies = view.companies.filter((c) => c === you).length
+  const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
   const leaderSeat = view.players.reduce((b, p, i) => (p.score > view.players[b].score ? i : b), 0)
   const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
 
@@ -282,6 +285,18 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           </div>
 
           {err && <p className="vb-err">{err}</p>}
+
+          {myRents.map((r) => (
+            <div key={r.id} className="vb-rent">
+              <p className="vb-rent-head">Someone just visited your city</p>
+              <p className="vb-rent-body">
+                <b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b>
+              </p>
+              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>
+                Collect ₹{inr(r.amount)} rent
+              </button>
+            </div>
+          ))}
 
           <div className="vb-actions">
             {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" })}>Roll</button>}
@@ -689,6 +704,10 @@ const VB_CSS = `
 .vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
 .vb-trade{background:var(--panel-2);border:1px solid var(--yellow);border-radius:2px;padding:10px 12px;font-size:.84rem;}
 .vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;}
+.vb-rent{background:var(--panel-2);border:1px solid var(--green);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+.vb-rent-head{margin:0 0 4px;font-weight:700;color:var(--green);}
+.vb-rent-body{margin:0 0 8px;}
+.vb-rent .vb-act{width:100%;}
 .vb-pl-count{margin-left:auto;}
 .vb-pl-count .vb-count{font-size:.95rem;}
 .vb-tp-row{display:flex;flex-direction:column;gap:5px;}

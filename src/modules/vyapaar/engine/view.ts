@@ -20,6 +20,7 @@ export interface PublicView {
   pendingCompany: number | null;
   auction: { kind: "city" | "company"; index: number; bidded: boolean[] } | null;
   trade: { from: number; to: number; give: unknown; get: unknown } | null;
+  pendingRents: { id: number; payer: number; owner: number; cityId: number; amount: number }[];
   headlineLeft: number;
   upiLeft: number;
   ended: boolean;
@@ -52,6 +53,7 @@ export function publicView(s: GameState, seat: number): PublicView {
       ? { kind: s.auction.kind, index: s.auction.index, bidded: s.auction.bids.map((b) => b !== null) }
       : null,
     trade: showTrade ? { from: s.trade!.from, to: s.trade!.to, give: s.trade!.give, get: s.trade!.get } : null,
+    pendingRents: (s.pendingRents ?? []).map((r) => ({ id: r.id, payer: r.payer, owner: r.owner, cityId: r.cityId, amount: r.amount })),
     headlineLeft: s.headlineDeck.length,
     upiLeft: s.upiDeck.length,
     ended: s.ended,
