@@ -175,6 +175,34 @@ Add/adjust vitest in `tests/vyapaar/`. Every new op gets a case:
   the mandi`.
 - Remove the pot HUD readout (~line 268).
 
+### 8b. Landing effect (per-event burst)
+
+Small celebratory/impact burst over the landed token when an event fires — flavor per event, no new
+dependency.
+
+- **Reuse, don't add:** the festive keyframes already in `globals.css` (`festive-rise`,
+  `festive-twinkle`, `festive-flicker`) and framer-motion (already imported in MatchBoard for the
+  dice). No confetti library. `// ponytail: reuse festive glyph burst, add a lib only if a designer
+  demands physics.`
+- **Glyph + tone per event:**
+  | Event | Glyphs | Tone |
+  |---|---|---|
+  | Tax Return | 💸 coins | positive (green) |
+  | Got Married | 💐 ❤️ petals | positive (pink) |
+  | Celebrate Festival | 🎉 🪔 confetti | positive (gold) |
+  | ED Raided | 🚨 💥 | negative (red) + brief token shake |
+  | JNV Revisit | 🎓 🎊 | neutral/positive (brand) |
+- **Trigger:** the engine pushes `{ type: "event", seat, event: eventId }` (§5). The client fires
+  the burst when a new `type:"event"` entry appears at the tail of `view.log`; track the last-seen
+  log index in a `useRef` so a refetch/realtime re-render doesn't replay old bursts. Position the
+  burst over the acting seat's token cell.
+- **Shape:** ~4–6 glyphs, ~1.2s, index-derived offsets (deterministic; no `Math.random` needed since
+  it's a transient client-only effect). Auto-unmount after the animation.
+- **Reduced motion:** honor `prefers-reduced-motion` (MatchBoard already reads `reduce` for the
+  dice) — skip the burst or show a single static glyph fade.
+- **Scope guard:** this is decoration only. It must not gate turn flow, block input, or affect engine
+  state; if it errors it fails silent.
+
 ## 9. Rebalance (final phase)
 
 Killing GST removes the only **progressive** money-sink (it scaled with wealth, taxing leaders
