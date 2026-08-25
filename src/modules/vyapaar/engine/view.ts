@@ -1,5 +1,7 @@
 import type { GameState, EngineEvent, TradeSide } from "./state";
 import { scoreOf, netWorth } from "./helpers";
+import { canRestructure } from "./engine";
+import { RESTRUCTURE_ADVANCE, RESTRUCTURE_LAPS } from "./data";
 
 export interface PublicView {
   players: {
@@ -29,6 +31,8 @@ export interface PublicView {
   lastRoll: [number, number] | null;
   log: EngineEvent[];
   you: number;
+  youCanRestructure: boolean; // you qualify for the one-time comeback advance right now
+  restructure: { advance: number; laps: number }; // terms to show on the comeback button
 }
 
 export function publicView(s: GameState, seat: number): PublicView {
@@ -65,5 +69,7 @@ export function publicView(s: GameState, seat: number): PublicView {
     lastRoll: s.lastRoll,
     log: (s.log ?? []).slice(-12),
     you: seat,
+    youCanRestructure: canRestructure(s, seat),
+    restructure: { advance: RESTRUCTURE_ADVANCE, laps: RESTRUCTURE_LAPS },
   };
 }
