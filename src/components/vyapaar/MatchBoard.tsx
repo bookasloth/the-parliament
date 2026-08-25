@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { motion, useReducedMotion } from "framer-motion"
+import { motion, useReducedMotion, useAnimation } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
 import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data"
@@ -55,6 +55,32 @@ function cellPos(i: number): [number, number] {
   if (i < 32) return [1 + (i - 20), 1]   // top row 21..31 → cols 2..12
   if (i === 32) return [13, 1]
   return [13, 1 + (i - 32)]              // right col 33..39 → rows 2..8
+}
+
+// Token anchor as % of the board box. Non-corner tiles anchor on their INNER ring
+// edge (toward the hub) so the piece sits just off the cell into the track interior;
+// corner tiles keep the piece inside the cell.
+const CORNERS = new Set([0, 12, 20, 32])
+function tokenAnchor(i: number): { x: number; y: number } {
+  const [col, row] = cellPos(i)
+  const cw = 100 / 13, ch = 100 / 9
+  let x = (col - 0.5) * cw, y = (row - 0.5) * ch
+  if (!CORNERS.has(i)) {
+    if (row === 9) y = (row - 1) * ch        // bottom row → inner edge is the top
+    else if (row === 1) y = row * ch          // top row → inner edge is the bottom
+    else if (col === 1) x = col * cw          // left col → inner edge is the right
+    else if (col === 13) x = (col - 1) * cw   // right col → inner edge is the left
+  }
+  return { x, y }
+}
+// The ring indices a piece steps through moving from `from` to `to` (forward, wrapping).
+// A non-forward or long jump (e.g. jail teleport) resolves straight to the destination.
+function ringPath(from: number, to: number): number[] {
+  const fwd = (to - from + 40) % 40
+  if (fwd === 0 || fwd > 12) return [to]
+  const out: number[] = []
+  for (let k = 1; k <= fwd; k++) out.push((from + k) % 40)
+  return out
 }
 
 const SPECIAL_LABEL: Record<string, string> = {
@@ -114,7 +140,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [busy, setBusy] = useState(false)
   const [openTile, setOpenTile] = useState<number | null>(null) // board position of the open deed
   const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
-  const [showProps, setShowProps] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [copied, setCopied] = useState(false)
   const you = view.you
@@ -206,14 +231,19 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
   const seatName = (seat: number | null) => (seat === null ? null : view.players[seat]?.name)
   const myCities = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you)
-  const myHouses = myCities.reduce((n, c) => n + Math.min(c.level, 3), 0)
-  const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
-  const myCompanies = view.companies.filter((c) => c === you).length
+  const myCompanyIds = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === you).map((x) => x.ci)
   const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
   const leaderSeat = view.players.reduce((b, p, i) => (!p.left && p.score > view.players[b].score ? i : b), 0)
   // Last 5 meaningful actions (rolls are excluded in logLine), oldest → newest so
   // the freshest line sits at the bottom.
   const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-5)
+  // Notifications feed (B2): only events that involve YOU — your buys, rent to/from
+  // you, trades you're party to — most recent last.
+  const notifLines = view.log
+    .map((e, i) => ({ e: e as Record<string, unknown>, i }))
+    .filter(({ e }) => e.seat === you || e.to === you || e.from === you)
+    .map(({ e, i }) => ({ line: logLine(e, view.players), i }))
+    .filter((x) => x.line).slice(-10)
   const iLeft = view.players[you]?.left ?? false
 
   // Who rolled the dice currently shown — the dice only tumble when it was YOU.
@@ -240,7 +270,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
       <header className="vb-top">
         <button type="button" onClick={leaveGame} disabled={busy} className="vb-exit">{iLeft || view.ended ? "← Exit" : "← Leave"}</button>
-        <div className="vb-top-mid">
+        <div className="vb-top-right">
+          <div className="vb-you">
+            {playerImages[you]
+              ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
+              : <span className="vb-you-init" style={{ background: SEAT_COL[you % 6], color: you % 6 === 1 ? "#0F1111" : "#fff" }}>{(view.players[you]?.name ?? "?").charAt(0).toUpperCase()}</span>}
+            <span className="vb-you-name">{(view.players[you]?.name ?? "").split(" ")[0]}</span>
+          </div>
           {roomCode && (
             <button type="button" className="vb-code" title="Copy room code" onClick={() => { navigator.clipboard?.writeText(roomCode); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>
               <span className="vb-code-lab">Room</span><b>{roomCode}</b>
@@ -248,13 +284,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             </button>
           )}
           <button type="button" className="vb-report-btn" onClick={() => setShowReport(true)}>Report a bug</button>
-        </div>
-        <div className="vb-you">
-          {playerImages[you]
-            ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
-            : <span className="vb-you-init" style={{ background: SEAT_COL[you % 6], color: you % 6 === 1 ? "#0F1111" : "#fff" }}>{(view.players[you]?.name ?? "?").charAt(0).toUpperCase()}</span>}
-          <span className="vb-you-name">{(view.players[you]?.name ?? "").split(" ")[0]}</span>
-          <span className="vb-you-cash">{inr(view.players[you]?.cash ?? 0)}</span>
         </div>
       </header>
 
@@ -264,17 +293,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
             <div className="vb-grid">
               {BOARD.map((t) => {
                 const [c, r] = cellPos(t.pos)
-                // Every player's piece sits inside its cell — a CDN image token if the
-                // seat has one, else a seat-colour dot. On the 4 big corner cells the
-                // piece shrinks to dot-size (see .vb-tok-corner). Stacked left-offset.
-                const isCorner = ["start", "monsoon", "mandi", "taxraid"].includes(t.kind)
-                const here = view.players.map((p, seat) => ({ p, seat })).filter((x) => !x.p.left && x.p.pos === t.pos)
-                const tokens = here.map(({ seat }, idx) => {
-                  const pos = { left: `${4 + idx * 22}%`, zIndex: 4 + idx } as const
-                  return playerTokens[seat]
-                    ? <img key={seat} src={playerTokens[seat]!} alt="" className={`vb-tok-img${isCorner ? " vb-tok-corner" : ""}`} style={pos} />
-                    : <span key={seat} className={`vb-tok${isCorner ? " vb-tok-corner" : ""}`} style={{ ...pos, background: SEAT_COL[seat % 6] }} />
-                })
+                // Player pieces are NOT drawn per-cell — they live in <TokenLayer/> as one
+                // overlay so they can sit on the ring's inner edge and animate between tiles.
                 const style = { gridColumn: c, gridRow: r }
 
                 if (t.kind === "city") {
@@ -290,7 +310,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                       <div className="vb-mid" dangerouslySetInnerHTML={{ __html: cs.mortgaged ? "" : buildIcons(cs.level) }} />
                       <div className="vb-price" style={{ color: ZONE_TX[city.zone] }}>{cs.mortgaged ? "mortgaged" : inr(city.price)}</div>
                       {cs.owner !== null && <span className="vb-own" style={{ background: SEAT_COL[cs.owner % 6] }} />}
-                      {tokens}
                     </div>
                   )
                 }
@@ -304,7 +323,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                       <div className="vb-mid"><span className="vb-cat" dangerouslySetInnerHTML={{ __html: CAT_ICON[co.category] }} /></div>
                       <div className="vb-price vb-co">{inr(co.buy)}</div>
                       {owner !== null && <span className="vb-own" style={{ background: SEAT_COL[owner % 6] }} />}
-                      {tokens}
                     </div>
                   )
                 }
@@ -313,7 +331,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   <div key={t.pos} className={`vb-tile ${corner ? "vb-corner vb-" + t.kind : "vb-special"}`} style={style}>
                     <span className="vb-sic" dangerouslySetInnerHTML={{ __html: SPECIAL_ICON[t.kind] ?? "" }} />
                     <span className="vb-slb">{SPECIAL_LABEL[t.kind]}</span>
-                    {tokens}
                   </div>
                 )
               })}
@@ -326,91 +343,106 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   : <button className="vb-roll" disabled={busy || !myTurn || view.phase !== "roll"} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
                 {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
               </div>
+
+              <TokenLayer players={view.players} tokens={playerTokens} />
             </div>
           </div>
         </div>
 
         <div className="vb-rail">
-          <div className="vb-ginfo">
-            <span>Round <b>{view.round}</b></span>
-            <span>{view.players.length} players</span>
-            <span>pot <b>₹{inr(view.pot)}</b></span>
-          </div>
-          <div className="vb-players">
-            {view.players.map((p, seat) => (
-              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""} ${p.left ? "left" : ""}`}>
-                {playerImages[seat]
-                  ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
-                  : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
-                <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
-                {seat === leaderSeat && !p.left && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
-                {!p.left && onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
-                {p.left
-                  ? <span className="vb-halt">left</span>
-                  : seat === view.active && !view.ended
-                    ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
-                    : p.halted ? <span className="vb-halt">halted</span> : null}
+          <div className="vb-quad">
+
+            {/* A1 — game info: player photos + turn counter, no names */}
+            <section className="vb-cell">
+              <div className="vb-panel-head">Game info</div>
+              <div className="vb-pgrid">
+                {view.players.map((p, seat) => (
+                  <div key={seat} className={`vb-pcell ${seat === view.active ? "active" : ""} ${p.left ? "left" : ""}`} title={p.name}>
+                    {playerImages[seat]
+                      ? <img src={playerImages[seat]!} alt="" className="vb-pcell-img" />
+                      : <span className="vb-pcell-init" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
+                    {seat === leaderSeat && !p.left && <span className="vb-pcell-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
+                    {!p.left && onlineSeats.has(seat) && <span className="vb-pcell-dot" title="online" />}
+                    <span className="vb-pcell-ctr">
+                      {p.left ? "left"
+                        : seat === view.active && !view.ended ? <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
+                        : p.halted ? "halted" : " "}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </section>
+
+            {/* B1 — game log */}
+            <section className="vb-cell">
+              <div className="vb-panel-head">Game log</div>
+              <div className="vb-log-list">
+                {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
+              </div>
+            </section>
+
+            {/* A2 — your properties (inline, click a card to open its deed) */}
+            <section className="vb-cell">
+              <div className="vb-panel-head">Your properties</div>
+              <div className="vb-props-inline">
+                {(myCities.length || myCompanyIds.length) ? <>
+                  {myCities.map((c) => (
+                    <button key={`c${c.id}`} className="vb-prop-card" style={{ borderLeftColor: ZONE_BG[CITIES[c.id].zone] }} onClick={() => setOpenTile(CITY_POS[c.id])}>
+                      <span className="vb-prop-nm">{CITIES[c.id].name}</span>
+                      <span className="vb-prop-sub">{c.mortgaged ? "mortgaged" : c.level === 0 ? "unbuilt" : `level ${c.level}`}</span>
+                    </button>
+                  ))}
+                  {myCompanyIds.map((ci) => (
+                    <button key={`co${ci}`} className="vb-prop-card" style={{ borderLeftColor: "var(--grey)" }} onClick={() => setOpenTile(COMPANY_POS[ci])}>
+                      <span className="vb-prop-nm">{COMPANIES[ci].name}</span>
+                      <span className="vb-prop-sub">company</span>
+                    </button>
+                  ))}
+                </> : <div className="vb-tp-none">No property yet</div>}
+              </div>
+            </section>
+
+            {/* B2 — notifications + everything that needs a decision */}
+            <section className="vb-cell">
+              <div className="vb-panel-head">Notifications</div>
+              <div className="vb-notif">
+                {err && <p className="vb-err">{err}</p>}
+                {view.phase === "auction" && view.auction && (
+                  <div className="vb-auction">
+                    <p className="vb-auction-head">Auction — place your bid</p>
+                    <AuctionInfo auction={view.auction} />
+                    {!view.auction.bidded[you]
+                      ? <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
+                      : <p className="vb-auction-wait">Bid placed — waiting for the others…</p>}
+                  </div>
+                )}
+                {myTurn && view.phase === "buy" && (
+                  <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
+                )}
+                {myRents.map((r) => (
+                  <div key={r.id} className="vb-rent">
+                    <p className="vb-rent-body"><b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b></p>
+                    <button className="vb-collect" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>Collect ₹{inr(r.amount)} rent</button>
+                  </div>
+                ))}
+                {myTurn && view.youCanRestructure && (
+                  <div className="vb-rescue">
+                    <p className="vb-rescue-head">Falling behind?</p>
+                    <p className="vb-rescue-body">Take ₹{inr(view.restructure.advance)} now — a reduced salary over your next {view.restructure.laps} laps repays it. One-time.</p>
+                    <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "restructure" })}>Restructure · +₹{inr(view.restructure.advance)}</button>
+                  </div>
+                )}
+                {(view.trades ?? []).map((t) => (
+                  <TradeCard key={t.id} trade={t} view={view} you={you} busy={busy} onAction={send} />
+                ))}
+                <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
+                {notifLines.length
+                  ? notifLines.map((x) => <div key={x.i} className="vb-notif-line">{x.line}</div>)
+                  : (!err && !myRents.length && <div className="vb-log-empty">No notifications yet</div>)}
+              </div>
+            </section>
+
           </div>
-
-          <div className="vb-yinfo">
-            <div className="vb-panel-head">Your info</div>
-            <div className="vb-yi-grid">
-              <div><b>{myCities.length}</b>Properties</div>
-              <div><b>{myHouses}</b>Houses</div>
-              <div><b>{myHotels}</b>Hotels</div>
-              <div><b>{myCompanies}</b>Companies</div>
-            </div>
-          </div>
-
-          <div className="vb-log">
-            <div className="vb-panel-head">Game log</div>
-            <div className="vb-log-list">
-              {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
-            </div>
-          </div>
-
-          {err && <p className="vb-err">{err}</p>}
-
-          {myRents.map((r) => (
-            <div key={r.id} className="vb-rent">
-              <p className="vb-rent-body">
-                <b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b>
-              </p>
-              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>
-                Collect ₹{inr(r.amount)} rent
-              </button>
-            </div>
-          ))}
-
-          {myTurn && view.youCanRestructure && (
-            <div className="vb-rescue">
-              <p className="vb-rescue-head">Falling behind?</p>
-              <p className="vb-rescue-body">Take ₹{inr(view.restructure.advance)} now — a reduced salary over your next {view.restructure.laps} laps repays it. One-time.</p>
-              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "restructure" })}>Restructure · +₹{inr(view.restructure.advance)}</button>
-            </div>
-          )}
-
-          <div className="vb-actions">
-            {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
-            {myTurn && view.phase === "buy" && (
-              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
-            )}
-            {myTurn && view.phase === "manage" && (
-              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
-            )}
-            {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
-              <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
-            )}
-            <button className="vb-act" onClick={() => setShowProps(true)}>My Properties</button>
-          </div>
-
-          {(view.trades ?? []).map((t) => (
-            <TradeCard key={t.id} trade={t} view={view} you={you} busy={busy} onAction={send} />
-          ))}
-
-          <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
         </div>
       </div>
 
@@ -425,22 +457,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           onClose={() => setOpenTile(null)}
           onAction={send}
         />
-      )}
-
-      {showProps && (
-        <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) setShowProps(false) }}>
-          <div className="vb-props">
-            <div className="vb-props-head"><span>Your properties</span><button className="vb-props-x" onClick={() => setShowProps(false)}>✕</button></div>
-            <div className="vb-props-list">
-              {myCities.length ? myCities.map((c) => (
-                <button key={c.id} className="vb-prop-card" style={{ borderLeftColor: ZONE_BG[CITIES[c.id].zone] }} onClick={() => { setShowProps(false); setOpenTile(CITY_POS[c.id]) }}>
-                  <span className="vb-prop-nm">{CITIES[c.id].name}</span>
-                  <span className="vb-prop-sub">{c.mortgaged ? "mortgaged" : c.level === 0 ? "unbuilt" : `level ${c.level}`}</span>
-                </button>
-              )) : <div className="vb-tp-none">You don&apos;t own any property yet</div>}
-            </div>
-          </div>
-        </div>
       )}
 
       {showReport && <ReportBug matchId={matchId} onClose={() => setShowReport(false)} />}
@@ -582,6 +598,44 @@ function Dice({ roll, seq, animate = true }: { roll: [number, number] | null; se
   )
 }
 
+// All player pieces on one overlay so they can ride the ring's inner edge and hop
+// tile-to-tile (Ludo-style) when a position changes.
+function TokenLayer({ players, tokens }: { players: PublicView["players"]; tokens: (string | null)[] }) {
+  return (
+    <div className="vb-tok-layer">
+      {players.map((p, seat) => (p.left ? null : <Token key={seat} seat={seat} pos={p.pos} url={tokens[seat] ?? null} />))}
+    </div>
+  )
+}
+
+function Token({ seat, pos, url }: { seat: number; pos: number; url: string | null }) {
+  const controls = useAnimation()
+  const reduce = useReducedMotion()
+  const prev = useRef(pos)
+  useEffect(() => {
+    const from = prev.current
+    prev.current = pos
+    const a = tokenAnchor(pos)
+    if (from === pos) { controls.set({ left: `${a.x}%`, top: `${a.y}%` }); return }
+    const path = reduce ? [pos] : ringPath(from, pos)
+    if (path.length <= 1) { void controls.start({ left: `${a.x}%`, top: `${a.y}%`, transition: { duration: 0.25 } }); return }
+    const xs = path.map((i) => `${tokenAnchor(i).x}%`)
+    const ys = path.map((i) => `${tokenAnchor(i).y}%`)
+    void controls.start({ left: xs, top: ys, transition: { duration: Math.min(1.5, path.length * 0.14), ease: "easeInOut" } })
+  }, [pos, controls, reduce])
+  const a0 = tokenAnchor(pos)
+  return (
+    <motion.div
+      className={`vb-tok2${CORNERS.has(pos) ? " corner" : ""}`}
+      initial={{ left: `${a0.x}%`, top: `${a0.y}%` }}
+      animate={controls}
+      style={{ zIndex: 6 + seat, marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }}
+    >
+      {url ? <img src={url} alt="" /> : <span style={{ background: SEAT_COL[seat % 6] }} />}
+    </motion.div>
+  )
+}
+
 function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
   pos: number; view: PublicView; you: number; busy: boolean; canManage: boolean; myTurn: boolean
   onClose: () => void; onAction: (i: Intent, close?: boolean) => void
@@ -679,6 +733,27 @@ function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on:
 const CROWN = `<svg viewBox="0 0 20 16" fill="currentColor"><path d="M2.5 13.5h15l1.3-8.6-4.9 3-4-6-4 6-4.9-3z"/></svg>`
 const COPY_IC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M4 13V5a1 1 0 0 1 1-1h8"/></svg>`
 const CHECK_IC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/></svg>`
+
+// Shows WHAT is up for auction (name + zone/category + base price) so the bid input
+// below it has context.
+function AuctionInfo({ auction }: { auction: NonNullable<PublicView["auction"]> }) {
+  if (auction.kind === "city") {
+    const c = CITIES[auction.index]
+    return (
+      <div className="vb-auction-card">
+        <div className="vb-auction-strip" style={{ background: ZONE_BG[c.zone], color: ZONE_DARK[c.zone] ? "#0F1111" : "#fff" }}>{c.name}</div>
+        <div className="vb-auction-meta"><span>{["North", "South", "East", "West", "Central"][c.zone]} zone</span><span>Base ₹{inr(c.price)}</span></div>
+      </div>
+    )
+  }
+  const co = COMPANIES[auction.index]
+  return (
+    <div className="vb-auction-card">
+      <div className="vb-auction-strip vb-grey">{co.name}</div>
+      <div className="vb-auction-meta"><span>{COMPANY_CATS[co.category]} · company</span><span>Base ₹{inr(co.buy)}</span></div>
+    </div>
+  )
+}
 
 function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (n: number) => void }) {
   const [amt, setAmt] = useState(0)
@@ -819,10 +894,10 @@ const VB_CSS = `
 .vb-you-name{font-weight:600;font-size:.9rem;color:var(--cream);}
 .vb-you-cash{font-weight:700;font-size:.9rem;color:var(--gold);font-variant-numeric:tabular-nums;padding-left:4px;}
 .vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
-.vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
+.vb-stage{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:stretch;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
 .vb-board{aspect-ratio:13/9;width:min(100%,calc((100dvh - 72px) * 1.444));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto 0 0;}
-.vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(9,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
+.vb-grid{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(9,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
 .vb-tile{position:relative;background:var(--milk);min-width:0;display:flex;flex-direction:column;overflow:hidden;}
 .vb-city,.vb-company{cursor:pointer;}
 .vb-city:hover,.vb-company:hover{outline:2px solid var(--accent);outline-offset:-2px;z-index:3;}
@@ -946,7 +1021,7 @@ const VB_CSS = `
 .vb-cta button{flex:1;font-family:"Poppins";font-weight:700;font-size:.88rem;padding:.68rem;border-radius:2px;border:none;cursor:pointer;}
 .vb-cta .buy{color:#fff;background:var(--accent);}.vb-cta .pass{background:#fff;border:1px solid #d9d9d9;color:var(--ink-2);}
 .vb-cta button:disabled{opacity:.5;cursor:not-allowed;}
-.vb-top-mid{display:flex;align-items:center;gap:8px;margin-left:12px;margin-right:auto;}
+.vb-top-right{display:flex;align-items:center;gap:10px;}
 .vb-code{display:inline-flex;align-items:center;gap:6px;font-family:"Poppins";font-size:.8rem;color:var(--cream);border:1px solid var(--line);background:var(--panel);border-radius:2px;padding:.35rem .6rem;cursor:pointer;}
 .vb-code b{font-variant-numeric:tabular-nums;letter-spacing:.06em;}
 .vb-code-lab{color:var(--dim);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;}
@@ -963,4 +1038,41 @@ const VB_CSS = `
 .vb-report-sub{margin:0;font-size:.8rem;color:var(--dim);}
 .vb-report-ta{width:100%;min-height:110px;resize:vertical;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.6rem;font-family:"Poppins";font-size:.85rem;}
 .vb-report-ok{margin:0;font-size:.9rem;color:#2E9455;font-weight:600;}
+.vb-quad{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;min-width:0;}
+@media(min-width:941px){.vb-quad{grid-template-rows:1fr 1fr;height:calc(100dvh - 78px);}}
+@media(max-width:940px){.vb-quad{grid-auto-rows:minmax(170px,42vh);}}
+.vb-cell{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:9px 10px;overflow:hidden;}
+.vb-cell .vb-panel-head{margin-bottom:8px;}
+.vb-pgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:6px;flex:1;min-height:0;overflow:auto;}
+.vb-pcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:5px 3px;min-height:0;}
+.vb-pcell.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.vb-pcell.left{opacity:.45;}
+.vb-pcell-img,.vb-pcell-init{width:clamp(26px,3.4vw,42px);height:clamp(26px,3.4vw,42px);border-radius:50%;object-fit:cover;display:grid;place-items:center;font-weight:700;font-size:.9rem;}
+.vb-pcell-ctr{font-size:.62rem;font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums;line-height:1;min-height:.8em;}
+.vb-pcell.active .vb-pcell-ctr .vb-count{font-size:.72rem;}
+.vb-pcell-crown{position:absolute;top:3px;left:3px;width:13px;height:11px;color:var(--gold);}
+.vb-pcell-crown svg{width:100%;height:100%;}
+.vb-pcell-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#3ec46d;}
+.vb-props-inline{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow-y:auto;}
+.vb-props-inline .vb-prop-card{border-left-width:6px;}
+.vb-cell .vb-log-list{flex:1;min-height:0;max-height:none;}
+.vb-notif{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
+.vb-notif-line{font-size:.72rem;color:var(--dim);line-height:1.3;border-bottom:1px solid var(--line);padding-bottom:4px;}
+.vb-notif-line:last-child{border-bottom:none;}
+.vb-rent{border-color:var(--line);}
+.vb-collect{align-self:flex-start;font-family:"Poppins";font-weight:600;font-size:.7rem;padding:.25rem .5rem;border-radius:2px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer;}
+.vb-collect:hover{color:var(--cream);border-color:var(--dim);}
+.vb-collect:disabled{opacity:.5;cursor:not-allowed;}
+.vb-tok-layer{position:absolute;inset:0;pointer-events:none;z-index:4;}
+.vb-tok2{position:absolute;transform:translate(-50%,-50%);width:5.2%;max-width:26px;aspect-ratio:1;}
+.vb-tok2.corner{width:3.6%;max-width:16px;}
+.vb-tok2 img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:1.6px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:block;}
+.vb-tok2 span{display:block;width:72%;height:72%;margin:14%;border-radius:50%;border:1.6px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.vb-auction{display:flex;flex-direction:column;gap:8px;border:1px solid var(--accent);border-radius:2px;padding:10px;}
+.vb-auction-head{margin:0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);}
+.vb-auction-card{border:1px solid var(--line);border-radius:2px;overflow:hidden;background:var(--panel);}
+.vb-auction-strip{padding:6px 10px;font-weight:700;font-size:.9rem;}
+.vb-auction-strip.vb-grey{background:var(--grey);color:#fff;}
+.vb-auction-meta{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;font-size:.72rem;color:var(--dim);}
+.vb-auction-wait{margin:0;font-size:.76rem;color:var(--dim);}
 `
