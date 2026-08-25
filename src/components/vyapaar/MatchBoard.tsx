@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES } from "@/modules/vyapaar/engine/data"
+import { CITIES, HUB_PRICE } from "@/modules/vyapaar/engine/data"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
@@ -17,7 +17,7 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
 
   const refetch = useCallback(async () => {
     const res = await fetch(`/api/vyapaar/${matchId}/view`, { cache: "no-store" })
-    if (res.ok) setView((await res.json()).view)
+    if (res.ok) { setView((await res.json()).view); setErr(null) }
   }, [matchId])
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
           <button disabled={busy} onClick={() => send({ type: "decline" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Decline</button>
         </>}
         {myTurn && view.phase === "buy" && view.pendingHub !== null && <>
-          <button disabled={busy} onClick={() => send({ type: "buy" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Buy hub</button>
+          <button disabled={busy} onClick={() => send({ type: "buy" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Buy hub ({HUB_PRICE})</button>
           <button disabled={busy} onClick={() => send({ type: "decline" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Decline</button>
         </>}
         {view.phase === "auction" && view.auction && !view.auction.bidded[you] && <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />}
@@ -135,7 +135,7 @@ function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (
   const [amt, setAmt] = useState(0)
   return (
     <span className="flex items-center gap-1">
-      <input type="number" min={0} max={max} value={amt} onChange={(e) => setAmt(Math.max(0, Math.min(max, Number(e.target.value))))} className="w-24 rounded border px-2 py-1 text-sm" />
+      <input type="number" min={0} max={max} value={amt} onChange={(e) => setAmt(Math.max(0, Math.min(max, Math.floor(Number(e.target.value)))))} className="w-24 rounded border px-2 py-1 text-sm" />
       <button disabled={busy} onClick={() => onBid(amt)} className="rounded-lg bg-brand px-3 py-1.5 text-sm text-white disabled:opacity-50">Bid</button>
     </span>
   )
@@ -161,8 +161,8 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
             {view.players.map((p, seat) => seat !== you ? <option key={seat} value={seat}>{seat}: {p.name}</option> : null)}
           </select>
         </label>
-        <div>You give: {mine.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={give.includes(c.id)} onChange={() => toggle(give, setGive, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={giveCash} onChange={(e) => setGiveCash(Math.max(0, Number(e.target.value)))} className="w-20 rounded border px-1" /></div>
-        <div>You get: {theirs.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={get.includes(c.id)} onChange={() => toggle(get, setGet, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={getCash} onChange={(e) => setGetCash(Math.max(0, Number(e.target.value)))} className="w-20 rounded border px-1" /></div>
+        <div>You give: {mine.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={give.includes(c.id)} onChange={() => toggle(give, setGive, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={giveCash} onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} className="w-20 rounded border px-1" /></div>
+        <div>You get: {theirs.map((c) => <label key={c.id} className="mr-2"><input type="checkbox" checked={get.includes(c.id)} onChange={() => toggle(get, setGet, c.id)} /> {CITIES[c.id].name}</label>)} + cash <input type="number" min={0} value={getCash} onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} className="w-20 rounded border px-1" /></div>
         <button disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })} className="justify-self-start rounded-lg bg-brand px-3 py-1.5 text-white disabled:opacity-50">Send offer</button>
       </div>
     </details>
