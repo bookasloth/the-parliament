@@ -129,18 +129,17 @@ export function liquidate(
   }
 }
 
-/** Move money from `from` to `to` (seat or "pot"), liquidating as needed; forgives any shortfall. Returns amount actually paid. */
+/** Move money from `from` to `to` (a seat, or "bank" = money leaves the game), liquidating as needed; forgives any shortfall. Returns amount actually paid. */
 export function charge(
   s: GameState,
   from: number,
   amount: number,
-  to: number | "pot",
+  to: number | "bank",
   events?: EngineEvent[],
 ): number {
   if (s.players[from].cash < amount) liquidate(s, from, amount, events);
   const paid = Math.min(amount, s.players[from].cash);
   s.players[from].cash -= paid;
-  if (to === "pot") s.pot += paid;
-  else s.players[to].cash += paid;
+  if (to !== "bank") s.players[to].cash += paid; // "bank" → money simply leaves the game
   return paid;
 }

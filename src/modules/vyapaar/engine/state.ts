@@ -1,5 +1,4 @@
-import { CITIES, HEADLINE, UPI, START_CASH } from "./data";
-import { shuffle } from "./rng";
+import { CITIES, START_CASH } from "./data";
 
 export type Phase = "roll" | "buy" | "auction" | "manage";
 
@@ -82,7 +81,6 @@ export interface GameState {
   players: PlayerState[];
   cities: CityState[]; // length 25, indexed by cityId
   companies: (number | null)[]; // length 6, indexed by companyIndex
-  pot: number;
   active: number; // active seat
   phase: Phase;
   round: number; // starts at 1
@@ -94,8 +92,6 @@ export interface GameState {
   nextTradeId: number; // monotonic id source for trades
   pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
   nextRentId: number; // monotonic id source for pendingRents
-  headlineDeck: number[]; // draw order of HEADLINE indices; refilled+shuffled when empty
-  upiDeck: number[]; // draw order of UPI indices
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
   ended: boolean;
   winner: number | null;
@@ -134,7 +130,6 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
     companies: [null, null, null, null, null, null],
-    pot: 0,
     active: 0,
     phase: "roll",
     round: 1,
@@ -146,16 +141,11 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     nextTradeId: 1,
     pendingRents: [],
     nextRentId: 1,
-    headlineDeck: [],
-    upiDeck: [],
     endRequested: false,
     ended: false,
     winner: null,
     lastRoll: null,
     log: [],
   };
-  // Seed the decks so draws are deterministic from game start.
-  state.headlineDeck = shuffle(HEADLINE.map((_, i) => i), state);
-  state.upiDeck = shuffle(UPI.map((_, i) => i), state);
   return state;
 }

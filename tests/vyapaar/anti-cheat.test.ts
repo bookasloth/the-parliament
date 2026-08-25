@@ -135,11 +135,9 @@ describe("vyapaar money accounting (exact deltas)", () => {
     const before = totalCash(s);
     // Directly exercise: a pays rent to b. rentFor read + charge is internal; assert via a real land.
     // Simplest deterministic check: a buys nothing; transfer conserves the two-player total.
-    const potBefore = s.pot;
     // pay 300 rent a->b manually mirrors charge() with no liquidation needed
     s.players[0].cash -= 300; s.players[1].cash += 300;
-    expect(totalCash(s)).toBe(before); // conserved
-    expect(s.pot).toBe(potBefore); // bank/pot untouched
+    expect(totalCash(s)).toBe(before); // conserved — pure player→player transfer
   });
 
   it("buying a city removes exactly its price from the system (bank sink)", () => {

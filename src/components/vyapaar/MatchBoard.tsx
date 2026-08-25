@@ -85,7 +85,9 @@ function ringPath(from: number, to: number): number[] {
 
 const SPECIAL_LABEL: Record<string, string> = {
   start: "START", monsoon: "MONSOON", mandi: "MANDI", taxraid: "TAX RAID",
-  gst: "GST", income: "INCOME", upi: "UPI", headline: "NEWS",
+}
+const EVENT_LABEL: Record<string, string> = {
+  tax_return: "TAX RETURN", married: "GOT MARRIED", festival: "FESTIVAL", ed_raid: "ED RAID", jnv_revisit: "JNV REVISIT",
 }
 
 // minimal inline icons
@@ -111,9 +113,16 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "rent_void": return `rent to ${nm(e.to)} was voided`
     case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
     case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
-    case "mandi": return `${nm(e.seat)} scooped the ${rup(e.amount)} pot`
-    case "gst": return `${nm(e.seat)} paid ${rup(e.amount)} GST`
-    case "income": return `${nm(e.seat)} paid ${rup(e.amount)} income tax`
+    case "mandi": return `${nm(e.seat)} got ${rup(e.amount)} to spend at the mandi`
+    case "event":
+      switch (e.event) {
+        case "tax_return": return `${nm(e.seat)} got a ₹1,000 tax return`
+        case "married": return `${nm(e.seat)} collected ₹500 from everyone (wedding)`
+        case "festival": return `${nm(e.seat)} paid ₹500 to everyone (festival)`
+        case "ed_raid": return `${nm(e.seat)} was ED-raided for ₹1,000`
+        case "jnv_revisit": return `${nm(e.seat)} paid ₹6,000 hosting the JNV revisit`
+        default: return null
+      }
     case "auction_won": return `${nm(e.seat)} won an auction for ${rup(e.amount)}`
     case "develop": return `${nm(e.seat)} built on ${city(e.cityId)}`
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
@@ -327,10 +336,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   )
                 }
                 const corner = ["start", "monsoon", "mandi", "taxraid"].includes(t.kind)
+                const evId = t.kind === "event" ? (t.eventId as string) : null
                 return (
                   <div key={t.pos} className={`vb-tile ${corner ? "vb-corner vb-" + t.kind : "vb-special"}`} style={style}>
-                    <span className="vb-sic" dangerouslySetInnerHTML={{ __html: SPECIAL_ICON[t.kind] ?? "" }} />
-                    <span className="vb-slb">{SPECIAL_LABEL[t.kind]}</span>
+                    <span className="vb-sic" dangerouslySetInnerHTML={{ __html: (evId ? EVENT_ICON[evId] : SPECIAL_ICON[t.kind]) ?? "" }} />
+                    <span className="vb-slb">{evId ? EVENT_LABEL[evId] : SPECIAL_LABEL[t.kind]}</span>
                   </div>
                 )
               })}
@@ -873,10 +883,14 @@ const SPECIAL_ICON: Record<string, string> = {
   monsoon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 10a3 3 0 0 1 .3-6 4 4 0 0 1 7.5 1.2A2.7 2.7 0 0 1 14 10Z"/><path d="M7 13l-1 3M11 13l-1 3M14 13l-1 2"/></svg>`,
   mandi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="10" cy="5.5" rx="6" ry="2.5"/><path d="M4 5.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4M4 9.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4"/></svg>`,
   taxraid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 2 16h16Z"/><path d="M10 8v4"/><circle cx="10" cy="14.2" r=".4" fill="currentColor"/></svg>`,
-  gst: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>`,
-  income: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.5L10 17l-2.5-1.5L5 17Z"/><path d="M8 7h4M8 10h4"/></svg>`,
-  upi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="3" width="8" height="14" rx="1.5"/><path d="M9 14.5h2"/></svg>`,
-  headline: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="12" rx="1"/><path d="M6 7h5M6 10h5M6 13h3M13 7v6"/></svg>`,
+}
+// Icons for the five Indian-business event tiles, keyed by EventId.
+const EVENT_ICON: Record<string, string> = {
+  tax_return: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M7 8h4M7 11h6"/><path d="M13.5 6.5 15.5 8l-2 1.5"/></svg>`,
+  married: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="12" r="3.6"/><circle cx="12" cy="12" r="3.6"/><path d="M6.5 6.2 8 8.4M13.5 6.2 12 8.4" stroke-linecap="round"/></svg>`,
+  festival: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.6 4.6l2 2M13.4 13.4l2 2M15.4 4.6l-2 2M6.6 13.4l-2 2"/><circle cx="10" cy="10" r="2.2"/></svg>`,
+  ed_raid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2.5 4 5v5c0 3.5 2.6 6 6 7.5 3.4-1.5 6-4 6-7.5V5Z"/><path d="M8 10l1.5 1.5L13 8" stroke-linecap="round"/></svg>`,
+  jnv_revisit: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 3 6.5 10 10l7-3.5Z"/><path d="M6 8.5V13c0 1 2 2 4 2s4-1 4-2V8.5"/></svg>`,
 }
 
 const VB_CSS = `
@@ -894,7 +908,7 @@ const VB_CSS = `
 .vb-you-name{font-weight:600;font-size:.9rem;color:var(--cream);}
 .vb-you-cash{font-weight:700;font-size:.9rem;color:var(--gold);font-variant-numeric:tabular-nums;padding-left:4px;}
 .vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
-.vb-stage{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:stretch;}
+.vb-stage{display:grid;grid-template-columns:1fr clamp(400px,36vw,560px);gap:16px;align-items:stretch;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
 .vb-board{aspect-ratio:13/9;width:min(100%,calc((100dvh - 72px) * 1.444));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto 0 0;}
 .vb-grid{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(9,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}

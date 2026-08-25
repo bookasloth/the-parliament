@@ -7,14 +7,15 @@ import { nextRng } from "@/modules/vyapaar/engine/rng";
 import { CITIES, COMPANIES } from "@/modules/vyapaar/engine/data";
 
 function total(s: GameState): number {
-  return s.players.reduce((n, p) => n + p.cash, 0) + s.pot;
+  return s.players.reduce((n, p) => n + p.cash, 0);
 }
 
-// Events that move money in/out of the "cash + pot" universe (mint or burn).
+// Events whose step may mint or burn cash (bank in/out) — everything else must
+// conserve total cash. `event` covers the Indian-business cells (tax_return mints,
+// ed_raid burns; married/festival/jnv are player→player and merely tolerated here).
 const MINT_BURN = new Set([
   "salary",
-  "card",
-  "draw",
+  "event",
   "mandi",
   "develop",
   "mortgage",
@@ -22,8 +23,6 @@ const MINT_BURN = new Set([
   "buy",
   "buy_company",
   "auction_won",
-  "free_upgrade",
-  "downgrade",
   "forced_sale",
   "forced_mortgage",
 ]);

@@ -11,12 +11,14 @@ describe("vyapaar board", () => {
     expect(BOARD[32].kind).toBe("taxraid");
   });
 
-  it("places companies (3 pairs), gst, income, and card tiles", () => {
+  it("places companies (3 pairs) and the five Indian-business event tiles", () => {
     for (const p of [3, 9, 15, 21, 27, 33]) expect(BOARD[p].kind).toBe("company");
-    expect(BOARD[17].kind).toBe("gst");
-    expect(BOARD[37].kind).toBe("income");
-    for (const p of [6]) expect(BOARD[p].kind).toBe("upi");
-    for (const p of [24, 30]) expect(BOARD[p].kind).toBe("headline");
+    for (const p of [6, 17, 24, 30, 37]) expect(BOARD[p].kind).toBe("event");
+    expect(BOARD[6].eventId).toBe("tax_return");
+    expect(BOARD[17].eventId).toBe("festival");
+    expect(BOARD[24].eventId).toBe("married");
+    expect(BOARD[30].eventId).toBe("ed_raid");
+    expect(BOARD[37].eventId).toBe("jnv_revisit");
   });
 
   it("fills the remaining 25 tiles with cities alphabetically by position", () => {

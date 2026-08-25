@@ -88,18 +88,14 @@ export const UNDERDOG_RATIO = 0.6; // underdog if your net worth < this × the l
 export const SCRAPPY_MULT = 1.25; // rent ×this when the owner holds few cities
 export const SCRAPPY_MAX_CITIES = 3; // "few" = this many or fewer
 export const ZONE_DOUBLE = 2; // undeveloped base rent ×this when the owner controls the zone
-export const STARTUP_LAPS = 3; // laps the 'startup' card reduces salary for
-export const STARTUP_PENALTY = 300; // salary reduction per lap while startupLaps > 0
 // Comeback "Restructure": a one-time emergency advance for the underdog, repaid by a
-// reduced salary over the next RESTRUCTURE_LAPS laps (reuses the startup machinery).
+// reduced salary over the next RESTRUCTURE_LAPS laps (drives the startupLaps/startupPenalty
+// fields on PlayerState + the salary reduction in passStartSalary).
 // ADVANCE = LAPS × PENALTY so it's self-repaying (net-neutral if you complete the laps).
 export const RESTRUCTURE_ADVANCE = 3600; // ≈ one cheap property / 3× base salary
 export const RESTRUCTURE_LAPS = 3;
 export const RESTRUCTURE_PENALTY = 1200; // per-lap salary cut (3 × 1200 = 3600 repaid)
 export const JAIL_TURNS = 2; // turns halted by Tax Raid / three doubles
-export const TAX_INCOME = 1200;
-export const GST_RATE = 0.1;
-export const GST_CAP = 3000;
 export const SET_BONUS_NW = 1500;
 export const MAX_ROUNDS = 40;
 export const SETS_TO_END = 3;
@@ -115,48 +111,28 @@ export const START_POS = 0;
 export const MONSOON_POS = 12; // bottom-left corner; also the "jail" tile Tax Raid sends to
 export const MANDI_POS = 20; // top-left corner
 export const TAXRAID_POS = 32; // top-right corner
-export const GST_POS = 17;
-export const INCOME_POS = 37;
-export const UPI_POS = [6];
-export const HEADLINE_POS = [24, 30];
+export const MANDI_BONUS = 3500; // bank pays this on landing Mandi (replaces the removed pot)
 
-export type CardOp =
-  | "cash"
-  | "cashAll"
-  | "collectEach"
-  | "feePerCity"
-  | "feeToPot"
-  | "freeUpgrade"
-  | "skipNext"
-  | "downgradeRival"
-  | "startup"
-  | "perHeritage"
-  | "perSet";
-
-export interface Card {
-  id: string;
-  op: CardOp;
-  val?: number;
+// The five inside special cells are fixed Indian-business "events" — each does one clear,
+// deterministic thing on landing (no card decks, no pot). See the indian-events design spec.
+export type EventId = "tax_return" | "married" | "festival" | "ed_raid" | "jnv_revisit";
+// cash: bank pays the active player. collectEach: every other player pays the active player.
+// payEach: active player pays every other player. payEachSplit: active player pays `val` total,
+// split equally among the others. feeToBank: active player pays the bank (money leaves the game).
+export type EventOp = "cash" | "collectEach" | "payEach" | "payEachSplit" | "feeToBank";
+export interface EventDef {
+  id: EventId;
+  op: EventOp;
+  val: number;
 }
-
-export const HEADLINE: Card[] = [
-  { id: "diwali", op: "cashAll", val: 900 },
-  { id: "fuel", op: "feePerCity", val: 150 },
-  { id: "bollywood", op: "collectEach", val: 300 },
-  { id: "boom", op: "freeUpgrade" },
-  { id: "audit", op: "feeToPot", val: 600 },
-  { id: "windfall", op: "cash", val: 600 },
-  { id: "jam", op: "skipNext" },
-  { id: "demolition", op: "downgradeRival" },
-];
-
-export const UPI: Card[] = [
-  { id: "cashback", op: "cash", val: 750 },
-  { id: "startup", op: "startup", val: 1800 }, // +1800 now, salary -300 for 3 laps
-  { id: "tourism", op: "perHeritage", val: 450 },
-  { id: "refund", op: "cash", val: 600 },
-  { id: "bankerror", op: "cash", val: 1200 },
-  { id: "festival", op: "cashAll", val: 600 },
-  { id: "bond", op: "cash", val: 900 },
-  { id: "wedding", op: "perSet", val: 300 },
-];
+export const EVENTS: Record<EventId, EventDef> = {
+  tax_return: { id: "tax_return", op: "cash", val: 1000 },
+  married: { id: "married", op: "collectEach", val: 500 },
+  festival: { id: "festival", op: "payEach", val: 500 },
+  ed_raid: { id: "ed_raid", op: "feeToBank", val: 1000 },
+  jnv_revisit: { id: "jnv_revisit", op: "payEachSplit", val: 6000 },
+};
+// Fixed cell → event assignment (positions unchanged; give/take alternate around the ring).
+export const EVENT_TILES: Record<number, EventId> = {
+  6: "tax_return", 17: "festival", 24: "married", 30: "ed_raid", 37: "jnv_revisit",
+};
