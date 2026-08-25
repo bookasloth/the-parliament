@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
-import { HEADLINE, UPI } from "@/modules/vyapaar/engine/data";
 
 describe("createGame", () => {
   it("rejects <2 or >6 players", () => {
@@ -16,15 +15,6 @@ describe("createGame", () => {
     expect(g.companies).toEqual([null, null, null, null, null, null]);
     expect(g.active).toBe(0);
     expect(g.phase).toBe("roll");
-  });
-
-  it("seeds full decks deterministically from the seed", () => {
-    const a = createGame(777, ["a", "b"]);
-    const b = createGame(777, ["a", "b"]);
-    expect(a.headlineDeck).toEqual(b.headlineDeck);
-    expect(a.upiDeck).toEqual(b.upiDeck);
-    expect([...a.headlineDeck].sort()).toEqual(HEADLINE.map((_, i) => i));
-    expect([...a.upiDeck].sort()).toEqual(UPI.map((_, i) => i));
   });
 
   it("assigns per-player opening cash from an array", () => {

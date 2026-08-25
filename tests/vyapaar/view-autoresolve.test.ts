@@ -18,7 +18,6 @@ describe("publicView", () => {
     expect(v.seed).toBeUndefined();
     expect(v.headlineDeck).toBeUndefined();
     expect(v.upiDeck).toBeUndefined();
-    expect(typeof v.headlineLeft).toBe("number");
   });
 
   it("shows a pending trade only to the two parties", () => {

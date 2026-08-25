@@ -5,11 +5,9 @@ import {
   MONSOON_POS,
   MANDI_POS,
   TAXRAID_POS,
-  GST_POS,
-  INCOME_POS,
-  UPI_POS,
-  HEADLINE_POS,
+  EVENT_TILES,
 } from "./data";
+import type { EventId } from "./data";
 
 export type TileKind =
   | "start"
@@ -17,10 +15,7 @@ export type TileKind =
   | "mandi"
   | "taxraid"
   | "company"
-  | "gst"
-  | "income"
-  | "upi"
-  | "headline"
+  | "event"
   | "city";
 
 export interface Tile {
@@ -28,6 +23,7 @@ export interface Tile {
   kind: TileKind;
   cityId?: number;
   companyIndex?: number;
+  eventId?: EventId;
 }
 
 function buildBoard(): { board: Tile[]; cityPos: number[] } {
@@ -37,10 +33,7 @@ function buildBoard(): { board: Tile[]; cityPos: number[] } {
   specials.set(MONSOON_POS, "monsoon");
   specials.set(MANDI_POS, "mandi");
   specials.set(TAXRAID_POS, "taxraid");
-  specials.set(GST_POS, "gst");
-  specials.set(INCOME_POS, "income");
-  UPI_POS.forEach((p) => specials.set(p, "upi"));
-  HEADLINE_POS.forEach((p) => specials.set(p, "headline"));
+  const eventAt = new Map<number, EventId>(Object.entries(EVENT_TILES).map(([p, id]) => [Number(p), id]));
   const companyAt = new Map<number, number>();
   COMPANY_POS.forEach((p, i) => companyAt.set(p, i));
 
@@ -52,6 +45,8 @@ function buildBoard(): { board: Tile[]; cityPos: number[] } {
     const kind = specials.get(pos);
     if (companyAt.has(pos)) {
       board[pos] = { pos, kind: "company", companyIndex: companyAt.get(pos) };
+    } else if (eventAt.has(pos)) {
+      board[pos] = { pos, kind: "event", eventId: eventAt.get(pos) };
     } else if (kind) {
       board[pos] = { pos, kind };
     } else {

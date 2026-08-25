@@ -85,7 +85,9 @@ function ringPath(from: number, to: number): number[] {
 
 const SPECIAL_LABEL: Record<string, string> = {
   start: "START", monsoon: "MONSOON", mandi: "MANDI", taxraid: "TAX RAID",
-  gst: "GST", income: "INCOME", upi: "UPI", headline: "NEWS",
+}
+const EVENT_LABEL: Record<string, string> = {
+  tax_return: "TAX RETURN", married: "GOT MARRIED", festival: "FESTIVAL", ed_raid: "ED RAID", jnv_revisit: "JNV REVISIT",
 }
 
 // minimal inline icons
@@ -111,9 +113,16 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "rent_void": return `rent to ${nm(e.to)} was voided`
     case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
     case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
-    case "mandi": return `${nm(e.seat)} scooped the ${rup(e.amount)} pot`
-    case "gst": return `${nm(e.seat)} paid ${rup(e.amount)} GST`
-    case "income": return `${nm(e.seat)} paid ${rup(e.amount)} income tax`
+    case "mandi": return `${nm(e.seat)} got ${rup(e.amount)} to spend at the mandi`
+    case "event":
+      switch (e.event) {
+        case "tax_return": return `${nm(e.seat)} got a ₹1,000 tax return`
+        case "married": return `${nm(e.seat)} collected ₹500 from everyone (wedding)`
+        case "festival": return `${nm(e.seat)} paid ₹500 to everyone (festival)`
+        case "ed_raid": return `${nm(e.seat)} was ED-raided for ₹1,000`
+        case "jnv_revisit": return `${nm(e.seat)} paid ₹6,000 hosting the JNV revisit`
+        default: return null
+      }
     case "auction_won": return `${nm(e.seat)} won an auction for ${rup(e.amount)}`
     case "develop": return `${nm(e.seat)} built on ${city(e.cityId)}`
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
@@ -142,6 +151,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
   const [showReport, setShowReport] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [eventFx, setEventFx] = useState<{ id: string; pos: number; seat: number; round: number; key: number } | null>(null)
+  const reduce = useReducedMotion()
   const you = view.you
   // Timestamp of our last successful own action. The server broadcasts a "state"
   // nudge to everyone including us, but our POST already returned the fresh view —
@@ -206,6 +217,30 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       autoOpenedRef.current = null
     }
   }, [autoTarget])
+
+  // Fire a landing effect when a fresh type:"event" appears at the log tail. Signature
+  // (seat:event:round) dedupes reslices/refetches; the first sighting on mount only
+  // records, so a pre-existing event never replays when you open the board.
+  const lastEvSigRef = useRef<string | null>(null)
+  const fxKeyRef = useRef(0)
+  useEffect(() => {
+    let ev: Record<string, unknown> | null = null
+    for (let i = view.log.length - 1; i >= 0; i--) { const e = view.log[i] as Record<string, unknown>; if (e.type === "event") { ev = e; break } }
+    const seat = ev ? (ev.seat as number) : null
+    const sig = ev ? `${seat}:${String(ev.event)}:${view.round}` : null
+    if (sig && sig !== lastEvSigRef.current) {
+      const first = lastEvSigRef.current === null
+      lastEvSigRef.current = sig
+      if (!first && seat !== null) {
+        setEventFx({ id: String(ev!.event), pos: view.players[seat]?.pos ?? 0, seat, round: view.round, key: ++fxKeyRef.current })
+      }
+    }
+  }, [view])
+  useEffect(() => {
+    if (!eventFx) return
+    const t = setTimeout(() => setEventFx(null), 5200)
+    return () => clearTimeout(t)
+  }, [eventFx])
 
   const send = useCallback(async (intent: Intent, closeDeed = false, action?: string) => {
     setErr(null); setBusy(true)
@@ -327,10 +362,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                   )
                 }
                 const corner = ["start", "monsoon", "mandi", "taxraid"].includes(t.kind)
+                const evId = t.kind === "event" ? (t.eventId as string) : null
                 return (
                   <div key={t.pos} className={`vb-tile ${corner ? "vb-corner vb-" + t.kind : "vb-special"}`} style={style}>
-                    <span className="vb-sic" dangerouslySetInnerHTML={{ __html: SPECIAL_ICON[t.kind] ?? "" }} />
-                    <span className="vb-slb">{SPECIAL_LABEL[t.kind]}</span>
+                    <span className="vb-sic" dangerouslySetInnerHTML={{ __html: (evId ? EVENT_ICON[evId] : SPECIAL_ICON[t.kind]) ?? "" }} />
+                    <span className="vb-slb">{evId ? EVENT_LABEL[evId] : SPECIAL_LABEL[t.kind]}</span>
                   </div>
                 )
               })}
@@ -345,6 +381,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
               </div>
 
               <TokenLayer players={view.players} tokens={playerTokens} />
+              {eventFx && <EventFX key={eventFx.key} fx={eventFx} reduce={!!reduce} />}
             </div>
           </div>
         </div>
@@ -636,6 +673,54 @@ function Token({ seat, pos, url }: { seat: number; pos: number; url: string | nu
   )
 }
 
+// 10 festivals (5 Hindu / 2 Muslim / 1 Christian / 1 Sikh / 1 Navodaya) — the Festival
+// cell picks one deterministically by seat+round. Single tinted-sparkle effect per the
+// simplification note (not 10 fully-bespoke effects yet).
+const FESTIVALS = [
+  { name: "Diwali", color: "#FFB300" }, { name: "Holi", color: "#E91E63" },
+  { name: "Navratri", color: "#D32F2F" }, { name: "Ganesh Chaturthi", color: "#FF6D00" },
+  { name: "Raksha Bandhan", color: "#8E24AA" }, { name: "Eid ul-Fitr", color: "#2E7D32" },
+  { name: "Eid ul-Adha", color: "#00897B" }, { name: "Christmas", color: "#C62828" },
+  { name: "Gurpurab", color: "#1565C0" }, { name: "Navodaya Day", color: "#009ae4" },
+]
+const CONFETTI_COLORS = ["#FE5100", "#4AB765", "#269CEF", "#FF4D93", "#FFCC1C", "#8b6fd0"]
+
+// Bespoke landing effect over the acting player's cell. Decoration only — deterministic
+// (index/seat/round-derived, no Math.random), auto-unmounts, honours reduced motion.
+function EventFX({ fx, reduce }: { fx: { id: string; pos: number; seat: number; round: number }; reduce: boolean }) {
+  const [col, row] = cellPos(fx.pos)
+  const cw = 100 / 13, ch = 100 / 9
+  const box = { left: `${(col - 1) * cw}%`, top: `${(row - 1) * ch}%`, width: `${cw}%`, height: `${ch}%` } as const
+  const a = tokenAnchor(fx.pos)
+  const burst = { left: `${a.x}%`, top: `${a.y}%` } as const
+
+  if (fx.id === "tax_return") return <div className={`vb-fx fx-tax${reduce ? " still" : ""}`} style={box}><span className="fx-rupee">₹</span></div>
+  if (fx.id === "ed_raid") return <div className={`vb-fx fx-raid${reduce ? " still" : ""}`} style={box} />
+  if (fx.id === "jnv_revisit") return <div className={`vb-fx fx-home${reduce ? " still" : ""}`} style={box}><span className="fx-home-txt">Happy Homecoming!</span></div>
+  if (fx.id === "married") {
+    return (
+      <div className="vb-fx fx-point" style={burst}>
+        {Array.from({ length: reduce ? 6 : 16 }, (_, i) => {
+          const ang = (i / 16) * Math.PI * 2, dist = 58 + (i % 4) * 16
+          const dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist) - 18
+          return <i key={i} className={`fx-conf${reduce ? " still" : ""}`} style={{ background: CONFETTI_COLORS[i % 6], ["--dx" as string]: `${dx}px`, ["--dy" as string]: `${dy}px`, animationDelay: `${(i % 5) * 40}ms` }} />
+        })}
+      </div>
+    )
+  }
+  const fest = FESTIVALS[(fx.seat * 7 + fx.round * 13) % FESTIVALS.length]
+  return (
+    <div className="vb-fx fx-fest" style={box}>
+      <span className="fx-fest-name" style={{ background: fest.color }}>{fest.name}</span>
+      {!reduce && Array.from({ length: 10 }, (_, i) => {
+        const ang = (i / 10) * Math.PI * 2
+        const dx = Math.round(Math.cos(ang) * 42), dy = Math.round(Math.sin(ang) * 42)
+        return <i key={i} className="fx-spark" style={{ background: fest.color, ["--dx" as string]: `${dx}px`, ["--dy" as string]: `${dy}px`, animationDelay: `${i * 40}ms` }} />
+      })}
+    </div>
+  )
+}
+
 function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
   pos: number; view: PublicView; you: number; busy: boolean; canManage: boolean; myTurn: boolean
   onClose: () => void; onAction: (i: Intent, close?: boolean) => void
@@ -873,10 +958,14 @@ const SPECIAL_ICON: Record<string, string> = {
   monsoon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 10a3 3 0 0 1 .3-6 4 4 0 0 1 7.5 1.2A2.7 2.7 0 0 1 14 10Z"/><path d="M7 13l-1 3M11 13l-1 3M14 13l-1 2"/></svg>`,
   mandi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="10" cy="5.5" rx="6" ry="2.5"/><path d="M4 5.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4M4 9.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4"/></svg>`,
   taxraid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 2 16h16Z"/><path d="M10 8v4"/><circle cx="10" cy="14.2" r=".4" fill="currentColor"/></svg>`,
-  gst: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>`,
-  income: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.5L10 17l-2.5-1.5L5 17Z"/><path d="M8 7h4M8 10h4"/></svg>`,
-  upi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="3" width="8" height="14" rx="1.5"/><path d="M9 14.5h2"/></svg>`,
-  headline: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="12" rx="1"/><path d="M6 7h5M6 10h5M6 13h3M13 7v6"/></svg>`,
+}
+// Icons for the five Indian-business event tiles, keyed by EventId.
+const EVENT_ICON: Record<string, string> = {
+  tax_return: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M7 8h4M7 11h6"/><path d="M13.5 6.5 15.5 8l-2 1.5"/></svg>`,
+  married: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="12" r="3.6"/><circle cx="12" cy="12" r="3.6"/><path d="M6.5 6.2 8 8.4M13.5 6.2 12 8.4" stroke-linecap="round"/></svg>`,
+  festival: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.6 4.6l2 2M13.4 13.4l2 2M15.4 4.6l-2 2M6.6 13.4l-2 2"/><circle cx="10" cy="10" r="2.2"/></svg>`,
+  ed_raid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2.5 4 5v5c0 3.5 2.6 6 6 7.5 3.4-1.5 6-4 6-7.5V5Z"/><path d="M8 10l1.5 1.5L13 8" stroke-linecap="round"/></svg>`,
+  jnv_revisit: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 3 6.5 10 10l7-3.5Z"/><path d="M6 8.5V13c0 1 2 2 4 2s4-1 4-2V8.5"/></svg>`,
 }
 
 const VB_CSS = `
@@ -894,7 +983,7 @@ const VB_CSS = `
 .vb-you-name{font-weight:600;font-size:.9rem;color:var(--cream);}
 .vb-you-cash{font-weight:700;font-size:.9rem;color:var(--gold);font-variant-numeric:tabular-nums;padding-left:4px;}
 .vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
-.vb-stage{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:stretch;}
+.vb-stage{display:grid;grid-template-columns:1fr clamp(400px,36vw,560px);gap:16px;align-items:stretch;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
 .vb-board{aspect-ratio:13/9;width:min(100%,calc((100dvh - 72px) * 1.444));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto 0 0;}
 .vb-grid{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(13,1fr);grid-template-rows:repeat(9,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
@@ -1075,4 +1164,21 @@ const VB_CSS = `
 .vb-auction-strip.vb-grey{background:var(--grey);color:#fff;}
 .vb-auction-meta{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;font-size:.72rem;color:var(--dim);}
 .vb-auction-wait{margin:0;font-size:.76rem;color:var(--dim);}
+.vb-fx{position:absolute;pointer-events:none;z-index:12;display:flex;align-items:center;justify-content:center;overflow:visible;}
+.fx-tax{background:radial-gradient(circle,#FFE082,#FFC107);border-radius:2px;color:#5a3d00;animation:fx-hold 3s ease forwards;box-shadow:0 0 10px 2px rgba(255,193,7,.7);}
+.fx-rupee{font-weight:800;font-size:1.1em;}
+.fx-raid{border-radius:2px;animation:fx-hold 4s ease forwards,fx-raidsweep .8s linear infinite;}
+.fx-home{background:#0b0b0b;border-radius:2px;animation:fx-hold 5s ease forwards;}
+.fx-home-txt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;font-weight:800;font-size:9px;animation:fx-rgby 1.1s linear infinite;}
+.fx-fest{border-radius:2px;}
+.fx-fest-name{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;color:#fff;font-weight:800;font-size:8px;padding:2px 6px;border-radius:2px;animation:fx-hold 3s ease forwards;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.fx-point{width:0;height:0;}
+.fx-conf{position:absolute;left:0;top:0;width:6px;height:9px;border-radius:1px;transform:translate(0,0);animation:fx-confetti 1.6s ease-out forwards;}
+.fx-spark{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;animation:fx-spark 1.1s ease-out forwards;}
+.fx-tax.still,.fx-raid.still,.fx-home.still,.fx-conf.still{animation:none;opacity:1;}
+@keyframes fx-hold{0%{opacity:0;}12%{opacity:1;}82%{opacity:1;}100%{opacity:0;}}
+@keyframes fx-raidsweep{0%,100%{box-shadow:inset 0 0 0 2px #E53935,0 0 8px 1px rgba(229,57,53,.8);}50%{box-shadow:inset 0 0 0 2px #1E88E5,0 0 8px 1px rgba(30,136,229,.8);}}
+@keyframes fx-rgby{0%{color:#E53935;}25%{color:#43A047;}50%{color:#1E88E5;}75%{color:#FDD835;}100%{color:#E53935;}}
+@keyframes fx-confetti{0%{transform:translate(0,0) scale(.2) rotate(0);opacity:0;}15%{opacity:1;transform:translate(calc(var(--dx)*.45),calc(var(--dy)*.45)) scale(1) rotate(80deg);}100%{transform:translate(var(--dx),calc(var(--dy) + 90px)) scale(1) rotate(300deg);opacity:0;}}
+@keyframes fx-spark{0%{transform:translate(-50%,-50%) scale(0);opacity:1;}70%{opacity:1;}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0;}}
 `

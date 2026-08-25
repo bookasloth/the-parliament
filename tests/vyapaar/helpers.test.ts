@@ -60,11 +60,10 @@ describe("helpers", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].cash = 100;
     own(s, 0, [24]); // Jabalpur price 3500 → mortgage raises floor(3500/2)=1750
-    const paid = charge(s, 0, 5000, "pot"); // owes 5000, can raise 100+1750=1850
+    const paid = charge(s, 0, 5000, "bank"); // owes 5000, can raise 100+1750=1850; rest forgiven
     expect(paid).toBe(1850);
     expect(s.players[0].cash).toBe(0);
     expect(s.cities[24].mortgaged).toBe(true);
-    expect(s.pot).toBe(1850);
   });
 
   it("liquidate sells the tallest upgrades before mortgaging", () => {

@@ -1,9 +1,7 @@
 import {
   SALARY,
   SALARY_UNDERDOG,
-  GST_RATE,
-  GST_CAP,
-  TAX_INCOME,
+  MANDI_BONUS,
   CITIES,
   COMPANIES,
   MAX_LEVEL,
@@ -35,7 +33,7 @@ import {
   scoreOf,
   cityLiquidationValue,
 } from "./helpers";
-import { drawCard } from "./cards";
+import { applyEvent } from "./cards";
 
 type Result = { state: GameState; events: EngineEvent[] } | { error: string };
 
@@ -201,9 +199,8 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       finishSegment(s, events);
       break;
     case "mandi":
-      credit(s, seat, s.pot);
-      events.push({ type: "mandi", seat, amount: s.pot });
-      s.pot = 0;
+      credit(s, seat, MANDI_BONUS);
+      events.push({ type: "mandi", seat, amount: MANDI_BONUS });
       finishSegment(s, events);
       break;
     case "taxraid":
@@ -214,27 +211,10 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       events.push({ type: "taxraid", seat });
       finishSegment(s, events);
       break;
-    case "gst": {
-      const amt = Math.min(GST_CAP, Math.round(s.players[seat].cash * GST_RATE));
-      charge(s, seat, amt, "pot", events);
-      events.push({ type: "gst", seat, amount: amt });
-      finishSegment(s, events);
-      break;
-    }
-    case "income":
-      charge(s, seat, TAX_INCOME, "pot", events);
-      events.push({ type: "income", seat, amount: TAX_INCOME });
-      finishSegment(s, events);
-      break;
-    case "upi": {
-      const { card, events: cardEvents } = drawCard(s, "upi");
-      events.push({ type: "draw", seat, deck: "upi", card: card.id }, ...cardEvents);
-      finishSegment(s, events);
-      break;
-    }
-    case "headline": {
-      const { card, events: cardEvents } = drawCard(s, "headline");
-      events.push({ type: "draw", seat, deck: "headline", card: card.id }, ...cardEvents);
+    case "event": {
+      const id = tile.eventId!;
+      const evs = applyEvent(s, id);
+      events.push({ type: "event", seat, event: id }, ...evs);
       finishSegment(s, events);
       break;
     }
