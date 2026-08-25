@@ -206,14 +206,14 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
   })
   let resolved = 0
   for (const { id } of due) {
-    const didResolve = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT id FROM "vyapaar_match" WHERE id = ${id}::uuid FOR UPDATE`
       const match = await tx.vyapaarMatch.findUnique({
         where: { id },
         select: { id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true, players: { select: { userId: true, seat: true, openingCash: true } } },
       })
       // Stale guard: a real move may have advanced the turn between the query and the lock.
-      if (!match || match.status !== "active" || !match.turnExpiresAt || match.turnExpiresAt > now) return false
+      if (!match || match.status !== "active" || !match.turnExpiresAt || match.turnExpiresAt > now) return null
       const state = match.state as unknown as GameState
       const startSeat = state.active
       const appended: { seat: number; intent: Intent }[] = []
@@ -224,12 +224,12 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
         applyIntent(state, step.seat, step.intent)
         appended.push(step)
       }
-      if (appended.length === 0) return false
+      if (appended.length === 0) return null
       await commitMatchState(tx, match, state, appended)
-      return true
-    })
-    if (didResolve) {
-      await broadcastToTopic(matchTopic(id), "state", {})
+      return { activeSeat: state.active, ended: state.ended }
+    }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
+    if (result) {
+      await broadcastToTopic(matchTopic(id), "state", { activeSeat: result.activeSeat, ended: result.ended })
       resolved++
     }
   }
