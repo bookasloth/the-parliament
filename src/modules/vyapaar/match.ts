@@ -6,6 +6,7 @@ import type { GameState, Intent } from "./engine/state"
 import { applyIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
+import { broadcastToTopic, matchTopic } from "@/lib/supabase-realtime"
 import crypto from "node:crypto"
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
@@ -108,7 +109,7 @@ export async function applyMatchIntent(
   matchId: string,
   intent: Intent,
 ): Promise<{ view: PublicView } | { error: string }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView } | { error: string }> => {
     // Serialize concurrent intents on this match (prevents lost-update + double-settle
     // when two calls — double-click, retry, or legal concurrent bid/trade-response from
     // a non-active seat — race the same snapshot).
@@ -147,4 +148,8 @@ export async function applyMatchIntent(
     }
     return { view: publicView(r.state, me.seat) }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
+  if ("view" in result) {
+    await broadcastToTopic(matchTopic(matchId), "state", { activeSeat: result.view.active, ended: result.view.ended })
+  }
+  return result
 }
