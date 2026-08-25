@@ -528,17 +528,16 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                     },
                     { icon: FileText, label: "Drafts", href: "/compose/drafts" },
                     { icon: Award, label: "Achievements", href: "/achievements" },
-                    { icon: Star, label: "Karma Points", href: "/karma" },
+                    { icon: Star, label: "Karma Points", href: currentUser.username ? `/${currentUser.username}/karma` : "/settings" },
                     { icon: ShoppingBag, label: "Shell Store", href: "/store" },
                     { icon: UserPlus, label: "Refer an Alumni", href: "/refer" },
-                    { icon: Zap, label: "Try NNAWCA Pro", href: "https://www.nnawca.org/pro", external: true },
+                    { icon: Zap, label: "Try NNAWCA Pro", href: "/membership" },
                     { icon: Settings, label: "Settings & Privacy", href: "/settings" },
                     { icon: HelpCircle, label: "Help and Support", href: "/help" },
                   ].map(item => (
                     <li key={item.label}>
                       <a
                         href={item.href}
-                        {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                       >
                         <item.icon className="h-4 w-4 text-gray-400 flex-shrink-0" />
