@@ -29,7 +29,7 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
         </div>
         <div className="flex items-center gap-3">
           {isHost && room.status === "open" && room.members.length >= 2 && <StartGameButton roomId={room.id} />}
-          {room.status === "in_game" && matchId && (
+          {isMember && room.status === "in_game" && matchId && (
             <Link href={`/games/vyapaar/matches/${matchId}`} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
               Enter game
             </Link>

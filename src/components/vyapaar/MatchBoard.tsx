@@ -23,15 +23,28 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
   useEffect(() => {
     let channel: ReturnType<ReturnType<typeof getSupabaseBrowser>["channel"]> | null = null
     let cancelled = false
-    ;(async () => {
+    let refreshTimer: ReturnType<typeof setTimeout>
+    const sb = getSupabaseBrowser()
+
+    // Mirrors ConversationView's connect(): self-reschedules via setTimeout to
+    // re-mint + re-apply the realtime auth token every 55min (token TTL is 1h),
+    // without re-subscribing the channel (guarded by the `channel` closure var).
+    async function connect() {
       const auth = await realtimeTokenAction()
       if (!auth || cancelled) return
-      const sb = getSupabaseBrowser()
       await sb.realtime.setAuth(auth.token)
+      refreshTimer = setTimeout(connect, 55 * 60 * 1000)
+      if (channel) return
       channel = sb.channel(MATCH_TOPIC(matchId), { config: { private: true } })
       channel.on("broadcast", { event: "state" }, () => { void refetch() }).subscribe()
-    })()
-    return () => { cancelled = true; if (channel) void getSupabaseBrowser().removeChannel(channel) }
+    }
+
+    connect()
+    return () => {
+      cancelled = true
+      clearTimeout(refreshTimer)
+      if (channel) { void sb.removeChannel(channel); channel = null }
+    }
   }, [matchId, refetch])
 
   const send = useCallback(async (intent: Intent) => {
@@ -81,7 +94,7 @@ export function MatchBoard({ matchId, initialView }: { matchId: string; initialV
           <button disabled={busy} onClick={() => send({ type: "decline" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">Decline</button>
         </>}
         {view.phase === "auction" && view.auction && !view.auction.bidded[you] && <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />}
-        {canManage && <button disabled={busy} onClick={() => send({ type: "end_turn" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">End turn</button>}
+        {myTurn && view.phase === "manage" && <button disabled={busy} onClick={() => send({ type: "end_turn" })} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50">End turn</button>}
       </section>
 
       {canManage && myCities.length > 0 && (
