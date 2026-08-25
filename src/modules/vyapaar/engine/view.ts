@@ -24,6 +24,7 @@ export interface PublicView {
   upiLeft: number;
   ended: boolean;
   winner: number | null;
+  lastRoll: [number, number] | null;
   you: number;
 }
 
@@ -54,6 +55,7 @@ export function publicView(s: GameState, seat: number): PublicView {
     upiLeft: s.upiDeck.length,
     ended: s.ended,
     winner: s.winner,
+    lastRoll: s.lastRoll,
     you: seat,
   };
 }

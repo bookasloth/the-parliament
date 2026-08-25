@@ -236,6 +236,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
       const a = rollDie(s);
       const b = rollDie(s);
       const isDouble = a === b;
+      s.lastRoll = [a, b];
       events.push({ type: "roll", seat, a, b });
 
       let brokeOut = false;

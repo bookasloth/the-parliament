@@ -44,7 +44,7 @@ const buildIcons = (level: number) => {
   return hotelSVG.repeat(hotels) + houseSVG.repeat(houses)
 }
 
-export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [] }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[] }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [err, setErr] = useState<string | null>(null)
@@ -75,6 +75,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
     return () => { cancelled = true; clearTimeout(refreshTimer); if (channel) { void sb.removeChannel(channel); channel = null } }
   }, [matchId, refetch])
 
+  // Safety net: refetch periodically even without a realtime event, so a missed broadcast or a
+  // stalled auto-resolve can never freeze the board at "resolving…".
+  useEffect(() => {
+    const t = setInterval(() => { void refetch() }, 8000)
+    return () => clearInterval(t)
+  }, [refetch])
+
   const send = useCallback(async (intent: Intent, closeDeed = false) => {
     setErr(null); setBusy(true)
     try {
@@ -97,8 +104,12 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
 
       <header className="vb-top">
         <div className="vb-logo">व्यापार<b>.</b></div>
-        <div className="vb-meta">
-          Round {view.round} · pot <b>{inr(view.pot)}</b> · {view.ended ? `over — winner ${seatName(view.winner) ?? `seat ${view.winner}`}` : `${seatName(view.active)}'s turn`}
+        <div className="vb-meta">Round {view.round} · pot <b>{inr(view.pot)}</b>{view.ended ? ` · over — winner ${seatName(view.winner) ?? `seat ${view.winner}`}` : ""}</div>
+        <div className="vb-you">
+          {playerImages[you]
+            ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
+            : <span className="vb-you-init" style={{ background: SEAT_COL[you % 6], color: you % 6 === 1 ? "#0F1111" : "#fff" }}>{(view.players[you]?.name ?? "?").charAt(0).toUpperCase()}</span>}
+          <span className="vb-you-name">{(view.players[you]?.name ?? "").split(" ")[0]}</span>
         </div>
       </header>
 
@@ -108,10 +119,10 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
             <div className="vb-grid">
               {BOARD.map((t) => {
                 const [c, r] = cellPos(t.pos)
-                const tokens = view.players
-                  .map((p, seat) => ({ p, seat }))
-                  .filter((x) => x.p.pos === t.pos)
-                  .map((x) => <span key={x.seat} className="vb-tok" style={{ background: SEAT_COL[x.seat % 6] }} />)
+                // only the current player's own token is shown on the board
+                const tokens = view.players[you]?.pos === t.pos
+                  ? <span className="vb-tok" style={{ background: SEAT_COL[you % 6] }} />
+                  : null
                 const style = { gridColumn: c, gridRow: r }
 
                 if (t.kind === "city") {
@@ -157,7 +168,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
 
               <div className="vb-hub">
                 <div className="vb-hub-name">व्यापार</div>
-                <div className="vb-dice"><span className="vb-die" /><span className="vb-die" /></div>
+                <Dice roll={view.lastRoll} />
                 <button
                   className="vb-roll"
                   disabled={busy || !myTurn || view.phase !== "roll"}
@@ -179,7 +190,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt }: { mat
           <div className="vb-players">
             {view.players.map((p, seat) => (
               <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
-                <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>
+                {playerImages[seat]
+                  ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
+                  : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
                 <span className="vb-plst">
                   <span className="vb-cash">{inr(p.cash)}</span>
@@ -246,6 +259,26 @@ function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: bool
   if (!expiresAt || ended || now === null) return null
   const secs = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000))
   return <span className={`vb-count ${secs <= 5 ? "low" : ""}`}>{secs > 0 ? `0:${String(secs).padStart(2, "0")}` : "resolving…"}</span>
+}
+
+const DIE_FACES: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
+function Die({ n }: { n: number | null }) {
+  return (
+    <span className="vb-die">
+      {Array.from({ length: 9 }, (_, i) => (
+        <i key={i} className="vb-pip" style={{ opacity: n && DIE_FACES[n].includes(i) ? 1 : 0 }} />
+      ))}
+    </span>
+  )
+}
+function Dice({ roll }: { roll: [number, number] | null }) {
+  // keyed by the roll value → a new roll remounts the dice and replays the tumble animation
+  return (
+    <div className="vb-dice" key={roll ? `${roll[0]}-${roll[1]}` : "none"}>
+      <Die n={roll ? roll[0] : null} />
+      <Die n={roll ? roll[1] : null} />
+    </div>
+  )
 }
 
 function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
@@ -393,9 +426,13 @@ const VB_CSS = `
 .vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); }
 .vb *{box-sizing:border-box;}
 .vb svg{display:block;width:100%;height:100%;}
-.vb-top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:14px;flex-wrap:wrap;}
+.vb-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:14px;flex-wrap:wrap;}
 .vb-logo{font-weight:800;font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-.02em;color:#fff;}.vb-logo b{color:var(--accent);}
-.vb-meta{font-size:.86rem;color:var(--dim);font-weight:500;}.vb-meta b{color:var(--yellow);}
+.vb-meta{font-size:.86rem;color:var(--dim);font-weight:500;margin-right:auto;margin-left:14px;}.vb-meta b{color:var(--yellow);}
+.vb-you{display:flex;align-items:center;gap:8px;}
+.vb-you-img{width:30px;height:30px;border-radius:2px;object-fit:cover;}
+.vb-you-init{width:30px;height:30px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.85rem;}
+.vb-you-name{font-weight:600;font-size:.9rem;color:var(--cream);}
 .vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
 .vb-board{aspect-ratio:5/4;width:100%;background:var(--panel-2);border-radius:2px;padding:8px;}
@@ -426,8 +463,11 @@ const VB_CSS = `
 .vb-tok:nth-of-type(2){left:28%;}.vb-tok:nth-of-type(3){left:54%;}.vb-tok:nth-of-type(4){left:auto;right:2px;}
 .vb-hub{grid-column:2/11;grid-row:2/11;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
-.vb-dice{display:flex;gap:8px;}
-.vb-die{width:clamp(26px,4.2vw,42px);aspect-ratio:1;background:#fff;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+.vb-dice{display:flex;gap:10px;}
+.vb-die{width:clamp(30px,4.6vw,48px);aspect-ratio:1;background:#fff;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 2px 5px rgba(0,0,0,.35);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:15%;gap:6%;animation:vb-tumble .42s ease-out;}
+.vb-pip{align-self:center;justify-self:center;width:82%;aspect-ratio:1;border-radius:50%;background:#0F1111;}
+@keyframes vb-tumble{0%{transform:rotate(-20deg) scale(.65);}55%{transform:rotate(14deg) scale(1.1);}100%{transform:rotate(0) scale(1);}}
+@media (prefers-reduced-motion: reduce){.vb-die{animation:none;}}
 .vb-roll{font-family:"Poppins";font-weight:700;font-size:clamp(.72rem,1.3vw,.9rem);border:none;cursor:pointer;color:#fff;background:var(--accent);padding:.5rem 1.6rem;border-radius:2px;}
 .vb-roll:disabled{opacity:.4;cursor:not-allowed;}
 .vb-rail{display:flex;flex-direction:column;gap:12px;min-width:0;}
@@ -438,6 +478,7 @@ const VB_CSS = `
 .vb-pl{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:8px 11px;}
 .vb-pl.active{border-color:var(--accent);}
 .vb-av{width:28px;height:28px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none;}
+.vb-av-img{object-fit:cover;}
 .vb-plnm{font-weight:600;font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vb-plst{margin-left:auto;text-align:right;}.vb-cash{font-weight:700;font-size:.82rem;color:var(--yellow);display:block;}.vb-sub{font-size:.62rem;color:var(--dim);}
 .vb-err{background:#3a1f1a;color:#FF8f7f;border:1px solid #5a2f28;border-radius:2px;padding:8px 11px;font-size:.8rem;margin:0;}

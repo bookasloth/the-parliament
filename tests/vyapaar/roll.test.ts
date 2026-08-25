@@ -11,6 +11,15 @@ describe("roll intent", () => {
     expect("error" in r).toBe(true);
   });
 
+  it("records the dice faces in lastRoll", () => {
+    const s = createGame(1, ["a", "b"]);
+    expect(s.lastRoll).toBeNull();
+    applyIntent(s, 0, { type: "roll" });
+    expect(s.lastRoll).not.toBeNull();
+    const [a, b] = s.lastRoll!;
+    for (const d of [a, b]) { expect(d).toBeGreaterThanOrEqual(1); expect(d).toBeLessThanOrEqual(6); }
+  });
+
   it("moves the active player and leaves a valid phase", () => {
     const s = createGame(1, ["a", "b"]);
     const r = applyIntent(s, 0, { type: "roll" });
