@@ -151,6 +151,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
   const [showReport, setShowReport] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [eventFx, setEventFx] = useState<{ id: string; pos: number; seat: number; round: number; key: number } | null>(null)
+  const reduce = useReducedMotion()
   const you = view.you
   // Timestamp of our last successful own action. The server broadcasts a "state"
   // nudge to everyone including us, but our POST already returned the fresh view —
@@ -215,6 +217,30 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       autoOpenedRef.current = null
     }
   }, [autoTarget])
+
+  // Fire a landing effect when a fresh type:"event" appears at the log tail. Signature
+  // (seat:event:round) dedupes reslices/refetches; the first sighting on mount only
+  // records, so a pre-existing event never replays when you open the board.
+  const lastEvSigRef = useRef<string | null>(null)
+  const fxKeyRef = useRef(0)
+  useEffect(() => {
+    let ev: Record<string, unknown> | null = null
+    for (let i = view.log.length - 1; i >= 0; i--) { const e = view.log[i] as Record<string, unknown>; if (e.type === "event") { ev = e; break } }
+    const seat = ev ? (ev.seat as number) : null
+    const sig = ev ? `${seat}:${String(ev.event)}:${view.round}` : null
+    if (sig && sig !== lastEvSigRef.current) {
+      const first = lastEvSigRef.current === null
+      lastEvSigRef.current = sig
+      if (!first && seat !== null) {
+        setEventFx({ id: String(ev!.event), pos: view.players[seat]?.pos ?? 0, seat, round: view.round, key: ++fxKeyRef.current })
+      }
+    }
+  }, [view])
+  useEffect(() => {
+    if (!eventFx) return
+    const t = setTimeout(() => setEventFx(null), 5200)
+    return () => clearTimeout(t)
+  }, [eventFx])
 
   const send = useCallback(async (intent: Intent, closeDeed = false, action?: string) => {
     setErr(null); setBusy(true)
@@ -355,6 +381,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
               </div>
 
               <TokenLayer players={view.players} tokens={playerTokens} />
+              {eventFx && <EventFX key={eventFx.key} fx={eventFx} reduce={!!reduce} />}
             </div>
           </div>
         </div>
@@ -643,6 +670,54 @@ function Token({ seat, pos, url }: { seat: number; pos: number; url: string | nu
     >
       {url ? <img src={url} alt="" /> : <span style={{ background: SEAT_COL[seat % 6] }} />}
     </motion.div>
+  )
+}
+
+// 10 festivals (5 Hindu / 2 Muslim / 1 Christian / 1 Sikh / 1 Navodaya) — the Festival
+// cell picks one deterministically by seat+round. Single tinted-sparkle effect per the
+// simplification note (not 10 fully-bespoke effects yet).
+const FESTIVALS = [
+  { name: "Diwali", color: "#FFB300" }, { name: "Holi", color: "#E91E63" },
+  { name: "Navratri", color: "#D32F2F" }, { name: "Ganesh Chaturthi", color: "#FF6D00" },
+  { name: "Raksha Bandhan", color: "#8E24AA" }, { name: "Eid ul-Fitr", color: "#2E7D32" },
+  { name: "Eid ul-Adha", color: "#00897B" }, { name: "Christmas", color: "#C62828" },
+  { name: "Gurpurab", color: "#1565C0" }, { name: "Navodaya Day", color: "#009ae4" },
+]
+const CONFETTI_COLORS = ["#FE5100", "#4AB765", "#269CEF", "#FF4D93", "#FFCC1C", "#8b6fd0"]
+
+// Bespoke landing effect over the acting player's cell. Decoration only — deterministic
+// (index/seat/round-derived, no Math.random), auto-unmounts, honours reduced motion.
+function EventFX({ fx, reduce }: { fx: { id: string; pos: number; seat: number; round: number }; reduce: boolean }) {
+  const [col, row] = cellPos(fx.pos)
+  const cw = 100 / 13, ch = 100 / 9
+  const box = { left: `${(col - 1) * cw}%`, top: `${(row - 1) * ch}%`, width: `${cw}%`, height: `${ch}%` } as const
+  const a = tokenAnchor(fx.pos)
+  const burst = { left: `${a.x}%`, top: `${a.y}%` } as const
+
+  if (fx.id === "tax_return") return <div className={`vb-fx fx-tax${reduce ? " still" : ""}`} style={box}><span className="fx-rupee">₹</span></div>
+  if (fx.id === "ed_raid") return <div className={`vb-fx fx-raid${reduce ? " still" : ""}`} style={box} />
+  if (fx.id === "jnv_revisit") return <div className={`vb-fx fx-home${reduce ? " still" : ""}`} style={box}><span className="fx-home-txt">Happy Homecoming!</span></div>
+  if (fx.id === "married") {
+    return (
+      <div className="vb-fx fx-point" style={burst}>
+        {Array.from({ length: reduce ? 6 : 16 }, (_, i) => {
+          const ang = (i / 16) * Math.PI * 2, dist = 58 + (i % 4) * 16
+          const dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist) - 18
+          return <i key={i} className={`fx-conf${reduce ? " still" : ""}`} style={{ background: CONFETTI_COLORS[i % 6], ["--dx" as string]: `${dx}px`, ["--dy" as string]: `${dy}px`, animationDelay: `${(i % 5) * 40}ms` }} />
+        })}
+      </div>
+    )
+  }
+  const fest = FESTIVALS[(fx.seat * 7 + fx.round * 13) % FESTIVALS.length]
+  return (
+    <div className="vb-fx fx-fest" style={box}>
+      <span className="fx-fest-name" style={{ background: fest.color }}>{fest.name}</span>
+      {!reduce && Array.from({ length: 10 }, (_, i) => {
+        const ang = (i / 10) * Math.PI * 2
+        const dx = Math.round(Math.cos(ang) * 42), dy = Math.round(Math.sin(ang) * 42)
+        return <i key={i} className="fx-spark" style={{ background: fest.color, ["--dx" as string]: `${dx}px`, ["--dy" as string]: `${dy}px`, animationDelay: `${i * 40}ms` }} />
+      })}
+    </div>
   )
 }
 
@@ -1089,4 +1164,21 @@ const VB_CSS = `
 .vb-auction-strip.vb-grey{background:var(--grey);color:#fff;}
 .vb-auction-meta{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;font-size:.72rem;color:var(--dim);}
 .vb-auction-wait{margin:0;font-size:.76rem;color:var(--dim);}
+.vb-fx{position:absolute;pointer-events:none;z-index:12;display:flex;align-items:center;justify-content:center;overflow:visible;}
+.fx-tax{background:radial-gradient(circle,#FFE082,#FFC107);border-radius:2px;color:#5a3d00;animation:fx-hold 3s ease forwards;box-shadow:0 0 10px 2px rgba(255,193,7,.7);}
+.fx-rupee{font-weight:800;font-size:1.1em;}
+.fx-raid{border-radius:2px;animation:fx-hold 4s ease forwards,fx-raidsweep .8s linear infinite;}
+.fx-home{background:#0b0b0b;border-radius:2px;animation:fx-hold 5s ease forwards;}
+.fx-home-txt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;font-weight:800;font-size:9px;animation:fx-rgby 1.1s linear infinite;}
+.fx-fest{border-radius:2px;}
+.fx-fest-name{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;color:#fff;font-weight:800;font-size:8px;padding:2px 6px;border-radius:2px;animation:fx-hold 3s ease forwards;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.fx-point{width:0;height:0;}
+.fx-conf{position:absolute;left:0;top:0;width:6px;height:9px;border-radius:1px;transform:translate(0,0);animation:fx-confetti 1.6s ease-out forwards;}
+.fx-spark{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;animation:fx-spark 1.1s ease-out forwards;}
+.fx-tax.still,.fx-raid.still,.fx-home.still,.fx-conf.still{animation:none;opacity:1;}
+@keyframes fx-hold{0%{opacity:0;}12%{opacity:1;}82%{opacity:1;}100%{opacity:0;}}
+@keyframes fx-raidsweep{0%,100%{box-shadow:inset 0 0 0 2px #E53935,0 0 8px 1px rgba(229,57,53,.8);}50%{box-shadow:inset 0 0 0 2px #1E88E5,0 0 8px 1px rgba(30,136,229,.8);}}
+@keyframes fx-rgby{0%{color:#E53935;}25%{color:#43A047;}50%{color:#1E88E5;}75%{color:#FDD835;}100%{color:#E53935;}}
+@keyframes fx-confetti{0%{transform:translate(0,0) scale(.2) rotate(0);opacity:0;}15%{opacity:1;transform:translate(calc(var(--dx)*.45),calc(var(--dy)*.45)) scale(1) rotate(80deg);}100%{transform:translate(var(--dx),calc(var(--dy) + 90px)) scale(1) rotate(300deg);opacity:0;}}
+@keyframes fx-spark{0%{transform:translate(-50%,-50%) scale(0);opacity:1;}70%{opacity:1;}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0;}}
 `
