@@ -103,6 +103,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       <style>{VB_CSS}</style>
 
       <header className="vb-top">
+        <a href="/games/vyapaar" className="vb-exit">← Leave</a>
         <div className="vb-you">
           {playerImages[you]
             ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
@@ -419,10 +420,12 @@ const SPECIAL_ICON: Record<string, string> = {
 }
 
 const VB_CSS = `
-.vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); }
+.vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); position:fixed; inset:0; z-index:60; overflow-y:auto; background:var(--bg); padding:8px 12px; }
+.vb-exit{font-family:"Poppins";font-weight:600;font-size:.82rem;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:2px;padding:.35rem .7rem;}
+.vb-exit:hover{color:var(--cream);border-color:var(--accent);}
 .vb *{box-sizing:border-box;}
 .vb svg{display:block;width:100%;height:100%;}
-.vb-top{display:flex;align-items:center;justify-content:flex-end;gap:1rem;margin-bottom:8px;}
+.vb-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:8px;}
 .vb-you{display:flex;align-items:center;gap:8px;}
 .vb-you-img{width:30px;height:30px;border-radius:2px;object-fit:cover;}
 .vb-you-init{width:30px;height:30px;border-radius:2px;display:grid;place-items:center;font-weight:700;font-size:.85rem;}
@@ -431,7 +434,7 @@ const VB_CSS = `
 .vb-halt{margin-left:auto;font-size:.58rem;font-weight:700;color:#FF8f7f;text-transform:uppercase;letter-spacing:.04em;}
 .vb-stage{display:grid;grid-template-columns:1fr 300px;gap:16px;}
 @media(max-width:940px){.vb-stage{grid-template-columns:1fr;}}
-.vb-board{aspect-ratio:5/4;width:min(100%,calc((100dvh - 120px) * 1.25));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto;}
+.vb-board{aspect-ratio:5/4;width:min(100%,calc((100dvh - 72px) * 1.25));background:var(--panel-2);border-radius:2px;padding:6px;margin:0 auto;}
 .vb-grid{width:100%;height:100%;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;background:var(--line);border:2px solid var(--line);border-radius:2px;overflow:hidden;}
 .vb-tile{position:relative;background:var(--milk);min-width:0;display:flex;flex-direction:column;overflow:hidden;}
 .vb-city,.vb-company{cursor:pointer;}
