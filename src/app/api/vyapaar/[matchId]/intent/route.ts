@@ -6,8 +6,11 @@ import { rateLimitOk } from "@/lib/rate-limit"
 import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
+// Note: "expire_trade" is intentionally absent — it is a system-only intent applied by the
+// server's trade-expiry sweep, never accepted from a client (a player could grief others' trades).
 const INTENT_TYPES = new Set([
-  "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell", "propose_trade", "respond_trade", "end_turn",
+  "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
+  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent", "leave_game", "end_turn",
 ])
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v)
@@ -24,17 +27,23 @@ function validIntentShape(intent: { type: string; [k: string]: unknown }): boole
     case "unmortgage":
     case "sell":
       return finite(intent.cityId)
-    case "propose_trade": {
+    case "propose_trade":
+    case "counter_trade": {
       const give = intent.give as { cash?: unknown; cities?: unknown } | undefined
       const get = intent.get as { cash?: unknown; cities?: unknown } | undefined
+      const target = intent.type === "propose_trade" ? finite(intent.to) : finite(intent.tradeId)
       return (
-        finite(intent.to) &&
+        target &&
         typeof give === "object" && give !== null && finite(give.cash) && Array.isArray(give.cities) &&
         typeof get === "object" && get !== null && finite(get.cash) && Array.isArray(get.cities)
       )
     }
     case "respond_trade":
-      return typeof intent.accept === "boolean"
+      return finite(intent.tradeId) && typeof intent.accept === "boolean"
+    case "withdraw_trade":
+      return finite(intent.tradeId)
+    case "collect_rent":
+      return finite(intent.rentId)
     default: // roll, buy, decline, end_turn — no extra fields required
       return true
   }

@@ -9,6 +9,7 @@ import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS } from "@/config/vyapaar-match"
+import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import crypto from "node:crypto"
 
 /** Deadline for the next player action; null once the game has ended. */
@@ -33,7 +34,11 @@ export async function getMatchView(
   const me = match.players.find((p) => p.userId === userId)
   if (!me) throw new ForbiddenError("not_a_player")
   const state = match.state as unknown as GameState
-  return { view: publicView(state, me.seat), turnExpiresAt: match.turnExpiresAt?.toISOString() ?? null }
+  const view = publicView(state, me.seat)
+  // Hide trades already past their deadline (state cleanup happens on the next intent/cron).
+  const now = Date.now()
+  view.trades = view.trades.filter((t) => !t.expiresAt || t.expiresAt > now)
+  return { view, turnExpiresAt: match.turnExpiresAt?.toISOString() ?? null }
 }
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
@@ -192,13 +197,17 @@ export async function applyMatchIntent(
 
     const state = match.state as unknown as GameState
     const activeBefore = state.active
+    // Clear any trades past their 60s deadline before applying the new intent.
+    const now = Date.now()
+    const expired = sweepExpiredTrades(state, now)
     const r = applyIntent(state, me.seat, intent)
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
+    stampNewTrades(r.state, now) // give any just-proposed/countered trade its 60s clock
 
     // Refresh the deadline only when the active player's turn advanced — an off-turn
     // trade/bid (non-active seat, same active player) must not reset the clock.
     const resetTimer = me.seat === activeBefore || r.state.active !== activeBefore
-    const expiresAt = await commitMatchState(tx, match, r.state, [{ seat: me.seat, intent }], resetTimer)
+    const expiresAt = await commitMatchState(tx, match, r.state, [...expired, { seat: me.seat, intent }], resetTimer)
     return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
   if ("view" in result) {
@@ -228,6 +237,7 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
       const state = match.state as unknown as GameState
       const startSeat = state.active
       const appended: { seat: number; intent: Intent }[] = []
+      appended.push(...sweepExpiredTrades(state, now.getTime())) // clear expired trades too
       let guard = 0
       while (!state.ended && state.active === startSeat && guard++ < 40) {
         const step = nextAutoIntent(state)

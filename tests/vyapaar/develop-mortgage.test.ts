@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { CITIES, UNMORTGAGE_RATE, upgradeCost } from "@/modules/vyapaar/engine/data";
+import { CITIES, UNMORTGAGE_RATE, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data";
 
 function ownNorthSet(s: ReturnType<typeof createGame>) {
   s.cities[0].owner = 0;
@@ -76,13 +76,18 @@ describe("develop / mortgage", () => {
     expect(s.players[0].cash).toBe(before + Math.floor(CITIES[5].price / 2));
   });
 
-  it("refuses to sell a developed city (sell upgrades first)", () => {
+  it("sells a developed city outright, refunding card value + building value", () => {
     const s = createGame(1, ["a", "b"], 25000);
     s.cities[5].owner = 0;
-    s.cities[5].level = 1;
+    s.cities[5].level = 2;
     s.phase = "manage";
-    expect("error" in applyIntent(s, 0, { type: "sell", cityId: 5 })).toBe(true);
-    expect(s.cities[5].owner).toBe(0);
+    const before = s.players[0].cash;
+    const expected = Math.floor(CITIES[5].price / 2) + Math.floor(2 * upgradeCost(5) * UPGRADE_SELL_RATIO);
+    const r = applyIntent(s, 0, { type: "sell", cityId: 5 });
+    expect("error" in r).toBe(false);
+    expect(s.cities[5].owner).toBeNull();
+    expect(s.cities[5].level).toBe(0); // buildings cleared, tile reset
+    expect(s.players[0].cash).toBe(before + expected);
   });
 
   it("a mortgaged city sells for nothing (the half was already drawn) and clears", () => {

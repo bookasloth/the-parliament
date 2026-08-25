@@ -9,13 +9,14 @@ import {
   MAX_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
+  UPGRADE_SELL_RATIO,
   SETS_TO_END,
   MAX_ROUNDS,
   UNDERDOG_RATIO,
   JAIL_TURNS,
   MONSOON_POS,
 } from "./data";
-import type { GameState, Intent, EngineEvent } from "./state";
+import type { GameState, Intent, EngineEvent, PendingRent, TradeOffer } from "./state";
 import type { TradeSide } from "./state";
 import { BOARD } from "./board";
 import { rollDie } from "./rng";
@@ -29,6 +30,7 @@ import {
   citiesOwned,
   controlledSets,
   scoreOf,
+  cityLiquidationValue,
 } from "./helpers";
 import { drawCard } from "./cards";
 
@@ -66,9 +68,116 @@ function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): voi
   events.push({ type: "salary", seat, amount: pay });
 }
 
-/** Finish the current move segment: roll again on a double, else manage phase. */
-function finishSegment(s: GameState): void {
-  s.phase = s.pendingDouble ? "roll" : "manage";
+/**
+ * Settle one pending rent: pay it (auto-liquidating the payer if short), unless
+ * the owner no longer owns the city (traded/sold since) — then it's voided.
+ * `reason` distinguishes a manual collect from the one-lap auto-settle for logs.
+ */
+function settleRent(s: GameState, rent: PendingRent, events: EngineEvent[], reason: "collected" | "auto"): void {
+  if (s.cities[rent.cityId]?.owner !== rent.owner) {
+    events.push({ type: "rent_void", seat: rent.payer, cityId: rent.cityId, to: rent.owner, rentId: rent.id });
+    return;
+  }
+  const paid = charge(s, rent.payer, rent.amount, rent.owner, events);
+  events.push({ type: "rent", seat: rent.payer, cityId: rent.cityId, to: rent.owner, amount: paid, rentId: rent.id, reason });
+}
+
+/** Age pending rents by one turn; auto-settle any that have waited a full lap. */
+function ageAndAutoSettleRents(s: GameState, events: EngineEvent[]): void {
+  if (!s.pendingRents?.length) return;
+  const lap = s.players.length;
+  const keep: PendingRent[] = [];
+  for (const r of s.pendingRents) {
+    r.age++;
+    if (r.age >= lap) settleRent(s, r, events, "auto");
+    else keep.push(r);
+  }
+  s.pendingRents = keep;
+}
+
+/**
+ * Advance to the next player's turn. Shared by finishSegment (auto-end) and the
+ * explicit end_turn intent. Emits an `end_turn` event for logs/clients.
+ */
+function advanceTurn(s: GameState, events: EngineEvent[]): void {
+  const seat = s.active;
+  ageAndAutoSettleRents(s, events);
+  if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
+  // Advance to the next seat that hasn't left; count a round wrap when we pass the end.
+  let next = seat, wrapped = false, hops = 0;
+  do {
+    next += 1;
+    if (next >= s.players.length) { next = 0; wrapped = true; }
+  } while (s.players[next].left && ++hops < s.players.length);
+  s.active = next;
+  if (wrapped) s.round++;
+  s.players[s.active].doubles = 0;
+  s.pendingDouble = false;
+  s.phase = "roll";
+  events.push({ type: "end_turn", seat });
+  if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+}
+
+/**
+ * Remove a player from the game, returning every asset to the bank and cleaning up
+ * anything that referenced them so nothing is left stuck:
+ *  - cancel every trade they're party to
+ *  - void every pending rent they owe or are owed
+ *  - pass any auction bid still waiting on them (and resolve if that completes it)
+ *  - return all their cities (reset) and companies to the bank
+ *  - end the game if fewer than two players remain
+ *  - if it was their turn, advance so no turn is left stuck
+ */
+function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
+  if (s.trades?.length) {
+    for (const t of s.trades) {
+      if (t.from === seat || t.to === seat) events.push({ type: "trade_cancelled", tradeId: t.id, from: t.from, to: t.to });
+    }
+    s.trades = s.trades.filter((t) => t.from !== seat && t.to !== seat);
+  }
+  if (s.pendingRents?.length) {
+    for (const r of s.pendingRents) {
+      if (r.payer === seat || r.owner === seat) events.push({ type: "rent_void", seat: r.payer, cityId: r.cityId, to: r.owner, rentId: r.id });
+    }
+    s.pendingRents = s.pendingRents.filter((r) => r.payer !== seat && r.owner !== seat);
+  }
+  if (s.auction && s.auction.bids[seat] === null) {
+    s.auction.bids[seat] = 0; // pass on their behalf
+    if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
+  }
+  for (const id of citiesOwned(s, seat)) {
+    const c = s.cities[id];
+    c.owner = null;
+    c.level = 0;
+    c.mortgaged = false;
+  }
+  for (let ci = 0; ci < s.companies.length; ci++) if (s.companies[ci] === seat) s.companies[ci] = null;
+  s.players[seat].left = true;
+  events.push({ type: "left", seat });
+
+  if (s.players.filter((p) => !p.left).length <= 1) {
+    if (!s.ended) endGame(s, events);
+    return;
+  }
+  // If it was the leaver's turn (and the auction resolution above didn't already move on).
+  if (!s.ended && s.active === seat) {
+    s.pendingCity = null;
+    s.pendingCompany = null;
+    advanceTurn(s, events);
+  }
+}
+
+/**
+ * Finish the current move segment. Roll again on a double; otherwise the turn is
+ * over and we auto-advance — there is no idle "manage" park state and no forced
+ * End-turn click. Players manage (develop/mortgage/sell) during their roll phase.
+ */
+function finishSegment(s: GameState, events: EngineEvent[]): void {
+  if (s.pendingDouble) {
+    s.phase = "roll";
+    return;
+  }
+  advanceTurn(s, events);
 }
 
 function resolveTile(s: GameState, events: EngineEvent[]): void {
@@ -77,13 +186,13 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
   switch (tile.kind) {
     case "start":
     case "monsoon": // just visiting
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "mandi":
       credit(s, seat, s.pot);
       events.push({ type: "mandi", seat, amount: s.pot });
       s.pot = 0;
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "taxraid":
       s.players[seat].pos = MONSOON_POS;
@@ -91,30 +200,30 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       s.players[seat].doubles = 0;
       s.pendingDouble = false;
       events.push({ type: "taxraid", seat });
-      s.phase = "manage";
+      finishSegment(s, events);
       break;
     case "gst": {
       const amt = Math.min(GST_CAP, Math.round(s.players[seat].cash * GST_RATE));
       charge(s, seat, amt, "pot", events);
       events.push({ type: "gst", seat, amount: amt });
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "income":
       charge(s, seat, TAX_INCOME, "pot", events);
       events.push({ type: "income", seat, amount: TAX_INCOME });
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     case "upi": {
       const { card, events: cardEvents } = drawCard(s, "upi");
       events.push({ type: "draw", seat, deck: "upi", card: card.id }, ...cardEvents);
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "headline": {
       const { card, events: cardEvents } = drawCard(s, "headline");
       events.push({ type: "draw", seat, deck: "headline", card: card.id }, ...cardEvents);
-      finishSegment(s);
+      finishSegment(s, events);
       break;
     }
     case "company": {
@@ -127,9 +236,9 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         const fee = companyServiceFee(s, ci);
         charge(s, seat, fee, owner, events);
         events.push({ type: "company_fee", seat, companyIndex: ci, amount: fee });
-        finishSegment(s);
+        finishSegment(s, events);
       } else {
-        finishSegment(s);
+        finishSegment(s, events);
       }
       break;
     }
@@ -140,12 +249,20 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.pendingCity = id;
         s.phase = "buy";
       } else if (owner !== seat) {
+        // Don't charge now — the owner gets a "someone visited your city" prompt
+        // and collects. Auto-settles after one lap (see advanceTurn) so an AFK
+        // owner can never stall the game. Amount is snapshotted here.
         const rent = rentFor(s, id);
-        charge(s, seat, rent, owner, events);
-        events.push({ type: "rent", seat, cityId: id, to: owner, amount: rent });
-        finishSegment(s);
+        if (rent > 0) {
+          if (!s.pendingRents) s.pendingRents = [];
+          const rentId = s.nextRentId ?? 1;
+          s.nextRentId = rentId + 1;
+          s.pendingRents.push({ id: rentId, payer: seat, owner, cityId: id, amount: rent, age: 0 });
+          events.push({ type: "rent_pending", seat, cityId: id, to: owner, amount: rent, rentId });
+        }
+        finishSegment(s, events);
       } else {
-        finishSegment(s);
+        finishSegment(s, events);
       }
       break;
     }
@@ -174,7 +291,7 @@ function resolveAuction(s: GameState, events: EngineEvent[]): void {
   s.auction = null;
   s.pendingCity = null;
   s.pendingCompany = null;
-  finishSegment(s);
+  finishSegment(s, events);
 }
 
 function minSetLevel(s: GameState, seat: number, zone: number): number {
@@ -188,9 +305,14 @@ function canManage(s: GameState): boolean {
   return s.phase === "roll" || s.phase === "manage";
 }
 
+/**
+ * A trade side is valid when it is CITIES ONLY (never cash), non-empty, and every
+ * city is owned by this seat, undeveloped and unmortgaged. Cash is never part of a
+ * player trade, so any non-zero cash is rejected outright.
+ */
 function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
-  if (!Number.isInteger(side.cash) || side.cash < 0) return false;
-  if (side.cash > s.players[seat].cash) return false;
+  if (side.cash !== 0) return false; // cash is never part of a player trade
+  if (!Array.isArray(side.cities) || side.cities.length === 0) return false; // card(s) ↔ card(s)
   const seen = new Set<number>();
   for (const id of side.cities) {
     if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return false;
@@ -202,11 +324,19 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
   return true;
 }
 
-/** Seats best-first: score desc, then controlledSets desc, then seat asc. */
+/** Move traded cities between owners. Assumes both sides already re-validated. */
+function applyTradeSwap(s: GameState, t: TradeOffer): void {
+  for (const id of t.give.cities) s.cities[id].owner = t.to;
+  for (const id of t.get.cities) s.cities[id].owner = t.from;
+}
+
+/** Seats best-first: left players always rank last, then score desc, controlledSets desc, seat asc. */
 export function rankSeats(s: GameState): number[] {
   return s.players
     .map((_, seat) => seat)
     .sort((a, b) => {
+      const la = s.players[a].left, lb = s.players[b].left;
+      if (la !== lb) return la ? 1 : -1; // a player who left can never win
       const sa = scoreOf(s, a), sb = scoreOf(s, b);
       if (sb !== sa) return sb - sa;
       const ca = controlledSets(s, a), cb = controlledSets(s, b);
@@ -220,6 +350,11 @@ export function winnerOf(s: GameState): number {
 }
 
 function endGame(s: GameState, events: EngineEvent[]): void {
+  // Settle any outstanding rents before scoring so no money is left in limbo.
+  if (s.pendingRents?.length) {
+    for (const r of s.pendingRents) settleRent(s, r, events, "auto");
+    s.pendingRents = [];
+  }
   s.ended = true;
   s.winner = winnerOf(s);
   s.phase = "manage";
@@ -239,6 +374,7 @@ export function applyIntent(s: GameState, seat: number, intent: Intent): Result 
 
 function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
   if (s.ended) return { error: "game_over" };
+  if (s.players[seat]?.left) return { error: "you_left" }; // a player who left can't act (also blocks double-leave)
   if (ACTIVE_ONLY.has(intent.type) && seat !== s.active) return { error: "not_your_turn" };
   const events: EngineEvent[] = [];
 
@@ -260,7 +396,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         } else {
           p.halted--;
           s.pendingDouble = false;
-          s.phase = "manage";
+          finishSegment(s, events);
           return { state: s, events };
         }
       }
@@ -274,8 +410,8 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         p.halted = JAIL_TURNS;
         p.doubles = 0;
         s.pendingDouble = false;
-        s.phase = "manage";
         events.push({ type: "jail_doubles", seat });
+        finishSegment(s, events);
         return { state: s, events };
       }
 
@@ -295,7 +431,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         s.cities[id].owner = seat;
         s.pendingCity = null;
         events.push({ type: "buy", seat, cityId: id, amount: cost });
-        finishSegment(s);
+        finishSegment(s, events);
         return { state: s, events };
       }
       if (s.pendingCompany !== null) {
@@ -306,7 +442,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
         s.companies[ci] = seat;
         s.pendingCompany = null;
         events.push({ type: "buy_company", seat, companyIndex: ci, amount: cost });
-        finishSegment(s);
+        finishSegment(s, events);
         return { state: s, events };
       }
       return { error: "nothing_to_buy" };
@@ -395,67 +531,122 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
       const c = s.cities[id];
       if (c.owner !== seat) return { error: "not_owner" };
-      if (c.level !== 0) return { error: "sell_upgrades_first" };
-      // Sell an undeveloped city back to the bank for half its buy price; a mortgaged one nets
-      // half less the outstanding mortgage (you never banked that half).
-      const gross = Math.floor(CITIES[id].price / 2);
-      const proceeds = c.mortgaged ? 0 : gross;
+      // Sell the whole card back to the bank: card value + building value (see
+      // cityLiquidationValue). Buildings are refunded so a developed city can be sold
+      // outright; the tile returns to the bank fully reset.
+      const proceeds = cityLiquidationValue(s, id);
       s.players[seat].cash += proceeds;
       c.owner = null;
+      c.level = 0;
       c.mortgaged = false;
       events.push({ type: "sell", seat, cityId: id, amount: proceeds });
       return { state: s, events };
     }
 
     case "propose_trade": {
+      // You may only propose on someone else's turn, and only one outgoing at a time.
       if (s.auction) return { error: "auction_in_progress" };
-      if (s.trade !== null) return { error: "trade_pending" };
+      if (seat === s.active) return { error: "not_while_your_turn" };
+      if (!s.trades) s.trades = [];
+      if (s.trades.some((t) => t.from === seat)) return { error: "trade_exists" };
       const to = intent.to;
-      if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat) {
+      if (!Number.isInteger(to) || to < 0 || to >= s.players.length || to === seat || s.players[to].left) {
         return { error: "bad_recipient" };
       }
       if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
       if (!validTradeSide(s, to, intent.get)) return { error: "bad_get" };
-      s.trade = { from: seat, to, give: intent.give, get: intent.get };
-      events.push({ type: "trade_proposed", seat, to });
+      const id = s.nextTradeId ?? 1;
+      s.nextTradeId = id + 1;
+      // expiresAt is stamped by the server on commit (engine has no clock).
+      s.trades.push({ id, from: seat, to, give: intent.give, get: intent.get, expiresAt: 0 });
+      events.push({ type: "trade_proposed", seat, to, tradeId: id });
       return { state: s, events };
     }
 
     case "respond_trade": {
-      if (s.auction) return { error: "auction_in_progress" };
-      if (!s.trade) return { error: "no_trade" };
-      if (seat !== s.trade.to) return { error: "not_recipient" };
-      const t = s.trade;
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      if (seat !== t.to) return { error: "not_recipient" };
+      s.trades = list.filter((x) => x.id !== t.id);
       if (!intent.accept) {
-        s.trade = null;
-        events.push({ type: "trade_declined", seat });
+        events.push({ type: "trade_declined", seat, tradeId: t.id });
         return { state: s, events };
       }
       // Atomic re-validation — assets may have changed since the proposal.
       if (!validTradeSide(s, t.from, t.give) || !validTradeSide(s, t.to, t.get)) {
-        s.trade = null;
         return { error: "trade_invalid" };
       }
-      for (const id of t.give.cities) s.cities[id].owner = t.to;
-      for (const id of t.get.cities) s.cities[id].owner = t.from;
-      s.players[t.from].cash += t.get.cash - t.give.cash;
-      s.players[t.to].cash += t.give.cash - t.get.cash;
-      s.trade = null;
-      events.push({ type: "trade_accepted", from: t.from, to: t.to });
+      applyTradeSwap(s, t);
+      events.push({ type: "trade_accepted", from: t.from, to: t.to, tradeId: t.id });
+      return { state: s, events };
+    }
+
+    case "counter_trade": {
+      // Reply to an incoming trade with a fresh one going the other way. Reactive,
+      // so it's allowed even on your own turn — but you still can't have two outgoing.
+      const list = s.trades ?? [];
+      const incoming = list.find((x) => x.id === intent.tradeId);
+      if (!incoming) return { error: "no_trade" };
+      if (seat !== incoming.to) return { error: "not_recipient" };
+      const other = incoming.from;
+      // remove the incoming offer + any existing outgoing of ours, then add the counter
+      const rest = list.filter((x) => x.id !== incoming.id && x.from !== seat);
+      if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
+      if (!validTradeSide(s, other, intent.get)) return { error: "bad_get" };
+      const id = s.nextTradeId ?? 1;
+      s.nextTradeId = id + 1;
+      rest.push({ id, from: seat, to: other, give: intent.give, get: intent.get, expiresAt: 0 });
+      s.trades = rest;
+      events.push({ type: "trade_countered", seat, to: other, tradeId: id, wasId: incoming.id });
+      return { state: s, events };
+    }
+
+    case "withdraw_trade": {
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      if (seat !== t.from) return { error: "not_proposer" };
+      s.trades = list.filter((x) => x.id !== t.id);
+      events.push({ type: "trade_withdrawn", seat, tradeId: t.id });
+      return { state: s, events };
+    }
+
+    case "expire_trade": {
+      // System-only removal (server applies it when a trade passes its 60s deadline).
+      const list = s.trades ?? [];
+      const t = list.find((x) => x.id === intent.tradeId);
+      if (!t) return { error: "no_trade" };
+      s.trades = list.filter((x) => x.id !== t.id);
+      events.push({ type: "trade_expired", tradeId: t.id, from: t.from, to: t.to });
+      return { state: s, events };
+    }
+
+    case "collect_rent": {
+      // Owner collects an owed rent from the notification. Off-turn: legal anytime.
+      // Idempotent — the id is removed on collect, so a double-click errors.
+      const list = s.pendingRents ?? [];
+      const idx = list.findIndex((r) => r.id === intent.rentId);
+      if (idx < 0) return { error: "no_such_rent" };
+      const rent = list[idx];
+      if (rent.owner !== seat) return { error: "not_your_rent" };
+      settleRent(s, rent, events, "collected");
+      s.pendingRents = list.filter((_, i) => i !== idx);
+      return { state: s, events };
+    }
+
+    case "leave_game": {
+      // Legal at any time (off-turn included). The left-guard at the top makes a
+      // second leave a no-op error, so this is idempotent.
+      leaveGame(s, seat, events);
       return { state: s, events };
     }
 
     case "end_turn": {
-      if (s.phase !== "manage") return { error: "cannot_end_now" };
-      if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
-      const wrapped = seat + 1 >= s.players.length;
-      s.active = (seat + 1) % s.players.length;
-      if (wrapped) s.round++;
-      s.players[s.active].doubles = 0;
-      s.pendingDouble = false;
-      s.phase = "roll";
-      events.push({ type: "end_turn", seat });
-      if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+      // Turns auto-advance on landing (see finishSegment); an explicit end_turn is
+      // only legal in the vestigial manage state and otherwise a no-op error.
+      if (s.phase !== "manage" || s.ended) return { error: "cannot_end_now" };
+      advanceTurn(s, events);
       return { state: s, events };
     }
 

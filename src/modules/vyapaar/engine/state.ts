@@ -4,7 +4,7 @@ import { shuffle } from "./rng";
 export type Phase = "roll" | "buy" | "auction" | "manage";
 
 export interface TradeSide {
-  cash: number;
+  cash: number; // must be 0 — cash is never part of a player trade (kept for wire shape)
   cities: number[]; // cityIds
 }
 
@@ -18,7 +18,12 @@ export type Intent =
   | { type: "unmortgage"; cityId: number }
   | { type: "sell"; cityId: number }
   | { type: "propose_trade"; to: number; give: TradeSide; get: TradeSide }
-  | { type: "respond_trade"; accept: boolean }
+  | { type: "respond_trade"; tradeId: number; accept: boolean }
+  | { type: "counter_trade"; tradeId: number; give: TradeSide; get: TradeSide }
+  | { type: "withdraw_trade"; tradeId: number }
+  | { type: "expire_trade"; tradeId: number }
+  | { type: "collect_rent"; rentId: number }
+  | { type: "leave_game" }
   | { type: "end_turn" };
 
 export interface PlayerState {
@@ -29,6 +34,7 @@ export interface PlayerState {
   doubles: number; // doubles rolled so far this turn
   startupLaps: number; // laps remaining with reduced salary
   startupPenalty: number; // salary reduction per lap while startupLaps>0
+  left: boolean; // player left/forfeited — skipped in turn rotation, can't win
 }
 
 export interface CityState {
@@ -44,10 +50,28 @@ export interface AuctionState {
 }
 
 export interface TradeOffer {
+  id: number;
   from: number;
   to: number;
-  give: TradeSide; // from → to
-  get: TradeSide; // to → from
+  give: TradeSide; // from → to (cities only)
+  get: TradeSide; // to → from (cities only)
+  expiresAt: number; // epoch ms; 0 until the server stamps it (see match.ts). Live for 60s.
+}
+
+/**
+ * An owed-but-not-yet-collected rent. When A lands on B's city we don't charge
+ * immediately — B gets a "someone visited your city" prompt and clicks Collect.
+ * `age` counts turns elapsed; at one full lap (age >= players.length) it
+ * auto-settles so the game never stalls on an AFK owner. `amount` is snapshotted
+ * at landing so B is paid exactly what the notification showed.
+ */
+export interface PendingRent {
+  id: number;
+  payer: number; // seat that owes
+  owner: number; // seat that is owed
+  cityId: number;
+  amount: number;
+  age: number; // turns elapsed since it was created
 }
 
 export interface GameState {
@@ -64,7 +88,10 @@ export interface GameState {
   pendingCompany: number | null; // company just landed on, awaiting buy/decline
   pendingDouble: boolean; // last roll was a double → roll again after resolution
   auction: AuctionState | null;
-  trade: TradeOffer | null;
+  trades: TradeOffer[]; // active proposals; at most one outgoing per player
+  nextTradeId: number; // monotonic id source for trades
+  pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
+  nextRentId: number; // monotonic id source for pendingRents
   headlineDeck: number[]; // draw order of HEADLINE indices; refilled+shuffled when empty
   upiDeck: number[]; // draw order of UPI indices
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
@@ -100,6 +127,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
       doubles: 0,
       startupLaps: 0,
       startupPenalty: 0,
+      left: false,
     })),
     cities: CITIES.map(() => ({ owner: null, level: 0, mortgaged: false })),
     companies: [null, null, null, null, null, null],
@@ -111,7 +139,10 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     pendingCompany: null,
     pendingDouble: false,
     auction: null,
-    trade: null,
+    trades: [],
+    nextTradeId: 1,
+    pendingRents: [],
+    nextRentId: 1,
     headlineDeck: [],
     upiDeck: [],
     endRequested: false,

@@ -23,11 +23,14 @@ describe("publicView", () => {
 
   it("shows a pending trade only to the two parties", () => {
     const s = createGame(1, ["a", "b", "c"]);
-    s.cities[0].owner = 0;
-    applyIntent(s, 0, { type: "propose_trade", to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [] } });
-    expect((publicView(s, 0) as unknown as Record<string, unknown>).trade).not.toBeNull();
-    expect((publicView(s, 1) as unknown as Record<string, unknown>).trade).not.toBeNull();
-    expect((publicView(s, 2) as unknown as Record<string, unknown>).trade).toBeNull();
+    s.active = 0; // seat 1 may propose (not its turn)
+    s.cities[0].owner = 1;
+    s.cities[6].owner = 2;
+    applyIntent(s, 1, { type: "propose_trade", to: 2, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [6] } });
+    const trades = (v: number) => (publicView(s, v) as unknown as { trades: unknown[] }).trades;
+    expect(trades(1)).toHaveLength(1); // proposer
+    expect(trades(2)).toHaveLength(1); // recipient
+    expect(trades(0)).toHaveLength(0); // uninvolved party sees nothing
   });
 });
 

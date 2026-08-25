@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS } from "@/modules/vyapaar/engine/data"
+import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
@@ -54,7 +54,9 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "roll": return `${nm(e.seat)} rolled ${Number(e.a) + Number(e.b)}`
     case "buy": return `${nm(e.seat)} bought ${city(e.cityId)} for ${rup(e.amount)}`
     case "buy_company": return `${nm(e.seat)} bought ${COMPANIES[e.companyIndex as number]?.short ?? "?"} for ${rup(e.amount)}`
-    case "rent": return `${nm(e.seat)} paid ${rup(e.amount)} rent to ${nm(e.to)}`
+    case "rent_pending": return `${nm(e.seat)} owes ${rup(e.amount)} rent to ${nm(e.to)} — ${nm(e.to)} can collect`
+    case "rent": return Number(e.amount) > 0 ? `${nm(e.to)} collected ${rup(e.amount)} rent from ${nm(e.seat)}` : `${nm(e.to)} collected rent from ${nm(e.seat)}`
+    case "rent_void": return `rent to ${nm(e.to)} was voided`
     case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
     case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
     case "mandi": return `${nm(e.seat)} scooped the ${rup(e.amount)} pot`
@@ -65,7 +67,14 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
     case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
     case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
+    case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
+    case "trade_declined": return `a trade was declined`
+    case "trade_countered": return `${nm(e.seat)} countered with a new offer`
+    case "trade_withdrawn": return `${nm(e.seat)} withdrew a trade`
+    case "trade_expired": return `a trade offer expired`
+    case "trade_cancelled": return `a trade was cancelled`
+    case "left": return `${nm(e.seat)} left the game`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
   }
@@ -80,6 +89,10 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const [onlineSeats, setOnlineSeats] = useState<Set<number>>(new Set())
   const [showProps, setShowProps] = useState(false)
   const you = view.you
+  // Timestamp of our last successful own action. The server broadcasts a "state"
+  // nudge to everyone including us, but our POST already returned the fresh view —
+  // so we skip the redundant self-refetch for a short window after acting.
+  const lastActRef = useRef(0)
 
   const refetch = useCallback(async () => {
     const res = await fetch(`/api/vyapaar/${matchId}/view`, { cache: "no-store" })
@@ -99,7 +112,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       if (channel) return
       channel = sb.channel(MATCH_TOPIC(matchId), { config: { private: true, presence: { key: String(you) } } })
       channel
-        .on("broadcast", { event: "state" }, () => { void refetch() })
+        .on("broadcast", { event: "state" }, () => { if (Date.now() - lastActRef.current > 1500) void refetch() })
         .on("presence", { event: "sync" }, () => {
           const st = channel!.presenceState() as Record<string, Array<{ seat?: number }>>
           const seats = new Set<number>()
@@ -119,6 +132,22 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     return () => clearInterval(t)
   }, [refetch])
 
+  // Auto-open the deed the moment you must decide to buy — one fewer click than
+  // clicking a rail button just to open the modal. Opens once per pending target,
+  // so manually closing it to peek at the board doesn't fight you by reopening.
+  const buyTarget = view.active === you && !view.ended && view.phase === "buy"
+    ? (view.pendingCity !== null ? CITY_POS[view.pendingCity]
+      : view.pendingCompany !== null ? COMPANY_POS[view.pendingCompany] : null)
+    : null
+  const autoOpenedRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (buyTarget !== null && autoOpenedRef.current !== buyTarget) {
+      setOpenTile(buyTarget); autoOpenedRef.current = buyTarget
+    } else if (buyTarget === null) {
+      autoOpenedRef.current = null
+    }
+  }, [buyTarget])
+
   const send = useCallback(async (intent: Intent, closeDeed = false) => {
     setErr(null); setBusy(true)
     try {
@@ -127,7 +156,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       })
       const data = await res.json()
       if (!res.ok) setErr(data.error ?? "error")
-      else { setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
+      else { lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
     } finally { setBusy(false) }
   }, [matchId])
 
@@ -138,15 +167,25 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
   const myHouses = myCities.reduce((n, c) => n + Math.min(c.level, 3), 0)
   const myHotels = myCities.reduce((n, c) => n + Math.max(0, c.level - 3), 0)
   const myCompanies = view.companies.filter((c) => c === you).length
-  const leaderSeat = view.players.reduce((b, p, i) => (p.score > view.players[b].score ? i : b), 0)
+  const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
+  const leaderSeat = view.players.reduce((b, p, i) => (!p.left && p.score > view.players[b].score ? i : b), 0)
   const logLines = view.log.map((e, i) => ({ line: logLine(e as Record<string, unknown>, view.players), i })).filter((x) => x.line).slice(-8).reverse()
+  const iLeft = view.players[you]?.left ?? false
+
+  // Leaving forfeits: assets return to the bank server-side, then we navigate out.
+  const leaveGame = useCallback(async () => {
+    if (view.ended || iLeft) { window.location.href = "/games/vyapaar"; return }
+    if (!window.confirm("Leave the game? Your properties return to the bank and you forfeit this match.")) return
+    await send({ type: "leave_game" })
+    window.location.href = "/games/vyapaar"
+  }, [view.ended, iLeft, send])
 
   return (
     <div className="vb">
       <style>{VB_CSS}</style>
 
       <header className="vb-top">
-        <a href="/games/vyapaar" className="vb-exit">← Leave</a>
+        <button type="button" onClick={leaveGame} disabled={busy} className="vb-exit">{iLeft || view.ended ? "← Exit" : "← Leave"}</button>
         <div className="vb-you">
           {playerImages[you]
             ? <img src={playerImages[you]!} alt="" className="vb-you-img" />
@@ -230,16 +269,18 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           </div>
           <div className="vb-players">
             {view.players.map((p, seat) => (
-              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""}`}>
+              <div key={seat} className={`vb-pl ${seat === view.active ? "active" : ""} ${p.left ? "left" : ""}`}>
                 {playerImages[seat]
                   ? <img src={playerImages[seat]!} alt="" className="vb-av vb-av-img" />
                   : <span className="vb-av" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
                 <span className="vb-plnm">{p.name}{seat === you ? " (you)" : ""}</span>
-                {seat === leaderSeat && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
-                {onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
-                {seat === view.active && !view.ended
-                  ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
-                  : p.halted ? <span className="vb-halt">halted</span> : null}
+                {seat === leaderSeat && !p.left && <span className="vb-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
+                {!p.left && onlineSeats.has(seat) && <span className="vb-dot" title="online" />}
+                {p.left
+                  ? <span className="vb-halt">left</span>
+                  : seat === view.active && !view.ended
+                    ? <span className="vb-pl-count"><Countdown expiresAt={turnExpiresAt} ended={view.ended} /></span>
+                    : p.halted ? <span className="vb-halt">halted</span> : null}
               </div>
             ))}
           </div>
@@ -263,32 +304,34 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
           {err && <p className="vb-err">{err}</p>}
 
+          {myRents.map((r) => (
+            <div key={r.id} className="vb-rent">
+              <p className="vb-rent-head">Someone just visited your city</p>
+              <p className="vb-rent-body">
+                <b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b>
+              </p>
+              <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>
+                Collect ₹{inr(r.amount)} rent
+              </button>
+            </div>
+          ))}
+
           <div className="vb-actions">
             {myTurn && view.phase === "roll" && <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "roll" })}>Roll</button>}
-            {myTurn && view.phase === "buy" && view.pendingCity !== null && (
-              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(CITY_POS[view.pendingCity!])}>Buy {CITIES[view.pendingCity].name}</button>
+            {myTurn && view.phase === "buy" && (
+              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
             )}
-            {myTurn && view.phase === "buy" && view.pendingCompany !== null && (
-              <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(COMPANY_POS[view.pendingCompany!])}>Buy {COMPANIES[view.pendingCompany].short}</button>
-            )}
-            {myTurn && view.phase === "manage" && <button className="vb-act" disabled={busy} onClick={() => send({ type: "end_turn" })}>End turn</button>}
             {view.phase === "auction" && view.auction && !view.auction.bidded[you] && (
               <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
             )}
             <button className="vb-act" onClick={() => setShowProps(true)}>My Properties</button>
           </div>
 
-          {view.trade && view.trade.to === you && (
-            <div className="vb-trade">
-              <p>Seat {view.trade.from} proposed a trade.</p>
-              <div className="vb-trade-btns">
-                <button className="vb-act primary" disabled={busy} onClick={() => send({ type: "respond_trade", accept: true })}>Accept</button>
-                <button className="vb-act" disabled={busy} onClick={() => send({ type: "respond_trade", accept: false })}>Decline</button>
-              </div>
-            </div>
-          )}
+          {(view.trades ?? []).map((t) => (
+            <TradeCard key={t.id} trade={t} view={view} you={you} busy={busy} onAction={send} />
+          ))}
 
-          <TradePropose view={view} you={you} busy={busy} onPropose={(i) => send(i)} />
+          <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
         </div>
       </div>
 
@@ -503,7 +546,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
               : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
-            {cs.level === 0 && <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr(cs.mortgaged ? 0 : Math.floor(city.price / 2))}</button>}
+            <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr((cs.mortgaged ? 0 : Math.floor(city.price / 2)) + Math.floor(cs.level * upgradeCost(id) * UPGRADE_SELL_RATIO))}</button>
             <button className="pass" onClick={onClose}>Close</button>
           </>}
           {!isPendingBuy && !(iOwn && canManage) && <button className="pass" onClick={onClose}>Close</button>}
@@ -532,16 +575,18 @@ function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (
   )
 }
 
-function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: number; busy: boolean; onPropose: (i: Intent) => void }) {
+// Property-only trade builder. Cash is never part of a player trade. You can only
+// propose on someone else's turn, and only one outgoing offer at a time.
+function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView; you: number; myTurn: boolean; busy: boolean; onPropose: (i: Intent) => void }) {
   const [to, setTo] = useState<number | "">("")
   const [give, setGive] = useState<number[]>([])
   const [get, setGet] = useState<number[]>([])
-  const [giveCash, setGiveCash] = useState(0)
-  const [getCash, setGetCash] = useState(0)
-  if (view.ended || view.trade) return null
+  const hasOutgoing = (view.trades ?? []).some((t) => t.from === you)
+  if (view.ended || myTurn || hasOutgoing) return null
   const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
   const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === to && c.level === 0 && !c.mortgaged)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
+  const ready = to !== "" && give.length > 0 && get.length > 0
   return (
     <details className="vb-tp">
       <summary>Propose a trade</summary>
@@ -556,19 +601,74 @@ function TradePropose({ view, you, busy, onPropose }: { view: PublicView; you: n
           <span className="vb-tp-lab">Give</span>
           <div className="vb-tp-pills">
             {mine.length ? mine.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={give.includes(c.id)} onClick={() => toggle(give, setGive, c.id)} />) : <span className="vb-tp-none">no tradable property</span>}
-            <input className="vb-tp-cash" type="number" min={0} value={giveCash} placeholder="cash" onChange={(e) => setGiveCash(Math.max(0, Math.floor(Number(e.target.value))))} />
           </div>
         </div>
         <div className="vb-tp-row">
           <span className="vb-tp-lab">Get</span>
           <div className="vb-tp-pills">
-            {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
-            <input className="vb-tp-cash" type="number" min={0} value={getCash} placeholder="cash" onChange={(e) => setGetCash(Math.max(0, Math.floor(Number(e.target.value))))} />
+            {to === "" ? <span className="vb-tp-none">pick a player</span> : theirs.length ? theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />) : <span className="vb-tp-none">they have no tradable property</span>}
           </div>
         </div>
-        <button className="vb-act primary" disabled={busy || to === ""} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: giveCash, cities: give }, get: { cash: getCash, cities: get } })}>Send offer</button>
+        <button className="vb-act primary" disabled={busy || !ready} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send offer</button>
       </div>
     </details>
+  )
+}
+
+// One active trade in the rail. Incoming (you're the recipient) → Accept / Decline /
+// Counter; outgoing (yours) → summary + Withdraw. Both show a live 60s countdown.
+function TradeCard({ trade, view, you, busy, onAction }: {
+  trade: PublicView["trades"][number]; view: PublicView; you: number; busy: boolean; onAction: (i: Intent) => void
+}) {
+  const [countering, setCountering] = useState(false)
+  const [give, setGive] = useState<number[]>([])
+  const [get, setGet] = useState<number[]>([])
+  const nm = (s: number) => view.players[s]?.name.split(" ")[0] ?? `seat ${s}`
+  const names = (ids: number[]) => ids.length ? ids.map((id) => CITIES[id].name).join(", ") : "nothing"
+  const expiry = trade.expiresAt ? new Date(trade.expiresAt).toISOString() : null
+  const incoming = trade.to === you
+
+  if (!incoming) {
+    return (
+      <div className="vb-trade">
+        <p>Your offer to <b>{nm(trade.to)}</b> · <Countdown expiresAt={expiry} ended={view.ended} /></p>
+        <p className="vb-trade-sum">You give {names(trade.give.cities)} → get {names(trade.get.cities)}</p>
+        <div className="vb-trade-btns">
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "withdraw_trade", tradeId: trade.id })}>Withdraw</button>
+        </div>
+      </div>
+    )
+  }
+
+  // recipient view — Counter picker uses my level-0 cities to give and the proposer's to get
+  const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
+  const theirs = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === trade.from && c.level === 0 && !c.mortgaged)
+  const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
+  return (
+    <div className="vb-trade">
+      <p><b>{nm(trade.from)}</b> offers you a trade · <Countdown expiresAt={expiry} ended={view.ended} /></p>
+      <p className="vb-trade-sum">You get {names(trade.give.cities)} → give {names(trade.get.cities)}</p>
+      {!countering ? (
+        <div className="vb-trade-btns">
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: true })}>Accept</button>
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: false })}>Decline</button>
+          <button className="vb-act" disabled={busy} onClick={() => setCountering(true)}>Counter</button>
+        </div>
+      ) : (
+        <div className="vb-tp-body">
+          <div className="vb-tp-row"><span className="vb-tp-lab">You give</span><div className="vb-tp-pills">
+            {mine.length ? mine.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={give.includes(c.id)} onClick={() => toggle(give, setGive, c.id)} />) : <span className="vb-tp-none">no tradable property</span>}
+          </div></div>
+          <div className="vb-tp-row"><span className="vb-tp-lab">You get</span><div className="vb-tp-pills">
+            {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
+          </div></div>
+          <div className="vb-trade-btns">
+            <button className="vb-act primary" disabled={busy || give.length === 0 || get.length === 0} onClick={() => onAction({ type: "counter_trade", tradeId: trade.id, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send counter</button>
+            <button className="vb-act" disabled={busy} onClick={() => setCountering(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -591,7 +691,9 @@ const SPECIAL_ICON: Record<string, string> = {
 
 const VB_CSS = `
 .vb { --bg:#0F1111; --panel:#1A1D24; --panel-2:#232732; --line:#2c313c; --milk:#F5F2EA; --cream:#F2F2F2; --dim:#9aa0ac; --ink:#0F1111; --ink-2:#565b66; --accent:#FE5100; --yellow:#FFCC1C; --grey:#4b515c; --grey-2:#3f4550; font-family:"Poppins",system-ui,sans-serif; color:var(--cream); position:fixed; inset:0; z-index:60; overflow-y:auto; background:var(--bg); padding:8px 12px; }
-.vb-exit{font-family:"Poppins";font-weight:600;font-size:.82rem;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:2px;padding:.35rem .7rem;}
+.vb-exit{font-family:"Poppins";font-weight:600;font-size:.82rem;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:2px;padding:.35rem .7rem;background:transparent;cursor:pointer;}
+.vb-exit:disabled{opacity:.5;cursor:default;}
+.vb-pl.left{opacity:.45;}
 .vb-exit:hover{color:var(--cream);border-color:var(--accent);}
 .vb *{box-sizing:border-box;}
 .vb svg{display:block;width:100%;height:100%;}
@@ -675,7 +777,12 @@ const VB_CSS = `
 .vb-act:disabled{opacity:.5;cursor:not-allowed;}
 .vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
 .vb-trade{background:var(--panel-2);border:1px solid var(--yellow);border-radius:2px;padding:10px 12px;font-size:.84rem;}
-.vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;}
+.vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.vb-trade-sum{font-size:.8rem;color:var(--ink-2,#6b7280);}
+.vb-rent{background:var(--panel-2);border:1px solid var(--green);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+.vb-rent-head{margin:0 0 4px;font-weight:700;color:var(--green);}
+.vb-rent-body{margin:0 0 8px;}
+.vb-rent .vb-act{width:100%;}
 .vb-pl-count{margin-left:auto;}
 .vb-pl-count .vb-count{font-size:.95rem;}
 .vb-tp-row{display:flex;flex-direction:column;gap:5px;}
