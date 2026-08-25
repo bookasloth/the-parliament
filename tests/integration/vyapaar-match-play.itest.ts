@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createRoom, joinRoom } from "@/modules/vyapaar/rooms"
 import { startMatch, applyMatchIntent } from "@/modules/vyapaar/match"
 import type { GameState } from "@/modules/vyapaar/engine/state"
+import { MAX_ROUNDS } from "@/modules/vyapaar/engine/data"
 
 async function mkUser() {
   const u = await prisma.user.create({ data: { email: `mp_${crypto.randomUUID()}@test.local`, legalName: "T" }, select: { id: true } })
@@ -52,7 +53,7 @@ describe("applyMatchIntent", () => {
     // Simplest deterministic path: fetch state, set round to MAX_ROUNDS and active to the last seat, persist, then end_turn.
     const before = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { state: true } })
     const s = before!.state as unknown as GameState
-    s.round = 12
+    s.round = MAX_ROUNDS
     s.active = 1
     s.phase = "manage"
     await prisma.vyapaarMatch.update({ where: { id: matchId }, data: { state: s as unknown as object, activeSeat: 1 } })
