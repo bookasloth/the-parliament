@@ -26,13 +26,14 @@ engine rng) picks random *legal-ish* intents over N=300 games, 3–5 players. As
 - `// ponytail:` note the fail-open + why on each. No dedicated test for the try/catch glue
   (enforceRateLimit is already tested; wrapper is trivial).
 
-### Task 3 — Residual regression test (deterministic, no true concurrency)
-Extend/att new `tests/integration/vyapaar-hardening.itest.ts`:
-- `topUpVyapaarCoins` while the user has an `active` match → rejected (ForbiddenError).
-- `startMatch` on a room already `in_game` → error (one-active-match guard).
-- (Deliberately **not** a true parallel-tx race test — the `FOR UPDATE` guard is the real
-  protection and a deterministic race test isn't worth the flakiness; sequential re-entry
-  covers the guard. `// ponytail:` noted.)
+### Task 3 — Residual regression test  ✅ already covered — no new code
+Both guards already have integration coverage; duplicating them would be waste:
+- topUp-during-active-match rejection → `tests/integration/vyapaar-wallet.itest.ts:72`
+  ("blocks a coin top-up while the user is in an active match").
+- `startMatch` one-active-match guard → `tests/integration/vyapaar-match-start.itest.ts:58`
+  (asserts `/already in a game/i`).
+- True parallel-tx race test deliberately skipped — the `FOR UPDATE` guard is the real
+  protection; a deterministic race test isn't worth the flakiness. `// ponytail:` noted.
 
 ### Task 4 — RLS audit  ✅ done — one gap found + closed
 
