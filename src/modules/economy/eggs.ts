@@ -3,7 +3,7 @@ import { ForbiddenError } from "@/lib/errors"
 import { sendNotification } from "@/modules/notifications/service"
 
 const DAILY_THROW_CAP = 10
-const REPEAT_TARGET_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
+const REPEAT_TARGET_COOLDOWN_MS = 24 * 60 * 60 * 1000 // 24h rolling window per target, from the last throw
 const MIN_ACCOUNT_AGE_DAYS = 7
 const SIGNUP_EGGS = 20
 

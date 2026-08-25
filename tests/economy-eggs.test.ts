@@ -8,8 +8,8 @@ describe("eggs config", () => {
   it("daily cap is 10", () => {
     expect(EGGS_CONFIG.DAILY_THROW_CAP).toBe(10)
   })
-  it("repeat cooldown is 1 hour", () => {
-    expect(EGGS_CONFIG.REPEAT_TARGET_COOLDOWN_MS).toBe(3_600_000)
+  it("repeat cooldown is 24 hours", () => {
+    expect(EGGS_CONFIG.REPEAT_TARGET_COOLDOWN_MS).toBe(86_400_000)
   })
   it("min account age is 7 days", () => {
     expect(EGGS_CONFIG.MIN_ACCOUNT_AGE_DAYS).toBe(7)
