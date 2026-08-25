@@ -13,6 +13,7 @@ import {
   MAX_ROUNDS,
   UNDERDOG_RATIO,
   JAIL_TURNS,
+  MONSOON_POS,
 } from "./data";
 import type { GameState, Intent, EngineEvent } from "./state";
 import type { TradeSide } from "./state";
@@ -84,7 +85,7 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       finishSegment(s);
       break;
     case "taxraid":
-      s.players[seat].pos = 10;
+      s.players[seat].pos = MONSOON_POS;
       s.players[seat].halted = JAIL_TURNS;
       s.players[seat].doubles = 0;
       s.pendingDouble = false;
@@ -268,7 +269,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!brokeOut) p.doubles += isDouble ? 1 : 0;
       s.pendingDouble = isDouble && !brokeOut;
       if (!brokeOut && isDouble && p.doubles >= 3) {
-        p.pos = 10;
+        p.pos = MONSOON_POS;
         p.halted = JAIL_TURNS;
         p.doubles = 0;
         s.pendingDouble = false;

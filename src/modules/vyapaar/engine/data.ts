@@ -104,14 +104,15 @@ export const UNMORTGAGE_RATE = 0.55; // half + 10% interest
 export const UPGRADE_SELL_RATIO = 0.5; // refund on forced upgrade sale during liquidation
 
 // Board tile positions.
+// Wide 13×9 board: the four corners are Start(0) / Monsoon(12) / Mandi(20) / Tax Raid(32).
 export const START_POS = 0;
-export const MONSOON_POS = 10;
-export const MANDI_POS = 20;
-export const TAXRAID_POS = 30;
+export const MONSOON_POS = 12; // bottom-left corner; also the "jail" tile Tax Raid sends to
+export const MANDI_POS = 20; // top-left corner
+export const TAXRAID_POS = 32; // top-right corner
 export const GST_POS = 17;
 export const INCOME_POS = 37;
-export const UPI_POS = [23]; // pos 3 is now a company tile
-export const HEADLINE_POS = [7, 13]; // pos 27 is now a company tile
+export const UPI_POS = [6];
+export const HEADLINE_POS = [24, 30];
 
 export type CardOp =
   | "cash"
