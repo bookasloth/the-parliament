@@ -84,6 +84,20 @@ export function cityLiquidationValue(s: GameState, id: number): number {
   return cardValue + buildingValue;
 }
 
+/**
+ * Cash a city returns when its owner LEAVES: full cost basis, not the half-price
+ * sell-to-bank penalty — leaving mustn't cost you your investment. Unmortgaged card
+ * refunds full price; a mortgaged card refunds price minus the loan already taken
+ * (floor(price/2)); buildings refund their full build cost.
+ */
+export function cityLeaveValue(s: GameState, id: number): number {
+  const c = s.cities[id];
+  const price = CITIES[id].price;
+  const cardValue = c.mortgaged ? price - Math.floor(price / 2) : price;
+  const buildingValue = c.level * upgradeCost(id);
+  return cardValue + buildingValue;
+}
+
 export function scoreOf(s: GameState, seat: number): number {
   const cash = s.players[seat].cash;
   return cash + BLEND * (netWorth(s, seat) - cash);

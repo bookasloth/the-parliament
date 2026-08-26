@@ -1,10 +1,28 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent, rankSeats, winnerOf } from "@/modules/vyapaar/engine/engine";
+import { cityLeaveValue } from "@/modules/vyapaar/engine/helpers";
+import { CITIES, COMPANIES, upgradeCost } from "@/modules/vyapaar/engine/data";
 
 const side = (cities: number[]) => ({ cash: 0, cities });
 
 describe("player leaving", () => {
+  it("refunds the leaver's FULL cost basis (price + full build cost + full company buy)", () => {
+    const s = createGame(1, ["a", "b", "c"]);
+    s.cities[0].owner = 1; s.cities[0].level = 2;
+    s.cities[5].owner = 1; s.cities[5].mortgaged = true; // mortgaged → price minus the loan taken
+    s.companies[2] = 1;
+    const before = s.players[1].cash;
+    const expected = cityLeaveValue(s, 0) + cityLeaveValue(s, 5) + COMPANIES[2].buy;
+    // Full value, not the half-price sell penalty: unmortgaged city refunds full price + full build cost.
+    expect(cityLeaveValue(s, 0)).toBe(CITIES[0].price + 2 * upgradeCost(0));
+    expect(COMPANIES[2].buy).toBeGreaterThan(0);
+    const r = applyIntent(s, 1, { type: "leave_game" });
+    expect(s.players[1].cash).toBe(before + expected);
+    const left = ("events" in r ? r.events : []).find((e) => e.type === "left");
+    expect(left?.amount).toBe(expected);
+  });
+
   it("returns all cities and companies to the bank and marks the player left", () => {
     const s = createGame(1, ["a", "b", "c"]);
     s.cities[0].owner = 1; s.cities[0].level = 3;

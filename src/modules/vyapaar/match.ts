@@ -7,6 +7,7 @@ import type { GameState, Intent } from "./engine/state"
 import { applyIntent, nextAutoIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
+import { capitalGainsTax } from "./tax"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
@@ -15,6 +16,34 @@ import crypto from "node:crypto"
 /** Deadline for the next player action; null once the game has ended. */
 function turnExpiresAtFor(state: GameState, nowMs: number): Date | null {
   return state.ended ? null : new Date(nowMs + TURN_SECONDS * 1000)
+}
+
+/** Latest match for a room + its per-player results, for the settlements screen. */
+export async function getRoomSettlement(code: string) {
+  const room = await prisma.vyapaarRoom.findUnique({ where: { code }, select: { id: true, code: true } })
+  if (!room) return null
+  const match = await prisma.vyapaarMatch.findFirst({
+    where: { roomId: room.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true, status: true, winnerSeat: true, endedAt: true, state: true,
+      players: {
+        orderBy: { seat: "asc" },
+        select: {
+          seat: true, openingCash: true, resultCash: true, placement: true,
+          user: { select: { displayName: true, legalName: true } },
+        },
+      },
+    },
+  })
+  if (!match) return null
+  const state = match.state as unknown as GameState
+  // Attach each seat's pre-tax in-game cash + the capital-gains tax withheld, for the breakdown.
+  const players = match.players.map((p) => {
+    const preTaxCash = state.players[p.seat]?.cash ?? p.resultCash ?? p.openingCash
+    return { ...p, preTaxCash, tax: capitalGainsTax(preTaxCash - p.openingCash) }
+  })
+  return { code: room.code, status: match.status, winnerSeat: match.winnerSeat, endedAt: match.endedAt, players }
 }
 
 export async function activeMatchId(roomId: string): Promise<string | null> {
@@ -71,7 +100,8 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     if (room.status !== "open") throw new ForbiddenError("Room is not open")
     if (room.members.length < 2 || room.members.length > 6) throw new ForbiddenError("Need 2 to 6 players")
     const busy = await tx.vyapaarMatchPlayer.findFirst({
-      where: { userId: { in: room.members.map((m) => m.userId) }, match: { status: "active" } },
+      // resultCash != null ⇒ already settled out (left/finished) — not actually busy.
+      where: { userId: { in: room.members.map((m) => m.userId) }, match: { status: "active" }, resultCash: null },
       select: { user: { select: { displayName: true, legalName: true } } },
     })
     if (busy) throw new ForbiddenError(`${busy.user.displayName || busy.user.legalName} is already in a game`)
@@ -108,8 +138,22 @@ async function settleMatch(
   const placementBySeat = new Map<number, number>()
   order.forEach((seat, i) => placementBySeat.set(seat, i + 1))
 
+  // Players who left mid-game were already paid out + wallet-credited (settleLeaver stamps
+  // resultCash). Re-crediting them here would double-pay, so only finalize their placement.
+  const rows = await tx.vyapaarMatchPlayer.findMany({ where: { matchId }, select: { seat: true, resultCash: true } })
+  const alreadySettled = new Set(rows.filter((r) => r.resultCash !== null).map((r) => r.seat))
+
   for (const p of players) {
-    const resultCash = state.players[p.seat].cash
+    if (alreadySettled.has(p.seat)) {
+      await tx.vyapaarMatchPlayer.update({
+        where: { matchId_seat: { matchId, seat: p.seat } },
+        data: { placement: placementBySeat.get(p.seat)! },
+      })
+      continue
+    }
+    // Capital-gains tax on net profit is withheld before the wallet is credited, so
+    // resultCash is the AFTER-TAX final coins (drives P&L on the settlement screen).
+    const resultCash = state.players[p.seat].cash - capitalGainsTax(state.players[p.seat].cash - p.openingCash)
     await tx.vyapaarMatchPlayer.update({
       where: { matchId_seat: { matchId, seat: p.seat } },
       data: { resultCash, placement: placementBySeat.get(p.seat)! },
@@ -137,6 +181,39 @@ async function settleMatch(
       data: { vyapaarBestNetWorth: nw },
     })
   }
+}
+
+/**
+ * Settle one seat the moment they leave a still-running game: pay their (already
+ * liquidated) cash to their wallet and stamp resultCash so they're freed from the
+ * "in a game?" guard and can join another match immediately. Placement is filled in
+ * later when the match actually ends (settleMatch skips their wallet/ledger by then).
+ */
+async function settleLeaver(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  matchId: string,
+  state: GameState,
+  p: { userId: string; seat: number; openingCash: number },
+): Promise<void> {
+  // Same capital-gains withholding as end-of-game settlement (see settleMatch).
+  const resultCash = state.players[p.seat].cash - capitalGainsTax(state.players[p.seat].cash - p.openingCash)
+  const delta = resultCash - p.openingCash
+  await tx.vyapaarMatchPlayer.update({
+    where: { matchId_seat: { matchId, seat: p.seat } },
+    data: { resultCash },
+  })
+  await tx.vyapaarLedger.create({
+    data: { userId: p.userId, delta, reason: "game_leave", refId: matchId },
+  })
+  await tx.user.update({
+    where: { id: p.userId },
+    data: { vyapaarWallet: { increment: delta }, vyapaarGamesPlayed: { increment: 1 } },
+  })
+  const nw = Math.round(netWorth(state, p.seat))
+  await tx.user.updateMany({
+    where: { id: p.userId, vyapaarBestNetWorth: { lt: nw } },
+    data: { vyapaarBestNetWorth: nw },
+  })
 }
 
 /**
@@ -170,6 +247,13 @@ async function commitMatchState(
     await settleMatch(tx, match.id, state, match.players)
     // Reopen the room for a rematch.
     await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
+  } else {
+    // Pay out anyone who left in this batch right away so they can jump into another game.
+    for (const { seat, intent } of appendedLog) {
+      if (intent.type !== "leave_game") continue
+      const p = match.players.find((pp) => pp.seat === seat)
+      if (p) await settleLeaver(tx, match.id, state, p)
+    }
   }
   return expiresAt
 }

@@ -37,6 +37,9 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
               Enter game
             </Link>
           )}
+          <Link href={`/games/vyapaar/rooms/${room.code}/settlements`} className="rounded-lg border px-4 py-2 text-sm font-semibold">
+            Settlements
+          </Link>
           {isMember && <RoomActions roomId={room.id} isHost={isHost} visibility={room.visibility as "private" | "public"} />}
         </div>
       </div>
