@@ -44,6 +44,8 @@ function driveIntent(s: GameState, rnd: () => number): { seat: number; intent: I
       }
       return { seat, intent: { type: "end_turn" } };
     }
+    case "jail":
+      return { seat, intent: rnd() < 0.3 ? { type: "bribe_jail" } : { type: "serve_jail" } };
   }
 }
 

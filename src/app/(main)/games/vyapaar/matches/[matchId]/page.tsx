@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic"
 export default async function MatchPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params
   const user = await requireUser()
-  let view, turnExpiresAt
+  let view, turnExpiresAt, gameEndsAt
   try {
-    ;({ view, turnExpiresAt } = await getMatchView(user.id, matchId))
+    ;({ view, turnExpiresAt, gameEndsAt } = await getMatchView(user.id, matchId))
   } catch (e) {
     if (e instanceof ForbiddenError) notFound()
     throw e
@@ -35,6 +35,7 @@ export default async function MatchPage({ params }: { params: Promise<{ matchId:
       matchId={matchId}
       initialView={view}
       initialTurnExpiresAt={turnExpiresAt}
+      initialGameEndsAt={gameEndsAt}
       playerImages={playerImages}
       playerTokens={playerTokens}
       roomCode={match?.room.code ?? null}

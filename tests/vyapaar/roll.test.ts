@@ -56,35 +56,5 @@ describe("roll intent", () => {
     expect(salary?.amount).toBe(1200);
   });
 
-  it("frees a halted player only on doubles, else decrements halt", () => {
-    const s = createGame(1, ["a", "b"]);
-    s.players[0].halted = 2;
-    applyIntent(s, 0, { type: "roll" });
-    // either freed (halted 0 and moved) or still halted (halted 1, pos 0)
-    expect([0, 1]).toContain(s.players[0].halted);
-    expect(s.phase === "manage" || s.phase === "buy" || s.phase === "roll").toBe(true);
-  });
-
-  it("grants no bonus roll (and no doubles credit) when a halted player breaks free on doubles", () => {
-    let found = false;
-    for (let seed = 0; seed < 2000; seed++) {
-      const s = createGame(seed, ["a", "b"]);
-      s.players[0].halted = 1;
-      const posBefore = s.players[0].pos;
-      const r = applyIntent(s, 0, { type: "roll" });
-      if (!("state" in r)) continue;
-      const rollEvent = r.events.find(
-        (e): e is { type: "roll"; seat: number; a: number; b: number } => e.type === "roll",
-      );
-      if (!rollEvent || rollEvent.a !== rollEvent.b) continue; // not a jail-break-on-doubles roll
-
-      found = true;
-      expect(s.players[0].halted).toBe(0); // freed
-      expect(s.players[0].pos).not.toBe(posBefore); // moved this roll
-      expect(s.phase).not.toBe("roll"); // no bonus re-roll granted from the break
-      expect(s.players[0].doubles).toBe(0); // jail-break double not counted
-      break;
-    }
-    expect(found).toBe(true); // sanity: the search range actually hit a double
-  });
+  // Jail is its own phase now (no rolling to escape) — see jail.test.ts.
 });

@@ -1,6 +1,6 @@
 import { CITIES, START_CASH } from "./data";
 
-export type Phase = "roll" | "buy" | "auction" | "manage";
+export type Phase = "roll" | "buy" | "auction" | "manage" | "jail";
 
 export interface TradeSide {
   cash: number; // must be 0 — cash is never part of a player trade (kept for wire shape)
@@ -25,6 +25,8 @@ export type Intent =
   | { type: "confirm_payment"; paymentId: number }
   | { type: "expire_payment"; paymentId: number }
   | { type: "restructure" }
+  | { type: "bribe_jail" }
+  | { type: "serve_jail" }
   | { type: "leave_game" }
   | { type: "end_turn" };
 

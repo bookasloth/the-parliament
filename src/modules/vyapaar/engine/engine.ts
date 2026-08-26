@@ -12,10 +12,11 @@ import {
   RESTRUCTURE_ADVANCE,
   RESTRUCTURE_LAPS,
   RESTRUCTURE_PENALTY,
-  SETS_TO_END,
   MAX_ROUNDS,
   UNDERDOG_RATIO,
   JAIL_TURNS,
+  BRIBE_BANK,
+  BRIBE_EACH,
   MONSOON_POS,
 } from "./data";
 import type { GameState, Intent, EngineEvent, TradeOffer } from "./state";
@@ -49,6 +50,8 @@ const ACTIVE_ONLY = new Set<Intent["type"]>([
   "unmortgage",
   "sell",
   "restructure",
+  "bribe_jail",
+  "serve_jail",
   "end_turn",
 ]);
 
@@ -90,7 +93,6 @@ function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): voi
  */
 function advanceTurn(s: GameState, events: EngineEvent[]): void {
   const seat = s.active;
-  if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
   // Advance to the next seat that hasn't left; count a round wrap when we pass the end.
   let next = seat, wrapped = false, hops = 0;
   do {
@@ -101,9 +103,11 @@ function advanceTurn(s: GameState, events: EngineEvent[]): void {
   if (wrapped) s.round++;
   s.players[s.active].doubles = 0;
   s.pendingDouble = false;
-  s.phase = "roll";
+  // A jailed player can't roll — their turn opens in the `jail` phase (bribe out or sit it out).
+  s.phase = s.players[s.active].halted > 0 ? "jail" : "roll";
   events.push({ type: "end_turn", seat });
-  if (s.round > MAX_ROUNDS || (s.endRequested && wrapped)) endGame(s, events);
+  // The game ends only on the round cap (40) — 3-set domination no longer ends it.
+  if (s.round > MAX_ROUNDS) endGame(s, events);
 }
 
 /**
@@ -361,6 +365,18 @@ function endGame(s: GameState, events: EngineEvent[]): void {
   events.push({ type: "game_over", seat: s.winner });
 }
 
+/**
+ * Force the game to end right now (used by the server's 60-minute wall-clock limit).
+ * Settles outstanding payments + picks the winner by net worth, exactly like a natural
+ * end. Returns the events so callers can persist/broadcast them. No-op if already ended.
+ */
+export function forceEndGame(s: GameState): EngineEvent[] {
+  if (s.ended) return [];
+  const events: EngineEvent[] = [];
+  endGame(s, events);
+  return events;
+}
+
 const LOG_CAP = 40; // rolling event log kept on the state for the client game-log panel
 
 export function applyIntent(s: GameState, seat: number, intent: Intent): Result {
@@ -384,25 +400,10 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       const p = s.players[seat];
       const a = rollDie(s);
       const b = rollDie(s);
-      const isDouble = a === b;
       s.lastRoll = [a, b];
       events.push({ type: "roll", seat, a, b });
-
-      let brokeOut = false;
-      if (p.halted > 0) {
-        if (isDouble) {
-          p.halted = 0;
-          brokeOut = true;
-        } else {
-          p.halted--;
-          s.pendingDouble = false;
-          finishSegment(s, events);
-          return { state: s, events };
-        }
-      }
-
-      // One roll per turn: doubles grant no bonus roll and there is no
-      // three-doubles jail rule. (Doubles still break you out of jail, above.)
+      // One roll per turn — doubles grant no bonus roll. (Jail is its own phase; a
+      // jailed player never reaches here.)
       s.pendingDouble = false;
 
       const sum = p.pos + a + b;
@@ -679,6 +680,32 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       return { state: s, events };
     }
 
+    case "bribe_jail": {
+      // Buy your way out of jail NOW: pay the bank BRIBE_BANK plus BRIBE_EACH to every
+      // other player still in the game ("to stay silent" — automatic, no approval). Freed
+      // this turn, then you roll. Refused if you can't cover the whole bribe.
+      if (s.phase !== "jail") return { error: "not_in_jail" };
+      const p = s.players[seat];
+      const others = s.players.map((_, i) => i).filter((i) => i !== seat && !s.players[i].left);
+      const total = BRIBE_BANK + BRIBE_EACH * others.length;
+      if (p.cash < total) return { error: "insufficient_funds" };
+      p.cash -= total; // BRIBE_BANK vanishes to the bank; the rest is handed out below
+      others.forEach((i) => { s.players[i].cash += BRIBE_EACH; });
+      p.halted = 0;
+      s.phase = "roll";
+      events.push({ type: "bribe", seat, bank: BRIBE_BANK, each: BRIBE_EACH, others: others.length, amount: total });
+      return { state: s, events };
+    }
+
+    case "serve_jail": {
+      // Sit the turn out. Serve one jail turn and pass — no dice, no move.
+      if (s.phase !== "jail") return { error: "not_in_jail" };
+      s.players[seat].halted -= 1;
+      events.push({ type: "jail_served", seat, left: s.players[seat].halted });
+      advanceTurn(s, events);
+      return { state: s, events };
+    }
+
     case "leave_game": {
       // Legal at any time (off-turn included). The left-guard at the top makes a
       // second leave a no-op error, so this is idempotent.
@@ -713,6 +740,9 @@ export function nextAutoIntent(s: GameState): { seat: number; intent: Intent } |
     }
     case "manage":
       return { seat: s.active, intent: { type: "end_turn" } };
+    case "jail":
+      // On timeout a jailed player just sits it out (never auto-bribes — that'd drain them).
+      return { seat: s.active, intent: { type: "serve_jail" } };
     default:
       return null;
   }
