@@ -159,6 +159,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
     case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
     case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
+    case "bribe": return `${nm(e.seat)} bribed out of jail (${rup(e.amount)})`
     case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
     case "trade_declined": return `a trade was declined`
@@ -193,6 +194,7 @@ function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; l
     case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
     case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
     case "restructure": return e.seat === you ? { delta: amt, label: "Restructure" } : null
+    case "bribe": return e.seat === you ? { delta: -amt, label: "Jail bribe" } : null
     case "left": return e.seat === you ? { delta: amt, label: "Cashed out" } : null
     case "payment_collected": return e.seat === you ? { delta: amt, label: "Claimed" } : null
     case "payment_paid": return e.seat === you ? { delta: -amt, label: "Paid" } : null
@@ -203,9 +205,10 @@ function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; l
 
 type MoneyEntry = { d: { delta: number; label: string }; i: number }
 
-export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initialGameEndsAt = null, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; initialGameEndsAt?: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
+  const [gameEndsAt, setGameEndsAt] = useState<string | null>(initialGameEndsAt)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [openTile, setOpenTile] = useState<number | null>(null) // board position of the open deed
@@ -222,7 +225,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
   const refetch = useCallback(async () => {
     const res = await fetch(`/api/vyapaar/${matchId}/view`, { cache: "no-store" })
-    if (res.ok) { const d = await res.json(); setView(d.view); setTurnExpiresAt(d.turnExpiresAt ?? null); setErr(null) }
+    if (res.ok) { const d = await res.json(); setView(d.view); setTurnExpiresAt(d.turnExpiresAt ?? null); setGameEndsAt(d.gameEndsAt ?? null); setErr(null) }
   }, [matchId])
 
   useEffect(() => {
@@ -365,7 +368,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     : view.phase === "buy" ? (landing || "Buy it or decline")
     : view.phase === "manage" ? (landing ? `${landing} — develop or end your turn` : "Develop, then end your turn")
     : view.phase === "auction" ? "Auction in progress"
+    : view.phase === "jail" ? `In jail — ${view.players[you]?.halted ?? 0} turn${(view.players[you]?.halted ?? 0) === 1 ? "" : "s"} left`
     : ""
+  const bribeCost = 1000 + 250 * view.players.filter((p, i) => i !== you && !p.left).length
 
   // Leaving forfeits: assets return to the bank server-side, then we navigate out.
   const leaveGame = useCallback(async () => {
@@ -461,10 +466,16 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 <div className="vb-hub-mid">
                   <div className="vb-hub-name">व्यापार</div>
                   <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} animate={lastRollSeat === you} />
-                  {myTurn && view.phase === "manage"
+                  {myTurn && view.phase === "jail" ? (
+                    <div className="vb-jail-acts">
+                      <button className="vb-roll" disabled={busy || view.players[you].cash < bribeCost} onClick={() => send({ type: "bribe_jail" }, false, "Bribe")}>Bribe · ₹{inr(bribeCost)}</button>
+                      <button className="vb-jail-sit" disabled={busy} onClick={() => send({ type: "serve_jail" }, false, "Jail")}>Sit it out</button>
+                    </div>
+                  ) : myTurn && view.phase === "manage"
                     ? <button className="vb-roll" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
                     : <button className="vb-roll" disabled={busy || !myTurn || view.phase !== "roll"} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
                   {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
+                  <EndWarning gameEndsAt={gameEndsAt} round={view.round} ended={view.ended} />
                 </div>
                 <aside className="vb-hub-side vb-hublog">
                   <div className="vb-hub-h">Game log</div>
@@ -647,6 +658,26 @@ function Countdown({ expiresAt, ended }: { expiresAt: string | null; ended: bool
   if (!expiresAt || ended || now === null) return null
   const secs = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000))
   return <span className={`vb-count ${secs <= 5 ? "low" : ""}`}>{secs > 0 ? `0:${String(secs).padStart(2, "0")}` : "resolving…"}</span>
+}
+
+// Warns when the game is near either hard end — ≤5 minutes on the 60-min clock, or ≤4
+// rounds before the 40-round cap. Mounted-gated Date.now so SSR/hydration stays clean.
+function EndWarning({ gameEndsAt, round, ended }: { gameEndsAt: string | null; round: number; ended: boolean }) {
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    if (ended) { setNow(null); return }
+    setNow(Date.now())
+    const t = setInterval(() => setNow(Date.now()), 15000)
+    return () => clearInterval(t)
+  }, [ended])
+  if (ended || now === null) return null
+  const roundsLeft = 40 - round
+  const minsLeft = gameEndsAt ? Math.max(0, Math.ceil((new Date(gameEndsAt).getTime() - now) / 60000)) : null
+  const msg = (minsLeft !== null && minsLeft <= 5) ? `${minsLeft} min left`
+    : (roundsLeft > 0 && roundsLeft <= 4) ? `${roundsLeft} round${roundsLeft === 1 ? "" : "s"} left`
+    : null
+  if (!msg) return null
+  return <div className="vb-warn">⏱ {msg} — game ending soon</div>
 }
 
 const DIE_FACES: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
@@ -1142,12 +1173,18 @@ function TradeCard({ trade, view, you, busy, onAction }: {
   }
   const expiry = trade.expiresAt ? new Date(trade.expiresAt).toISOString() : null
   const incoming = trade.to === you
+  // Net face value of the trade from YOUR side (cities at price, companies at buy). Shown
+  // green if you come out ahead, red if you're giving up more than you get.
+  const sideValue = (side: TradeSide) => side.cities.reduce((s, id) => s + CITIES[id].price, 0) + (side.companies ?? []).reduce((s, ci) => s + COMPANIES[ci].buy, 0)
+  const net = incoming ? sideValue(trade.give) - sideValue(trade.get) : sideValue(trade.get) - sideValue(trade.give)
+  const pnlLine = <p className={`vb-trade-pnl ${net >= 0 ? "up" : "down"}`}>You are {net >= 0 ? "+" : "−"}₹{inr(Math.abs(net))} in this trade</p>
 
   if (!incoming) {
     return (
       <div className="vb-trade">
         <p>Your offer to <b>{nm(trade.to)}</b> · <Countdown expiresAt={expiry} ended={view.ended} /></p>
         <p className="vb-trade-sum">You give {sideNames(trade.give)} → get {sideNames(trade.get)}</p>
+        {pnlLine}
         <div className="vb-trade-btns">
           <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "withdraw_trade", tradeId: trade.id })}>Withdraw</button>
         </div>
@@ -1170,6 +1207,7 @@ function TradeCard({ trade, view, you, busy, onAction }: {
     <div className="vb-trade">
       <p><b>{nm(trade.from)}</b> offers you a trade · <Countdown expiresAt={expiry} ended={view.ended} /></p>
       <p className="vb-trade-sum">You get {sideNames(trade.give)} → give {sideNames(trade.get)}</p>
+      {pnlLine}
       {!countering ? (
         <div className="vb-trade-btns">
           <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: true })}>Accept</button>
@@ -1389,6 +1427,13 @@ const VB_CSS = `
 .vb-report-btn{font-family:"Poppins";font-weight:600;font-size:.78rem;color:var(--dim);border:1px solid var(--line);background:transparent;border-radius:2px;padding:.35rem .6rem;cursor:pointer;}
 .vb-report-btn:hover{color:#c0392b;border-color:#c0392b;}
 .vb-roll-status{font-size:.8rem;font-weight:600;color:var(--dim);text-align:center;margin-top:2px;}
+.vb-jail-acts{display:flex;flex-direction:column;gap:6px;align-items:center;}
+.vb-jail-sit{font-family:"Poppins";font-weight:600;font-size:.78rem;padding:.4rem .9rem;border-radius:2px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer;}
+.vb-jail-sit:disabled{opacity:.5;cursor:not-allowed;}
+.vb-warn{margin-top:6px;font-size:.72rem;font-weight:700;color:#c0392b;background:#fdecea;border:1px solid #f5c6c2;border-radius:999px;padding:2px 10px;}
+.vb-trade-pnl{margin:2px 0 8px;font-size:.78rem;font-weight:700;}
+.vb-trade-pnl.up{color:#2E9455;}
+.vb-trade-pnl.down{color:#c0392b;}
 .vb-tok-img{position:absolute;width:34%;max-width:18px;aspect-ratio:1;bottom:2px;border-radius:50%;object-fit:cover;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
 .vb-tok-img.vb-tok-corner{width:22%;max-width:12px;}
 .vb-report{width:min(420px,100%);background:var(--panel);color:var(--cream);border:1px solid var(--line);border-radius:2px;overflow:hidden;}

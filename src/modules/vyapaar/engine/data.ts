@@ -95,7 +95,9 @@ export const ZONE_DOUBLE = 2; // undeveloped base rent ×this when the owner con
 export const RESTRUCTURE_ADVANCE = 3600; // ≈ one cheap property / 3× base salary
 export const RESTRUCTURE_LAPS = 3;
 export const RESTRUCTURE_PENALTY = 1200; // per-lap salary cut (3 × 1200 = 3600 repaid)
-export const JAIL_TURNS = 2; // turns halted by Tax Raid / three doubles
+export const JAIL_TURNS = 3; // turns you sit out after Tax Raid (no rolling while jailed)
+export const BRIBE_BANK = 1000; // pay the bank this…
+export const BRIBE_EACH = 250; // …plus this to every other player to walk out of jail early
 export const MAX_ROUNDS = 40;
 export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;

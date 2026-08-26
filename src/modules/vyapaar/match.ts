@@ -4,7 +4,7 @@ import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { createGame } from "./engine/state"
 import type { GameState, Intent } from "./engine/state"
-import { applyIntent, nextAutoIntent, rankSeats } from "./engine/engine"
+import { applyIntent, nextAutoIntent, rankSeats, forceEndGame } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth, liquidationWorth } from "./engine/helpers"
 import { capitalGainsTax } from "./tax"
@@ -13,6 +13,12 @@ import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import { stampNewPayments, sweepExpiredPayments } from "./engine/payment-expiry"
 import crypto from "node:crypto"
+
+// Hard wall-clock cap: a game force-ends 60 minutes after it was created, whichever of
+// {round cap, this, last-player-standing} comes first. Enforced server-side (the engine
+// has no clock) on the next action or the turn-timer cron.
+export const GAME_TIME_LIMIT_MS = 60 * 60 * 1000
+const gameEndsAt = (createdAt: Date) => new Date(createdAt.getTime() + GAME_TIME_LIMIT_MS)
 
 /** Deadline for the next player action; null once the game has ended. An auction adds
  *  AUCTION_SECONDS on top of the turn clock so everyone has time to bid. */
@@ -60,10 +66,10 @@ export async function activeMatchId(roomId: string): Promise<string | null> {
 export async function getMatchView(
   userId: string,
   matchId: string,
-): Promise<{ view: PublicView; turnExpiresAt: string | null }> {
+): Promise<{ view: PublicView; turnExpiresAt: string | null; gameEndsAt: string | null }> {
   const match = await prisma.vyapaarMatch.findUnique({
     where: { id: matchId },
-    select: { state: true, turnExpiresAt: true, players: { select: { userId: true, seat: true } } },
+    select: { state: true, turnExpiresAt: true, createdAt: true, players: { select: { userId: true, seat: true } } },
   })
   if (!match) throw new ForbiddenError("Match not found")
   const me = match.players.find((p) => p.userId === userId)
@@ -73,7 +79,11 @@ export async function getMatchView(
   // Hide trades already past their deadline (state cleanup happens on the next intent/cron).
   const now = Date.now()
   view.trades = view.trades.filter((t) => !t.expiresAt || t.expiresAt > now)
-  return { view, turnExpiresAt: match.turnExpiresAt?.toISOString() ?? null }
+  return {
+    view,
+    turnExpiresAt: match.turnExpiresAt?.toISOString() ?? null,
+    gameEndsAt: state.ended ? null : gameEndsAt(match.createdAt).toISOString(),
+  }
 }
 
 /** Deterministic rebuild from stored inputs — replay/audit/resume. */
@@ -283,7 +293,7 @@ export async function applyMatchIntent(
     const match = await tx.vyapaarMatch.findUnique({
       where: { id: matchId },
       select: {
-        id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true,
+        id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true, createdAt: true,
         players: { select: { userId: true, seat: true, openingCash: true } },
       },
     })
@@ -292,6 +302,14 @@ export async function applyMatchIntent(
     if (!me) throw new ForbiddenError("not_a_player")
 
     const state = match.state as unknown as GameState
+    // 60-minute wall-clock cap: if the game has run over time, end it now (by net-worth
+    // ranking) whatever the incoming intent was, then settle + discard the room.
+    if (!state.ended && Date.now() - match.createdAt.getTime() > GAME_TIME_LIMIT_MS) {
+      const evs = forceEndGame(state)
+      state.log = [...(state.log ?? []), ...evs].slice(-40)
+      const expiresAt = await commitMatchState(tx, match, state, [], false)
+      return { view: publicView(state, me.seat), turnExpiresAt: expiresAt }
+    }
     const activeBefore = state.active
     // Clear any trades past their 60s deadline before applying the new intent.
     const now = Date.now()
@@ -327,11 +345,18 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
       await tx.$executeRaw`SELECT id FROM "vyapaar_match" WHERE id = ${id}::uuid FOR UPDATE`
       const match = await tx.vyapaarMatch.findUnique({
         where: { id },
-        select: { id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true, players: { select: { userId: true, seat: true, openingCash: true } } },
+        select: { id: true, roomId: true, status: true, state: true, actionLog: true, turnExpiresAt: true, createdAt: true, players: { select: { userId: true, seat: true, openingCash: true } } },
       })
       // Stale guard: a real move may have advanced the turn between the query and the lock.
       if (!match || match.status !== "active" || !match.turnExpiresAt || match.turnExpiresAt > now) return null
       const state = match.state as unknown as GameState
+      // 60-minute cap for idle games: end it now instead of auto-playing to the round cap.
+      if (!state.ended && now.getTime() - match.createdAt.getTime() > GAME_TIME_LIMIT_MS) {
+        const evs = forceEndGame(state)
+        state.log = [...(state.log ?? []), ...evs].slice(-40)
+        await commitMatchState(tx, match, state, [], false)
+        return { activeSeat: state.active, ended: true }
+      }
       const startSeat = state.active
       const appended: { seat: number; intent: Intent }[] = []
       appended.push(...sweepExpiredTrades(state, now.getTime())) // clear expired trades too

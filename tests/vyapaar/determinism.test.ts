@@ -43,6 +43,7 @@ function pickIntent(s: GameState): { seat: number; intent: Intent } {
     const p = s.payments[0];
     return { seat: p.actor, intent: { type: "confirm_payment", paymentId: p.id } };
   }
+  if (s.phase === "jail") return { seat: s.active, intent: { type: "serve_jail" } };
   if (s.phase === "roll") return { seat: s.active, intent: { type: "roll" } };
   if (s.phase === "buy") {
     const seat = s.active;

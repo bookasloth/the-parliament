@@ -53,18 +53,14 @@ describe("end_turn and end conditions", () => {
     expect(s.winner).not.toBeNull();
   });
 
-  it("ends after the round completes once a player reaches 3 sets", () => {
+  it("does NOT end on 3 controlled sets (domination end removed — only 40 rounds / 60 min / last standing)", () => {
     const s = createGame(1, ["a", "b"]);
-    // seat 0 controls 3 full sets (groups 0,1,2 = cityIds 0..14)
-    for (let id = 0; id <= 14; id++) s.cities[id].owner = 0;
+    for (let id = 0; id <= 14; id++) s.cities[id].owner = 0; // seat 0 controls 3 full sets
     s.phase = "manage";
-    applyIntent(s, 0, { type: "end_turn" }); // endRequested set, not wrapped yet
-    expect(s.ended).toBe(false);
-    expect(s.endRequested).toBe(true);
+    applyIntent(s, 0, { type: "end_turn" });
     s.phase = "manage";
-    applyIntent(s, 1, { type: "end_turn" }); // wraps → ends
-    expect(s.ended).toBe(true);
-    expect(winnerOf(s)).toBe(0);
+    applyIntent(s, 1, { type: "end_turn" }); // a full round wrap
+    expect(s.ended).toBe(false); // game keeps going — sets no longer end it
   });
 
   it("the set owner outranks a cash-only rival on net worth", () => {
