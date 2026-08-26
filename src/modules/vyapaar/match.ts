@@ -9,13 +9,16 @@ import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
 import { capitalGainsTax } from "./tax"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
-import { TURN_SECONDS } from "@/config/vyapaar-match"
+import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import crypto from "node:crypto"
 
-/** Deadline for the next player action; null once the game has ended. */
+/** Deadline for the next player action; null once the game has ended. An auction adds
+ *  AUCTION_SECONDS on top of the turn clock so everyone has time to bid. */
 function turnExpiresAtFor(state: GameState, nowMs: number): Date | null {
-  return state.ended ? null : new Date(nowMs + TURN_SECONDS * 1000)
+  if (state.ended) return null
+  const secs = state.phase === "auction" ? TURN_SECONDS + AUCTION_SECONDS : TURN_SECONDS
+  return new Date(nowMs + secs * 1000)
 }
 
 /** Latest match for a room + its per-player results, for the settlements screen. */
