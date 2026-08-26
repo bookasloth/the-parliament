@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/prisma"
+import { optionalUser } from "@/modules/auth/session"
 import { TierLanding } from "../tier-landing"
 
 export const metadata: Metadata = {
@@ -9,8 +10,9 @@ export const metadata: Metadata = {
 }
 
 export default async function LifeLandingPage() {
-  const memberCount = await prisma.user
-    .count({ where: { status: "active", deletedAt: null } })
-    .catch(() => 0)
-  return <TierLanding tier="life" memberCount={memberCount} />
+  const [memberCount, session] = await Promise.all([
+    prisma.user.count({ where: { status: "active", deletedAt: null } }).catch(() => 0),
+    optionalUser(),
+  ])
+  return <TierLanding tier="life" memberCount={memberCount} guest={!session?.id} />
 }

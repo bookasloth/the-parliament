@@ -259,7 +259,7 @@ function ComparisonTable({ tier }: { tier: TierKey }) {
       <div className="mt-8 text-center">
         <Link
           href={`/upgrade/${t.key}`}
-          className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-[15px] font-bold shadow-lg transition-transform hover:-translate-y-0.5"
+          className={`inline-flex items-center gap-2 rounded-full px-7 py-3 text-[15px] font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${CTA_FX}`}
           style={{ background: t.accent, color: t.onAccent, boxShadow: `0 14px 34px -14px ${t.accent}99` }}
         >
           {t.cta} — {rupees(t.priceInr)}{t.per === "/year" ? "/yr" : ""} <ArrowRight className="h-4 w-4" />
@@ -337,7 +337,11 @@ function FlagshipVisual({ tier }: { tier: TierKey }) {
 
 /* ─────────────────────────── Page ─────────────────────────── */
 
-export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCount?: number }) {
+// Shared a11y polish for CTAs: visible keyboard focus + no motion when the
+// viewer prefers reduced motion.
+const CTA_FX = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/40 focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+
+export function TierLanding({ tier, memberCount = 0, guest = false }: { tier: TierKey; memberCount?: number; guest?: boolean }) {
   const t = TIERS[tier]
   const Icon = t.icon
   const [open, setOpen] = useState<number | null>(0)
@@ -356,7 +360,7 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
     : memberCount >= 20 ? Math.floor(memberCount / 10) * 10 : 0
 
   return (
-    <div style={vars} className="bg-white text-gray-900">
+    <div style={vars} className={`bg-white text-gray-900 ${guest ? "pb-20 lg:pb-0" : ""}`}>
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         <div
@@ -394,7 +398,7 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
           <div className="mt-8 flex justify-center">
             <Link
               href={`/upgrade/${t.key}`}
-              className="inline-flex items-center gap-2 rounded-full px-9 py-4 text-[16px] font-bold shadow-lg transition-transform hover:-translate-y-0.5"
+              className={`inline-flex items-center gap-2 rounded-full px-9 py-4 text-[16px] font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${CTA_FX}`}
               style={{ background: "var(--accent)", color: "var(--on-accent)", boxShadow: `0 16px 38px -12px ${t.accent}aa` }}
             >
               {t.cta} <ArrowRight className="h-4 w-4" />
@@ -550,7 +554,7 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
           </p>
           <Link
             href={`/upgrade/${t.key}`}
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 text-[16px] font-bold shadow-lg transition-transform hover:-translate-y-0.5"
+            className={`mt-8 inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 text-[16px] font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${CTA_FX}`}
             style={{ color: "var(--accent-ink)" }}
           >
             {t.cta} <ArrowRight className="h-4 w-4" />
@@ -565,6 +569,30 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
           </p>
         </div>
       </section>
+
+      {/* ── Sticky mobile CTA (guests only — logged-in members have the tab bar) ── */}
+      {guest && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden"
+          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="mx-auto flex max-w-[520px] items-center justify-between gap-3">
+            <div className="leading-tight">
+              <span className="block text-[16px] font-extrabold tabular-nums">
+                {rupees(t.priceInr)}<span className="text-[12px] font-medium text-gray-500"> {t.per}</span>
+              </span>
+              <span className="block text-[11px] text-gray-500">{t.name}</span>
+            </div>
+            <Link
+              href={`/upgrade/${t.key}`}
+              className={`flex-1 max-w-[220px] rounded-full px-5 py-3 text-center text-[15px] font-bold ${CTA_FX}`}
+              style={{ background: t.accent, color: t.onAccent }}
+            >
+              {t.cta}
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
