@@ -2,8 +2,9 @@ import { CITIES, COMPANIES, upgradeCost, SET_MULT, PAIR_MULT, DEV_MULT } from "@
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 
 const ZONE_NAME = ["North", "South", "East", "West", "Central"]
-const ZONE_BG = ["#FE5100", "#4AB765", "#FF4D93", "#269CEF", "#FFCC1C"]
-const ZONE_DARK = [false, false, false, false, true]
+// Slightly darker per-zone hues used for the OUTLINE pills (border + text) so every
+// colour — the central yellow especially — stays readable on the white cell.
+const ZONE_LINE = ["#FE5100", "#2F9E57", "#EE3C7C", "#1E8BE0", "#C79500"]
 const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd0"]
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN")
 
@@ -40,12 +41,11 @@ export function MatchResults({ view, playerImages = [] }: { view: PublicView; pl
   const rows = build(view)
   const win = rows[0]
 
-  const cityPill = (id: number, seat: number) => {
+  const cityPill = (id: number) => {
     const z = CITIES[id].zone
-    const inSet = controlsSet(view, seat, z)
     const c = view.cities[id]
     return (
-      <span key={id} className={`vr-pill${inSet ? " vr-set" : ""}`} style={{ background: ZONE_BG[z], color: ZONE_DARK[z] ? "#3a2f00" : "#fff" }}>
+      <span key={id} className="vr-pill" style={{ color: ZONE_LINE[z] }}>
         {CITIES[id].name}{c.level > 0 ? <b className="vr-lvl">{c.level > 3 ? "🏨" : "🏠"}{c.level}</b> : c.mortgaged ? <b className="vr-lvl">✕</b> : null}
       </span>
     )
@@ -100,7 +100,7 @@ export function MatchResults({ view, playerImages = [] }: { view: PublicView; pl
               <th className="vr-rl">Cities</th>
               {rows.map((r, i) => (
                 <td key={r.seat} className={i === 0 ? "vr-wincol" : ""}>
-                  {r.cities.length ? <div className="vr-pills">{r.cities.map(({ id }) => cityPill(id, r.seat))}</div> : <span className="vr-dash">—</span>}
+                  {r.cities.length ? <div className="vr-pills">{r.cities.map(({ id }) => cityPill(id))}</div> : <span className="vr-dash">—</span>}
                 </td>
               ))}
             </tr>
@@ -165,9 +165,8 @@ const CSS = `
 .vr-meta{display:block;font-size:.66rem;color:var(--dim);font-weight:500;margin-top:1px;}
 .vr-dash{color:var(--faint);}
 .vr-pills{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;}
-.vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
-.vr-pill.vr-set{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px currentColor;}
-.vr-pill.vr-co{background:var(--grey);color:#fff;}
+.vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid currentColor;}
+.vr-pill.vr-co{color:var(--grey);}
 .vr-lvl{font-size:.62rem;font-weight:700;opacity:.95;}
 .vr-foot{margin:0;padding:12px 22px 16px;font-size:.7rem;color:var(--faint);line-height:1.5;border-top:1px solid var(--line);background:var(--line2);}
 `
