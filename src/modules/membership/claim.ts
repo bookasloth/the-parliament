@@ -48,14 +48,20 @@ export async function claimAndActivateOrder(
   })
   if (claimed.count === 0) return { claimed: false }
 
+  // Delta upgrades (associate → premium) stamp the existing expiry on the order
+  // at checkout so the renewal date carries over instead of resetting a year.
+  const meta = (order.metadata ?? {}) as { preserveEndsAt?: string | null }
+  const preserveEndsAt = meta.preserveEndsAt ? new Date(meta.preserveEndsAt) : undefined
+
   // Tier granted follows the server's order record (which set the charged
   // amount), never a client-echoed value — keeps tier and amount coupled.
   const activation = await activateMembership({
     userId: order.userId,
     planCode: order.planCode as PlanCode,
-    source: "purchase",
+    source: preserveEndsAt ? "upgrade" : "purchase",
     amountPaise: order.amountPaise,
     orderId: order.id,
+    preserveEndsAt,
   })
 
   // Paperwork: numbered invoice + receipt email. Best-effort — never throws, so a

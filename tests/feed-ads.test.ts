@@ -4,7 +4,9 @@ import {
   injectFeedAds,
   weaveFeedAds,
   adStateAfter,
+  adGapFor,
   AD_GAP,
+  AD_GAP_ASSOCIATE,
   FEED_ADS,
 } from "@/config/feed-ads"
 
@@ -32,12 +34,14 @@ describe("injectFeedAds tiering", () => {
     expect(injectFeedAds([], "associate", [ad("x")])).toEqual([])
   })
 
-  it("committee never sees feed ads", () => {
-    expect(injectFeedAds(posts(20), "committee", [ad("x")]).some(isAd)).toBe(false)
+  it("premium, life, and committee never see feed ads (paid ad-free)", () => {
+    for (const t of ["premium", "life", "committee"]) {
+      expect(injectFeedAds(posts(20), t, [ad("x")]).some(isAd)).toBe(false)
+    }
   })
 
-  it("places an ad after every 5 posts (fixed cadence)", () => {
-    const out = injectFeedAds(posts(20), "associate", [ad("x")])
+  it("places an ad after every 5 posts at the base cadence (inactive/unknown)", () => {
+    const out = injectFeedAds(posts(20), "inactive", [ad("x")])
     // p0..p4, ad, p5..p9, ad, ...
     expect(out[5]).toMatchObject({ isSponsored: true })
     expect(out.slice(0, 5).some(isAd)).toBe(false)
@@ -45,9 +49,17 @@ describe("injectFeedAds tiering", () => {
     expect(out.slice(6, 11).some(isAd)).toBe(false)
   })
 
+  it("associate gets the REDUCED cadence — one ad every 10 posts", () => {
+    const out = injectFeedAds(posts(20), "associate", [ad("x")])
+    expect(out[10]).toMatchObject({ isSponsored: true })
+    expect(out.slice(0, 10).some(isAd)).toBe(false)
+    // 20 posts at gap 10 → 2 ads, vs 4 at the base gap.
+    expect(out.filter(isAd)).toHaveLength(2)
+  })
+
   it("ads repeat and cycle through the rotation (not once)", () => {
     const three = [ad("a"), ad("b"), ad("c")]
-    const out = injectFeedAds(posts(30), "associate", three)
+    const out = injectFeedAds(posts(30), "inactive", three)
     const adIds = out.filter(isAd).map((p) => p.id)
     // 30 posts, gap 5 → 6 ads, cycling a,b,c,a,b,c.
     expect(adIds).toEqual(["a", "b", "c", "a", "b", "c"])
@@ -61,15 +73,32 @@ describe("injectFeedAds tiering", () => {
 
   it("shows the rotation even when the feed is too short to space them", () => {
     const three = [ad("a"), ad("b"), ad("c")]
-    // only 2 posts (< AD_GAP) — all 3 ads still appear (appended).
-    const out = injectFeedAds(posts(2), "associate", three)
+    // only 2 posts (< gap) — all 3 ads still appear (appended).
+    const out = injectFeedAds(posts(2), "inactive", three)
     expect(out.filter(isAd).map((p) => p.id)).toEqual(["a", "b", "c"])
   })
 
   it("does not mutate the original array", () => {
     const ps = posts(2)
-    injectFeedAds(ps, "associate", [ad("x")])
+    injectFeedAds(ps, "inactive", [ad("x")])
     expect(ps).toHaveLength(2)
+  })
+})
+
+describe("adGapFor — the paid ad ladder", () => {
+  it("premium/life/committee are ad-free (null gap)", () => {
+    expect(adGapFor("premium")).toBeNull()
+    expect(adGapFor("life")).toBeNull()
+    expect(adGapFor("committee")).toBeNull()
+  })
+  it("associate gets a wider (reduced) gap than the base tier", () => {
+    expect(adGapFor("associate")).toBe(AD_GAP_ASSOCIATE)
+    expect(AD_GAP_ASSOCIATE).toBeGreaterThan(AD_GAP)
+  })
+  it("student and unknown tiers fall back to the base gap", () => {
+    expect(adGapFor("student")).toBe(AD_GAP)
+    expect(adGapFor("inactive")).toBe(AD_GAP)
+    expect(adGapFor("free")).toBe(AD_GAP)
   })
 })
 

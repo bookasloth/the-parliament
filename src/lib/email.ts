@@ -421,7 +421,7 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
   },
   upsell_upgrade: {
     subject: (d) => `Ready for ${d.planName}?`,
-    text: (d) => `Hi ${d.firstName},\n\nUpgrade to ${d.planName} for mentorship access, more business listings, a highlighted profile, and recognition.\n\nUpgrade: ${d.upgradeUrl}`,
+    text: (d) => `Hi ${d.firstName},\n\nUpgrade to ${d.planName} for an ad-free feed, a highlighted profile in the directory, your own business listing, more video calling, and extra gallery storage.\n\nUpgrade: ${d.upgradeUrl}`,
     html: (d) =>
       emailShell({
         accent: "navy",
@@ -429,13 +429,13 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
         eyebrow: "Membership · Upgrade",
         heading: `Ready for <em>${d.planName}</em>, ${d.firstName}?`,
         body:
-          p(`You're getting real value from your membership — ${d.planName} adds the things alumni use to give back and get noticed:`) +
+          p(`You're getting real value from your membership — ${d.planName} makes the everyday experience better:`) +
           bullets([
-            "Apply to become a student mentor",
-            "List more businesses",
-            "Your profile highlighted to students",
-            "Recognition on the site & at events",
-            "Your name on the Scholarship Supporters Wall",
+            "An ad-free feed",
+            "A highlighted profile in the directory",
+            "List your business in the directory",
+            "More included video calling",
+            "More photo gallery storage",
           ]) +
           button(`Upgrade to ${d.planName}`, d.upgradeUrl, "navy") +
           small("You keep your current renewal date."),

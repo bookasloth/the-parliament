@@ -46,6 +46,18 @@ describe("can — admin", () => {
   })
 })
 
+describe("can — membership:manage (financial: grant/refund/set-tier)", () => {
+  it("admin and super_admin can manage memberships", () => {
+    expect(can(r("admin"), "membership:manage")).toBe(true)
+    expect(can({ isSuperAdmin: true }, "membership:manage")).toBe(true)
+  })
+  it("moderator, support, and analyst cannot", () => {
+    expect(can(r("moderator"), "membership:manage")).toBe(false)
+    expect(can(r("support"), "membership:manage")).toBe(false)
+    expect(can(r("analyst"), "membership:manage")).toBe(false)
+  })
+})
+
 describe("can — moderator", () => {
   it("moderates content/reports/members but no analytics or verification review", () => {
     expect(can(r("moderator"), "content:moderate")).toBe(true)

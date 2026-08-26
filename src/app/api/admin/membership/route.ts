@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { z } from "zod"
 import { handleError, ok } from "@/lib/api"
-import { requireAdmin } from "@/lib/gate"
+import { requirePermission } from "@/lib/gate"
 import {
   adminExtend,
   adminGrant,
@@ -54,7 +54,7 @@ const schema = z.discriminatedUnion("action", [
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requirePermission("membership:manage")
     const stats = await getMembershipStats()
     return ok({ stats })
   } catch (e) {
@@ -64,7 +64,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requirePermission("membership:manage")
     const body = schema.parse(await req.json())
 
     if (body.action === "grant") {

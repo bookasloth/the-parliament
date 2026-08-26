@@ -11,6 +11,7 @@ import { loadViewer } from "@/lib/viewer"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost, relativeTime, batchOrdinal } from "./map-row"
 import { injectFeedAds } from "@/config/feed-ads"
+import { isPaidTier, type PlanCode } from "@/config/membership"
 import { getFollowSuggestions } from "@/modules/onboarding/suggestions"
 import { normalizeHashtag, postHashtagWhere } from "@/lib/rich-text"
 import FeedLoading from "./loading"
@@ -81,7 +82,13 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
           ),
         )
       : undefined
-    const tier = u?.membershipStatus ?? "student"
+    // Tier for gating comes from the session claim (row truth via
+    // resolveActivePlan) — never the denormalized u.membershipStatus column,
+    // which can drift (suspended, expired, or legacy "free"). Paid tiers get the
+    // full infinite feed; everyone else (student/free/inactive) gets the capped
+    // teaser.
+    const tier = (viewer?.membershipStatus ?? "student") as PlanCode
+    const paid = isPaidTier(tier)
     mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)), tier)
 
     if (pinnedNewId && viewer?.id) {
@@ -92,9 +99,9 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
       }
     }
 
-    hasMore = tier === "student" ? false : rows.length === FIRST_PAGE_SIZE
-    // Student tier can't load more, so no cursor is handed out.
-    nextCursor = tier === "student" ? null : nc
+    hasMore = paid ? rows.length === FIRST_PAGE_SIZE : false
+    // Non-paying tiers can't load more, so no cursor is handed out.
+    nextCursor = paid ? nc : null
     caughtUp = cu
     shuffleSeed = seed ?? null
 
@@ -113,7 +120,7 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
           u.profile?.photoUrl ??
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         coverUrl: u.profile?.coverUrl ?? null,
-        membership: u.membershipStatus,
+        membership: tier,
         headline: u.profile?.headline ?? "",
         batch: batchOrdinal(u.profile?.batch?.startYear) ?? u.profile?.batch?.label ?? "—",
         house: u.profile?.house?.name ?? "—",

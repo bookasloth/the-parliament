@@ -11,6 +11,24 @@ import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { fetchLinkPreview } from "@/lib/og-preview"
 import { getDefaultSchoolId } from "@/lib/school"
+import { getCurrent } from "@/modules/membership/service"
+
+/**
+ * Categories that require a paid membership benefit to post. Enforced at BOTH
+ * convergence points — `createPost` (compose + autosave-draft) and
+ * `publishDraft` (publishing a saved draft) — so no path can bypass the gate by
+ * saving a draft first and publishing it later, and a member who downgrades
+ * after drafting still can't publish. Membership benefits are the single source
+ * of truth (`getCurrent().benefits`).
+ */
+async function assertCategoryEntitled(userId: string, categoryKey: string): Promise<void> {
+  if (categoryKey === "job_opening") {
+    const current = await getCurrent(userId)
+    if (!current.benefits.jobs) {
+      throw new ForbiddenError("Posting a job opening requires an Associate membership or higher")
+    }
+  }
+}
 
 const APP_BASE = process.env.AUTH_URL || "https://nnawca.org"
 
@@ -134,6 +152,10 @@ export async function createPost(input: CreatePostInput) {
     where: { schoolId_key: { schoolId: input.schoolId, key: input.categoryKey } },
   })
   if (!category) throw new ForbiddenError("Unknown post category")
+
+  // Gate paid categories (e.g. job openings) before any write — covers both
+  // published posts and drafts.
+  await assertCategoryEntitled(input.authorId, input.categoryKey)
 
   // Drafts may be incomplete — skip the per-format "needs X" gates, but still
   // reject a completely empty draft (nothing to save).
@@ -352,6 +374,15 @@ export async function publishDraft(input: { postId: string; authorId: string }) 
   const post = await prisma.post.findUnique({ where: { id: input.postId } })
   if (!post || post.deletedAt || post.status !== "draft") throw new ForbiddenError("Draft not found")
   if (post.authorId !== input.authorId) throw new ForbiddenError("Not the author")
+
+  // Re-check paid-category entitlement at publish time — a draft could have been
+  // saved while eligible (or via a direct action call) and published after a
+  // downgrade. Resolve the category key from the stored categoryId.
+  const draftCategory = await prisma.postCategory.findUnique({
+    where: { id: post.categoryId },
+    select: { key: true },
+  })
+  if (draftCategory) await assertCategoryEntitled(post.authorId, draftCategory.key)
 
   const now = new Date()
   await prisma.post.update({

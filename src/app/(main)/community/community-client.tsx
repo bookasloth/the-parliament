@@ -16,6 +16,7 @@ import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 import { SIDEBAR_NAV } from "@/config/sidebar-nav"
+import { hasHighlightedProfile } from "@/config/membership"
 
 type Facets = {
   batches: { id: string; label: string }[]
@@ -264,6 +265,7 @@ export function CommunityClient({
                 verified={r.isVerified}
                 tierColoredVerified
                 hideMembership
+                highlighted={hasHighlightedProfile(r.membershipStatus)}
                 actions={
                   <div className="flex w-full gap-2">
                     {meId !== r.id && (

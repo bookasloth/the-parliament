@@ -33,6 +33,7 @@ export type Permission =
   | "verification:review"
   | "groups:manage"
   | "events:manage"
+  | "membership:manage" // grant/extend/revoke/refund paid memberships, set tiers
   | "announcements:send"
   | "whatsapp:send"
   | "cms:manage"
@@ -57,6 +58,7 @@ const MATRIX: Record<AdminRole, readonly Permission[] | "*"> = {
     "verification:review",
     "groups:manage",
     "events:manage",
+    "membership:manage",
     "announcements:send",
     "whatsapp:send",
     "cms:manage",

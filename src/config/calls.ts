@@ -48,8 +48,13 @@ export const STUDENT_PASS = {
 /** Global kill-switch: monthly platform WebRTC participant-minute budget.
  *  Default = LiveKit free "Build" tier (5,000 min). When platform usage this
  *  rolling month reaches this, calling auto-disables for everyone until it
- *  falls back under budget. Admins can override via the AMA/settings toggle.
- *  Raise this when you move to the Ship tier (150,000). */
+ *  falls back under budget. This constant is the only control — raise it (and
+ *  redeploy) when you move to the Ship tier (150,000).
+ *  ponytail: no runtime admin override yet — a DB-backed settings toggle is the
+ *  upgrade path if the budget needs changing without a deploy. The budget sums
+ *  only FINISHED stints (CallUsage is written on participant_left), so live
+ *  calls can overshoot it slightly before they're metered; the one-call-per-user
+ *  guard in the calls service keeps that overshoot bounded. */
 export const PLATFORM_MONTHLY_MINUTE_BUDGET = 5000
 
 /** Authoritative check that a Razorpay payment settles a student pass:

@@ -3,6 +3,7 @@
 import { requireUser } from "@/modules/auth/session"
 import * as svc from "@/modules/messaging/service"
 import { signRealtimeToken } from "@/lib/supabase-realtime"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import type { ConversationSummary, MessageView } from "@/modules/messaging/types"
 
 export async function realtimeTokenAction(): Promise<{ token: string; userId: string } | null> {
@@ -17,6 +18,9 @@ export async function realtimeTokenAction(): Promise<{ token: string; userId: st
 export async function startConversationAction(otherId: string) {
   const u = await requireUser()
   try {
+    // Anti-spam: cap how many fresh conversations one user can open per hour so a
+    // member can't mass-DM everyone they follow. Existing conversations are unaffected.
+    await enforceRateLimit({ bucket: "dm.start", identifier: u.id, limit: 20, windowSec: 3600 })
     const { id } = await svc.findOrCreateConversation(u.id, otherId)
     return { ok: true as const, conversationId: id }
   } catch (e) {
@@ -27,6 +31,10 @@ export async function startConversationAction(otherId: string) {
 export async function sendMessageAction(conversationId: string, body: string, media: string[] = [], replyToId?: string) {
   const u = await requireUser()
   try {
+    // Anti-spam send throttle. Generous for real chat (a burst of 40/min is well
+    // above human typing) but stops automated flooding — the one comms path that
+    // previously had no limiter.
+    await enforceRateLimit({ bucket: "dm.send", identifier: u.id, limit: 40, windowSec: 60 })
     const msg = await svc.sendMessage(u.id, conversationId, { body, media, replyToId })
     return { ok: true as const, msg }
   } catch (e) {

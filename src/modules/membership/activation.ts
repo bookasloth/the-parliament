@@ -17,6 +17,12 @@ export interface ActivateInput {
   razorpaySubscriptionId?: string
   grantedByUserId?: string
   startsAt?: Date
+  /**
+   * When set, the new membership keeps this existing expiry instead of
+   * computing `startsAt + durationDays`. Used by delta upgrades (associate →
+   * premium) so the member's renewal date is preserved, not reset a full year.
+   */
+  preserveEndsAt?: Date | null
 }
 
 export interface ActivateResult {
@@ -33,9 +39,14 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
   }
 
   const startsAt = input.startsAt ?? new Date()
-  const endsAt = def.durationDays
-    ? nextRenewalDate(startsAt, def.durationDays)
-    : null
+  // Delta upgrades preserve the member's existing renewal date; everything else
+  // gets a fresh term (or null for one-time plans like Life).
+  const endsAt =
+    input.preserveEndsAt !== undefined && input.preserveEndsAt !== null
+      ? input.preserveEndsAt
+      : def.durationDays
+        ? nextRenewalDate(startsAt, def.durationDays)
+        : null
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({

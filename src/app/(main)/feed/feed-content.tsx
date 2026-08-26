@@ -26,7 +26,7 @@ import {
   refreshPostCountsAction,
 } from "./actions"
 import { prepareImpressionBatch } from "@/modules/feed/impressions"
-import { weaveFeedAds, adStateAfter, type FeedAdState } from "@/config/feed-ads"
+import { weaveFeedAds, adStateAfter, adGapFor, AD_GAP, type FeedAdState } from "@/config/feed-ads"
 import { mergePostCounts } from "@/modules/feed/live-counts"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
@@ -235,10 +235,12 @@ export function FeedContent({
   const router = useRouter()
   const [newCount, setNewCount] = useState(0)
   const [localPosts, setLocalPosts] = useState<FeedPost[]>(posts)
-  // Ad rotation carried into load-more so later pages keep the every-5 cadence.
-  // committee is ad-free; the initial page's real-post count seeds the phase.
-  const adFree = viewer?.membership === "committee"
-  const adState = useRef<FeedAdState>(adStateAfter(posts.filter((p) => !p.isSponsored).length))
+  // Ad rotation carried into load-more so later pages keep the tier's cadence.
+  // Ad-free tiers (premium/life/committee) skip weaving; the initial page's
+  // real-post count seeds the phase for tiers that do show ads.
+  const adGap = adGapFor(viewer?.membership ?? "student")
+  const adFree = adGap === null
+  const adState = useRef<FeedAdState>(adStateAfter(posts.filter((p) => !p.isSponsored).length, adGap ?? AD_GAP))
   const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
   const [page, setPage] = useState(2) // first page already loaded server-side
   const [cursor, setCursor] = useState<FeedCursor | null>(initialCursor)
@@ -261,8 +263,8 @@ export function FeedContent({
     setShuffleSeed(initialShuffleSeed)
     setHasMore(initialHasMore)
     seenIds.current = new Set(posts.map((p) => p.id))
-    adState.current = adStateAfter(posts.filter((p) => !p.isSponsored).length)
-  }, [posts, initialHasMore, initialCursor, initialShuffleSeed])
+    adState.current = adStateAfter(posts.filter((p) => !p.isSponsored).length, adGap ?? AD_GAP)
+  }, [posts, initialHasMore, initialCursor, initialShuffleSeed, adGap])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingMore) return
@@ -276,7 +278,7 @@ export function FeedContent({
         // by seenIds), threading the rotation state across pages.
         let toAppend = fresh
         if (!adFree) {
-          const woven = weaveFeedAds(fresh, adState.current)
+          const woven = weaveFeedAds(fresh, adState.current, undefined, adGap ?? AD_GAP)
           toAppend = woven.posts
           adState.current = woven.state
         }
@@ -290,7 +292,7 @@ export function FeedContent({
         setLoadMoreError(true)
       }
     })
-  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag, mentions, adFree])
+  }, [hasMore, loadingMore, page, pageSize, followingOnly, caughtUp, cursor, shuffleSeed, trending, tag, mentions, adFree, adGap])
 
   // Load the next page only as the reader approaches the end (Google-Maps style:
   // fetch what's about to enter view, not the whole feed up front). The old 300ms
@@ -577,12 +579,14 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar — Timewheel ads */}
-          <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
-            <div className="sticky top-20">
-              <TimewheelAdCard />
+          {/* Right Sidebar — Timewheel ads (hidden for ad-free paid tiers) */}
+          {!adFree && (
+            <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
+              <div className="sticky top-20">
+                <TimewheelAdCard />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

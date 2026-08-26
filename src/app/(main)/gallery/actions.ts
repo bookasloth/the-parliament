@@ -10,6 +10,7 @@ import {
   assertVerifiedMember, createMemberAlbum, createGalleryImage, deleteImageAsMember,
 } from "@/modules/gallery/service"
 import type { GalleryAlbumDTO, GalleryImageDTO } from "@/modules/gallery/types"
+import { galleryQuotaBytes } from "@/config/membership"
 
 // Member (collaborative) gallery actions. Every write requires a logged-in,
 // verified member. Uploads are server-mediated (service-role write happens
@@ -67,6 +68,19 @@ export async function uploadMemberPhotoAction(formData: FormData): Promise<Resul
     if (!(file instanceof File)) return { error: "No file provided" }
     if (!isAllowedImage(file.type)) return { error: "Unsupported image type (use JPEG, PNG, or WebP)" }
     if (file.size > MAX_BYTES) return { error: "Image exceeds the 5MB limit" }
+
+    // Per-tier total-storage quota (previously unbounded). Sum the member's
+    // existing gallery bytes and reject if this upload would exceed their cap.
+    const quota = galleryQuotaBytes(user.membershipStatus)
+    const usedAgg = await prisma.galleryImage.aggregate({
+      _sum: { fileSize: true },
+      where: { uploadedById: user.id },
+    })
+    const used = Number(usedAgg._sum.fileSize ?? 0)
+    if (used + file.size > quota) {
+      const mb = (n: number) => Math.round(n / (1024 * 1024))
+      return { error: `Storage full — you've used ${mb(used)}MB of your ${mb(quota)}MB gallery space. Upgrade your membership for more, or delete some photos.` }
+    }
 
     const albumId = String(formData.get("albumId") || "")
     if (!albumId) return { error: "Missing album" }

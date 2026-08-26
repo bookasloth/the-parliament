@@ -21,7 +21,7 @@ export interface CallAuth {
   /** Present when !ok — user-facing reason. */
   message?: string
   /** Machine-readable reason so the client can branch (e.g. open the paywall). */
-  code?: "pass_required" | "budget" | "not_participant" | "tier_excluded" | "quota"
+  code?: "pass_required" | "budget" | "not_participant" | "tier_excluded" | "quota" | "busy"
 }
 
 const roomForDm = (conversationId: string) => `dm_${conversationId}`
@@ -52,6 +52,33 @@ async function activePass(userId: string, now: Date) {
     where: { userId, status: "active", expiresAt: { gt: now } },
     orderBy: { purchasedAt: "desc" },
   })
+}
+
+/**
+ * Another DM call the user has already started and that is still live, in a
+ * DIFFERENT room. Quota is only metered when a stint ends (the webhook writes
+ * CallUsage on participant_left), so without this guard a user could start N
+ * calls in N conversations simultaneously — each passes evaluateQuota because no
+ * usage exists yet — and blow past their per-day/week/month cap, and a student's
+ * single pass could bind to two live rooms at once (double-spend). Allowing only
+ * one concurrent call per user closes both races.
+ *
+ * `startedAt` staleness (3h > the largest per-call cap) prevents a session whose
+ * room_finished webhook never arrived from locking the user out forever.
+ */
+async function hasOtherLiveDmCall(userId: string, roomName: string, now: Date): Promise<boolean> {
+  const staleBefore = new Date(now.getTime() - 3 * 60 * 60_000)
+  const other = await prisma.callSession.findFirst({
+    where: {
+      startedById: userId,
+      kind: "dm",
+      status: "live",
+      roomName: { not: roomName },
+      startedAt: { gte: staleBefore },
+    },
+    select: { id: true },
+  })
+  return Boolean(other)
 }
 
 /** Global kill-switch: platform-wide WebRTC minutes this rolling month vs budget. */
@@ -87,6 +114,14 @@ export async function authorizeDmCall(userId: string, conversationId: string): P
   }
 
   const now = new Date()
+
+  // One live call per user (closes the concurrent-start quota bypass and the
+  // pass double-spend). Rejoining the SAME room is fine — only a different live
+  // room is blocked.
+  if (await hasOtherLiveDmCall(userId, roomForDm(conversationId), now)) {
+    return { ok: false, code: "busy", message: "You're already in a call. End it before starting another." }
+  }
+
   const { planCode } = await getCurrent(userId)
 
   if (tierHasCalling(planCode)) {
@@ -164,11 +199,17 @@ export async function ensureCallSession(opts: {
     },
   })
   // Bind the student pass to this room so the webhook consumes the right one.
+  // Bind-once: only if the pass isn't already bound to a session, so it can
+  // never be rebound off a still-live call (which would leave the first call
+  // unmetered — a pass double-spend).
   if (opts.passId) {
-    await prisma.callPass.update({
-      where: { id: opts.passId },
-      data: { callSessionId: (await prisma.callSession.findUnique({ where: { roomName: opts.roomName }, select: { id: true } }))!.id },
-    })
+    const created = await prisma.callSession.findUnique({ where: { roomName: opts.roomName }, select: { id: true } })
+    if (created) {
+      await prisma.callPass.updateMany({
+        where: { id: opts.passId, callSessionId: null },
+        data: { callSessionId: created.id },
+      })
+    }
   }
 }
 
@@ -184,12 +225,20 @@ export async function recordParticipantLeft(opts: {
 }): Promise<void> {
   const minutes = Math.max(0, Math.round(opts.minutes))
   const session = await prisma.callSession.findUnique({ where: { roomName: opts.roomName } })
-  const kind = (session?.kind as CallKind) ?? "dm"
+  // Only a session KNOWN to be a DM counts against personal quota. An orphan
+  // stint (session row missing) defaults to "ama" — quota-exempt — so a lookup
+  // miss can't wrongly bill someone's DM allowance (it still counts toward the
+  // platform budget, which aggregates all kinds).
+  const kind = (session?.kind as CallKind) ?? "ama"
 
-  // Dedup: skip if we already logged this user for this session very recently.
+  // Dedup only genuine duplicate webhooks (the SAME participant_left fired twice
+  // in quick succession), not a legitimate later stint after the user rejoined
+  // the room. Time-box the check so re-joins are metered while a double-fire
+  // within the window is absorbed.
   if (session) {
+    const dedupSince = new Date(Date.now() - 90_000)
     const recent = await prisma.callUsage.findFirst({
-      where: { userId: opts.userId, callSessionId: session.id },
+      where: { userId: opts.userId, callSessionId: session.id, createdAt: { gte: dedupSince } },
     })
     if (recent) return
   }

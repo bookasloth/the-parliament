@@ -95,8 +95,8 @@ describe("lib/email templates", () => {
 })
 
 describe("modules/email seed templates", () => {
-  it("has the expected 5 templates with unique codes", () => {
-    expect(SEED_TEMPLATES).toHaveLength(5)
+  it("has the expected 6 templates with unique codes", () => {
+    expect(SEED_TEMPLATES).toHaveLength(6)
     const codes = SEED_TEMPLATES.map((t) => t.code)
     expect(new Set(codes).size).toBe(codes.length)
   })

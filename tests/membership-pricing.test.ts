@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   computePricing,
+  isDeltaUpgrade,
   lookupPromo,
+  isPromoRedeemable,
   isBenefitTierAtLeast,
   isPaidTier,
   nextUpgradeTier,
@@ -55,6 +57,61 @@ describe("computePricing — authoritative, tamper-proof charge", () => {
   });
 });
 
+describe("isDeltaUpgrade — only same-kind subscription upgrades", () => {
+  it("associate → premium is a delta upgrade", () => {
+    expect(isDeltaUpgrade("associate", "premium")).toBe(true);
+  });
+  it("premium → life is NOT (life is one-time, not a subscription)", () => {
+    expect(isDeltaUpgrade("premium", "life")).toBe(false);
+    expect(isDeltaUpgrade("associate", "life")).toBe(false);
+  });
+  it("student/null source is never a delta upgrade (full price)", () => {
+    expect(isDeltaUpgrade("student", "premium")).toBe(false);
+    expect(isDeltaUpgrade(null, "premium")).toBe(false);
+    expect(isDeltaUpgrade(undefined, "associate")).toBe(false);
+  });
+  it("same-tier or downgrade is not an upgrade", () => {
+    expect(isDeltaUpgrade("premium", "premium")).toBe(false);
+    expect(isDeltaUpgrade("premium", "associate")).toBe(false);
+  });
+});
+
+describe("computePricing — delta upgrade (associate → premium)", () => {
+  it("charges only the price difference, flagged as a delta", () => {
+    const r = computePricing("premium", { upgradeFromPlan: "associate" });
+    expect(r.isUpgradeDelta).toBe(true);
+    expect(r.basePaise).toBe(PLANS.premium.pricePaise - PLANS.associate.pricePaise);
+    expect(r.basePaise).toBe(ASSOCIATE_TO_PREMIUM_DELTA_INR * 100);
+    expect(r.totalPaise).toBe(r.basePaise);
+  });
+
+  it("platform fee + donation still ride on the delta", () => {
+    const r = computePricing("premium", { upgradeFromPlan: "associate", platformFee: true, donate: true });
+    expect(r.totalPaise).toBe(
+      PLANS.premium.pricePaise - PLANS.associate.pricePaise + PLATFORM_FEE_INR * 100 + DEV_SUPPORT_DONATION_INR * 100,
+    );
+  });
+
+  it("percentage promo discounts the delta, not the full plan price", () => {
+    const r = computePricing("premium", { upgradeFromPlan: "associate", promoCode: "FOUNDER20" });
+    const delta = PLANS.premium.pricePaise - PLANS.associate.pricePaise;
+    expect(r.discountPaise).toBe(Math.round((delta * 20) / 100));
+    expect(r.totalPaise).toBe(delta - r.discountPaise);
+  });
+
+  it("a non-delta target (life) ignores upgradeFromPlan and charges full price", () => {
+    const r = computePricing("life", { upgradeFromPlan: "premium" });
+    expect(r.isUpgradeDelta).toBe(false);
+    expect(r.basePaise).toBe(PLANS.life.pricePaise);
+  });
+
+  it("student→premium (no active sub) charges full price", () => {
+    const r = computePricing("premium", { upgradeFromPlan: "student" });
+    expect(r.isUpgradeDelta).toBe(false);
+    expect(r.basePaise).toBe(PLANS.premium.pricePaise);
+  });
+});
+
 describe("lookupPromo", () => {
   it("is case-insensitive and trims", () => {
     expect(lookupPromo("  jnv100 ")?.code).toBe("JNV100");
@@ -63,6 +120,37 @@ describe("lookupPromo", () => {
     expect(lookupPromo(null)).toBeNull();
     expect(lookupPromo("")).toBeNull();
     expect(lookupPromo("bogus")).toBeNull();
+  });
+});
+
+describe("isPromoRedeemable — expiry + redemption cap", () => {
+  const base = { code: "X", type: "flat" as const, value: 100, label: "x" };
+  const now = new Date("2026-06-01T00:00:00Z");
+
+  it("no expiry, no cap → always redeemable", () => {
+    expect(isPromoRedeemable(base, { now, redemptions: 999999 })).toBe(true);
+  });
+  it("null promo is never redeemable", () => {
+    expect(isPromoRedeemable(null, { now })).toBe(false);
+    expect(isPromoRedeemable(undefined, { now })).toBe(false);
+  });
+  it("expired code is rejected", () => {
+    const p = { ...base, expiresAt: "2026-05-31T23:59:59Z" };
+    expect(isPromoRedeemable(p, { now })).toBe(false);
+  });
+  it("not-yet-expired code is allowed", () => {
+    const p = { ...base, expiresAt: "2026-12-31T23:59:59Z" };
+    expect(isPromoRedeemable(p, { now })).toBe(true);
+  });
+  it("rejects once redemptions reach the cap (boundary)", () => {
+    const p = { ...base, maxRedemptions: 500 };
+    expect(isPromoRedeemable(p, { now, redemptions: 499 })).toBe(true);
+    expect(isPromoRedeemable(p, { now, redemptions: 500 })).toBe(false);
+    expect(isPromoRedeemable(p, { now, redemptions: 501 })).toBe(false);
+  });
+  it("the shipped codes are still live before their expiry", () => {
+    expect(isPromoRedeemable(lookupPromo("FOUNDER20"), { now, redemptions: 0 })).toBe(true);
+    expect(isPromoRedeemable(lookupPromo("JNV100"), { now, redemptions: 0 })).toBe(true);
   });
 });
 

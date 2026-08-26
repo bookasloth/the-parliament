@@ -9,6 +9,7 @@ import {
   PLANS,
   computePricing,
   lookupPromo,
+  isPromoRedeemable,
   PLATFORM_FEE_INR,
   DEV_SUPPORT_DONATION_INR,
   type PlanCode,
@@ -52,13 +53,13 @@ export default function UpgradeCheckout({
   const [acknowledged, setAcknowledged] = useState(false)
 
   const pricing = useMemo(
-    () => computePricing(target, { platformFee, donate, promoCode: appliedPromo }),
-    [target, platformFee, donate, appliedPromo],
+    () => computePricing(target, { platformFee, donate, promoCode: appliedPromo, upgradeFromPlan: currentPlan }),
+    [target, platformFee, donate, appliedPromo, currentPlan],
   )
 
   function applyPromo() {
     const found = lookupPromo(promoInput)
-    if (!found) {
+    if (!found || !isPromoRedeemable(found)) {
       setPromoError("Invalid or expired code")
       setAppliedPromo(null)
       return
@@ -183,11 +184,18 @@ export default function UpgradeCheckout({
           {/* ─── RIGHT: price breakdown ─── */}
           <section className="lg:col-span-5">
             <div className="rounded-[5px] border border-gray-200 bg-white p-6 sm:p-7">
-              {/* Plan price */}
+              {/* Plan price (or upgrade delta) */}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-500">Plan Price</span>
+                <span className="text-sm font-semibold text-gray-500">
+                  {pricing.isUpgradeDelta ? "Upgrade Difference" : "Plan Price"}
+                </span>
                 <span className="text-sm font-bold text-gray-500">{rupees(pricing.basePaise)}</span>
               </div>
+              {pricing.isUpgradeDelta && (
+                <p className="mt-1 text-xs text-emerald-700">
+                  You only pay the difference from {PLANS[currentPlan].displayName}, and your current renewal date is kept.
+                </p>
+              )}
 
               {/* Platform fee — optional (opt-out) */}
               <div className="mt-4 flex items-start justify-between gap-3">
