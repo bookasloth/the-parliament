@@ -110,14 +110,38 @@ export const FEED_ADS: FeedPost[] = [
   },
 ]
 
-// Ad frequency by membership tier:
-//   student   — capped feed of 5 items, positions 2 & 5 are ads (3 real posts)
-//   committee — never any feed ads (internal office-bearer tier)
-//   everyone else — an ad after every 5 posts, cycling ads[] so all recur.
+// Ad frequency by membership tier (the paid ladder — paying reduces/removes ads):
+//   student   — capped teaser feed of ~3 real posts with ads woven in
+//   associate — reduced: one ad after every 10 posts
+//   premium / life / committee — ad-free
+//   anything else (e.g. inactive) — base cadence, one ad after every 5 posts
 export type AdTier = "student" | "associate" | "premium" | "life" | "committee" | string
 
-// Fixed cadence: one ad after every AD_GAP real posts.
+// Base cadence: one ad after every AD_GAP real posts (the default / lowest tier).
 export const AD_GAP = 5
+
+// Reduced cadence for Associate — a real perk over the base tier.
+export const AD_GAP_ASSOCIATE = 10
+
+/**
+ * Ad cadence for a tier: the number of real posts between ads, or `null` when the
+ * tier is ad-free. Single source of truth shared by the server feed render
+ * (injectFeedAds) and the client load-more (weaveFeedAds/adStateAfter) so the
+ * every-N rhythm and ad-free tiers agree across pages. Student is handled
+ * separately by injectFeedAds (capped teaser) and never load-mores.
+ */
+export function adGapFor(tier: AdTier): number | null {
+  switch (tier) {
+    case "premium":
+    case "life":
+    case "committee":
+      return null // ad-free — the headline paid benefit
+    case "associate":
+      return AD_GAP_ASSOCIATE
+    default:
+      return AD_GAP
+  }
+}
 
 // Rotation position carried across feed pages so load-more keeps the every-5
 // cadence + ad order unbroken instead of restarting each page.
@@ -132,13 +156,14 @@ export function weaveFeedAds(
   posts: FeedPost[],
   state: FeedAdState,
   ads: FeedPost[] = FEED_ADS,
+  gap: number = AD_GAP,
 ): { posts: FeedPost[]; state: FeedAdState } {
   if (ads.length === 0) return { posts, state }
   const out: FeedPost[] = []
   let { sinceAd, adIdx } = state
   for (const p of posts) {
     out.push(p)
-    if (++sinceAd >= AD_GAP) {
+    if (++sinceAd >= gap) {
       out.push(ads[adIdx++ % ads.length]) // cycle so ads recur
       sinceAd = 0
     }
@@ -147,9 +172,10 @@ export function weaveFeedAds(
 }
 
 /** Rotation state after a page already woven with `realPosts` real posts — lets
- *  the client resume load-more from the server-rendered first page. */
-export function adStateAfter(realPosts: number): FeedAdState {
-  return { sinceAd: realPosts % AD_GAP, adIdx: Math.floor(realPosts / AD_GAP) }
+ *  the client resume load-more from the server-rendered first page. `gap` must
+ *  match the tier's cadence (adGapFor). */
+export function adStateAfter(realPosts: number, gap: number = AD_GAP): FeedAdState {
+  return { sinceAd: realPosts % gap, adIdx: Math.floor(realPosts / gap) }
 }
 
 // Splice ads into a feed page according to the viewer's tier. Returns a new
@@ -160,7 +186,9 @@ export function injectFeedAds(
   ads: FeedPost[] = FEED_ADS,
 ): FeedPost[] {
   if (ads.length === 0 || posts.length === 0) return posts
-  if (tier === "committee") return posts // internal tier: ad-free
+
+  const gap = adGapFor(tier)
+  if (gap === null) return posts // premium / life / committee: ad-free
 
   // Student: capped teaser feed — up to 3 real posts, with ads woven in and any
   // remaining ads appended so the full rotation still shows (post, ad, post,
@@ -176,7 +204,7 @@ export function injectFeedAds(
     return out
   }
 
-  const { posts: out } = weaveFeedAds(posts, { sinceAd: 0, adIdx: 0 }, ads)
+  const { posts: out } = weaveFeedAds(posts, { sinceAd: 0, adIdx: 0 }, ads, gap)
   // Short feed that never reached the first gap still surfaces the rotation.
   if (!out.some((p) => p.isSponsored)) return [...out, ...ads]
   return out

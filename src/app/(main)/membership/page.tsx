@@ -7,9 +7,18 @@ import {
   Briefcase, Calendar, BookOpen, Vote, MapPin, MessageCircle,
   GraduationCap, FileText, Hand, Trophy, Users, Heart, AlertTriangle,
 } from "lucide-react"
-import { PLANS, ASSOCIATE_TO_PREMIUM_DELTA_INR } from "@/config/membership"
+import { PLANS, ASSOCIATE_TO_PREMIUM_DELTA_INR, TIER_GALLERY_BYTES } from "@/config/membership"
+import { TIER_CALL_LIMITS, STUDENT_PASS } from "@/config/calls"
 
 type PaidPlan = "associate" | "premium" | "life"
+
+// Display helpers — pull real numbers from config so the pricing page can never
+// drift from what the product actually enforces.
+const gb = (bytes: number) => {
+  const g = bytes / (1024 * 1024 * 1024)
+  return g >= 1 ? `${g % 1 === 0 ? g : g.toFixed(1)} GB` : `${Math.round(bytes / (1024 * 1024))} MB`
+}
+const perCall = (plan: "associate" | "premium" | "life") => `${TIER_CALL_LIMITS[plan]!.perCallMin} min/call`
 
 const associate = {
   key: "associate" as PaidPlan,
@@ -20,19 +29,18 @@ const associate = {
   annualPrice: PLANS.associate.priceInr,
   cycle: "Annual auto-renew",
   features: [
-    "Full alumni directory access",
-    "Join online & offline events",
-    "Join batch & house groups",
+    "Full, uncapped alumni feed",
+    "Reduced ads",
     "Post job openings & referrals",
-    "Participate in welfare drives",
-    "Access scholarship reports",
-    "Event & activity updates",
+    `Included video calling — ${perCall("associate")}`,
+    `${gb(TIER_GALLERY_BYTES.associate)} photo gallery storage`,
+    "Daily-game archive access",
     "Verified Associate badge",
   ],
   notIncluded: [
-    "Apply to be a mentor",
+    "Ad-free feed",
     "List your business",
-    "Highlighted profile to students",
+    "Highlighted profile in the directory",
   ],
 }
 
@@ -46,15 +54,12 @@ const premium = {
   cycle: "Annual auto-renew",
   features: [
     "Everything in Associate",
-    "Apply to be a mentor",
+    "Ad-free feed",
+    "Highlighted profile in the directory",
     "List your business in the directory",
-    "Eligible for mentorship pairing",
-    "Highlighted profile to students",
-    "Recognition on NNAWCA website",
-    "Recognition at events",
-    "Eligible for Seva Cells & leadership roles",
-    "Name on Scholarship Supporters Wall",
-    "Early access to limited-seat events",
+    `More video calling — ${perCall("premium")}`,
+    `${gb(TIER_GALLERY_BYTES.premium)} photo gallery storage`,
+    "Earlier event invitations",
     "Yearly Certificate of Contribution",
   ],
   notIncluded: [],
@@ -70,13 +75,12 @@ const life = {
   cycle: "Lifetime · one-time payment",
   features: [
     "Everything in Premium — forever",
+    "One-time payment · never renews or expires",
     "Permanent Life Member badge",
-    "Never renews · never expires",
+    `Most video calling — ${perCall("life")}`,
+    `${gb(TIER_GALLERY_BYTES.life)} photo gallery storage`,
     "Eligible for NNAWCA Committee invitation",
-    "Founding contributor recognition",
-    "All Premium recognition perks, in perpetuity",
     "Lifetime Certificate of Contribution",
-    "Priority support",
   ],
   notIncluded: [],
 }
@@ -112,7 +116,7 @@ const faqs = [
   },
   {
     q: "What happens to my content if I downgrade?",
-    a: "Posts, comments, connections, and your profile data are always preserved. Only premium-only features (mentorship, business listing, highlighted profile) get restricted.",
+    a: "Posts, comments, connections, and your profile data are always preserved. Only tier features (ad-free feed, business listing, highlighted profile, included calling, and extra gallery storage) revert to your new tier. If you're over the gallery storage cap after downgrading, existing photos stay — you just can't upload more until you're under it.",
   },
 ]
 
@@ -540,27 +544,36 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
 
 /* ─── Canonical benefit matrix per MEMBERSHIP_PLAN.md §1b ─── */
 
+// Every row reflects what the platform ACTUALLY enforces (audited against the
+// codebase). No aspirational/off-platform perks — see docs/audits.
 const comparisonRows: { label: string; values: (boolean | string)[] }[] = [
-  { label: "View full alumni directory", values: [true, true, true, true] },
-  { label: "Join online & offline events", values: [true, true, true, true] },
-  { label: "Join batch & house groups", values: [true, true, true, true] },
-  { label: "Participate in welfare drives", values: [true, true, true, true] },
-  { label: "Access scholarship reports", values: [true, true, true, true] },
-  { label: "Event & activity updates", values: [true, true, true, true] },
+  { label: "Alumni directory, search & profiles", values: [true, true, true, true] },
+  { label: "Join events & groups", values: [true, true, true, true] },
+  { label: "Post, comment, poll & message", values: [true, true, true, true] },
   { label: "Voting rights (verified + 30 days)", values: [true, true, true, true] },
+  { label: "Alumni feed", values: ["Preview (capped)", "Full", "Full", "Full"] },
+  { label: "Feed ads", values: ["Standard", "Reduced", "Ad-free", "Ad-free"] },
   { label: "Post job openings & referrals", values: [false, true, true, true] },
-  { label: "Apply to be a mentor", values: [false, false, true, true] },
-  { label: "List own business in directory", values: [false, false, true, true] },
-  { label: "Eligible for mentorship pairing", values: [false, false, true, true] },
-  { label: "Profile visibility to students", values: ["Normal", "Normal", "Highlighted", "Highlighted"] },
-  { label: "Recognition on NNAWCA website", values: [false, false, true, true] },
-  { label: "Recognition at events", values: [false, false, true, true] },
-  { label: "Eligible for Seva Cells / leadership", values: [false, false, true, true] },
-  { label: "Name on Scholarship Supporters Wall", values: [false, false, true, true] },
-  { label: "Early access to limited-seat events", values: [false, false, true, true] },
+  {
+    label: "Video calling",
+    values: [
+      `Pay-per-pass (₹${STUDENT_PASS.priceInr}/${STUDENT_PASS.minutes} min)`,
+      perCall("associate"),
+      perCall("premium"),
+      perCall("life"),
+    ],
+  },
+  {
+    label: "Photo gallery storage",
+    values: [gb(TIER_GALLERY_BYTES.student), gb(TIER_GALLERY_BYTES.associate), gb(TIER_GALLERY_BYTES.premium), gb(TIER_GALLERY_BYTES.life)],
+  },
+  { label: "Daily-game archive", values: [false, true, true, true] },
+  { label: "Highlighted profile in directory", values: [false, false, true, true] },
+  { label: "List your business in the directory", values: [false, false, true, true] },
+  { label: "Earlier event invitations", values: ["Standard", "Earlier", "Earlier", "Earliest"] },
   { label: "Yearly Certificate of Contribution", values: [false, false, true, true] },
   { label: "Eligible for Committee invitation", values: [false, false, false, true] },
-  { label: "Membership cycle", values: ["Permanent", `₹${PLANS.associate.priceInr}/yr`, `₹${PLANS.premium.priceInr}/yr`, "Lifetime"] },
+  { label: "Membership cycle", values: ["Permanent (free)", `₹${PLANS.associate.priceInr}/yr`, `₹${PLANS.premium.priceInr}/yr`, "Lifetime"] },
 ]
 
 const whereItGoes = [

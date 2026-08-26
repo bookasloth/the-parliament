@@ -318,7 +318,36 @@ export function isPaidTier(code: PlanCode): boolean {
   return code === "associate" || code === "premium" || code === "life" || code === "committee"
 }
 
+/**
+ * Whether a plan gets the premium "highlighted profile" perk. Reads the single
+ * source of truth (the BENEFITS matrix) rather than hardcoding tier names, so
+ * listings and the profile page stay in sync with the entitlement config.
+ */
+export function hasHighlightedProfile(code: PlanCode | string | null | undefined): boolean {
+  const plan = code ? PLANS[code as PlanCode] : undefined
+  return !!plan && BENEFITS[plan.benefitTier].highlightedProfile
+}
+
 export function isBenefitTierAtLeast(have: BenefitTier, need: BenefitTier): boolean {
   const order: BenefitTier[] = ["base", "associate", "premium"]
   return order.indexOf(have) >= order.indexOf(need)
+}
+
+/* ───────────────────────── Gallery storage quota ─────────────────────────
+ * Total bytes a member may keep in the photo gallery, by tier — a real storage
+ * ladder (previously unbounded, a runaway R2/Supabase cost). Keyed by PlanCode
+ * so Life can exceed Premium. [assumption] tune these numbers to actual costs. */
+const MB = 1024 * 1024
+export const TIER_GALLERY_BYTES: Record<PlanCode, number> = {
+  student: 200 * MB,
+  associate: 1024 * MB, // 1 GB
+  premium: 5 * 1024 * MB, // 5 GB
+  life: 10 * 1024 * MB, // 10 GB
+  committee: 10 * 1024 * MB,
+  inactive: 0,
+}
+
+/** Gallery storage cap (bytes) for a tier; unknown/legacy values fall back to student. */
+export function galleryQuotaBytes(code: PlanCode | string | null | undefined): number {
+  return TIER_GALLERY_BYTES[(code as PlanCode)] ?? TIER_GALLERY_BYTES.student
 }

@@ -41,16 +41,24 @@ interface AlumniProfileCardProps {
   tierColoredVerified?: boolean
   /** Hide the membership-tier stat (show only Batch + House). */
   hideMembership?: boolean
+  /**
+   * Premium "highlighted profile" perk: gives the card a tier-accent ring and a
+   * corner badge so premium/life members stand out in listings. The membership
+   * stat is always shown when highlighted (hideMembership is ignored).
+   */
+  highlighted?: boolean
   /** Extra content rendered above the action buttons (e.g. mutual connections / role) */
   footer?: ReactNode
   /** Replace the default View Profile / Follow buttons */
   actions?: ReactNode
 }
 
-export function AlumniProfileCard({ alumni, profileHref, verified, hideMembership, footer, actions }: AlumniProfileCardProps) {
+export function AlumniProfileCard({ alumni, profileHref, verified, hideMembership, highlighted, footer, actions }: AlumniProfileCardProps) {
   const membership = alumni.membership || "associate"
   const tier = MEMBERSHIP_TIERS[membership] ?? MEMBERSHIP_TIERS.associate
   const href = profileHref ?? `/${alumni.id}`
+  // Highlighted cards always show the tier stat (that's the point of the perk).
+  const showMembership = highlighted ? true : !hideMembership
 
   const houseColor = alumni.house ? houseColors[alumni.house] : undefined
   const cover = houseColor
@@ -61,7 +69,21 @@ export function AlumniProfileCard({ alumni, profileHref, verified, hideMembershi
   const batchShort = alumni.batch || alumni.batchLabel?.replace(/\s*Batch\s*$/i, "") || "—"
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-[350px] flex-col overflow-hidden rounded-[5px] border border-gray-200 bg-white text-center transition-shadow duration-300 hover:shadow-md">
+    <div
+      className={`relative mx-auto flex h-full w-full max-w-[350px] flex-col overflow-hidden rounded-[5px] bg-white text-center transition-shadow duration-300 hover:shadow-md ${
+        highlighted ? "border-2 shadow-sm" : "border border-gray-200"
+      }`}
+      style={highlighted ? { borderColor: tier.accent } : undefined}
+    >
+      {/* Premium "highlighted profile" corner badge */}
+      {highlighted && (
+        <span
+          className="absolute right-0 top-0 z-10 rounded-bl-[5px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+          style={{ background: tier.background }}
+        >
+          {tier.label}
+        </span>
+      )}
       {/* House-colored cover band */}
       <div className="h-[70px] w-full flex-shrink-0" style={{ background: cover }} />
 
@@ -107,7 +129,7 @@ export function AlumniProfileCard({ alumni, profileHref, verified, hideMembershi
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">House</p>
           </div>
-          {!hideMembership && (
+          {showMembership && (
             <div className="flex-1 border-l border-gray-100 py-2.5">
               <span className="flex items-center justify-center gap-1.5 text-sm font-bold leading-none text-gray-900">
                 <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: tier.background }} />
