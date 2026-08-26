@@ -1,41 +1,40 @@
 import { EVENTS } from "./data";
 import type { EventId } from "./data";
-import type { GameState, EngineEvent } from "./state";
-import { credit, charge } from "./helpers";
+import type { GameState } from "./state";
+import { queuePayment } from "./helpers";
 
 /**
- * Apply one of the five fixed Indian-business events to the active player. Returns the
- * money EngineEvents produced (the landing marker `{type:"event"}` is pushed by the
- * engine caller). Deterministic — no draw, no dice, no choice.
+ * Queue the money moves for one of the five fixed Indian-business events. Nothing is
+ * charged/credited immediately any more — each move becomes a Payment the actor must
+ * allow (or claim) within PAYMENT_SECONDS, or it auto-resolves with a penalty
+ * (pay 2×, extra split half-bank/half-others) or, for a bank windfall, is forfeited.
  *
- * Money: `cash` = bank pays active; `feeToBank` = active pays bank (leaves the game);
- * `collectEach` = every other (non-left) player pays active; `payEach` = active pays each
- * other; `payEachSplit` = active pays `floor(val/others)` to each other, so no phantom
- * rupees are created (payer loses exactly per×others; any remainder stays with the payer).
+ * Mapping: `cash` = active claims from bank; `feeToBank` = active pays bank;
+ * `collectEach` = every other (non-left) player owes active; `payEach` = active owes
+ * each other; `payEachSplit` = active owes floor(val/others) to each other.
  */
-export function applyEvent(s: GameState, id: EventId): EngineEvent[] {
+export function applyEvent(s: GameState, id: EventId): void {
   const seat = s.active;
   const { op, val } = EVENTS[id];
-  const events: EngineEvent[] = [];
   const others = s.players.map((_, i) => i).filter((i) => i !== seat && !s.players[i].left);
+  const reason = `event:${id}`;
   switch (op) {
     case "cash":
-      credit(s, seat, val);
+      queuePayment(s, { actor: seat, dir: "collect", amount: val, party: "bank", reason });
       break;
     case "feeToBank":
-      charge(s, seat, val, "bank", events);
+      queuePayment(s, { actor: seat, dir: "pay", amount: val, party: "bank", reason });
       break;
     case "collectEach":
-      others.forEach((i) => charge(s, i, val, seat, events));
+      others.forEach((i) => queuePayment(s, { actor: i, dir: "pay", amount: val, party: seat, reason }));
       break;
     case "payEach":
-      others.forEach((i) => charge(s, seat, val, i, events));
+      others.forEach((i) => queuePayment(s, { actor: seat, dir: "pay", amount: val, party: i, reason }));
       break;
     case "payEachSplit": {
       const per = others.length ? Math.floor(val / others.length) : 0;
-      others.forEach((i) => charge(s, seat, per, i, events));
+      others.forEach((i) => queuePayment(s, { actor: seat, dir: "pay", amount: per, party: i, reason }));
       break;
     }
   }
-  return events;
 }

@@ -156,6 +156,10 @@ function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
     }
     s.pendingRents = s.pendingRents.filter((r) => r.payer !== seat && r.owner !== seat);
   }
+  if (s.payments?.length) {
+    // Drop any auto-payment the leaver owes or is owed — nothing left to settle.
+    s.payments = s.payments.filter((p) => p.actor !== seat && p.party !== seat);
+  }
   if (s.auction && s.auction.bids[seat] === null) {
     s.auction.bids[seat] = 0; // pass on their behalf
     if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
@@ -224,8 +228,8 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       break;
     case "event": {
       const id = tile.eventId!;
-      const evs = applyEvent(s, id);
-      events.push({ type: "event", seat, event: id }, ...evs);
+      applyEvent(s, id); // queues Payments (allow/claim within the window, or auto-penalty)
+      events.push({ type: "event", seat, event: id });
       finishSegment(s, events);
       break;
     }
@@ -651,6 +655,49 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (rent.owner !== seat) return { error: "not_your_rent" };
       settleRent(s, rent, events, "collected");
       s.pendingRents = list.filter((_, i) => i !== idx);
+      return { state: s, events };
+    }
+
+    case "confirm_payment": {
+      // Actor allows (pay) or claims (collect) an auto-payment before its deadline.
+      // Off-turn legal — the actor may be a non-active player (e.g. "married" collects).
+      const list = s.payments ?? [];
+      const p = list.find((x) => x.id === intent.paymentId);
+      if (!p) return { error: "no_payment" };
+      if (p.actor !== seat) return { error: "not_your_payment" };
+      s.payments = list.filter((x) => x.id !== p.id);
+      if (p.dir === "collect") {
+        credit(s, seat, p.amount);
+        events.push({ type: "payment_collected", seat, amount: p.amount, reason: p.reason });
+      } else {
+        const paid = charge(s, seat, p.amount, p.party, events);
+        events.push({ type: "payment_paid", seat, to: p.party === "bank" ? undefined : p.party, amount: paid, reason: p.reason });
+      }
+      return { state: s, events };
+    }
+
+    case "expire_payment": {
+      // Deadline passed with no confirm. Debit → pay 2× (original to its destination, the
+      // extra split half-to-bank / half-among the other active players). Collect → forfeit.
+      const list = s.payments ?? [];
+      const p = list.find((x) => x.id === intent.paymentId);
+      if (!p) return { error: "no_payment" };
+      s.payments = list.filter((x) => x.id !== p.id);
+      if (p.dir === "collect") {
+        events.push({ type: "payment_forfeited", seat: p.actor, amount: p.amount, reason: p.reason });
+        return { state: s, events };
+      }
+      charge(s, p.actor, p.amount, p.party, events); // the original obligation
+      const extra = p.amount;
+      const toBank = Math.floor(extra / 2);
+      charge(s, p.actor, toBank, "bank", events);
+      const rest = extra - toBank;
+      const others = s.players.map((_, i) => i).filter((i) => i !== p.actor && !s.players[i].left);
+      if (others.length && rest > 0) {
+        const per = Math.floor(rest / others.length);
+        if (per > 0) others.forEach((i) => charge(s, p.actor, per, i, events));
+      }
+      events.push({ type: "payment_penalty", seat: p.actor, amount: p.amount, reason: p.reason });
       return { state: s, events };
     }
 

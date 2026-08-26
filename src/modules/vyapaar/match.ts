@@ -11,6 +11,7 @@ import { capitalGainsTax } from "./tax"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
+import { stampNewPayments, sweepExpiredPayments } from "./engine/payment-expiry"
 import crypto from "node:crypto"
 
 /** Deadline for the next player action; null once the game has ended. An auction adds
@@ -286,10 +287,11 @@ export async function applyMatchIntent(
     const activeBefore = state.active
     // Clear any trades past their 60s deadline before applying the new intent.
     const now = Date.now()
-    const expired = sweepExpiredTrades(state, now)
+    const expired = [...sweepExpiredTrades(state, now), ...sweepExpiredPayments(state, now)]
     const r = applyIntent(state, me.seat, intent)
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
     stampNewTrades(r.state, now) // give any just-proposed/countered trade its 60s clock
+    stampNewPayments(r.state, now) // and any just-queued auto-payment its 10s clock
 
     // Refresh the deadline only when the active player's turn advanced — an off-turn
     // trade/bid (non-active seat, same active player) must not reset the clock.
@@ -325,6 +327,7 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
       const startSeat = state.active
       const appended: { seat: number; intent: Intent }[] = []
       appended.push(...sweepExpiredTrades(state, now.getTime())) // clear expired trades too
+      appended.push(...sweepExpiredPayments(state, now.getTime())) // and auto-resolve overdue payments
       let guard = 0
       while (!state.ended && state.active === startSeat && guard++ < 40) {
         const step = nextAutoIntent(state)
@@ -334,6 +337,7 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
         appended.push(step)
       }
       if (appended.length === 0) return null
+      stampNewPayments(state, now.getTime()) // an auto-played landing may have queued payments
       // Auto-resolve always plays a full turn (loops until active changes or ended), so the
       // active player's turn has advanced → refresh the deadline for the next seat.
       await commitMatchState(tx, match, state, appended, true)

@@ -11,7 +11,7 @@ import {
   ZONE_DOUBLE,
   upgradeCost,
 } from "./data";
-import type { GameState, EngineEvent } from "./state";
+import type { GameState, EngineEvent, Payment } from "./state";
 
 export function citiesOwned(s: GameState, seat: number): number[] {
   const out: number[] = [];
@@ -105,6 +105,14 @@ export function scoreOf(s: GameState, seat: number): number {
 
 export function credit(s: GameState, seat: number, amount: number): void {
   s.players[seat].cash += amount;
+}
+
+/** Queue an auto-payment for the actor to allow/claim. Server stamps the deadline later. */
+export function queuePayment(s: GameState, p: Omit<Payment, "id" | "expiresAt">): void {
+  if (!s.payments) s.payments = [];
+  const id = s.nextPaymentId ?? 1;
+  s.nextPaymentId = id + 1;
+  s.payments.push({ ...p, id, expiresAt: 0 });
 }
 
 /** Sell upgrades (tallest first) then mortgage undeveloped until cash ≥ need or nothing left. */
