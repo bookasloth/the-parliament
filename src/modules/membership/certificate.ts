@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { audit } from "@/lib/audit"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
+import { getSignedReadUrl } from "@/lib/r2"
 import { academicYearFor } from "@/lib/membership-cycle"
 import { PLANS, type PlanCode } from "@/config/membership"
 import { queueEmail } from "@/modules/email/service"
@@ -64,16 +65,37 @@ async function issueCertificate(opts: {
     },
   })
 
+  // Dedicated certificate email (NOT the welcome_premium template — that was a
+  // bug that sent existing members a "welcome" mail every year). queueEmail is
+  // fail-soft, so until `membership.yearly_certificate` is seeded no mail goes
+  // out — which is correct: better no email than the wrong one.
   await queueEmail({
-    templateCode: "membership.welcome_premium",
+    templateCode: "membership.yearly_certificate",
     toAddress: opts.email,
     userId: opts.userId,
     variables: {
       firstName: opts.legalName.split(" ")[0],
-      manageUrl: `${process.env.AUTH_URL || ""}/membership`,
-      renewalDate: "—",
+      planName: PLANS[opts.planCode].displayName,
+      fiscalYear: fy.label,
+      certificateUrl: `${process.env.AUTH_URL || ""}/api/membership/certificate`,
     },
   })
+}
+
+/**
+ * Signed URL to a member's most recent yearly certificate PDF, or null. Owner-only
+ * (the caller passes their own id as both). Mirrors getInvoiceUrl.
+ */
+export async function getLatestCertificateUrl(userId: string, viewerId: string): Promise<string | null> {
+  if (userId !== viewerId) return null
+  const ev = await prisma.membershipEvent.findFirst({
+    where: { userId, type: "certificate_yearly_issued" },
+    orderBy: { createdAt: "desc" },
+    select: { metadata: true },
+  })
+  const key = (ev?.metadata as { pdfKey?: string } | null)?.pdfKey
+  if (!key) return null
+  return getSignedReadUrl(key, 60 * 10)
 }
 
 async function uploadCertificate(key: string, body: Uint8Array): Promise<void> {

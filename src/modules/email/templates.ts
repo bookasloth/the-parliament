@@ -59,7 +59,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     category: "lifecycle",
     subject: "Welcome to Alumni Associate — your benefits inside",
     variables: { firstName: "string", manageUrl: "string", renewalDate: "string" },
-    text: "Hi {{firstName}},\n\nWelcome to Alumni Associate.\n\nYou now have full directory access, can post job openings/referrals, join private groups, get 10% off paid events, and list one business.\n\nNext renewal: {{renewalDate}}\nManage plan: {{manageUrl}}",
+    text: "Hi {{firstName}},\n\nWelcome to Alumni Associate.\n\nYou now have the full uncapped feed with reduced ads, can post job openings/referrals, get included video calling (30 min/call), 1 GB gallery storage, and daily-game archive access.\n\nNext renewal: {{renewalDate}}\nManage plan: {{manageUrl}}",
     html: emailShell({
       accent: "navy",
       pill: "Associate",
@@ -68,11 +68,11 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       body:
         p("You're now an Alumni Associate of NNAWCA. Here's what's yours from today:") +
         bullets([
-          "Full alumni directory access",
+          "Full, uncapped alumni feed with reduced ads",
           "Post job openings & referrals",
-          "Join private groups",
-          "10% off paid events",
-          "List one business in the directory",
+          "Included video calling — 30 min/call",
+          "1 GB photo gallery storage",
+          "Daily-game archive access",
         ]) +
         small("Your membership renews on <strong>{{renewalDate}}</strong>.") +
         button("Manage your plan", "{{manageUrl}}", "navy"),
@@ -86,7 +86,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     category: "lifecycle",
     subject: "Welcome to Alumni Premium — you're highlighted",
     variables: { firstName: "string", manageUrl: "string", renewalDate: "string" },
-    text: "Hi {{firstName}},\n\nWelcome to Alumni Premium.\n\nNew in Premium: mentorship programme access, up to 3 business listings, highlighted profile to students, recognition on the website and at events, Scholarship Supporters Wall, and a yearly Certificate of Contribution.\n\nNext renewal: {{renewalDate}}\nManage plan: {{manageUrl}}",
+    text: "Hi {{firstName}},\n\nWelcome to Alumni Premium.\n\nNew in Premium: an ad-free feed, a highlighted profile in the directory, list your business, more video calling (60 min/call), 5 GB gallery storage, earlier event invitations, and a yearly Certificate of Contribution.\n\nNext renewal: {{renewalDate}}\nManage plan: {{manageUrl}}",
     html: emailShell({
       accent: "navy",
       pill: "Premium",
@@ -95,11 +95,12 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       body:
         p("You're now an Alumni Premium member. Here's what's new for you over Associate:") +
         bullets([
-          "Apply to become a mentor",
-          "List up to 3 businesses",
-          "Highlighted profile to students",
-          "Recognition on the NNAWCA website & at events",
-          "Your name on the Scholarship Supporters Wall",
+          "An ad-free feed",
+          "A highlighted profile in the directory",
+          "List your business in the directory",
+          "More video calling — 60 min/call",
+          "5 GB photo gallery storage",
+          "Earlier event invitations",
           "A yearly Certificate of Contribution",
         ]) +
         small("Your membership renews on <strong>{{renewalDate}}</strong>.") +
@@ -114,7 +115,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     category: "lifecycle",
     subject: "Congratulations — you're now a Life Member of NNAWCA",
     variables: { firstName: "string", profileUrl: "string" },
-    text: "Hi {{firstName}},\n\nWelcome to Life Membership. This is a permanent contribution — your benefits never lapse.\n\nYou're eligible for Committee invitation, your name will be on the Scholarship Supporters Wall, and you'll receive a Certificate of Contribution every year.\n\nView your profile: {{profileUrl}}",
+    text: "Hi {{firstName}},\n\nWelcome to Life Membership. This is a permanent contribution — your benefits never lapse.\n\nYou get everything in Premium for life, the most video calling (90 min/call), 10 GB gallery storage, eligibility for Committee invitation, and a Certificate of Contribution every year.\n\nView your profile: {{profileUrl}}",
     html: emailShell({
       accent: "gold",
       pill: "Life Member",
@@ -123,10 +124,11 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       body:
         p("{{firstName}}, you've made a <strong>permanent</strong> contribution to NNAWCA — the one that never lapses. Here's what's yours for good:") +
         bullets([
-          "Eligibility for Committee invitation",
-          "Your name on the Scholarship Supporters Wall",
-          "A Certificate of Contribution, every year",
           "Everything in Premium — for life",
+          "The most video calling — 90 min/call",
+          "10 GB photo gallery storage",
+          "Eligibility for Committee invitation",
+          "A Certificate of Contribution, every year",
         ]) +
         button("Open your profile", "{{profileUrl}}", "gold"),
       reason: "You're getting this because you became a Life Member of NNAWCA.",
@@ -146,7 +148,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       eyebrow: "Membership · 7 days left",
       heading: "Renew before <em>{{expiresOn}}</em>",
       body:
-        p("Hi {{firstName}}, your {{planName}} membership expires in 7 days. Renew now to keep directory access, mentorship, and your highlighted profile.") +
+        p("Hi {{firstName}}, your {{planName}} membership expires in 7 days. Renew now to keep your ad-free feed, included video calling, extra gallery storage, and your highlighted profile.") +
         details(
           [
             ["Plan", "{{planName}}"],
@@ -157,6 +159,26 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
         button("Renew now", "{{renewUrl}}", "navy") +
         small("Miss the date and you enter a 30-day grace period before reverting to Student."),
       reason: "You're getting this reminder about your NNAWCA membership.",
+      manageUrl: MANAGE,
+      unsubscribeUrl: MANAGE,
+    }),
+  },
+  {
+    code: "membership.yearly_certificate",
+    category: "lifecycle",
+    subject: "Your NNAWCA Certificate of Contribution — {{fiscalYear}}",
+    variables: { firstName: "string", planName: "string", fiscalYear: "string", certificateUrl: "string" },
+    text: "Hi {{firstName}},\n\nThank you for your {{planName}} contribution to NNAWCA. Your Certificate of Contribution for {{fiscalYear}} is ready.\n\nDownload it: {{certificateUrl}}",
+    html: emailShell({
+      accent: "gold",
+      pill: "Certificate",
+      eyebrow: "Membership · Certificate of Contribution",
+      heading: "Your {{fiscalYear}} certificate is ready",
+      body:
+        p("Thank you, {{firstName}}, for your <strong>{{planName}}</strong> contribution to NNAWCA. Your Certificate of Contribution for {{fiscalYear}} is ready to download.") +
+        button("Download certificate", "{{certificateUrl}}", "gold") +
+        small("This link is personal to you and opens your certificate PDF."),
+      reason: "You're getting this because you're a contributing member of NNAWCA.",
       manageUrl: MANAGE,
       unsubscribeUrl: MANAGE,
     }),
