@@ -136,7 +136,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "trade_withdrawn": return `${nm(e.seat)} withdrew a trade`
     case "trade_expired": return `a trade offer expired`
     case "trade_cancelled": return `a trade was cancelled`
-    case "left": return `${nm(e.seat)} left the game`
+    case "left": return Number(e.amount) > 0 ? `${nm(e.seat)} left — cashed out ${rup(e.amount)}` : `${nm(e.seat)} left the game`
     case "restructure": return `${nm(e.seat)} restructured (+${rup(e.amount)})`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
@@ -198,12 +198,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     return () => clearInterval(t)
   }, [refetch])
 
-  // Once the game ends, show the result briefly then send everyone back to the lobby.
+  // Once the game ends, show the result briefly then send everyone to the settlement page.
+  const settlementHref = roomCode ? `/games/vyapaar/rooms/${roomCode}/settlements` : "/games/vyapaar"
   useEffect(() => {
     if (!view.ended) return
-    const t = setTimeout(() => { window.location.href = "/games/vyapaar" }, GAME_OVER_REDIRECT_MS)
+    const t = setTimeout(() => { window.location.href = settlementHref }, GAME_OVER_REDIRECT_MS)
     return () => clearTimeout(t)
-  }, [view.ended])
+  }, [view.ended, settlementHref])
 
   // Auto-open the deed the moment you must decide to buy — one fewer click than
   // clicking a rail button just to open the modal. Opens once per pending target,
@@ -449,7 +450,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
             {/* B2 — notifications + everything that needs a decision */}
             <section className="vb-cell">
-              <div className="vb-panel-head">Notifications</div>
+              <div className="vb-panel-head">Actions</div>
               <div className="vb-notif">
                 {err && <p className="vb-err">{err}</p>}
                 {view.phase === "auction" && view.auction && (
@@ -483,7 +484,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
                 {notifLines.length
                   ? notifLines.map((x) => <div key={x.i} className="vb-notif-line">{x.line}</div>)
-                  : (!err && !myRents.length && <div className="vb-log-empty">No notifications yet</div>)}
+                  : (!err && !myRents.length && <div className="vb-log-empty">No actions yet</div>)}
               </div>
             </section>
 
@@ -511,8 +512,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
           <div className="vb-over">
             <span className="vb-over-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />
             <h3>{view.winner !== null ? `${view.players[view.winner]?.name?.split(" ")[0] ?? "A player"} wins!` : "Game over"}</h3>
-            <p>Returning to the lobby in <b><OverCountdown ms={GAME_OVER_REDIRECT_MS} /></b>…</p>
-            <button className="vb-act primary" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby now</button>
+            <p>Showing results in <b><OverCountdown ms={GAME_OVER_REDIRECT_MS} /></b>…</p>
+            <button className="vb-act primary" onClick={() => { window.location.href = settlementHref }}>View results</button>
+            <button className="vb-act" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby</button>
           </div>
         </div>
       )}
@@ -1170,12 +1172,12 @@ const VB_CSS = `
 .vb-report-ta{width:100%;min-height:110px;resize:vertical;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.6rem;font-family:"Poppins";font-size:.85rem;}
 .vb-report-ok{margin:0;font-size:.9rem;color:#2E9455;font-weight:600;}
 .vb-quad{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;min-width:0;}
-@media(min-width:941px){.vb-quad{grid-template-rows:1fr 1fr;height:calc(100dvh - 78px);}}
+@media(min-width:941px){.vb-quad{grid-template-rows:1fr 1.3fr;height:calc(100dvh - 78px);}}
 @media(max-width:940px){.vb-quad{grid-auto-rows:minmax(170px,42vh);}}
 .vb-cell{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;padding:9px 10px;overflow:hidden;}
 .vb-cell .vb-panel-head{margin-bottom:8px;}
-.vb-pgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:6px;flex:1;min-height:0;overflow:auto;}
-.vb-pcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:5px 3px;min-height:0;}
+.vb-pgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:min-content;align-content:start;gap:6px;flex:1;min-height:0;overflow:auto;}
+.vb-pcell{position:relative;aspect-ratio:4/5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:5px 3px;min-height:0;}
 .vb-pcell.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
 .vb-pcell.left{opacity:.45;}
 .vb-pcell-img,.vb-pcell-init{width:clamp(26px,3.4vw,42px);height:clamp(26px,3.4vw,42px);border-radius:50%;object-fit:cover;display:grid;place-items:center;font-weight:700;font-size:.9rem;}
@@ -1194,6 +1196,9 @@ const VB_CSS = `
 .vb-collect{align-self:flex-start;font-family:"Poppins";font-weight:600;font-size:.7rem;padding:.25rem .5rem;border-radius:2px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer;}
 .vb-collect:hover{color:var(--cream);border-color:var(--dim);}
 .vb-collect:disabled{opacity:.5;cursor:not-allowed;}
+/* Action (formerly Notifications) buttons: white fill, orange text/border. */
+.vb-notif .vb-act.primary,.vb-notif .vb-collect{background:#fff;color:var(--accent);border:1px solid var(--accent);}
+.vb-notif .vb-collect:hover{color:var(--accent);border-color:var(--accent);background:#fff5ef;}
 .vb-tok-layer{position:absolute;inset:0;pointer-events:none;z-index:4;}
 .vb-tok2{position:absolute;transform:translate(-50%,-50%);width:5.2%;max-width:26px;aspect-ratio:1;}
 .vb-tok2.corner{width:3.6%;max-width:16px;}

@@ -44,7 +44,7 @@ export async function topUpVyapaarCoins(
   if (!(await rateLimitOk({ bucket: "vyapaar:topup", identifier: userId, limit: 10, windowSec: 60 }))) {
     throw new ForbiddenError("Too many attempts — try again shortly")
   }
-  const inGame = await prisma.vyapaarMatchPlayer.findFirst({ where: { userId, match: { status: "active" } }, select: { matchId: true } })
+  const inGame = await prisma.vyapaarMatchPlayer.findFirst({ where: { userId, match: { status: "active" }, resultCash: null }, select: { matchId: true } })
   if (inGame) throw new ForbiddenError("You're in a game — finish it before buying coins")
   await ensureVyapaarEnrollment(userId)
   return prisma.$transaction(async (tx) => {

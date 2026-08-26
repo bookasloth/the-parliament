@@ -29,6 +29,7 @@ import {
   credit,
   controlsSet,
   citiesOwned,
+  cityLeaveValue,
   controlledSets,
   scoreOf,
   cityLiquidationValue,
@@ -158,15 +159,24 @@ function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
     s.auction.bids[seat] = 0; // pass on their behalf
     if (s.auction.bids.every((b) => b !== null)) resolveAuction(s, events);
   }
+  // Liquidate everything back to the bank at the standard sell-to-bank value so a
+  // leaver keeps their built-up worth instead of forfeiting it. Cash is frozen after
+  // this (no more turns/rent), so this total is exactly what settlement pays out.
+  let liquidated = 0;
   for (const id of citiesOwned(s, seat)) {
+    liquidated += cityLeaveValue(s, id);
     const c = s.cities[id];
     c.owner = null;
     c.level = 0;
     c.mortgaged = false;
   }
-  for (let ci = 0; ci < s.companies.length; ci++) if (s.companies[ci] === seat) s.companies[ci] = null;
+  for (let ci = 0; ci < s.companies.length; ci++) if (s.companies[ci] === seat) {
+    liquidated += COMPANIES[ci].buy; // full purchase price back on leave
+    s.companies[ci] = null;
+  }
+  s.players[seat].cash += liquidated;
   s.players[seat].left = true;
-  events.push({ type: "left", seat });
+  events.push({ type: "left", seat, amount: liquidated });
 
   if (s.players.filter((p) => !p.left).length <= 1) {
     if (!s.ended) endGame(s, events);
