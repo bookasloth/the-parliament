@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
-import { netWorth, cityLiquidationValue } from "@/modules/vyapaar/engine/helpers";
+import { netWorth, cityLiquidationValue, liquidationWorth } from "@/modules/vyapaar/engine/helpers";
 import { CITIES, COMPANIES, upgradeCost, SET_MULT, PAIR_MULT, DEV_MULT } from "@/modules/vyapaar/engine/data";
 
 // The transparent cash-out scoring model: full price, set premium ×1.4, pair ×1.4,
@@ -47,5 +47,18 @@ describe("cash-out scoring model", () => {
     expect(cityLiquidationValue(s, 15)).toBe(Math.round(CITIES[15].price * 0.98));
     s.cities[15].level = 1;
     expect(cityLiquidationValue(s, 15)).toBe(Math.round((CITIES[15].price + upgradeCost(15)) * 0.98));
+  });
+
+  it("liquidationWorth (wallet settle) is the conservative sell-back — no set/pair premium", () => {
+    const s = createGame(1, ["a", "b"], 1000);
+    for (const id of [0, 1, 2]) s.cities[id].owner = 0; // a completed North set
+    s.companies[2] = 0; s.companies[3] = 0; // a completed company pair
+    // Full price − 2% for each card + full buy − 2% per company. NO ×1.4 anywhere.
+    const expected = 1000
+      + Math.round(CITIES[0].price * 0.98) + Math.round(CITIES[1].price * 0.98) + Math.round(CITIES[2].price * 0.98)
+      + Math.round(COMPANIES[2].buy * 0.98) + Math.round(COMPANIES[3].buy * 0.98);
+    expect(liquidationWorth(s, 0)).toBe(expected);
+    // …and it's strictly less than net worth, which DOES apply the premiums.
+    expect(liquidationWorth(s, 0)).toBeLessThan(netWorth(s, 0));
   });
 });

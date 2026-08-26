@@ -6,7 +6,7 @@ import { createGame } from "./engine/state"
 import type { GameState, Intent } from "./engine/state"
 import { applyIntent, nextAutoIntent, rankSeats } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
-import { netWorth } from "./engine/helpers"
+import { netWorth, liquidationWorth } from "./engine/helpers"
 import { capitalGainsTax } from "./tax"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
@@ -157,11 +157,13 @@ async function settleMatch(
       })
       continue
     }
-    // Settle on the full cash-out value — net worth (cash + property/sets + companies +
-    // development), not just liquid cash: you bank what your whole empire is worth.
+    // Wallet settles at the CONSERVATIVE sell-back value (full price − 2% TDS, no set/pair
+    // premium) so the coin economy never inflates — you recoup roughly what you spent. The
+    // ×1.4/×1.5 premiums live only in netWorth, used for ranking + the bestNetWorth stat.
     // Capital-gains tax on the net profit is withheld, so resultCash is the after-tax coins.
-    const finalValue = Math.round(netWorth(state, p.seat))
-    const resultCash = finalValue - capitalGainsTax(finalValue - p.openingCash)
+    const finalNetWorth = Math.round(netWorth(state, p.seat))
+    const cashOut = Math.round(liquidationWorth(state, p.seat))
+    const resultCash = cashOut - capitalGainsTax(cashOut - p.openingCash)
     await tx.vyapaarMatchPlayer.update({
       where: { matchId_seat: { matchId, seat: p.seat } },
       data: { resultCash, placement: placementBySeat.get(p.seat)! },
@@ -184,8 +186,8 @@ async function settleMatch(
     })
     // bestNetWorth is a max against the current value — guarded conditional update.
     await tx.user.updateMany({
-      where: { id: p.userId, vyapaarBestNetWorth: { lt: finalValue } },
-      data: { vyapaarBestNetWorth: finalValue },
+      where: { id: p.userId, vyapaarBestNetWorth: { lt: finalNetWorth } },
+      data: { vyapaarBestNetWorth: finalNetWorth },
     })
   }
 }
