@@ -269,6 +269,72 @@ function ComparisonTable({ tier }: { tier: TierKey }) {
   )
 }
 
+/* A small, tasteful CSS mock that SHOWS the tier's flagship benefit instead of
+   just naming it. No images — pure markup, tinted by the tier accent. */
+function FlagshipVisual({ tier }: { tier: TierKey }) {
+  const bar = (w: string, shade = "#e5e7eb") => (
+    <span className="block h-2 rounded-full" style={{ width: w, background: shade }} />
+  )
+  const Post = ({ w = "70%" }: { w?: string }) => (
+    <div className="flex items-center gap-2.5">
+      <span className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-200" />
+      <div className="flex-1 space-y-1.5">{bar("40%", "#d1d5db")}{bar(w)}</div>
+    </div>
+  )
+  return (
+    <div className="w-full max-w-[300px] rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      {tier === "premium" && (
+        <div className="space-y-3.5">
+          <Post w="80%" />
+          {/* the ad slot — struck out */}
+          <div className="relative rounded-lg border border-dashed border-gray-200 p-2.5">
+            <div className="flex items-center gap-2 opacity-40">
+              <span className="h-5 w-5 rounded bg-gray-200" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Sponsored · Ad</span>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>
+                <Check className="h-3 w-3" /> No ads for you
+              </span>
+            </div>
+          </div>
+          <Post w="65%" />
+        </div>
+      )}
+      {tier === "associate" && (
+        <div className="space-y-3.5">
+          <Post w="80%" /><Post w="60%" /><Post w="72%" />
+          <div className="pt-1 text-center">
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>
+              <Check className="h-3 w-3" /> Keep scrolling — no limit
+            </span>
+          </div>
+        </div>
+      )}
+      {tier === "life" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Membership</span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}><InfinityIcon className="h-3 w-3" /> Lifetime</span>
+          </div>
+          <div className="flex items-baseline justify-between border-t border-gray-100 pt-3">
+            <span className="text-[13px] text-gray-500">Paid</span>
+            <span className="text-[15px] font-extrabold tabular-nums text-gray-900">₹9,999 · once</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] text-gray-500">Renews</span>
+            <span className="text-[13px] font-bold" style={{ color: "var(--accent-ink)" }}>Never</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] text-gray-500">Expires</span>
+            <span className="text-[13px] font-bold" style={{ color: "var(--accent-ink)" }}>Never</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ─────────────────────────── Page ─────────────────────────── */
 
 export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCount?: number }) {
@@ -346,6 +412,10 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" style={{ color: "var(--accent-ink)" }} /> Secure payments via Razorpay</span>
             <span className="inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" style={{ color: "var(--accent-ink)" }} /> A registered charitable association</span>
           </div>
+
+          <p className="mx-auto mt-6 max-w-[48ch] text-[13px] text-gray-400">
+            NNAWCA's platform is brand new — the alumni who join now are its <span className="font-semibold" style={{ color: "var(--accent-ink)" }}>founding contributors</span>, shaping what it becomes.
+          </p>
         </div>
       </section>
 
@@ -361,8 +431,28 @@ export function TierLanding({ tier, memberCount = 0 }: { tier: TierKey; memberCo
           <h2 className="mt-2 text-[30px] font-extrabold tracking-tight sm:text-[36px]">{t.builtOn ?? "Everything you need to stay in the network"}</h2>
         </div>
 
+        {/* Flagship benefit — spotlighted and SHOWN, not just listed */}
+        {(() => {
+          const F0 = t.features[0]
+          const F0Icon = F0.icon
+          return (
+            <div className="mb-4 grid items-center gap-6 overflow-hidden rounded-3xl border p-7 sm:p-9 lg:grid-cols-2" style={{ borderColor: t.accent + "40", background: `linear-gradient(160deg, ${t.accentSoft}, #ffffff 70%)` }}>
+              <div>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+                  <F0Icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-[22px] font-extrabold tracking-tight text-gray-900 sm:text-[26px]">{F0.title}</h3>
+                <p className="mt-2 max-w-[40ch] text-[15px] leading-relaxed text-gray-600">{F0.desc}</p>
+              </div>
+              <div className="flex justify-center lg:justify-end">
+                <FlagshipVisual tier={tier} />
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {t.features.map((f) => {
+          {t.features.slice(1).map((f) => {
             const FIcon = f.icon
             return (
               <div key={f.title} className="rounded-3xl border border-gray-100 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-md">
