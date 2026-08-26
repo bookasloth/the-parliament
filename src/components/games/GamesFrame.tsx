@@ -9,7 +9,8 @@ import { usePathname } from "next/navigation"
  */
 export function GamesFrame({ rail, guide, children }: { rail: React.ReactNode; guide: React.ReactNode; children: React.ReactNode }) {
   const path = usePathname() ?? ""
-  const fullBleed = /\/games\/vyapaar\/matches\//.test(path)
+  // Full width (no rails) for a live match board AND the match-results/settlement page.
+  const fullBleed = /\/games\/vyapaar\/matches\/|\/games\/vyapaar\/rooms\/[^/]+\/settlements/.test(path)
 
   if (fullBleed) {
     return <div className="mx-auto max-w-[1700px] px-2 py-3 sm:px-4">{children}</div>

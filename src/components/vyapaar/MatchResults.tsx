@@ -137,7 +137,7 @@ export function MatchResults({ view, playerImages = [] }: { view: PublicView; pl
 
 const CSS = `
 .vr{--card:#fff;--line:#e6e4de;--line2:#f1eee8;--ink:#14110d;--dim:#6b6a64;--faint:#9a988f;--accent:#FE5100;--gold:#B8860B;--winbg:#fbf6ea;--grey:#5a5f68;
-  width:min(920px,100%);max-height:88dvh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;font-family:"Poppins",system-ui,sans-serif;color:var(--ink);}
+  width:100%;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;font-family:"Poppins",system-ui,sans-serif;color:var(--ink);}
 .vr *{box-sizing:border-box;}
 .vr-head{display:flex;align-items:center;gap:16px;padding:18px 22px;border-bottom:1px solid var(--line);background:var(--winbg);}
 .vr-crown{font-size:1.9rem;line-height:1;}
@@ -146,8 +146,8 @@ const CSS = `
 .vr-sub{font-size:.78rem;color:var(--dim);margin-top:2px;}
 .vr-nw{margin-left:auto;text-align:right;}
 .vr-nw-v{font-family:"Plus Jakarta Sans","Poppins",sans-serif;font-weight:800;font-size:1.7rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;}
-.vr-scroll{overflow:auto;}
-.vr-tbl{border-collapse:collapse;width:100%;min-width:600px;}
+.vr-scroll{overflow-x:auto;}
+.vr-tbl{border-collapse:collapse;width:100%;table-layout:fixed;}
 .vr-tbl th,.vr-tbl td{text-align:left;vertical-align:top;padding:11px 13px;border-bottom:1px solid var(--line);}
 .vr-tbl tbody tr:last-child th,.vr-tbl tbody tr:last-child td{border-bottom:none;}
 .vr-rl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);white-space:nowrap;width:120px;background:var(--line2);position:sticky;left:0;z-index:1;}
@@ -164,7 +164,7 @@ const CSS = `
 .vr-nwrow td{font-family:"Plus Jakarta Sans","Poppins",sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
 .vr-meta{display:block;font-size:.66rem;color:var(--dim);font-weight:500;margin-top:1px;}
 .vr-dash{color:var(--faint);}
-.vr-pills{display:flex;flex-direction:column;gap:4px;align-items:flex-start;}
+.vr-pills{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;}
 .vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
 .vr-pill.vr-set{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px currentColor;}
 .vr-pill.vr-co{background:var(--grey);color:#fff;}
