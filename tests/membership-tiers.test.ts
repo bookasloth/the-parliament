@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors";
-import { nextUpgradeTier } from "@/config/membership";
+import { nextUpgradeTier, BENEFITS, PLANS } from "@/config/membership";
 
 // The navbar's visual upgrade chain (MEMBERSHIP_TIERS.next) must agree with the
 // authoritative upgrade logic (nextUpgradeTier) for the shared tiers, or the UI
@@ -36,5 +36,28 @@ describe("MEMBERSHIP_TIERS.next agrees with nextUpgradeTier", () => {
       expect(meta.accent, tier).toMatch(/^#[0-9a-fA-F]{6}$/);
       expect(meta.accent, tier).not.toContain("gradient");
     }
+  });
+});
+
+// The job-opening post gate (createPost / publishDraft → assertCategoryEntitled)
+// reads benefits.jobs. Pin the entitlement so a config change can't silently
+// open jobs to Students or close it for paying members.
+describe("BENEFITS.jobs entitlement (drives the job-post gate)", () => {
+  it("base (student) cannot post jobs; associate and premium can", () => {
+    expect(BENEFITS.base.jobs).toBe(false);
+    expect(BENEFITS.associate.jobs).toBe(true);
+    expect(BENEFITS.premium.jobs).toBe(true);
+  });
+
+  it("life and committee resolve to the premium benefit tier (jobs allowed)", () => {
+    expect(PLANS.life.benefitTier).toBe("premium");
+    expect(PLANS.committee.benefitTier).toBe("premium");
+    expect(BENEFITS[PLANS.life.benefitTier].jobs).toBe(true);
+  });
+
+  it("businessListing stays premium-only (the other enforced gate)", () => {
+    expect(BENEFITS.base.businessListing).toBe(false);
+    expect(BENEFITS.associate.businessListing).toBe(false);
+    expect(BENEFITS.premium.businessListing).toBe(true);
   });
 });

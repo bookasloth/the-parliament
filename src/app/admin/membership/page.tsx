@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/modules/auth/session"
+import { requirePermission } from "@/lib/gate"
 import { prisma } from "@/lib/prisma"
 import { getMembershipStats } from "@/modules/membership/admin"
 import MembershipClient, { type TxRow, type PlanRow } from "./membership-client"
@@ -11,7 +11,7 @@ const PLAN_LABEL: Record<string, string> = {
 }
 
 export default async function AdminMembershipPage() {
-  await requireAdmin()
+  await requirePermission("membership:manage")
 
   const [stats, orders] = await Promise.all([
     getMembershipStats(),

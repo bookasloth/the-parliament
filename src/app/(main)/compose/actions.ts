@@ -6,7 +6,6 @@ import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { createPost, publishDraft, deletePost, updateDraft, type PostFormat } from "@/modules/feed/posts"
 import { draftSaveMode } from "@/modules/feed/draft-autosave"
-import { getCurrent } from "@/modules/membership/service"
 import { publicUrlFor, validatePostMedia } from "@/lib/r2"
 
 const VALID_FORMATS: PostFormat[] = ["text", "image", "link", "quote", "question", "poll"]
@@ -28,14 +27,8 @@ export async function createPostAction(input: {
   const schoolId = await getDefaultSchoolId()
   if (!schoolId) throw new Error("No school configured")
 
-  // Posting a job opening requires Associate+ (jobs benefit). Enforce here so
-  // every caller is gated, not just the composer UI.
-  if (input.categoryKey === "job_opening") {
-    const current = await getCurrent(user.id)
-    if (!current.benefits.jobs) {
-      throw new Error("Posting a job opening requires an Associate membership or higher")
-    }
-  }
+  // Paid-category gating (e.g. job openings) is enforced inside createPost /
+  // publishDraft so every path is covered, not just this action.
 
   const format = (VALID_FORMATS.includes(input.format as PostFormat)
     ? (input.format as PostFormat)

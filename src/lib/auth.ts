@@ -9,6 +9,8 @@ import { computeIsAdmin } from "@/modules/auth/admin";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { shouldRefreshToken } from "@/lib/session-refresh";
+import { resolveActivePlan, type MembershipRow } from "@/lib/membership-cycle";
+import type { BenefitTier, PlanCode } from "@/config/membership";
 
 // Precomputed once at module load. Compared against for unknown emails so an
 // existing account and a nonexistent one take the same ~bcrypt time — closes
@@ -102,10 +104,16 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
               displayName: true,
               onboardingStep: true,
               onboardingCompleted: true,
-              membershipStatus: true,
               username: true,
               isSuperAdmin: true,
+              status: true,
+              createdAt: true,
+              isVerified: true,
               userRoles: { select: { role: true } },
+              memberships: {
+                where: { status: "active" },
+                select: { planCode: true, benefitTier: true, startedAt: true, endsAt: true, status: true },
+              },
             },
           }),
         );
@@ -113,7 +121,23 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
           token.name = user.displayName || user.legalName;
           token.onboardingStep = user.onboardingStep;
           token.onboardingCompleted = user.onboardingCompleted;
-          token.membershipStatus = user.membershipStatus;
+          // Membership on the session claim is the RESOLVED plan (row truth via
+          // resolveActivePlan), never the raw membershipStatus column. This keeps
+          // every string reader (feed, games archive, directory, navbar) in sync
+          // with the real Membership rows: a suspended member resolves to
+          // "inactive", an expired one to "student", and the legacy "free" column
+          // value can never leak through.
+          const resolved = resolveActivePlan(
+            { status: user.status, createdAt: user.createdAt, isVerified: user.isVerified },
+            user.memberships.map((m): MembershipRow => ({
+              planCode: m.planCode as PlanCode,
+              benefitTier: m.benefitTier as BenefitTier,
+              startedAt: m.startedAt,
+              endsAt: m.endsAt,
+              status: m.status,
+            })),
+          );
+          token.membershipStatus = resolved.planCode;
           token.username = user.username ?? undefined;
           token.roles = user.userRoles.map((r) => r.role);
           token.isAdmin = computeIsAdmin({

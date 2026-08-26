@@ -60,6 +60,9 @@ export async function adminSetTier(input: { adminId: string; targetUserId: strin
   if (tier === "student" || tier === "free") {
     // Hard downgrade: supersede EVERY active row (incl. life) and reset the column.
     // Not expireMembership() — its committee→life reactivation would fight us here.
+    // Always normalize to the canonical "student" — "free" is a legacy synonym
+    // that must never be written to the column (it's not a valid PlanCode and
+    // breaks string-equality gates elsewhere).
     await prisma.$transaction(async (tx) => {
       await tx.membership.updateMany({
         where: { userId: targetUserId, status: "active" },
@@ -67,10 +70,10 @@ export async function adminSetTier(input: { adminId: string; targetUserId: strin
       })
       await tx.user.update({
         where: { id: targetUserId },
-        data: { membershipStatus: tier, benefitTier: "base" },
+        data: { membershipStatus: "student", benefitTier: "base" },
       })
       await tx.membershipEvent.create({
-        data: { userId: targetUserId, type: "expired", newPlan: tier, actorUserId: adminId },
+        data: { userId: targetUserId, type: "expired", newPlan: "student", actorUserId: adminId },
       })
     })
     await invalidateSession(targetUserId)

@@ -4,7 +4,8 @@ import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
-import { PURCHASABLE_PLANS, computePricing, type PlanCode } from "@/config/membership"
+import { PURCHASABLE_PLANS, computePricing, isDeltaUpgrade, lookupPromo, isPromoRedeemable, type PlanCode } from "@/config/membership"
+import { getCurrent } from "@/modules/membership/service"
 import { buildReceipt, getRazorpay, publicKeyId } from "@/lib/razorpay"
 import { audit } from "@/lib/audit"
 
@@ -27,18 +28,43 @@ export async function POST(req: NextRequest) {
       return badRequest("Non-refundable acknowledgement required")
     }
 
-    // Authoritative price — recomputed server-side; the client's total is never trusted.
-    // Platform fee + optional donation + promo ride on a one-time order (Razorpay
-    // subscriptions can't carry per-purchase add-ons), granting the plan's duration on verify.
-    const pricing = computePricing(planCode, { platformFee, donate, promoCode })
-
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, email: true, legalName: true, membershipStatus: true },
+      select: { id: true, email: true, legalName: true },
     })
     if (!dbUser) return badRequest("User not found")
 
-    const prevPlan = dbUser.membershipStatus as PlanCode
+    // Resolve the CURRENT tier from row truth (never the drift-prone
+    // membershipStatus string) so an upgrade is priced against what the member
+    // actually holds. A healthy active Associate upgrading to Premium pays only
+    // the delta and keeps their existing renewal date; a lapsed/grace member
+    // pays the full price for a fresh term.
+    const current = await getCurrent(user.id)
+    const eligibleForDelta =
+      isDeltaUpgrade(current.planCode, planCode) &&
+      !current.inGrace &&
+      !!current.endsAt &&
+      current.endsAt > new Date()
+    const upgradeFromPlan: PlanCode | null = eligibleForDelta ? current.planCode : null
+    const preserveEndsAt = eligibleForDelta ? current.endsAt : null
+    const prevPlan = current.planCode
+
+    // Validate the promo server-side: expired or over its total-redemption cap →
+    // ignore it (charge full). Redemption count = paid orders that used the code.
+    // This is the authoritative gate; the client's own expiry hint is advisory.
+    const promo = lookupPromo(promoCode)
+    let effectivePromoCode: string | undefined
+    if (promo) {
+      const redemptions = await prisma.membershipOrder.count({
+        where: { status: "paid", metadata: { path: ["promoCode"], equals: promo.code } },
+      })
+      if (isPromoRedeemable(promo, { redemptions })) effectivePromoCode = promo.code
+    }
+
+    // Authoritative price — recomputed server-side; the client's total is never trusted.
+    // Platform fee + optional donation + promo ride on a one-time order (Razorpay
+    // subscriptions can't carry per-purchase add-ons), granting the plan's duration on verify.
+    const pricing = computePricing(planCode, { platformFee, donate, promoCode: effectivePromoCode, upgradeFromPlan })
     const rzp = getRazorpay()
     const receipt = buildReceipt(user.id)
 
@@ -57,6 +83,9 @@ export async function POST(req: NextRequest) {
           donationPaise: pricing.donationPaise,
           discountPaise: pricing.discountPaise,
           promoCode: pricing.promo?.code ?? null,
+          isUpgradeDelta: pricing.isUpgradeDelta,
+          upgradeFromPlan,
+          preserveEndsAt: preserveEndsAt ? preserveEndsAt.toISOString() : null,
         } as Prisma.InputJsonValue,
       },
     })
