@@ -167,7 +167,7 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
       </a>
       {canUpgrade && nextMeta ? (
         <a
-          href={`/upgrade/${meta.next}`}
+          href={`/membership/${meta.next}`}
           className="flex items-center justify-center gap-1 w-full rounded-[4px] border border-dashed border-gray-300 px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:border-brand hover:text-brand transition-colors"
         >
           Upgrade to {nextMeta.label} <ArrowUpRight className="h-3 w-3" />
@@ -357,7 +357,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
           if (!next) return null
           return (
             <a
-              href={`/upgrade/${next}`}
+              href={`/membership/${next}`}
               className="hidden lg:flex items-center gap-1.5 rounded-[3px] border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 transition-all flex-shrink-0"
             >
               <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
@@ -600,6 +600,9 @@ function GuestNavbar() {
         </a>
         <a href="/gallery" className="ml-3 hidden sm:inline text-sm font-medium text-gray-500 hover:text-brand transition-colors">
           Gallery
+        </a>
+        <a href="/membership" className="ml-3 hidden sm:inline text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+          Membership
         </a>
         <div className="flex-1" />
         <div className="flex items-center gap-2 flex-shrink-0">

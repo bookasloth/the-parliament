@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import {
   CheckCircle, Star, Crown, Award, BadgeCheck, Sparkles,
@@ -255,6 +256,7 @@ export default function MembershipPage() {
               notIncluded={associate.notIncluded}
               ctaLabel="Become an Associate"
               onClick={() => handleUpgrade("associate")}
+              learnMoreHref={`/membership/${associate.key}`}
               isCurrent={currentPlan === "associate"}
             />
           </div>
@@ -278,6 +280,7 @@ export default function MembershipPage() {
               notIncluded={premium.notIncluded}
               ctaLabel={currentPlan === "associate" ? `Upgrade for ₹${ASSOCIATE_TO_PREMIUM_DELTA_INR} more` : "Become Premium"}
               onClick={() => handleUpgrade("premium")}
+              learnMoreHref={`/membership/${premium.key}`}
               recommended
               isCurrent={currentPlan === "premium"}
               upgradeNote={currentPlan === "associate"
@@ -300,6 +303,7 @@ export default function MembershipPage() {
               notIncluded={life.notIncluded}
               ctaLabel="Become a Life Member"
               onClick={() => handleUpgrade("life")}
+              learnMoreHref={`/membership/${life.key}`}
               isCurrent={currentPlan === "life"}
             />
           </div>
@@ -454,9 +458,10 @@ interface PlanCardProps {
   recommended?: boolean
   upgradeNote?: string
   isCurrent?: boolean
+  learnMoreHref?: string
 }
 
-function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, features, notIncluded, ctaLabel, onClick, recommended, upgradeNote, isCurrent }: PlanCardProps) {
+function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, features, notIncluded, ctaLabel, onClick, recommended, upgradeNote, isCurrent, learnMoreHref }: PlanCardProps) {
   const styles = {
     navy: {
       ring: "border-gray-200",
@@ -521,6 +526,12 @@ function PlanCard({ accent, icon, name, tagline, price, priceSuffix, subPrice, f
           <div className="mb-4 rounded-[4px] bg-amber-50/60 border border-amber-200/70 px-3 py-2 text-[11px] text-amber-900 leading-relaxed">
             {upgradeNote}
           </div>
+        )}
+
+        {learnMoreHref && !isCurrent && (
+          <Link href={learnMoreHref} className="mb-3 block text-center text-xs font-semibold text-brand hover:underline">
+            Learn more about {name} →
+          </Link>
         )}
 
         <ul className="space-y-2.5 flex-1 mt-2">
