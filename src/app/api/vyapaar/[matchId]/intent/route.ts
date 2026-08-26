@@ -10,7 +10,7 @@ import type { Intent } from "@/modules/vyapaar/engine/state"
 // intents applied by the server's expiry sweeps, never accepted from a client.
 const INTENT_TYPES = new Set([
   "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
-  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent",
+  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade",
   "confirm_payment", "restructure", "leave_game", "end_turn",
 ])
 
@@ -43,8 +43,6 @@ function validIntentShape(intent: { type: string; [k: string]: unknown }): boole
       return finite(intent.tradeId) && typeof intent.accept === "boolean"
     case "withdraw_trade":
       return finite(intent.tradeId)
-    case "collect_rent":
-      return finite(intent.rentId)
     case "confirm_payment":
       return finite(intent.paymentId)
     default: // roll, buy, decline, end_turn — no extra fields required

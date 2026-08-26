@@ -48,15 +48,16 @@ describe("player leaving", () => {
     expect(s.trades).toHaveLength(0);
   });
 
-  it("voids pending rents the leaver owes or is owed", () => {
+  it("voids auto-payments the leaver owes or is owed", () => {
     const s = createGame(1, ["a", "b", "c"]);
-    s.cities[0].owner = 2;
-    s.pendingRents.push({ id: 1, payer: 1, owner: 2, cityId: 0, amount: 300, age: 0 }); // leaver owes
-    s.pendingRents.push({ id: 2, payer: 2, owner: 1, cityId: 5, amount: 200, age: 0 }); // leaver is owed
-    s.pendingRents.push({ id: 3, payer: 0, owner: 2, cityId: 0, amount: 100, age: 0 }); // unrelated
+    s.payments = [
+      { id: 1, actor: 1, dir: "pay", amount: 300, party: 2, reason: "rent", expiresAt: 0 }, // leaver owes
+      { id: 2, actor: 2, dir: "pay", amount: 200, party: 1, reason: "rent", expiresAt: 0 }, // leaver is owed
+      { id: 3, actor: 0, dir: "pay", amount: 100, party: 2, reason: "rent", expiresAt: 0 }, // unrelated
+    ];
     const cash0 = s.players[0].cash, cash2 = s.players[2].cash;
     applyIntent(s, 1, { type: "leave_game" });
-    expect(s.pendingRents.map((r) => r.id)).toEqual([3]); // only the unrelated one survives
+    expect((s.payments ?? []).map((p) => p.id)).toEqual([3]); // only the unrelated one survives
     expect(s.players[0].cash).toBe(cash0); // nothing was charged/paid
     expect(s.players[2].cash).toBe(cash2);
   });
