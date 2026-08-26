@@ -103,6 +103,20 @@ export function cityLiquidationValue(s: GameState, id: number): number {
 }
 
 /**
+ * Real cash-out value used to SETTLE the coin wallet at game end: cash + what every
+ * property and company would fetch if sold to the bank right now (full value − 2% TDS,
+ * NO set/pair premium). Unlike netWorth this never mints coins — you recoup roughly what
+ * you spent minus the 2% — so the coin economy stays conservative. netWorth (with the
+ * ×1.4 / ×1.5 premiums) is kept purely for ranking + the net-worth shown on the results.
+ */
+export function liquidationWorth(s: GameState, seat: number): number {
+  let w = s.players[seat].cash;
+  for (let id = 0; id < s.cities.length; id++) if (s.cities[id].owner === seat) w += cityLiquidationValue(s, id);
+  for (let i = 0; i < s.companies.length; i++) if (s.companies[i] === seat) w += Math.round(COMPANIES[i].buy * (1 - TDS_RATE));
+  return w;
+}
+
+/**
  * Cash a city returns when its owner LEAVES: full cost basis, not the half-price
  * sell-to-bank penalty — leaving mustn't cost you your investment. Unmortgaged card
  * refunds full price; a mortgaged card refunds price minus the loan already taken
