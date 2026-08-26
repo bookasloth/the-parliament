@@ -56,9 +56,9 @@ describe("vyapaar companies", () => {
     expect(s.auction).toBeNull();
   });
 
-  it("counts owned companies in net worth (50% of buy)", () => {
+  it("counts a solo owned company in net worth at full buy price", () => {
     const s = createGame(1, ["a", "b"], 0); // no cash, no cities → isolate the company value
-    s.companies[0] = 0;
-    expect(netWorth(s, 0)).toBe(Math.round(COMPANIES[0].buy * 0.5));
+    s.companies[0] = 0; // Udta Firta only — partner (idx 1) unowned → no pair premium
+    expect(netWorth(s, 0)).toBe(COMPANIES[0].buy);
   });
 });

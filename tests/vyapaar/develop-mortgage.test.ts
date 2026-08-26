@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { CITIES, UNMORTGAGE_RATE, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data";
+import { CITIES, UNMORTGAGE_RATE, upgradeCost } from "@/modules/vyapaar/engine/data";
 import { CITY_POS } from "@/modules/vyapaar/engine/board";
 
 function ownNorthSet(s: ReturnType<typeof createGame>) {
@@ -92,7 +92,7 @@ describe("develop / mortgage", () => {
     expect("error" in r).toBe(true);
   });
 
-  it("sells an undeveloped city back to the bank for half its price", () => {
+  it("sells an undeveloped city back to the bank for its full price minus 2% TDS", () => {
     const s = createGame(1, ["a", "b"], 25000);
     s.cities[5].owner = 0;
     s.phase = "manage";
@@ -100,16 +100,16 @@ describe("develop / mortgage", () => {
     const r = applyIntent(s, 0, { type: "sell", cityId: 5 });
     expect("error" in r).toBe(false);
     expect(s.cities[5].owner).toBeNull();
-    expect(s.players[0].cash).toBe(before + Math.floor(CITIES[5].price / 2));
+    expect(s.players[0].cash).toBe(before + Math.round(CITIES[5].price * 0.98));
   });
 
-  it("sells a developed city outright, refunding card value + building value", () => {
+  it("sells a developed city outright, refunding full card + building value minus 2% TDS", () => {
     const s = createGame(1, ["a", "b"], 25000);
     s.cities[5].owner = 0;
     s.cities[5].level = 2;
     s.phase = "manage";
     const before = s.players[0].cash;
-    const expected = Math.floor(CITIES[5].price / 2) + Math.floor(2 * upgradeCost(5) * UPGRADE_SELL_RATIO);
+    const expected = Math.round((CITIES[5].price + 2 * upgradeCost(5)) * 0.98);
     const r = applyIntent(s, 0, { type: "sell", cityId: 5 });
     expect("error" in r).toBe(false);
     expect(s.cities[5].owner).toBeNull();

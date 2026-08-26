@@ -10,7 +10,7 @@ import {
   liquidate,
   citiesOwned,
 } from "@/modules/vyapaar/engine/helpers";
-import { CITIES, SET_BONUS_NW, BLEND, upgradeCost } from "@/modules/vyapaar/engine/data";
+import { CITIES, SET_MULT, upgradeCost } from "@/modules/vyapaar/engine/data";
 
 // North zone = cityIds 0..4 (authored zone-grouped).
 function own(s: ReturnType<typeof createGame>, seat: number, ids: number[]) {
@@ -44,14 +44,13 @@ describe("helpers", () => {
     expect(rentFor(s, 0)).toBe(0);
   });
 
-  it("net worth and score use the documented formula", () => {
+  it("net worth is the cash-out value; score equals net worth", () => {
     const s = createGame(1, ["a", "b"]);
     s.players[0].cash = 1000;
-    own(s, 0, [0, 1, 2]); // North set (3 cities) → controlledSets = 1
-    const price = CITIES[0].price + CITIES[1].price + CITIES[2].price;
-    const nw = 1000 + price * 0.5 + SET_BONUS_NW * 1;
+    own(s, 0, [0, 1, 2]); // North set (3 cities) → controlsSet → each card ×SET_MULT
+    const nw = 1000 + Math.round(CITIES[0].price * SET_MULT) + Math.round(CITIES[1].price * SET_MULT) + Math.round(CITIES[2].price * SET_MULT);
     expect(netWorth(s, 0)).toBe(nw);
-    expect(scoreOf(s, 0)).toBe(1000 + BLEND * (nw - 1000));
+    expect(scoreOf(s, 0)).toBe(nw); // score = net worth, no blend
     expect(controlledSets(s, 0)).toBe(1);
     expect(citiesOwned(s, 0).sort((x, y) => x - y)).toEqual([0, 1, 2]);
   });

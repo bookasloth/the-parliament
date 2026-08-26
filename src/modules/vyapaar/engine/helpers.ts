@@ -3,8 +3,10 @@ import {
   ZONES,
   COMPANIES,
   SET_OWN_NEEDED,
-  SET_BONUS_NW,
-  BLEND,
+  SET_MULT,
+  PAIR_MULT,
+  DEV_MULT,
+  TDS_RATE,
   UPGRADE_SELL_RATIO,
   SCRAPPY_MULT,
   SCRAPPY_MAX_CITIES,
@@ -59,29 +61,45 @@ export function companyServiceFee(s: GameState, i: number): number {
   return bothOwned ? COMPANIES[i].pair : COMPANIES[i].single;
 }
 
+/**
+ * Net worth = a transparent "cash-out value": what your whole empire is worth.
+ * Cash + every property at FULL price (×SET_MULT if it's inside a completed set) +
+ * every building at DEV_MULT its build cost + every company at full buy (×PAIR_MULT
+ * if you own the pair). Mortgaged cards count at half (you've borrowed against them)
+ * and earn no set premium. This IS the final score (see scoreOf).
+ */
 export function netWorth(s: GameState, seat: number): number {
   let nw = s.players[seat].cash;
   for (let id = 0; id < s.cities.length; id++) {
     const c = s.cities[id];
     if (c.owner !== seat) continue;
-    nw += CITIES[id].price * (c.mortgaged ? 0.35 : 0.5);
-    nw += c.level * upgradeCost(id) * 0.5;
+    if (c.mortgaged) {
+      nw += Math.round(CITIES[id].price * 0.5); // borrowed against — half value, no set premium
+    } else {
+      const inSet = controlsSet(s, seat, CITIES[id].zone);
+      nw += Math.round(CITIES[id].price * (inSet ? SET_MULT : 1));
+    }
+    nw += Math.round(c.level * upgradeCost(id) * DEV_MULT); // buildings pay off at game end
   }
-  for (let i = 0; i < s.companies.length; i++) if (s.companies[i] === seat) nw += COMPANIES[i].buy * 0.5;
-  nw += controlledSets(s, seat) * SET_BONUS_NW;
+  for (let i = 0; i < s.companies.length; i++) {
+    if (s.companies[i] !== seat) continue;
+    const pair = s.companies[COMPANIES[i].partner] === seat;
+    nw += Math.round(COMPANIES[i].buy * (pair ? PAIR_MULT : 1));
+  }
   return nw;
 }
 
 /**
- * Cash a city returns when sold to the bank: card value (half buy price, or 0 if
- * mortgaged) + property/building value (levels refunded at UPGRADE_SELL_RATIO).
- * Single source of truth for the sell-to-bank and leave-liquidation payouts.
+ * Cash a city returns when voluntarily sold to the bank: the bank buys it back at
+ * FULL price (0 if already mortgaged) plus the FULL build cost, then deducts a 2% TDS
+ * on the gross — e.g. Mumbai ₹9,000 → ₹8,820. Selling always loses the 2%, so it can
+ * never mint money. Single source of truth for the sell-to-bank payout.
  */
 export function cityLiquidationValue(s: GameState, id: number): number {
   const c = s.cities[id];
-  const cardValue = c.mortgaged ? 0 : Math.floor(CITIES[id].price / 2);
-  const buildingValue = Math.floor(c.level * upgradeCost(id) * UPGRADE_SELL_RATIO);
-  return cardValue + buildingValue;
+  const cardValue = c.mortgaged ? 0 : CITIES[id].price;
+  const buildingValue = c.level * upgradeCost(id);
+  return Math.round((cardValue + buildingValue) * (1 - TDS_RATE));
 }
 
 /**
@@ -98,9 +116,9 @@ export function cityLeaveValue(s: GameState, id: number): number {
   return cardValue + buildingValue;
 }
 
+// Final score is simply the net worth — the transparent cash-out value. No blend.
 export function scoreOf(s: GameState, seat: number): number {
-  const cash = s.players[seat].cash;
-  return cash + BLEND * (netWorth(s, seat) - cash);
+  return netWorth(s, seat);
 }
 
 export function credit(s: GameState, seat: number, amount: number): void {

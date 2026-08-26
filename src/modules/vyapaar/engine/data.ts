@@ -96,11 +96,14 @@ export const RESTRUCTURE_ADVANCE = 3600; // ≈ one cheap property / 3× base sa
 export const RESTRUCTURE_LAPS = 3;
 export const RESTRUCTURE_PENALTY = 1200; // per-lap salary cut (3 × 1200 = 3600 repaid)
 export const JAIL_TURNS = 2; // turns halted by Tax Raid / three doubles
-export const SET_BONUS_NW = 1500;
 export const MAX_ROUNDS = 40;
 export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;
-export const BLEND = 0.5;
+// Final-scoring / valuation multipliers (net worth = a transparent cash-out value).
+export const SET_MULT = 1.4; // a card inside a completed set is worth ×this (₹5000 → ₹7000)
+export const PAIR_MULT = 1.4; // a company you own as a full pair is worth ×this
+export const DEV_MULT = 1.5; // a building is worth ×this its build cost at game end
+export const TDS_RATE = 0.02; // mid-game sell-to-bank pays full value minus this (2% TDS)
 export const MAX_LEVEL = 6; // base + 3 houses + 3 hotels (v2 rent ladder is length 7)
 export const HOTEL_LEVEL = 4; // levels 1-3 are houses, 4-6 are hotels (hotels need you on the tile)
 export const UNMORTGAGE_RATE = 0.55; // half + 10% interest
