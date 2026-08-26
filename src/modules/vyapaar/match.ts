@@ -157,9 +157,11 @@ async function settleMatch(
       })
       continue
     }
-    // Capital-gains tax on net profit is withheld before the wallet is credited, so
-    // resultCash is the AFTER-TAX final coins (drives P&L on the settlement screen).
-    const resultCash = state.players[p.seat].cash - capitalGainsTax(state.players[p.seat].cash - p.openingCash)
+    // Settle on the full cash-out value — net worth (cash + property/sets + companies +
+    // development), not just liquid cash: you bank what your whole empire is worth.
+    // Capital-gains tax on the net profit is withheld, so resultCash is the after-tax coins.
+    const finalValue = Math.round(netWorth(state, p.seat))
+    const resultCash = finalValue - capitalGainsTax(finalValue - p.openingCash)
     await tx.vyapaarMatchPlayer.update({
       where: { matchId_seat: { matchId, seat: p.seat } },
       data: { resultCash, placement: placementBySeat.get(p.seat)! },
@@ -181,10 +183,9 @@ async function settleMatch(
       },
     })
     // bestNetWorth is a max against the current value — guarded conditional update.
-    const nw = Math.round(netWorth(state, p.seat))
     await tx.user.updateMany({
-      where: { id: p.userId, vyapaarBestNetWorth: { lt: nw } },
-      data: { vyapaarBestNetWorth: nw },
+      where: { id: p.userId, vyapaarBestNetWorth: { lt: finalValue } },
+      data: { vyapaarBestNetWorth: finalValue },
     })
   }
 }
@@ -251,8 +252,11 @@ async function commitMatchState(
   })
   if (state.ended) {
     await settleMatch(tx, match.id, state, match.players)
-    // Reopen the room for a rematch.
-    await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "open" } })
+    // Game over: discard the room. Mark it ended (blocks any rejoin — joinRoom requires
+    // status "open") and clear its members so everyone is thrown out. The match row stays
+    // so the results/settlement page keeps working.
+    await tx.vyapaarRoom.update({ where: { id: match.roomId }, data: { status: "ended" } })
+    await tx.vyapaarRoomMember.deleteMany({ where: { roomId: match.roomId } })
   } else {
     // Pay out anyone who left in this batch right away so they can jump into another game.
     for (const { seat, intent } of appendedLog) {

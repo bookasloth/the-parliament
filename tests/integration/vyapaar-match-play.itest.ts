@@ -56,6 +56,7 @@ describe("applyMatchIntent", () => {
     s.round = MAX_ROUNDS
     s.active = 1
     s.phase = "manage"
+    s.cities[0].owner = 1; s.cities[1].owner = 1 // give seat 1 property so net worth > liquid cash
     await prisma.vyapaarMatch.update({ where: { id: matchId }, data: { state: s as unknown as object, activeSeat: 1 } })
     const res = await applyMatchIntent(b, matchId, { type: "end_turn" })
     expect("view" in res).toBe(true)
@@ -67,8 +68,15 @@ describe("applyMatchIntent", () => {
       expect(user!.vyapaarWallet).toBe(player!.resultCash)
       expect(await ledgerSum(uid)).toBe(user!.vyapaarWallet) // invariant
     }
-    const room = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { room: { select: { status: true } } } })
-    expect(room!.room.status).toBe("open")
+    // Settlement banks NET WORTH, not just liquid cash: seat 1 owns 2 cities, so its
+    // final coins exceed its in-game cash (property value clears any capital-gains tax).
+    const bp = await prisma.vyapaarMatchPlayer.findFirst({ where: { matchId, userId: b }, select: { resultCash: true } })
+    const finalState = (await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { state: true } }))!.state as unknown as GameState
+    expect(bp!.resultCash).toBeGreaterThan(finalState.players[1].cash)
+    // Game over discards the room: marked "ended" (no rejoin/rematch) and its members cleared.
+    const m2 = await prisma.vyapaarMatch.findUnique({ where: { id: matchId }, select: { roomId: true, room: { select: { status: true } } } })
+    expect(m2!.room.status).toBe("ended")
+    expect(await prisma.vyapaarRoomMember.count({ where: { roomId: m2!.roomId } })).toBe(0)
   })
 
   it("sets turnExpiresAt on start and after a move, null at game-over", async () => {
