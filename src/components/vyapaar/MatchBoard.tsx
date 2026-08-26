@@ -140,8 +140,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     // Rolls are intentionally NOT logged — the game log shows actions only.
     case "buy": return `${nm(e.seat)} bought ${city(e.cityId)} for ${rup(e.amount)}`
     case "buy_company": return `${nm(e.seat)} bought ${COMPANIES[e.companyIndex as number]?.short ?? "?"} for ${rup(e.amount)}`
-    case "rent_pending": return `${nm(e.seat)} owes ${rup(e.amount)} rent to ${nm(e.to)} — ${nm(e.to)} can collect`
-    case "rent": return Number(e.amount) > 0 ? `${nm(e.to)} collected ${rup(e.amount)} rent from ${nm(e.seat)}` : `${nm(e.to)} collected rent from ${nm(e.seat)}`
+    case "rent_pending": return `${nm(e.seat)} owes ${rup(e.amount)} rent to ${nm(e.to)}`
     case "rent_void": return `rent to ${nm(e.to)} was voided`
     case "company_fee": return `${nm(e.seat)} paid ${rup(e.amount)} service`
     case "salary": return `${nm(e.seat)} got ${rup(e.amount)} salary`
@@ -188,8 +187,7 @@ function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; l
     case "buy": case "buy_company": case "auction_won": return e.seat === you ? { delta: -amt, label: "Purchase" } : null
     case "develop": return e.seat === you ? { delta: -amt, label: "Built" } : null
     case "sell": return e.seat === you ? { delta: amt, label: "Sold to bank" } : null
-    case "rent": if (e.to === you) return { delta: amt, label: "Rent collected" }; if (e.seat === you) return { delta: -amt, label: "Rent paid" }; return null
-    // company_fee + mandi now move money via payment_paid/collected — the markers below
+    // rent + company_fee + mandi now move money via payment_paid/collected — the markers below
     // are logged for the game log only, not itemised here (would double-count).
     case "salary": return e.seat === you ? { delta: amt, label: "Salary" } : null
     case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
@@ -335,10 +333,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
   const myTurn = view.active === you && !view.ended
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
-  const seatName = (seat: number | null) => (seat === null ? null : view.players[seat]?.name)
   const myCities = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you)
   const myCompanyIds = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === you).map((x) => x.ci)
-  const myRents = (view.pendingRents ?? []).filter((r) => r.owner === you)
   const leaderSeat = view.players.reduce((b, p, i) => (!p.left && p.score > view.players[b].score ? i : b), 0)
   // Last 5 meaningful actions (rolls are excluded in logLine), oldest → newest so
   // the freshest line sits at the bottom.
@@ -556,12 +552,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 {myTurn && view.phase === "buy" && (
                   <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
                 )}
-                {myRents.map((r) => (
-                  <div key={r.id} className="vb-rent">
-                    <p className="vb-rent-body"><b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b></p>
-                    <button className="vb-collect" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>Collect ₹{inr(r.amount)} rent</button>
-                  </div>
-                ))}
                 {(view.payments ?? []).map((p) => (
                   <PaymentCard key={p.id} payment={p} view={view} busy={busy} onAction={send} />
                 ))}
@@ -578,7 +568,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
                 {notifLines.length
                   ? notifLines.map((x) => <div key={x.i} className="vb-notif-line">{x.line}</div>)
-                  : (!err && !myRents.length && <div className="vb-log-empty">No actions yet</div>)}
+                  : (!err && !(view.payments ?? []).length && <div className="vb-log-empty">No actions yet</div>)}
               </div>
             </section>
 
@@ -1021,7 +1011,7 @@ function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on:
 const PAYMENT_REASON: Record<string, string> = {
   "event:married": "wedding gift", "event:festival": "festival", "event:ed_raid": "ED raid",
   "event:tax_return": "tax return", "event:jnv_revisit": "JNV revisit",
-  company_fee: "service fee", mandi: "Mandi bonus",
+  company_fee: "service fee", mandi: "Mandi bonus", rent: "rent",
 }
 
 // An auto-payment awaiting YOUR approval. Debit → "Allow or pay double"; windfall →

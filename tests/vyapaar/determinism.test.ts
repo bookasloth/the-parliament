@@ -25,6 +25,11 @@ const MINT_BURN = new Set([
   "auction_won",
   "forced_sale",
   "forced_mortgage",
+  // auto-payment settlement (allow/claim/penalty/end-of-game) moves bank cash or transfers
+  "payment_paid",
+  "payment_collected",
+  "payment_penalty",
+  "payment_forfeited",
 ]);
 
 /**
@@ -32,6 +37,12 @@ const MINT_BURN = new Set([
  * rent, and forced liquidation actually occur — instead of always declining / always bidding 0.
  */
 function pickIntent(s: GameState): { seat: number; intent: Intent } {
+  // Allow/claim any pending auto-payment first (a player would settle rent/fees/events),
+  // so money actually moves mid-game and forced liquidation still fires.
+  if (s.payments && s.payments.length) {
+    const p = s.payments[0];
+    return { seat: p.actor, intent: { type: "confirm_payment", paymentId: p.id } };
+  }
   if (s.phase === "roll") return { seat: s.active, intent: { type: "roll" } };
   if (s.phase === "buy") {
     const seat = s.active;
@@ -88,7 +99,7 @@ describe("determinism + money conservation", () => {
         const r = applyIntent(s, seat, intent);
         const events = "events" in r ? r.events : [];
         for (const e of events) {
-          if (e.type === "rent" || e.type === "company_fee") rentEvents++;
+          if (e.type === "rent_pending" || e.type === "company_fee") rentEvents++;
           if (e.type === "forced_sale" || e.type === "forced_mortgage") liquidationEvents++;
         }
         const touchedBank = events.some((e) => MINT_BURN.has(e.type));

@@ -22,7 +22,6 @@ export type Intent =
   | { type: "counter_trade"; tradeId: number; give: TradeSide; get: TradeSide }
   | { type: "withdraw_trade"; tradeId: number }
   | { type: "expire_trade"; tradeId: number }
-  | { type: "collect_rent"; rentId: number }
   | { type: "confirm_payment"; paymentId: number }
   | { type: "expire_payment"; paymentId: number }
   | { type: "restructure" }
@@ -75,22 +74,6 @@ export interface TradeOffer {
   expiresAt: number; // epoch ms; 0 until the server stamps it (see match.ts). Live for 60s.
 }
 
-/**
- * An owed-but-not-yet-collected rent. When A lands on B's city we don't charge
- * immediately — B gets a "someone visited your city" prompt and clicks Collect.
- * `age` counts turns elapsed; at one full lap (age >= players.length) it
- * auto-settles so the game never stalls on an AFK owner. `amount` is snapshotted
- * at landing so B is paid exactly what the notification showed.
- */
-export interface PendingRent {
-  id: number;
-  payer: number; // seat that owes
-  owner: number; // seat that is owed
-  cityId: number;
-  amount: number;
-  age: number; // turns elapsed since it was created
-}
-
 export interface GameState {
   seed: number;
   rng: number; // live PRNG state
@@ -106,8 +89,6 @@ export interface GameState {
   auction: AuctionState | null;
   trades: TradeOffer[]; // active proposals; at most one outgoing per player
   nextTradeId: number; // monotonic id source for trades
-  pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
-  nextRentId: number; // monotonic id source for pendingRents
   payments?: Payment[]; // auto-payments awaiting allow/claim (see Payment)
   nextPaymentId?: number; // monotonic id source for payments
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
@@ -157,8 +138,6 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     auction: null,
     trades: [],
     nextTradeId: 1,
-    pendingRents: [],
-    nextRentId: 1,
     payments: [],
     nextPaymentId: 1,
     endRequested: false,

@@ -18,7 +18,7 @@ import {
   JAIL_TURNS,
   MONSOON_POS,
 } from "./data";
-import type { GameState, Intent, EngineEvent, PendingRent, TradeOffer } from "./state";
+import type { GameState, Intent, EngineEvent, TradeOffer } from "./state";
 import type { TradeSide } from "./state";
 import { BOARD, CITY_POS } from "./board";
 import { rollDie } from "./rng";
@@ -85,39 +85,11 @@ function passStartSalary(s: GameState, seat: number, events: EngineEvent[]): voi
 }
 
 /**
- * Settle one pending rent: pay it (auto-liquidating the payer if short), unless
- * the owner no longer owns the city (traded/sold since) — then it's voided.
- * `reason` distinguishes a manual collect from the one-lap auto-settle for logs.
- */
-function settleRent(s: GameState, rent: PendingRent, events: EngineEvent[], reason: "collected" | "auto"): void {
-  if (s.cities[rent.cityId]?.owner !== rent.owner) {
-    events.push({ type: "rent_void", seat: rent.payer, cityId: rent.cityId, to: rent.owner, rentId: rent.id });
-    return;
-  }
-  const paid = charge(s, rent.payer, rent.amount, rent.owner, events);
-  events.push({ type: "rent", seat: rent.payer, cityId: rent.cityId, to: rent.owner, amount: paid, rentId: rent.id, reason });
-}
-
-/** Age pending rents by one turn; auto-settle any that have waited a full lap. */
-function ageAndAutoSettleRents(s: GameState, events: EngineEvent[]): void {
-  if (!s.pendingRents?.length) return;
-  const lap = s.players.length;
-  const keep: PendingRent[] = [];
-  for (const r of s.pendingRents) {
-    r.age++;
-    if (r.age >= lap) settleRent(s, r, events, "auto");
-    else keep.push(r);
-  }
-  s.pendingRents = keep;
-}
-
-/**
  * Advance to the next player's turn. Shared by finishSegment (auto-end) and the
  * explicit end_turn intent. Emits an `end_turn` event for logs/clients.
  */
 function advanceTurn(s: GameState, events: EngineEvent[]): void {
   const seat = s.active;
-  ageAndAutoSettleRents(s, events);
   if (controlledSets(s, seat) >= SETS_TO_END) s.endRequested = true;
   // Advance to the next seat that hasn't left; count a round wrap when we pass the end.
   let next = seat, wrapped = false, hops = 0;
@@ -150,12 +122,6 @@ function leaveGame(s: GameState, seat: number, events: EngineEvent[]): void {
       if (t.from === seat || t.to === seat) events.push({ type: "trade_cancelled", tradeId: t.id, from: t.from, to: t.to });
     }
     s.trades = s.trades.filter((t) => t.from !== seat && t.to !== seat);
-  }
-  if (s.pendingRents?.length) {
-    for (const r of s.pendingRents) {
-      if (r.payer === seat || r.owner === seat) events.push({ type: "rent_void", seat: r.payer, cityId: r.cityId, to: r.owner, rentId: r.id });
-    }
-    s.pendingRents = s.pendingRents.filter((r) => r.payer !== seat && r.owner !== seat);
   }
   if (s.payments?.length) {
     // Drop any auto-payment the leaver owes or is owed — nothing left to settle.
@@ -259,16 +225,12 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.pendingCity = id;
         s.phase = "buy";
       } else if (owner !== seat) {
-        // Don't charge now — the owner gets a "someone visited your city" prompt
-        // and collects. Auto-settles after one lap (see advanceTurn) so an AFK
-        // owner can never stall the game. Amount is snapshotted here.
+        // Rent is a payer-confirmed auto-payment: allow within the window or it's charged
+        // double (owner still gets the rent; the extra splits half-bank / half-others).
         const rent = rentFor(s, id);
         if (rent > 0) {
-          if (!s.pendingRents) s.pendingRents = [];
-          const rentId = s.nextRentId ?? 1;
-          s.nextRentId = rentId + 1;
-          s.pendingRents.push({ id: rentId, payer: seat, owner, cityId: id, amount: rent, age: 0 });
-          events.push({ type: "rent_pending", seat, cityId: id, to: owner, amount: rent, rentId });
+          queuePayment(s, { actor: seat, dir: "pay", amount: rent, party: owner, reason: "rent" });
+          events.push({ type: "rent_pending", seat, cityId: id, to: owner, amount: rent });
         }
         finishSegment(s, events);
       } else {
@@ -379,10 +341,19 @@ export function winnerOf(s: GameState): number {
 }
 
 function endGame(s: GameState, events: EngineEvent[]): void {
-  // Settle any outstanding rents before scoring so no money is left in limbo.
-  if (s.pendingRents?.length) {
-    for (const r of s.pendingRents) settleRent(s, r, events, "auto");
-    s.pendingRents = [];
+  // Settle any outstanding auto-payments at base value (no end-of-game penalty) so no
+  // money is left in limbo before scoring.
+  if (s.payments?.length) {
+    for (const p of s.payments) {
+      if (p.dir === "collect") {
+        credit(s, p.actor, p.amount);
+        events.push({ type: "payment_collected", seat: p.actor, amount: p.amount, reason: p.reason });
+      } else {
+        const paid = charge(s, p.actor, p.amount, p.party, events);
+        events.push({ type: "payment_paid", seat: p.actor, to: p.party === "bank" ? undefined : p.party, amount: paid, reason: p.reason });
+      }
+    }
+    s.payments = [];
   }
   s.ended = true;
   s.winner = winnerOf(s);
@@ -645,19 +616,6 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!t) return { error: "no_trade" };
       s.trades = list.filter((x) => x.id !== t.id);
       events.push({ type: "trade_expired", tradeId: t.id, from: t.from, to: t.to });
-      return { state: s, events };
-    }
-
-    case "collect_rent": {
-      // Owner collects an owed rent from the notification. Off-turn: legal anytime.
-      // Idempotent — the id is removed on collect, so a double-click errors.
-      const list = s.pendingRents ?? [];
-      const idx = list.findIndex((r) => r.id === intent.rentId);
-      if (idx < 0) return { error: "no_such_rent" };
-      const rent = list[idx];
-      if (rent.owner !== seat) return { error: "not_your_rent" };
-      settleRent(s, rent, events, "collected");
-      s.pendingRents = list.filter((_, i) => i !== idx);
       return { state: s, events };
     }
 
