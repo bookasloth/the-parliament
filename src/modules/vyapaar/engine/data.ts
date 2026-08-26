@@ -102,6 +102,7 @@ export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;
 export const BLEND = 0.5;
 export const MAX_LEVEL = 6; // base + 3 houses + 3 hotels (v2 rent ladder is length 7)
+export const HOTEL_LEVEL = 4; // levels 1-3 are houses, 4-6 are hotels (hotels need you on the tile)
 export const UNMORTGAGE_RATE = 0.55; // half + 10% interest
 export const UPGRADE_SELL_RATIO = 0.5; // refund on forced upgrade sale during liquidation
 

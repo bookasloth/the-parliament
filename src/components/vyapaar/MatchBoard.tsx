@@ -34,6 +34,7 @@ const ERR_MSG: Record<string, string> = {
   no_set_control: "You need the whole colour set before you can build.",
   uneven_build: "Build evenly across the set first.",
   max_level: "This property is already fully developed.",
+  must_be_on_city: "Land on this city to build a hotel here.",
   mortgaged: "This property is mortgaged — clear it first.",
   already_mortgaged: "This property is already mortgaged.",
   sell_upgrades_first: "Sell the buildings before mortgaging.",
@@ -980,8 +981,11 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
         <div className="vb-cta">
           {isPendingBuy && <><button className="buy" disabled={busy || view.players[view.you].cash < city.price} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(city.price)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>}
           {!isPendingBuy && iOwn && canManage && <>
-            {!cs.mortgaged && cs.level === 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
-            {!cs.mortgaged && cs.level > 0 && <button className="buy" disabled={busy} onClick={() => onAction({ type: "develop", cityId: id })}>Develop</button>}
+            {!cs.mortgaged && cs.level < 6 && (() => {
+              const hotel = cs.level >= 3 // building to level 4+ = hotel (needs you on the tile)
+              const blocked = hotel && view.players[view.you]?.pos !== CITY_POS[id]
+              return <button className="buy" disabled={busy || blocked} title={blocked ? "Land on this city to build a hotel here" : undefined} onClick={() => onAction({ type: "develop", cityId: id }, true)}>{hotel ? "Build hotel" : "Build house"}</button>
+            })()}
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
               : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
