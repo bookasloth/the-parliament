@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion, useReducedMotion, useAnimation } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
@@ -90,14 +90,42 @@ const SPECIAL_LABEL: Record<string, string> = {
 const EVENT_LABEL: Record<string, string> = {
   tax_return: "TAX RETURN", married: "GOT MARRIED", festival: "FESTIVAL", ed_raid: "ED RAID", jnv_revisit: "JNV REVISIT",
 }
+// Friendly "what happened when you landed" lines for the status under the Roll button.
+const EVENT_MSG: Record<string, string> = {
+  tax_return: "Tax return — money back!",
+  married: "You got married — everyone pays you 🎉",
+  festival: "Festival time!",
+  ed_raid: "ED Raid — you owe the bank 😬",
+  jnv_revisit: "You revisited JNV 🏫",
+}
+const LANDING_MSG: Record<string, string> = {
+  start: "You passed Start",
+  monsoon: "Monsoon break",
+  mandi: "Mandi — you scooped the bonus 💰",
+  taxraid: "Tax Raid — off to jail! 🚔",
+}
 
 // minimal inline icons
-const houseSVG = `<svg viewBox="0 0 16 16" style="color:#4AB765"><path d="M8 2 14.5 7.5V14.5H1.5V7.5Z" fill="currentColor"/></svg>`
-const hotelSVG = `<svg viewBox="0 0 16 16" style="color:#FE5100"><path d="M2 15V5h6v10Zm7 0V8h5v7Z" fill="currentColor"/></svg>`
-const buildIcons = (level: number) => {
+// Lighten (pct>0) or darken (pct<0) a #rrggbb toward white/black by |pct| (0..1).
+function shade(hex: string, pct: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  const t = pct < 0 ? 0 : 255, p = Math.abs(pct)
+  const r = Math.round((t - ((n >> 16) & 255)) * p) + ((n >> 16) & 255)
+  const g = Math.round((t - ((n >> 8) & 255)) * p) + ((n >> 8) & 255)
+  const b = Math.round((t - (n & 255)) * p) + (n & 255)
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
+const houseSVGc = (c: string) => `<svg viewBox="0 0 16 16" style="color:${c}"><path d="M8 2 14.5 7.5V14.5H1.5V7.5Z" fill="currentColor"/></svg>`
+const hotelSVGc = (c: string) => `<svg viewBox="0 0 16 16" style="color:${c}"><path d="M2 15V5h6v10Zm7 0V8h5v7Z" fill="currentColor"/></svg>`
+// Houses = a light shade of the city's zone colour, hotels = a dark shade — so buildings
+// read as belonging to that city instead of a generic green/red.
+const buildIcons = (level: number, zone?: number) => {
+  const base = zone != null ? ZONE_BG[zone] : "#4AB765"
+  const houseC = zone != null ? shade(base, 0.32) : "#4AB765"
+  const hotelC = zone != null ? shade(base, -0.3) : "#FE5100"
   const hotels = Math.max(0, level - 3)
   const houses = level <= 3 ? level : 0
-  return hotelSVG.repeat(hotels) + houseSVG.repeat(houses)
+  return hotelSVGc(hotelC).repeat(hotels) + houseSVGc(houseC).repeat(houses)
 }
 
 // Turn an engine event into a human game-log line (₹, first names). Unknown events → null.
@@ -142,6 +170,30 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     default: return null
   }
 }
+
+// Signed cash change for YOU from a money event (+in / −out), with a label. Null if it
+// doesn't move your money. Event-card flows (married/ED raid) don't carry a typed amount
+// yet, so they're not itemised here — the running balance still reflects them.
+function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; label: string } | null {
+  const amt = Number(e.amount) || 0
+  if (amt <= 0) return null
+  switch (e.type) {
+    case "buy": case "buy_company": case "auction_won": return e.seat === you ? { delta: -amt, label: "Purchase" } : null
+    case "develop": return e.seat === you ? { delta: -amt, label: "Built" } : null
+    case "sell": return e.seat === you ? { delta: amt, label: "Sold to bank" } : null
+    case "rent": if (e.to === you) return { delta: amt, label: "Rent collected" }; if (e.seat === you) return { delta: -amt, label: "Rent paid" }; return null
+    case "company_fee": if (e.to === you) return { delta: amt, label: "Service fee" }; if (e.seat === you) return { delta: -amt, label: "Service fee" }; return null
+    case "salary": return e.seat === you ? { delta: amt, label: "Salary" } : null
+    case "mandi": return e.seat === you ? { delta: amt, label: "Mandi bonus" } : null
+    case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
+    case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
+    case "restructure": return e.seat === you ? { delta: amt, label: "Restructure" } : null
+    case "left": return e.seat === you ? { delta: amt, label: "Cashed out" } : null
+    default: return null
+  }
+}
+
+type MoneyEntry = { d: { delta: number; label: string }; i: number }
 
 export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
@@ -288,15 +340,28 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     .filter(({ e }) => e.seat === you || e.to === you || e.from === you)
     .map(({ e, i }) => ({ line: logLine(e, view.players), i }))
     .filter((x) => x.line).slice(-10)
+  const moneyEntries: MoneyEntry[] = view.log
+    .map((e, i) => ({ d: moneyDelta(e as Record<string, unknown>, you), i }))
+    .filter((x): x is MoneyEntry => x.d !== null)
+    .slice(-4).reverse()
   const iLeft = view.players[you]?.left ?? false
 
   // Who rolled the dice currently shown — the dice only tumble when it was YOU.
   const lastRollSeat = (() => { for (let i = view.log.length - 1; i >= 0; i--) { if ((view.log[i] as { type?: string }).type === "roll") return (view.log[i] as { seat?: number }).seat ?? null } return null })()
+  // Plain-language line for where YOU just landed (shown after a roll).
+  const landing = (() => {
+    const t = BOARD[view.players[you]?.pos ?? 0]
+    if (!t) return ""
+    if (t.kind === "city") return `You landed on ${CITIES[t.cityId as number].name}`
+    if (t.kind === "company") return `You reached ${COMPANIES[t.companyIndex as number].name}`
+    if (t.kind === "event") return EVENT_MSG[t.eventId as string] ?? ""
+    return LANDING_MSG[t.kind] ?? ""
+  })()
   const rollStatus = view.ended ? "Game over"
     : !myTurn ? `Waiting for ${view.players[view.active]?.name?.split(" ")[0] ?? "…"}`
     : view.phase === "roll" ? "Your turn — roll the dice"
-    : view.phase === "buy" ? "Buy it or decline"
-    : view.phase === "manage" ? "Develop, then end your turn"
+    : view.phase === "buy" ? (landing || "Buy it or decline")
+    : view.phase === "manage" ? (landing ? `${landing} — develop or end your turn` : "Develop, then end your turn")
     : view.phase === "auction" ? "Auction in progress"
     : ""
 
@@ -351,7 +416,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                       <div className="vb-strip" style={{ background: ZONE_BG[city.zone], color: dark ? "#0F1111" : "#fff" }}>
                         <span className="vb-nm">{city.name}</span>
                       </div>
-                      <div className="vb-mid" dangerouslySetInnerHTML={{ __html: cs.mortgaged ? "" : buildIcons(cs.level) }} />
+                      <div className="vb-mid" dangerouslySetInnerHTML={{ __html: cs.mortgaged ? "" : buildIcons(cs.level, city.zone) }} />
                       <div className="vb-price" style={{ color: ZONE_TX[city.zone] }}>{cs.mortgaged ? "mortgaged" : inr(city.price)}</div>
                       {cs.owner !== null && <span className="vb-own" style={{ background: SEAT_COL[cs.owner % 6] }} />}
                     </div>
@@ -381,15 +446,33 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
               })}
 
               <div className="vb-hub">
-                <div className="vb-hub-name">व्यापार</div>
-                <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} animate={lastRollSeat === you} />
-                {myTurn && view.phase === "manage"
-                  ? <button className="vb-roll" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
-                  : <button className="vb-roll" disabled={busy || !myTurn || view.phase !== "roll"} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
-                {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
+                <aside className="vb-hub-side vb-howto">
+                  <div className="vb-hub-h">How to play</div>
+                  <ul>
+                    <li>Roll, move, and buy the cities &amp; companies you land on.</li>
+                    <li>Own a whole zone, then build houses → hotels to raise rent.</li>
+                    <li>Land on a rival&apos;s city → pay rent. Land on yours → collect.</li>
+                    <li>Trade cities &amp; companies to complete zones faster.</li>
+                    <li>Grow your net worth — the richest Vyapaari wins. Don&apos;t bleed!</li>
+                  </ul>
+                </aside>
+                <div className="vb-hub-mid">
+                  <div className="vb-hub-name">व्यापार</div>
+                  <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} animate={lastRollSeat === you} />
+                  {myTurn && view.phase === "manage"
+                    ? <button className="vb-roll" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
+                    : <button className="vb-roll" disabled={busy || !myTurn || view.phase !== "roll"} onClick={() => send({ type: "roll" }, false, "Roll")}>Roll</button>}
+                  {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
+                </div>
+                <aside className="vb-hub-side vb-hublog">
+                  <div className="vb-hub-h">Game log</div>
+                  <div className="vb-log-list">
+                    {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
+                  </div>
+                </aside>
               </div>
 
-              <TokenLayer players={view.players} tokens={playerTokens} />
+              <TokenLayer players={view.players} tokens={playerTokens} you={you} />
               {eventFx && <EventFX key={eventFx.key} fx={eventFx} reduce={!!reduce} />}
             </div>
           </div>
@@ -403,28 +486,26 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
               <div className="vb-panel-head">Game info</div>
               <div className="vb-pgrid">
                 {view.players.map((p, seat) => (
-                  <div key={seat} className={`vb-pcell ${seat === view.active ? "active" : ""} ${p.left ? "left" : ""}`} title={p.name}>
-                    {playerImages[seat]
-                      ? <img src={playerImages[seat]!} alt="" className="vb-pcell-img" />
-                      : <span className="vb-pcell-init" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
-                    {seat === leaderSeat && !p.left && <span className="vb-pcell-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
-                    {!p.left && onlineSeats.has(seat) && <span className="vb-pcell-dot" title="online" />}
-                    <span className="vb-pcell-ctr">
-                      {p.left ? "left"
-                        : seat === view.active && !view.ended ? <Countdown expiresAt={turnExpiresAt} ended={view.ended} />
-                        : p.halted ? "halted" : " "}
-                    </span>
-                  </div>
+                  <PlayerCell
+                    key={seat}
+                    seat={seat}
+                    p={p}
+                    token={playerTokens[seat] ?? null}
+                    isActive={seat === view.active}
+                    isLeader={seat === leaderSeat}
+                    online={onlineSeats.has(seat)}
+                    cityZones={view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === seat).map((c) => CITIES[c.id].zone)}
+                    companyCount={view.companies.filter((o) => o === seat).length}
+                    counter={p.left ? "left" : seat === view.active && !view.ended ? <Countdown expiresAt={turnExpiresAt} ended={view.ended} /> : p.halted ? "halted" : " "}
+                  />
                 ))}
               </div>
             </section>
 
-            {/* B1 — game log */}
+            {/* B1 — your money: live balance (odometer) + recent transactions */}
             <section className="vb-cell">
-              <div className="vb-panel-head">Game log</div>
-              <div className="vb-log-list">
-                {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
-              </div>
+              <div className="vb-panel-head">Your balance</div>
+              <MoneyMeter balance={view.players[you]?.cash ?? 0} entries={moneyEntries} />
             </section>
 
             {/* A2 — your properties (inline, click a card to open its deed) */}
@@ -669,15 +750,84 @@ function Dice({ roll, seq, animate = true }: { roll: [number, number] | null; se
 
 // All player pieces on one overlay so they can ride the ring's inner edge and hop
 // tile-to-tile (Ludo-style) when a position changes.
-function TokenLayer({ players, tokens }: { players: PublicView["players"]; tokens: (string | null)[] }) {
+// A1 game-info cell: assigned token + first name; click to peek that player's owned cards
+// as colour chips only (zone colour for cities, grey for companies) — no names, no prices.
+function PlayerCell({ seat, p, token, isActive, isLeader, online, cityZones, companyCount, counter }: {
+  seat: number; p: PublicView["players"][number]; token: string | null; isActive: boolean
+  isLeader: boolean; online: boolean; cityZones: number[]; companyCount: number; counter: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const hasCards = cityZones.length > 0 || companyCount > 0
   return (
-    <div className="vb-tok-layer">
-      {players.map((p, seat) => (p.left ? null : <Token key={seat} seat={seat} pos={p.pos} url={tokens[seat] ?? null} />))}
+    <div className={`vb-pcell ${isActive ? "active" : ""} ${p.left ? "left" : ""}`} title={p.name} onClick={() => setOpen((o) => !o)}>
+      {token
+        ? <img src={token} alt="" className="vb-pcell-img" />
+        : <span className="vb-pcell-init" style={{ background: SEAT_COL[seat % 6], color: seat % 6 === 1 ? "#0F1111" : "#fff" }}>{p.name.charAt(0).toUpperCase()}</span>}
+      {isLeader && !p.left && <span className="vb-pcell-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />}
+      {!p.left && online && <span className="vb-pcell-dot" title="online" />}
+      <span className="vb-pcell-name">{p.name.split(" ")[0]}</span>
+      <span className="vb-pcell-ctr">{counter}</span>
+      {open && (
+        <div className="vb-pcell-pop" onClick={(e) => e.stopPropagation()}>
+          {hasCards ? <>
+            {cityZones.map((z, i) => <span key={`c${i}`} className="vb-chip" style={{ background: ZONE_BG[z] }} />)}
+            {Array.from({ length: companyCount }, (_, i) => <span key={`co${i}`} className="vb-chip" style={{ background: "var(--grey)" }} />)}
+          </> : <span className="vb-chip-none">no cards yet</span>}
+        </div>
+      )}
     </div>
   )
 }
 
-function Token({ seat, pos, url }: { seat: number; pos: number; url: string | null }) {
+// Your live balance as a rolling odometer + the last few transactions (±, coloured).
+function MoneyMeter({ balance, entries }: { balance: number; entries: MoneyEntry[] }) {
+  return (
+    <div className="vb-money">
+      <Odometer value={balance} />
+      <div className="vb-money-list">
+        {entries.length ? entries.map((x) => (
+          <div key={x.i} className="vb-money-row">
+            <span className="vb-money-lab">{x.d.label}</span>
+            <span className={`vb-money-amt ${x.d.delta >= 0 ? "pos" : "neg"}`}>{x.d.delta >= 0 ? "+" : "−"}₹{Math.abs(x.d.delta).toLocaleString("en-IN")}</span>
+          </div>
+        )) : <div className="vb-log-empty">No transactions yet</div>}
+      </div>
+    </div>
+  )
+}
+
+// Count-up tween toward the latest balance (odometer feel). Cubic ease-out over ~0.6s.
+function Odometer({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value)
+  const from = useRef(value)
+  useEffect(() => {
+    const start = from.current, end = value
+    if (start === end) return
+    let raf = 0, t0 = 0
+    const tick = (t: number) => {
+      if (!t0) t0 = t
+      const k = Math.min(1, (t - t0) / 600)
+      const eased = 1 - Math.pow(1 - k, 3)
+      setDisplay(Math.round(start + (end - start) * eased))
+      if (k < 1) raf = requestAnimationFrame(tick)
+      else from.current = end
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  return <span className="vb-odo">₹{display.toLocaleString("en-IN")}</span>
+}
+
+function TokenLayer({ players, tokens, you }: { players: PublicView["players"]; tokens: (string | null)[]; you: number }) {
+  return (
+    <div className="vb-tok-layer">
+      {players.map((p, seat) => (p.left ? null : <Token key={seat} seat={seat} pos={p.pos} url={tokens[seat] ?? null} isYou={seat === you} name={p.name.split(" ")[0]} />))}
+    </div>
+  )
+}
+
+function Token({ seat, pos, url, isYou, name }: { seat: number; pos: number; url: string | null; isYou: boolean; name: string }) {
+  const [showName, setShowName] = useState(false)
   const controls = useAnimation()
   const reduce = useReducedMotion()
   const prev = useRef(pos)
@@ -699,8 +849,11 @@ function Token({ seat, pos, url }: { seat: number; pos: number; url: string | nu
       initial={{ left: `${a0.x}%`, top: `${a0.y}%` }}
       animate={controls}
       style={{ zIndex: 6 + seat, marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }}
+      onClick={() => { if (!isYou) setShowName((v) => !v) }}
     >
       {url ? <img src={url} alt="" /> : <span style={{ background: SEAT_COL[seat % 6] }} />}
+      {isYou && <span className="vb-tok-you">You</span>}
+      {!isYou && showName && <span className="vb-tok-name">{name}</span>}
     </motion.div>
   )
 }
@@ -794,15 +947,17 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
   const rent = city.rent
   const iOwn = cs.owner === you
   const isPendingBuy = myTurn && view.phase === "buy" && view.pendingCity === id
+  const houseC = shade(ZONE_BG[city.zone], 0.32), hotelC = shade(ZONE_BG[city.zone], -0.3)
+  const house = houseSVGc(houseC), hotel = hotelSVGc(hotelC)
   const rows: { ic: string; lab: string; amt: number; hl?: boolean }[] = [
     { ic: "", lab: "Base rent", amt: rent[0] },
     { ic: "", lab: "With zone set", amt: rent[0] * 2, hl: true },
-    { ic: houseSVG, lab: "1 house", amt: rent[1] },
-    { ic: houseSVG.repeat(2), lab: "2 houses", amt: rent[2] },
-    { ic: houseSVG.repeat(3), lab: "3 houses", amt: rent[3] },
-    { ic: hotelSVG, lab: "1 hotel", amt: rent[4] },
-    { ic: hotelSVG.repeat(2), lab: "2 hotels", amt: rent[5] },
-    { ic: hotelSVG.repeat(3), lab: "3 hotels", amt: rent[6] },
+    { ic: house, lab: "1 house", amt: rent[1] },
+    { ic: house.repeat(2), lab: "2 houses", amt: rent[2] },
+    { ic: house.repeat(3), lab: "3 houses", amt: rent[3] },
+    { ic: hotel, lab: "1 hotel", amt: rent[4] },
+    { ic: hotel.repeat(2), lab: "2 hotels", amt: rent[5] },
+    { ic: hotel.repeat(3), lab: "3 hotels", amt: rent[6] },
   ]
   return (
     <div className="vb-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -1050,7 +1205,15 @@ const VB_CSS = `
 .vb-taxraid .vb-sic,.vb-taxraid .vb-slb{color:#FF4D93;}
 .vb-tok{position:absolute;width:22%;max-width:12px;aspect-ratio:1;border-radius:2px;border:1.5px solid #fff;bottom:2px;left:2px;}
 .vb-tok:nth-of-type(2){left:28%;}.vb-tok:nth-of-type(3){left:54%;}.vb-tok:nth-of-type(4){left:auto;right:2px;}
-.vb-hub{grid-column:2/13;grid-row:2/9;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vw,26px);padding:clamp(8px,1.6vw,18px);}
+.vb-hub{grid-column:2/13;grid-row:2/9;background:var(--panel);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(8px,2vw,24px);padding:clamp(8px,1.6vw,18px);}
+.vb-hub-mid{display:flex;flex-direction:column;align-items:center;gap:clamp(10px,2.4vw,24px);min-width:0;}
+.vb-hub-side{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.vb-hub-h{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:6px;}
+.vb-howto ul{margin:0;padding-left:1.05em;display:flex;flex-direction:column;gap:clamp(4px,.9vw,8px);}
+.vb-howto li{font-size:clamp(.58rem,.95vw,.82rem);color:var(--dim);line-height:1.3;}
+.vb-hublog{align-items:stretch;}
+.vb-hublog .vb-log-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+@media(max-width:720px){.vb-hub{grid-template-columns:1fr;}.vb-hub-side{display:none;}}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
 .vb-dice{display:flex;gap:16px;perspective:560px;perspective-origin:50% 42%;}
 .vb-die3d{--ds:clamp(30px,4.6vw,48px);position:relative;width:var(--ds);height:var(--ds);transform-style:preserve-3d;}
@@ -1186,6 +1349,12 @@ const VB_CSS = `
 .vb-pcell-crown{position:absolute;top:3px;left:3px;width:13px;height:11px;color:var(--gold);}
 .vb-pcell-crown svg{width:100%;height:100%;}
 .vb-pcell-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#3ec46d;}
+.vb-pcell{cursor:pointer;}
+.vb-pcell-name{font-size:.6rem;font-weight:700;color:var(--cream);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1;}
+.vb-pcell-pop{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px;display:flex;flex-wrap:wrap;gap:3px;width:max-content;max-width:130px;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.vb-chip{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.15);}
+.vb-chip-none{font-size:.6rem;color:var(--dim);}
+.vb-tok-you,.vb-tok-name{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;font-size:.55rem;font-weight:700;color:#fff;background:rgba(15,17,17,.85);border-radius:3px;padding:1px 4px;white-space:nowrap;pointer-events:none;}
 .vb-props-inline{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow-y:auto;}
 .vb-props-inline .vb-prop-card{border-left-width:6px;}
 .vb-cell .vb-log-list{flex:1;min-height:0;max-height:none;}
@@ -1199,8 +1368,16 @@ const VB_CSS = `
 /* Action (formerly Notifications) buttons: white fill, orange text/border. */
 .vb-notif .vb-act.primary,.vb-notif .vb-collect{background:#fff;color:var(--accent);border:1px solid var(--accent);}
 .vb-notif .vb-collect:hover{color:var(--accent);border-color:var(--accent);background:#fff5ef;}
+.vb-money{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;}
+.vb-odo{font-size:clamp(1.1rem,2.4vw,1.7rem);font-weight:800;color:var(--cream);font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+.vb-money-list{display:flex;flex-direction:column;gap:4px;flex:1;min-height:0;overflow-y:auto;}
+.vb-money-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.72rem;}
+.vb-money-lab{color:var(--dim);}
+.vb-money-amt{font-weight:700;font-variant-numeric:tabular-nums;}
+.vb-money-amt.pos{color:#1f9d55;}
+.vb-money-amt.neg{color:#e5484d;}
 .vb-tok-layer{position:absolute;inset:0;pointer-events:none;z-index:4;}
-.vb-tok2{position:absolute;transform:translate(-50%,-50%);width:5.2%;max-width:26px;aspect-ratio:1;}
+.vb-tok2{position:absolute;transform:translate(-50%,-50%);width:5.2%;max-width:26px;aspect-ratio:1;pointer-events:auto;cursor:pointer;}
 .vb-tok2.corner{width:3.6%;max-width:16px;}
 .vb-tok2 img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:1.6px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:block;}
 .vb-tok2 span{display:block;width:72%;height:72%;margin:14%;border-radius:50%;border:1.6px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
