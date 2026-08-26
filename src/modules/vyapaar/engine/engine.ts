@@ -28,6 +28,7 @@ import {
   netWorth,
   charge,
   credit,
+  queuePayment,
   controlsSet,
   citiesOwned,
   cityLeaveValue,
@@ -214,7 +215,8 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
       finishSegment(s, events);
       break;
     case "mandi":
-      credit(s, seat, MANDI_BONUS);
+      // Windfall you must claim within the window (or forfeit).
+      queuePayment(s, { actor: seat, dir: "collect", amount: MANDI_BONUS, party: "bank", reason: "mandi" });
       events.push({ type: "mandi", seat, amount: MANDI_BONUS });
       finishSegment(s, events);
       break;
@@ -241,7 +243,8 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         s.phase = "buy";
       } else if (owner !== seat) {
         const fee = companyServiceFee(s, ci);
-        charge(s, seat, fee, owner, events);
+        // Allow within the window or it's auto-charged double (see expire_payment).
+        queuePayment(s, { actor: seat, dir: "pay", amount: fee, party: owner, reason: "company_fee" });
         events.push({ type: "company_fee", seat, companyIndex: ci, amount: fee });
         finishSegment(s, events);
       } else {
