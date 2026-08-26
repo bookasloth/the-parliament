@@ -10,6 +10,7 @@ import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
 const MATCH_TOPIC = (id: string) => `vyapaar-match:${id}`
+const GAME_OVER_REDIRECT_MS = 12000 // how long the result stays up before auto-returning to the lobby
 
 // bright zone palette (strip bg) + darkened text-on-milk variant
 const ZONE_BG = ["#FE5100", "#4AB765", "#FF4D93", "#269CEF", "#FFCC1C"]
@@ -196,6 +197,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     const t = setInterval(() => { void refetch() }, 8000)
     return () => clearInterval(t)
   }, [refetch])
+
+  // Once the game ends, show the result briefly then send everyone back to the lobby.
+  useEffect(() => {
+    if (!view.ended) return
+    const t = setTimeout(() => { window.location.href = "/games/vyapaar" }, GAME_OVER_REDIRECT_MS)
+    return () => clearTimeout(t)
+  }, [view.ended])
 
   // Auto-open the deed the moment you must decide to buy — one fewer click than
   // clicking a rail button just to open the modal. Opens once per pending target,
@@ -497,8 +505,30 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       )}
 
       {showReport && <ReportBug matchId={matchId} onClose={() => setShowReport(false)} />}
+
+      {view.ended && (
+        <div className="vb-scrim">
+          <div className="vb-over">
+            <span className="vb-over-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />
+            <h3>{view.winner !== null ? `${view.players[view.winner]?.name?.split(" ")[0] ?? "A player"} wins!` : "Game over"}</h3>
+            <p>Returning to the lobby in <b><OverCountdown ms={GAME_OVER_REDIRECT_MS} /></b>…</p>
+            <button className="vb-act primary" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby now</button>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+// Ticks down the seconds until the auto-return. Purely cosmetic — the actual redirect
+// is driven by the setTimeout in MatchBoard.
+function OverCountdown({ ms }: { ms: number }) {
+  const [secs, setSecs] = useState(Math.ceil(ms / 1000))
+  useEffect(() => {
+    const t = setInterval(() => setSecs((s) => (s > 0 ? s - 1 : 0)), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return <span>{secs}s</span>
 }
 
 function ReportBug({ matchId, onClose }: { matchId: string; onClose: () => void }) {
@@ -861,7 +891,11 @@ function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView
   const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
   const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === to && c.level === 0 && !c.mortgaged)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
-  const ready = to !== "" && give.length > 0 && get.length > 0
+  // Only send ids still tradable in the current view — a selected city may have changed
+  // owner/level/mortgage since it was picked, which the server would reject as bad_give/bad_get.
+  const giveValid = give.filter((id) => mine.some((c) => c.id === id))
+  const getValid = get.filter((id) => theirs.some((c) => c.id === id))
+  const ready = to !== "" && giveValid.length > 0 && getValid.length > 0
   return (
     <details className="vb-tp">
       <summary>Propose a trade</summary>
@@ -884,7 +918,7 @@ function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView
             {to === "" ? <span className="vb-tp-none">pick a player</span> : theirs.length ? theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />) : <span className="vb-tp-none">they have no tradable property</span>}
           </div>
         </div>
-        <button className="vb-act primary" disabled={busy || !ready} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send offer</button>
+        <button className="vb-act primary" disabled={busy || !ready} onClick={() => onPropose({ type: "propose_trade", to: to as number, give: { cash: 0, cities: giveValid }, get: { cash: 0, cities: getValid } })}>Send offer</button>
       </div>
     </details>
   )
@@ -919,6 +953,9 @@ function TradeCard({ trade, view, you, busy, onAction }: {
   const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
   const theirs = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === trade.from && c.level === 0 && !c.mortgaged)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
+  // Prune to still-tradable ids so a stale selection can't be rejected as bad_give/bad_get.
+  const giveValid = give.filter((id) => mine.some((c) => c.id === id))
+  const getValid = get.filter((id) => theirs.some((c) => c.id === id))
   return (
     <div className="vb-trade">
       <p><b>{nm(trade.from)}</b> offers you a trade · <Countdown expiresAt={expiry} ended={view.ended} /></p>
@@ -938,7 +975,7 @@ function TradeCard({ trade, view, you, busy, onAction }: {
             {theirs.map((c) => <ZonePill key={c.id} name={CITIES[c.id].name} zone={CITIES[c.id].zone} on={get.includes(c.id)} onClick={() => toggle(get, setGet, c.id)} />)}
           </div></div>
           <div className="vb-trade-btns">
-            <button className="vb-act primary" disabled={busy || give.length === 0 || get.length === 0} onClick={() => onAction({ type: "counter_trade", tradeId: trade.id, give: { cash: 0, cities: give }, get: { cash: 0, cities: get } })}>Send counter</button>
+            <button className="vb-act primary" disabled={busy || giveValid.length === 0 || getValid.length === 0} onClick={() => onAction({ type: "counter_trade", tradeId: trade.id, give: { cash: 0, cities: giveValid }, get: { cash: 0, cities: getValid } })}>Send counter</button>
             <button className="vb-act" disabled={busy} onClick={() => setCountering(false)}>Cancel</button>
           </div>
         </div>
@@ -1091,6 +1128,11 @@ const VB_CSS = `
 .vb-prop-nm{font-weight:600;font-size:.86rem;color:var(--cream);}
 .vb-prop-sub{font-size:.66rem;color:var(--dim);}
 .vb-scrim{position:fixed;inset:0;background:rgba(15,17,17,.8);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+.vb-over{width:min(340px,100%);background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.vb-over-crown{width:44px;height:36px;color:var(--yellow);}
+.vb-over h3{font-size:1.5rem;font-weight:800;margin:0;color:var(--cream);}
+.vb-over p{margin:0;font-size:.86rem;color:var(--dim);}
+.vb-over .vb-act{margin-top:8px;width:100%;}
 .vb-deed{width:min(370px,100%);background:#fff;color:var(--ink);border-radius:2px;overflow:hidden;max-height:90vh;overflow-y:auto;}
 .vb-deed-hd{padding:16px 18px 15px;position:relative;}
 .vb-zone{font-size:.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.16em;opacity:.95;}

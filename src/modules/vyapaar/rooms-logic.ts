@@ -16,6 +16,18 @@ export function lowestFreeSeat(taken: number[]): number | null {
   return null
 }
 
+/**
+ * Seat a joining player gets: their clicked `preferredSeat` if it's a valid, still-free
+ * seat; otherwise the lowest free seat (also the fallback when two players race for one).
+ */
+export function resolveSeat(taken: number[], preferredSeat?: number): number | null {
+  if (
+    preferredSeat !== undefined && Number.isInteger(preferredSeat) &&
+    preferredSeat >= 0 && preferredSeat < MAX_SEATS && !taken.includes(preferredSeat)
+  ) return preferredSeat
+  return lowestFreeSeat(taken)
+}
+
 /** New host = the member with the lowest seat, or null if none remain. */
 export function pickNewHost(members: { userId: string; seat: number }[]): string | null {
   if (members.length === 0) return null
