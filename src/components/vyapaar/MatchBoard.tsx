@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion, useReducedMotion, useAnimation } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data"
+import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
+import { MatchResults } from "./MatchResults"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent, TradeSide } from "@/modules/vyapaar/engine/state"
 
 const MATCH_TOPIC = (id: string) => `vyapaar-match:${id}`
-const GAME_OVER_REDIRECT_MS = 12000 // how long the result stays up before auto-returning to the lobby
 
 // bright zone palette (strip bg) + darkened text-on-milk variant
 const ZONE_BG = ["#FE5100", "#4AB765", "#FF4D93", "#269CEF", "#FFCC1C"]
@@ -258,13 +258,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
     return () => clearInterval(t)
   }, [refetch])
 
-  // Once the game ends, show the result briefly then send everyone to the settlement page.
+  // When the game ends we show the full results breakdown and let the player click
+  // through — no auto-redirect that could yank them away mid-read.
   const settlementHref = roomCode ? `/games/vyapaar/rooms/${roomCode}/settlements` : "/games/vyapaar"
-  useEffect(() => {
-    if (!view.ended) return
-    const t = setTimeout(() => { window.location.href = settlementHref }, GAME_OVER_REDIRECT_MS)
-    return () => clearTimeout(t)
-  }, [view.ended, settlementHref])
 
   // Auto-open the deed the moment you must decide to buy — one fewer click than
   // clicking a rail button just to open the modal. Opens once per pending target,
@@ -592,13 +588,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
       {showReport && <ReportBug matchId={matchId} onClose={() => setShowReport(false)} />}
 
       {view.ended && (
-        <div className="vb-scrim">
-          <div className="vb-over">
-            <span className="vb-over-crown" dangerouslySetInnerHTML={{ __html: CROWN }} />
-            <h3>{view.winner !== null ? `${view.players[view.winner]?.name?.split(" ")[0] ?? "A player"} wins!` : "Game over"}</h3>
-            <p>Showing results in <b><OverCountdown ms={GAME_OVER_REDIRECT_MS} /></b>…</p>
-            <button className="vb-act primary" onClick={() => { window.location.href = settlementHref }}>View results</button>
-            <button className="vb-act" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby</button>
+        <div className="vb-scrim vb-scrim-results">
+          <div className="vb-results-wrap">
+            <MatchResults view={view} playerImages={playerImages} />
+            <div className="vb-results-actions">
+              <button className="vb-act primary" onClick={() => { window.location.href = settlementHref }}>View settlement</button>
+              <button className="vb-act" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby</button>
+            </div>
           </div>
         </div>
       )}
@@ -608,15 +604,6 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
 
 // Ticks down the seconds until the auto-return. Purely cosmetic — the actual redirect
 // is driven by the setTimeout in MatchBoard.
-function OverCountdown({ ms }: { ms: number }) {
-  const [secs, setSecs] = useState(Math.ceil(ms / 1000))
-  useEffect(() => {
-    const t = setInterval(() => setSecs((s) => (s > 0 ? s - 1 : 0)), 1000)
-    return () => clearInterval(t)
-  }, [])
-  return <span>{secs}s</span>
-}
-
 function ReportBug({ matchId, onClose }: { matchId: string; onClose: () => void }) {
   const [text, setText] = useState("")
   const [state, setState] = useState<"idle" | "sending" | "done">("idle")
@@ -991,7 +978,7 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>
               : <button className="pass" disabled={busy} onClick={() => onAction({ type: "mortgage", cityId: id })}>Mortgage</button>}
-            <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr((cs.mortgaged ? 0 : Math.floor(city.price / 2)) + Math.floor(cs.level * upgradeCost(id) * UPGRADE_SELL_RATIO))}</button>
+            <button className="pass" disabled={busy} onClick={() => onAction({ type: "sell", cityId: id }, true)}>Sell · {inr(Math.round(((cs.mortgaged ? 0 : city.price) + cs.level * upgradeCost(id)) * 0.98))} <span className="vb-tds">−2% TDS</span></button>
             <button className="pass" onClick={onClose}>Close</button>
           </>}
           {!isPendingBuy && !(iOwn && canManage) && <button className="pass" onClick={onClose}>Close</button>}
@@ -1372,6 +1359,9 @@ const VB_CSS = `
 .vb-over h3{font-size:1.5rem;font-weight:800;margin:0;color:var(--cream);}
 .vb-over p{margin:0;font-size:.86rem;color:var(--dim);}
 .vb-over .vb-act{margin-top:8px;width:100%;}
+.vb-scrim-results{overflow-y:auto;padding:24px 16px;align-items:flex-start;justify-content:center;}
+.vb-results-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:920px;margin:auto;}
+.vb-results-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
 .vb-deed{width:min(370px,100%);background:#fff;color:var(--ink);border-radius:2px;overflow:hidden;max-height:90vh;overflow-y:auto;}
 .vb-deed-hd{padding:16px 18px 15px;position:relative;}
 .vb-zone{font-size:.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.16em;opacity:.95;}
