@@ -321,22 +321,34 @@ function canManage(s: GameState): boolean {
  */
 function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
   if (side.cash !== 0) return false; // cash is never part of a player trade
-  if (!Array.isArray(side.cities) || side.cities.length === 0) return false; // card(s) ↔ card(s)
-  const seen = new Set<number>();
-  for (const id of side.cities) {
+  const cities = side.cities ?? [];
+  const companies = side.companies ?? [];
+  if (!Array.isArray(cities) || !Array.isArray(companies)) return false;
+  if (cities.length + companies.length === 0) return false; // a side must offer something
+  const seenCity = new Set<number>();
+  for (const id of cities) {
     if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return false;
-    if (seen.has(id)) return false;
-    seen.add(id);
+    if (seenCity.has(id)) return false;
+    seenCity.add(id);
     const c = s.cities[id];
     if (c.owner !== seat || c.level !== 0 || c.mortgaged) return false;
+  }
+  const seenCo = new Set<number>();
+  for (const ci of companies) {
+    if (!Number.isInteger(ci) || ci < 0 || ci >= s.companies.length) return false;
+    if (seenCo.has(ci)) return false;
+    seenCo.add(ci);
+    if (s.companies[ci] !== seat) return false; // companies have no levels/mortgage
   }
   return true;
 }
 
-/** Move traded cities between owners. Assumes both sides already re-validated. */
+/** Move traded cities + companies between owners. Assumes both sides already re-validated. */
 function applyTradeSwap(s: GameState, t: TradeOffer): void {
   for (const id of t.give.cities) s.cities[id].owner = t.to;
   for (const id of t.get.cities) s.cities[id].owner = t.from;
+  for (const ci of t.give.companies ?? []) s.companies[ci] = t.to;
+  for (const ci of t.get.companies ?? []) s.companies[ci] = t.from;
 }
 
 /** Seats best-first: left players always rank last, then score desc, controlledSets desc, seat asc. */

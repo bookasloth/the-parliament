@@ -5,6 +5,7 @@ export type Phase = "roll" | "buy" | "auction" | "manage";
 export interface TradeSide {
   cash: number; // must be 0 — cash is never part of a player trade (kept for wire shape)
   cities: number[]; // cityIds
+  companies?: number[]; // companyIndexes (optional on the wire; treated as [] when absent)
 }
 
 export type Intent =
