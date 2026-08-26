@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { CITIES, UNMORTGAGE_RATE, upgradeCost, UPGRADE_SELL_RATIO } from "@/modules/vyapaar/engine/data";
+import { CITY_POS } from "@/modules/vyapaar/engine/board";
 
 function ownNorthSet(s: ReturnType<typeof createGame>) {
   s.cities[0].owner = 0;
@@ -19,10 +20,36 @@ describe("develop / mortgage", () => {
     expect("state" in r).toBe(true);
     expect(s.cities[0].level).toBe(1);
     expect(s.players[0].cash).toBe(7500 - cost);
-    // even-building: can't take city 0 to level 2 while 1 and 2 are still level 0
+    expect(s.active).toBe(1); // building is one-per-turn — it ended seat 0's turn
+    // even-building: back on seat 0's turn, can't take city 0 to level 2 while 1 and 2 are level 0
+    s.active = 0; s.phase = "manage";
     const r2 = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("error" in r2).toBe(true);
+    expect("error" in r2 && r2.error).toBe("uneven_build");
     expect(s.cities[0].level).toBe(1);
+  });
+
+  it("one build ends the turn; a house can be built off-tile but a hotel needs you on the city", () => {
+    const s = createGame(1, ["a", "b"]);
+    ownNorthSet(s);
+    s.players[0].pos = 0; // on Start, not on any North city
+    // House (level 0→1) is allowed off-tile and passes the turn
+    const h = applyIntent(s, 0, { type: "develop", cityId: 0 });
+    expect("state" in h).toBe(true);
+    expect(s.cities[0].level).toBe(1);
+    expect(s.active).toBe(1);
+    // Bring the whole set to level 3 (all houses), back to seat 0's turn
+    s.cities[0].level = 3; s.cities[1].level = 3; s.cities[2].level = 3;
+    s.active = 0; s.phase = "manage";
+    // Hotel (3→4) off-tile is refused...
+    const off = applyIntent(s, 0, { type: "develop", cityId: 0 });
+    expect("error" in off && off.error).toBe("must_be_on_city");
+    expect(s.cities[0].level).toBe(3);
+    // ...but allowed while standing on that city
+    s.players[0].pos = CITY_POS[0];
+    const on = applyIntent(s, 0, { type: "develop", cityId: 0 });
+    expect("state" in on).toBe(true);
+    expect(s.cities[0].level).toBe(4);
+    expect(s.active).toBe(1); // still ends the turn
   });
 
   it("refuses development without set control", () => {

@@ -5,6 +5,7 @@ import {
   CITIES,
   COMPANIES,
   MAX_LEVEL,
+  HOTEL_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
   UPGRADE_SELL_RATIO,
@@ -19,7 +20,7 @@ import {
 } from "./data";
 import type { GameState, Intent, EngineEvent, PendingRent, TradeOffer } from "./state";
 import type { TradeSide } from "./state";
-import { BOARD } from "./board";
+import { BOARD, CITY_POS } from "./board";
 import { rollDie } from "./rng";
 import {
   rentFor,
@@ -498,11 +499,18 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!controlsSet(s, seat, z)) return { error: "no_set_control" };
       if (c.level >= MAX_LEVEL) return { error: "max_level" };
       if (c.level > minSetLevel(s, seat, z)) return { error: "uneven_build" };
+      // Houses (building to level ≤3) can be raised from anywhere on your turn; hotels
+      // (building to level ≥4) require you to be standing on that city.
+      if (c.level + 1 >= HOTEL_LEVEL && s.players[seat].pos !== CITY_POS[id]) return { error: "must_be_on_city" };
       const cost = upgradeCost(id);
       if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
       s.players[seat].cash -= cost;
       c.level++;
       events.push({ type: "develop", seat, cityId: id, level: c.level, amount: cost });
+      // One build per turn: developing IS your move — you don't also roll. End the turn.
+      s.pendingCity = null;
+      s.pendingCompany = null;
+      advanceTurn(s, events);
       return { state: s, events };
     }
 
