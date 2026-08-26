@@ -6,6 +6,7 @@ import { activeMatchId } from "@/modules/vyapaar/match"
 import { RoomActions } from "@/components/vyapaar/RoomActions"
 import { RoomRealtime } from "@/components/vyapaar/RoomRealtime"
 import { StartGameButton } from "@/components/vyapaar/StartGameButton"
+import { JoinSeatButton } from "@/components/vyapaar/JoinSeatButton"
 import { MAX_SEATS } from "@/config/vyapaar-rooms"
 
 export const dynamic = "force-dynamic"
@@ -48,6 +49,8 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
                 {m.user.displayName || m.user.legalName}
                 {m.userId === room.hostId && <span className="ml-2 text-xs text-amber-600">host</span>}
               </span>
+            ) : !isMember && room.status === "open" ? (
+              <JoinSeatButton code={room.code} seat={i} />
             ) : (
               <span className="text-gray-400">empty</span>
             )}

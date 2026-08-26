@@ -11,11 +11,11 @@ export async function createRoomAction(visibility: "private" | "public") {
   redirect(`/games/vyapaar/rooms/${code}`)
 }
 
-export async function joinRoomAction(code: string): Promise<{ ok: false; error: string } | void> {
+export async function joinRoomAction(code: string, seat?: number): Promise<{ ok: false; error: string } | void> {
   const user = await requireUser()
   const clean = code.trim().toUpperCase()
   try {
-    await joinRoom(user.id, clean)
+    await joinRoom(user.id, clean, seat)
   } catch (e) {
     if (e instanceof ForbiddenError) return { ok: false, error: e.message }
     throw e

@@ -43,8 +43,13 @@ describe("joinRoomAction", () => {
   it("normalizes the code, joins, and redirects on success", async () => {
     joinRoom.mockResolvedValue({ seat: 1 })
     await joinRoomAction(" abc123 ")
-    expect(joinRoom).toHaveBeenCalledWith("u1", "ABC123")
+    expect(joinRoom).toHaveBeenCalledWith("u1", "ABC123", undefined)
     expect(redirect).toHaveBeenCalledWith("/games/vyapaar/rooms/ABC123")
+  })
+  it("forwards a preferred seat to joinRoom", async () => {
+    joinRoom.mockResolvedValue({ seat: 3 })
+    await joinRoomAction("ABC123", 3)
+    expect(joinRoom).toHaveBeenCalledWith("u1", "ABC123", 3)
   })
   it("maps a ForbiddenError to ok:false instead of redirecting", async () => {
     joinRoom.mockRejectedValue(new ForbiddenError("Room is full"))

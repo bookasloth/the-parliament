@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LEN, MAX_SEATS, ROOM_TTL_DAYS } from "@/config/vyapaar-rooms"
-import { generateRoomCode, lowestFreeSeat, pickNewHost, isExpired } from "@/modules/vyapaar/rooms-logic"
+import { generateRoomCode, lowestFreeSeat, resolveSeat, pickNewHost, isExpired } from "@/modules/vyapaar/rooms-logic"
 
 describe("vyapaar rooms config", () => {
   it("code alphabet excludes ambiguous chars", () => {
@@ -31,6 +31,18 @@ describe("lowestFreeSeat", () => {
     expect(lowestFreeSeat([1, 2])).toBe(0)
   })
   it("returns null when full", () => expect(lowestFreeSeat([0, 1, 2, 3, 4, 5])).toBeNull())
+})
+
+describe("resolveSeat", () => {
+  it("honours a valid free preferred seat", () => expect(resolveSeat([0, 1], 4)).toBe(4))
+  it("falls back to lowest free when the preferred seat is taken", () => expect(resolveSeat([0, 2], 2)).toBe(1))
+  it("falls back when no preference given", () => expect(resolveSeat([0, 1])).toBe(2))
+  it("rejects out-of-range preferences", () => {
+    expect(resolveSeat([0], -1)).toBe(1)
+    expect(resolveSeat([0], 6)).toBe(1)
+    expect(resolveSeat([0], 1.5)).toBe(1)
+  })
+  it("returns null when full even with a preference", () => expect(resolveSeat([0, 1, 2, 3, 4, 5], 3)).toBeNull())
 })
 
 describe("pickNewHost", () => {

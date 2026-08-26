@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
-import { generateRoomCode, lowestFreeSeat, pickNewHost } from "./rooms-logic"
+import { generateRoomCode, resolveSeat, pickNewHost } from "./rooms-logic"
 import { MAX_SEATS, ROOM_TTL_DAYS } from "@/config/vyapaar-rooms"
 import { broadcastToTopic, roomTopic } from "@/lib/supabase-realtime"
 
@@ -40,7 +40,7 @@ export async function createRoom(userId: string, visibility: Visibility): Promis
   throw new Error("could not allocate a unique room code")
 }
 
-export async function joinRoom(userId: string, code: string): Promise<{ seat: number }> {
+export async function joinRoom(userId: string, code: string, preferredSeat?: number): Promise<{ seat: number }> {
   await ensureVyapaarEnrollment(userId)
   // Two concurrent joins can compute the same lowestFreeSeat and race the
   // [roomId, seat] unique constraint. Postgres aborts the whole transaction
@@ -59,7 +59,7 @@ export async function joinRoom(userId: string, code: string): Promise<{ seat: nu
           await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
           return { seat: mine.seat, roomId: room.id } // rejoin resumes seat
         }
-        const seat = lowestFreeSeat(room.members.map((m) => m.seat))
+        const seat = resolveSeat(room.members.map((m) => m.seat), preferredSeat)
         if (seat === null) throw new ForbiddenError("Room is full")
         await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId, seat } })
         await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
