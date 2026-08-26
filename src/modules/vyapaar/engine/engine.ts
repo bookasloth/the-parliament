@@ -440,14 +440,17 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
 
     case "decline": {
       if (s.phase !== "buy") return { error: "nothing_to_decline" };
+      // Players who already left auto-pass (bid 0) so the auction resolves the moment
+      // every player still in the game has bid — it never waits on an absent seat.
+      const openBids = () => s.players.map((p) => (p.left ? 0 : null));
       if (s.pendingCity !== null) {
-        s.auction = { kind: "city", index: s.pendingCity, bids: s.players.map(() => null) };
+        s.auction = { kind: "city", index: s.pendingCity, bids: openBids() };
         s.phase = "auction";
         events.push({ type: "auction_start", kind: "city", index: s.pendingCity });
         return { state: s, events };
       }
       if (s.pendingCompany !== null) {
-        s.auction = { kind: "company", index: s.pendingCompany, bids: s.players.map(() => null) };
+        s.auction = { kind: "company", index: s.pendingCompany, bids: openBids() };
         s.phase = "auction";
         events.push({ type: "auction_start", kind: "company", index: s.pendingCompany });
         return { state: s, events };
