@@ -537,7 +537,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                 {err && <p className="vb-err">{err}</p>}
                 {view.phase === "auction" && view.auction && (
                   <div className="vb-auction">
-                    <p className="vb-auction-head">Auction — place your bid</p>
+                    <p className="vb-auction-head">Auction — place your bid · <Countdown expiresAt={turnExpiresAt} ended={view.ended} /></p>
                     <AuctionInfo auction={view.auction} />
                     {!view.auction.bidded[you]
                       ? <BidControl busy={busy} max={view.players[you].cash} onBid={(amount) => send({ type: "bid", amount })} />
