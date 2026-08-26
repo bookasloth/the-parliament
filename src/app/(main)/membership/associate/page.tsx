@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { prisma } from "@/lib/prisma"
 import { TierLanding } from "../tier-landing"
 
 export const metadata: Metadata = {
@@ -7,6 +8,9 @@ export const metadata: Metadata = {
     "Alumni Associate, ₹499/year: the full JNV Nagpur alumni network plus jobs, included video calling, more storage, and fewer ads. A contribution to NNAWCA.",
 }
 
-export default function AssociateLandingPage() {
-  return <TierLanding tier="associate" />
+export default async function AssociateLandingPage() {
+  const memberCount = await prisma.user
+    .count({ where: { status: "active", deletedAt: null } })
+    .catch(() => 0)
+  return <TierLanding tier="associate" memberCount={memberCount} />
 }
