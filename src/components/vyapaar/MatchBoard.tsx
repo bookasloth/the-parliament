@@ -189,9 +189,9 @@ function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; l
     case "develop": return e.seat === you ? { delta: -amt, label: "Built" } : null
     case "sell": return e.seat === you ? { delta: amt, label: "Sold to bank" } : null
     case "rent": if (e.to === you) return { delta: amt, label: "Rent collected" }; if (e.seat === you) return { delta: -amt, label: "Rent paid" }; return null
-    case "company_fee": if (e.to === you) return { delta: amt, label: "Service fee" }; if (e.seat === you) return { delta: -amt, label: "Service fee" }; return null
+    // company_fee + mandi now move money via payment_paid/collected — the markers below
+    // are logged for the game log only, not itemised here (would double-count).
     case "salary": return e.seat === you ? { delta: amt, label: "Salary" } : null
-    case "mandi": return e.seat === you ? { delta: amt, label: "Mandi bonus" } : null
     case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
     case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
     case "restructure": return e.seat === you ? { delta: amt, label: "Restructure" } : null
@@ -1021,6 +1021,7 @@ function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on:
 const PAYMENT_REASON: Record<string, string> = {
   "event:married": "wedding gift", "event:festival": "festival", "event:ed_raid": "ED raid",
   "event:tax_return": "tax return", "event:jnv_revisit": "JNV revisit",
+  company_fee: "service fee", mandi: "Mandi bonus",
 }
 
 // An auto-payment awaiting YOUR approval. Debit → "Allow or pay double"; windfall →
