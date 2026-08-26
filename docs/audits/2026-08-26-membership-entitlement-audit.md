@@ -7,6 +7,33 @@
 
 ---
 
+## 0. Implementation Log (what was fixed after the audit)
+
+Branch `audit/membership-entitlements`. All changes ship with tests; full unit suite green (1028+), `tsc` clean.
+
+**P0 — correctness / security / revenue** (commit `fix(membership): P0 …`)
+- Assoc→Premium delta billing now honoured (charge delta, preserve renewal date) — `computePricing` + order metadata → claim → activation.
+- Job-post draft bypass closed — gate moved into `createPost` + `publishDraft`.
+- Dual source-of-truth drift closed — session `membershipStatus` claim now derives from `resolveActivePlan` (row truth); feed uses the claim + `isPaidTier`; `adminSetTier` normalizes `"free"`→`"student"`.
+- Call quota race + pass double-spend closed (one-live-call-per-user guard + bind-once pass); webhook metering time-boxed (F6); kill-switch comment corrected (F5).
+- Admin membership mutations require the new `membership:manage` permission (admin + super_admin).
+- Promo codes gain expiry + total-redemption cap, enforced server-side.
+
+**P1 — real tier differentiation + honest pricing** (commit `feat(membership): P1 …`)
+- Ad ladder: premium/life/committee ad-free (feed + timewheel); associate reduced (1 ad/10); student capped teaser.
+- `highlightedProfile` implemented (directory ring + badge + tier shown) — was dead config.
+- Gallery per-tier storage quota (student 200MB → life 10GB), enforced on upload.
+- **Pricing page reconciled to reality** — removed unbacked benefits (apply-to-be-mentor, mentorship pairing, recognition website/events, seva cells, scholarship wall, priority support, welfare/scholarship-report tier claims); surfaced the real, enforced differentiators (video-call minutes, ad-free feed, gallery storage, game archive, highlighted profile) with numbers pulled from config.
+
+**P2 — hardening** (commit `feat(membership): P2 …`)
+- DM anti-spam rate limits (new-conversation 20/hr, send 40/min).
+- Certificate of Contribution retrievable — `GET /api/membership/certificate` + dedicated `membership.yearly_certificate` email (stopped reusing `welcome_premium`).
+- Honesty sweep of all membership emails (welcome/expiry/upsell) to match the reconciled pricing.
+
+**Deferred (product decisions / larger builds, intentionally NOT done):** real recurring Razorpay subscriptions (auto-renew); Coupon model + admin UI; building mentorship-pairing / seva-cells / scholarship-wall features (or deleting the flags); Vyapaar skill-gaming legal review; enforce-or-remove the karma capability unlocks; cross-pagination directory re-ranking (needs a computed sort column / migration); per-kind notification preferences; in-app "who viewed you" + full-text search. These remain as written in §9.
+
+---
+
 ## 1. Executive Summary
 
 - **~95 distinct capabilities** discovered across **~26 functional areas**: membership/billing, video calling, feed/content, ads, directory, search, profile, connections, messaging, notifications, web-push, WhatsApp, blood requests, announcements, bot, events, groups, jobs, business directory, mentorship, committee, daily games, Vyapaar + coin/shell economy, gallery, karma, admin/RBAC, moderation, verification.
