@@ -23,9 +23,24 @@ export type Intent =
   | { type: "withdraw_trade"; tradeId: number }
   | { type: "expire_trade"; tradeId: number }
   | { type: "collect_rent"; rentId: number }
+  | { type: "confirm_payment"; paymentId: number }
+  | { type: "expire_payment"; paymentId: number }
   | { type: "restructure" }
   | { type: "leave_game" }
   | { type: "end_turn" };
+
+// A money move that waits on the actor's approval (allow within PAYMENT_SECONDS). If it
+// isn't confirmed in time it auto-resolves with a penalty (pay 2×; the extra splits
+// half-to-bank / half-among-others) or, for a bank windfall, is forfeited.
+export interface Payment {
+  id: number;
+  actor: number; // seat that must confirm (payer for "pay", recipient for "collect")
+  dir: "pay" | "collect";
+  amount: number;
+  party: number | "bank"; // "pay" → destination; "collect" → source (currently always "bank")
+  reason: string; // e.g. "event:married", "event:ed_raid"
+  expiresAt: number; // epoch ms; 0 until the server stamps it
+}
 
 export interface PlayerState {
   name: string;
@@ -93,6 +108,8 @@ export interface GameState {
   nextTradeId: number; // monotonic id source for trades
   pendingRents: PendingRent[]; // rents owed but not yet collected (see PendingRent)
   nextRentId: number; // monotonic id source for pendingRents
+  payments?: Payment[]; // auto-payments awaiting allow/claim (see Payment)
+  nextPaymentId?: number; // monotonic id source for payments
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
   ended: boolean;
   winner: number | null;
@@ -142,6 +159,8 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     nextTradeId: 1,
     pendingRents: [],
     nextRentId: 1,
+    payments: [],
+    nextPaymentId: 1,
     endRequested: false,
     ended: false,
     winner: null,

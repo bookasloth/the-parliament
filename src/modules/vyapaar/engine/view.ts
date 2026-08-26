@@ -23,6 +23,7 @@ export interface PublicView {
   auction: { kind: "city" | "company"; index: number; bidded: boolean[] } | null;
   trades: { id: number; from: number; to: number; give: TradeSide; get: TradeSide; expiresAt: number }[];
   pendingRents: { id: number; payer: number; owner: number; cityId: number; amount: number }[];
+  payments: { id: number; dir: "pay" | "collect"; amount: number; party: number | "bank"; reason: string; expiresAt: number }[];
   ended: boolean;
   winner: number | null;
   lastRoll: [number, number] | null;
@@ -58,6 +59,10 @@ export function publicView(s: GameState, seat: number): PublicView {
       .filter((t) => t.from === seat || t.to === seat)
       .map((t) => ({ id: t.id, from: t.from, to: t.to, give: t.give, get: t.get, expiresAt: t.expiresAt })),
     pendingRents: (s.pendingRents ?? []).map((r) => ({ id: r.id, payer: r.payer, owner: r.owner, cityId: r.cityId, amount: r.amount })),
+    // only auto-payments YOU must act on (you're the actor)
+    payments: (s.payments ?? [])
+      .filter((p) => p.actor === seat)
+      .map((p) => ({ id: p.id, dir: p.dir, amount: p.amount, party: p.party, reason: p.reason, expiresAt: p.expiresAt })),
     ended: s.ended,
     winner: s.winner,
     lastRoll: s.lastRoll,

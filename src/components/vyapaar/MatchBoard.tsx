@@ -35,6 +35,8 @@ const ERR_MSG: Record<string, string> = {
   uneven_build: "Build evenly across the set first.",
   max_level: "This property is already fully developed.",
   must_be_on_city: "Land on this city to build a hotel here.",
+  no_payment: "That payment was already resolved.",
+  not_your_payment: "That payment isn't yours to confirm.",
   mortgaged: "This property is mortgaged — clear it first.",
   already_mortgaged: "This property is already mortgaged.",
   sell_upgrades_first: "Sell the buildings before mortgaging.",
@@ -166,6 +168,10 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "trade_expired": return `a trade offer expired`
     case "trade_cancelled": return `a trade was cancelled`
     case "left": return Number(e.amount) > 0 ? `${nm(e.seat)} left — cashed out ${rup(e.amount)}` : `${nm(e.seat)} left the game`
+    case "payment_collected": return `${nm(e.seat)} claimed ${rup(e.amount)}`
+    case "payment_paid": return `${nm(e.seat)} paid ${rup(e.amount)}`
+    case "payment_penalty": return `${nm(e.seat)} missed a payment — charged double`
+    case "payment_forfeited": return `${nm(e.seat)} forfeited ${rup(e.amount)}`
     case "restructure": return `${nm(e.seat)} restructured (+${rup(e.amount)})`
     case "game_over": return `${nm(e.seat)} won the game`
     default: return null
@@ -190,6 +196,9 @@ function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; l
     case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
     case "restructure": return e.seat === you ? { delta: amt, label: "Restructure" } : null
     case "left": return e.seat === you ? { delta: amt, label: "Cashed out" } : null
+    case "payment_collected": return e.seat === you ? { delta: amt, label: "Claimed" } : null
+    case "payment_paid": return e.seat === you ? { delta: -amt, label: "Paid" } : null
+    case "payment_penalty": return e.seat === you ? { delta: -2 * amt, label: "Missed — paid double" } : null
     default: return null
   }
 }
@@ -552,6 +561,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, playerI
                     <p className="vb-rent-body"><b>{seatName(r.payer)}</b> landed on <b>{CITIES[r.cityId].name}</b></p>
                     <button className="vb-collect" disabled={busy} onClick={() => send({ type: "collect_rent", rentId: r.id })}>Collect ₹{inr(r.amount)} rent</button>
                   </div>
+                ))}
+                {(view.payments ?? []).map((p) => (
+                  <PaymentCard key={p.id} payment={p} view={view} busy={busy} onAction={send} />
                 ))}
                 {myTurn && view.youCanRestructure && (
                   <div className="vb-rescue">
@@ -1006,6 +1018,38 @@ function ZonePill({ name, zone, on, onClick }: { name: string; zone: number; on:
   return <button type="button" className="vb-tp-pill" style={style} onClick={onClick}>{name}</button>
 }
 
+const PAYMENT_REASON: Record<string, string> = {
+  "event:married": "wedding gift", "event:festival": "festival", "event:ed_raid": "ED raid",
+  "event:tax_return": "tax return", "event:jnv_revisit": "JNV revisit",
+}
+
+// An auto-payment awaiting YOUR approval. Debit → "Allow or pay double"; windfall →
+// "Claim or forfeit". Both show the live 10s countdown that drives the auto-penalty.
+function PaymentCard({ payment, view, busy, onAction }: {
+  payment: PublicView["payments"][number]; view: PublicView; busy: boolean; onAction: (i: Intent) => void
+}) {
+  const who = payment.party === "bank" ? "the bank" : view.players[payment.party]?.name?.split(" ")[0] ?? "a player"
+  const reason = PAYMENT_REASON[payment.reason] ?? payment.reason
+  const expiry = payment.expiresAt ? new Date(payment.expiresAt).toISOString() : null
+  return (
+    <div className="vb-pay">
+      {payment.dir === "pay" ? (
+        <>
+          <p className="vb-pay-body">Pay <b>₹{inr(payment.amount)}</b> to {who} · <i>{reason}</i></p>
+          <p className="vb-pay-warn">Allow in <Countdown expiresAt={expiry} ended={view.ended} /> or it&apos;s auto-charged double.</p>
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id })}>Allow · ₹{inr(payment.amount)}</button>
+        </>
+      ) : (
+        <>
+          <p className="vb-pay-body">Claim <b>₹{inr(payment.amount)}</b> · <i>{reason}</i></p>
+          <p className="vb-pay-warn">Claim in <Countdown expiresAt={expiry} ended={view.ended} /> or you forfeit it.</p>
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id })}>Claim · ₹{inr(payment.amount)}</button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Grey pill for a company in the trade builder (companies have no zone colour).
 function CompanyPill({ name, on, onClick }: { name: string; on: boolean; onClick: () => void }) {
   const style = on
@@ -1296,6 +1340,10 @@ const VB_CSS = `
 .vb-trade p{margin:0 0 8px;}.vb-trade-btns{display:flex;gap:8px;flex-wrap:wrap;}
 .vb-trade-sum{font-size:.8rem;color:var(--ink-2,#6b7280);}
 .vb-rent{background:var(--panel-2);border:1px solid var(--green);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+.vb-pay{background:var(--panel-2);border:1px solid var(--accent);border-radius:2px;padding:10px 12px;font-size:.84rem;display:flex;flex-direction:column;gap:6px;}
+.vb-pay-body{margin:0;}
+.vb-pay-warn{margin:0;font-size:.72rem;color:var(--accent);font-weight:600;}
+.vb-pay .vb-act{width:100%;}
 .vb-rescue{background:var(--panel-2);border:1px dashed var(--gold);border-radius:2px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
 .vb-rescue-head{margin:0 0 4px;font-weight:700;}
 .vb-rescue-body{margin:0 0 8px;color:var(--dim);}

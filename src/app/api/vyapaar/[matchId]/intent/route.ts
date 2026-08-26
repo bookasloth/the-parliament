@@ -6,11 +6,12 @@ import { rateLimitOk } from "@/lib/rate-limit"
 import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
 
-// Note: "expire_trade" is intentionally absent — it is a system-only intent applied by the
-// server's trade-expiry sweep, never accepted from a client (a player could grief others' trades).
+// Note: "expire_trade"/"expire_payment" are intentionally absent — they are system-only
+// intents applied by the server's expiry sweeps, never accepted from a client.
 const INTENT_TYPES = new Set([
   "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
-  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent", "restructure", "leave_game", "end_turn",
+  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade", "collect_rent",
+  "confirm_payment", "restructure", "leave_game", "end_turn",
 ])
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v)
@@ -44,6 +45,8 @@ function validIntentShape(intent: { type: string; [k: string]: unknown }): boole
       return finite(intent.tradeId)
     case "collect_rent":
       return finite(intent.rentId)
+    case "confirm_payment":
+      return finite(intent.paymentId)
     default: // roll, buy, decline, end_turn — no extra fields required
       return true
   }
