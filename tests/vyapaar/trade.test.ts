@@ -161,3 +161,40 @@ describe("card-to-card trading", () => {
     expect(s.cities[0].owner).toBe(1); // nothing swapped
   });
 });
+
+describe("trading companies", () => {
+  it("swaps companies (and mixes with cities) on accept", () => {
+    const s = game();
+    s.cities[0].owner = 1; // seat 1 gives Delhi
+    s.companies[0] = 1;    // ...and company 0
+    s.companies[3] = 2;    // seat 2 gives company 3
+    applyIntent(s, 1, {
+      type: "propose_trade", to: 2,
+      give: { cash: 0, cities: [0], companies: [0] },
+      get: { cash: 0, cities: [], companies: [3] },
+    });
+    const id = s.trades![0].id;
+    applyIntent(s, 2, { type: "respond_trade", tradeId: id, accept: true });
+    expect(s.cities[0].owner).toBe(2);
+    expect(s.companies[0]).toBe(2);
+    expect(s.companies[3]).toBe(1);
+  });
+
+  it("rejects a company you don't own (bad_give) and an empty side", () => {
+    const s = game();
+    s.companies[0] = 2; // owned by someone else
+    const r1 = applyIntent(s, 1, {
+      type: "propose_trade", to: 2,
+      give: { cash: 0, cities: [], companies: [0] }, // seat 1 doesn't own company 0
+      get: { cash: 0, cities: [], companies: [] },
+    });
+    expect("error" in r1 && r1.error).toBe("bad_give");
+    s.companies[0] = 1;
+    const r2 = applyIntent(s, 1, {
+      type: "propose_trade", to: 2,
+      give: { cash: 0, cities: [], companies: [0] },
+      get: { cash: 0, cities: [], companies: [] }, // nothing offered back
+    });
+    expect("error" in r2 && r2.error).toBe("bad_get");
+  });
+});
