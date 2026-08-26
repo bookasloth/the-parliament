@@ -47,7 +47,9 @@ export async function getRoomSettlement(code: string) {
     const preTaxCash = state.players[p.seat]?.cash ?? p.resultCash ?? p.openingCash
     return { ...p, preTaxCash, tax: capitalGainsTax(preTaxCash - p.openingCash) }
   })
-  return { code: room.code, status: match.status, winnerSeat: match.winnerSeat, endedAt: match.endedAt, players }
+  // Seat-independent full view (net worth, cities, companies) for the results breakdown.
+  const resultsView = publicView(state, 0)
+  return { code: room.code, status: match.status, winnerSeat: match.winnerSeat, endedAt: match.endedAt, players, resultsView }
 }
 
 export async function activeMatchId(roomId: string): Promise<string | null> {
