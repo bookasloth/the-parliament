@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireUser } from "@/modules/auth/session"
 import { getRoomSettlement } from "@/modules/vyapaar/match"
+import { MatchResults } from "@/components/vyapaar/MatchResults"
 
 export const dynamic = "force-dynamic"
 
@@ -38,13 +39,22 @@ export default async function SettlementsPage({ params }: { params: Promise<{ co
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold">🩸 Bleeder Board — Room {data.code}</h1>
-          <p className="text-sm text-gray-500">{ended ? "Who bled the most this game" : "Match in progress — live standings"}</p>
+          <h1 className="text-xl font-bold">Match Results — Room {data.code}</h1>
+          <p className="text-sm text-gray-500">{ended ? "Final standings by net worth" : "Match in progress — live standings"}</p>
         </div>
         <Link href={`/games/vyapaar/rooms/${data.code}`} className="rounded-lg border px-4 py-2 text-sm font-semibold">
           Back to room
         </Link>
       </div>
+
+      {ended && data.resultsView && (
+        <div className="mb-8 flex justify-center">
+          <MatchResults view={data.resultsView} />
+        </div>
+      )}
+
+      <h2 className="mb-1 text-lg font-bold">Coin settlement</h2>
+      <p className="mb-4 text-sm text-gray-500">Wallet coins in vs out — the real economy.{ended ? " Who bled the most this game." : ""}</p>
 
       {bleeder && pnl(bleeder)! < 0 && (
         <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
