@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react"
 import { motion, useReducedMotion, useAnimation } from "framer-motion"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
-import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost } from "@/modules/vyapaar/engine/data"
+import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, MONSOON_POS, upgradeCost } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import { coachTips, type Tip } from "@/modules/vyapaar/coach"
 import { MatchResults } from "./MatchResults"
@@ -1014,14 +1014,23 @@ function Odometer({ value }: { value: number }) {
 }
 
 function TokenLayer({ players, tokens, you }: { players: PublicView["players"]; tokens: (string | null)[]; you: number }) {
+  // Pieces actually doing time (halted) at the jail corner get laid out in a balanced grid
+  // behind the bars, sized to fit however many are inside — separate from the normal fan.
+  const jailed = players.map((p, seat) => ({ p, seat })).filter((x) => !x.p.left && x.p.pos === MONSOON_POS && x.p.halted > 0)
+  const jailSlot = new Map(jailed.map((x, i) => [x.seat, i]))
   return (
     <div className="vb-tok-layer">
-      {players.map((p, seat) => (p.left ? null : <Token key={seat} seat={seat} pos={p.pos} url={tokens[seat] ?? null} isYou={seat === you} name={p.name.split(" ")[0]} />))}
+      {players.map((p, seat) => (p.left ? null : (
+        <Token
+          key={seat} seat={seat} pos={p.pos} url={tokens[seat] ?? null} isYou={seat === you} name={p.name.split(" ")[0]}
+          jail={jailSlot.has(seat) ? { slot: jailSlot.get(seat)!, count: jailed.length } : null}
+        />
+      )))}
     </div>
   )
 }
 
-function Token({ seat, pos, url, isYou, name }: { seat: number; pos: number; url: string | null; isYou: boolean; name: string }) {
+function Token({ seat, pos, url, isYou, name, jail = null }: { seat: number; pos: number; url: string | null; isYou: boolean; name: string; jail?: { slot: number; count: number } | null }) {
   const [showName, setShowName] = useState(false)
   const controls = useAnimation()
   const reduce = useReducedMotion()
@@ -1042,12 +1051,28 @@ function Token({ seat, pos, url, isYou, name }: { seat: number; pos: number; url
   // rides. Bottom row → above, top row → below, left col → right, right col → left.
   const [col, row] = cellPos(pos)
   const tip = row === 9 ? "up" : row === 1 ? "down" : col === 1 ? "right" : "left"
+  // Jail: pack pieces into a balanced grid centred in the corner (1 or 2 columns), sized as
+  // big as fits for the current count. Otherwise use the normal per-seat fan.
+  const layout: CSSProperties = jail
+    ? (() => {
+        const cols = jail.count <= 1 ? 1 : 2
+        const rows = Math.ceil(jail.count / cols)
+        const c = jail.slot % cols, r = Math.floor(jail.slot / cols)
+        const step = jail.count <= 2 ? 13 : jail.count <= 4 ? 11 : 9
+        const w = jail.count <= 2 ? 5.6 : jail.count <= 4 ? 4.4 : 3.6
+        return {
+          width: `${w}%`, maxWidth: `${jail.count <= 2 ? 26 : jail.count <= 4 ? 20 : 16}px`,
+          marginLeft: `${(c - (cols - 1) / 2) * step}px`,
+          marginTop: `${(r - (rows - 1) / 2) * step}px`,
+        }
+      })()
+    : { marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }
   return (
     <motion.div
-      className={`vb-tok2${CORNERS.has(pos) ? " corner" : ""}`}
+      className={`vb-tok2${CORNERS.has(pos) ? " corner" : ""}${jail ? " jailed" : ""}`}
       initial={{ left: `${a0.x}%`, top: `${a0.y}%` }}
       animate={controls}
-      style={{ zIndex: 20 + seat, marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }}
+      style={{ zIndex: 20 + seat, ...layout }}
       onClick={() => { if (!isYou) setShowName((v) => !v) }}
     >
       {url ? <img src={url} alt="" /> : <span className="vb-tokdot" style={{ background: SEAT_COL[seat % 6] }} />}
@@ -1700,6 +1725,7 @@ const VB_CSS = `
 .vb-tok-layer{position:absolute;inset:0;pointer-events:none;z-index:4;}
 .vb-tok2{position:absolute;transform:translate(-50%,-50%);width:6.24%;max-width:31px;aspect-ratio:1;pointer-events:auto;cursor:pointer;}
 .vb-tok2.corner{width:4.32%;max-width:19px;}
+.vb-tok2.jailed{transition:width .2s ease, margin .2s ease;}
 /* Tokens use the raw uploaded image as-is — no frame, no crop, no rounded mask. */
 .vb-tok2 img{width:100%;height:100%;object-fit:contain;display:block;}
 .vb-tok2 .vb-tokdot{display:block;width:72%;height:72%;margin:14%;border-radius:22%;border:1.6px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
