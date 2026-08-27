@@ -6,7 +6,7 @@ import { createGame } from "./engine/state"
 import type { GameState, Intent } from "./engine/state"
 import { applyIntent, nextAutoIntent, rankSeats, forceEndGame } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
-import { netWorth, liquidationWorth } from "./engine/helpers"
+import { netWorth } from "./engine/helpers"
 import { capitalGainsTax } from "./tax"
 import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime"
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
@@ -167,13 +167,12 @@ async function settleMatch(
       })
       continue
     }
-    // Wallet settles at the CONSERVATIVE sell-back value (full price − 2% TDS, no set/pair
-    // premium) so the coin economy never inflates — you recoup roughly what you spent. The
-    // ×1.4/×1.5 premiums live only in netWorth, used for ranking + the bestNetWorth stat.
-    // Capital-gains tax on the net profit is withheld, so resultCash is the after-tax coins.
+    // Wallet banks the full NET WORTH — the headline empire value shown on the results
+    // page (cash + property/sets ×1.4 + companies + development ×1.5). Winning a big board
+    // pays off in coins, which funds your next games. Deliberately generous / positive-sum:
+    // the ×1.4/×1.5 premiums mint coins, so total supply grows over time (owner's call).
     const finalNetWorth = Math.round(netWorth(state, p.seat))
-    const cashOut = Math.round(liquidationWorth(state, p.seat))
-    const resultCash = cashOut - capitalGainsTax(cashOut - p.openingCash)
+    const resultCash = finalNetWorth
     await tx.vyapaarMatchPlayer.update({
       where: { matchId_seat: { matchId, seat: p.seat } },
       data: { resultCash, placement: placementBySeat.get(p.seat)! },
