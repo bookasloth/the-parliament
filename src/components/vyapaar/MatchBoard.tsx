@@ -31,8 +31,8 @@ const ERR_MSG: Record<string, string> = {
   cannot_manage_now: "You can only build right after you land on your own property.",
   cannot_end_now: "You can't end your turn right now.",
   not_owner: "You don't own this property.",
-  no_set_control: "You need the whole colour set before you can build.",
-  uneven_build: "Build evenly across the set first.",
+  no_set_control: "You need all three cities of this colour set before you can build a house.",
+  uneven_build: "Build evenly — raise the lowest cities in the set first.",
   max_level: "This property is already fully developed.",
   must_be_on_city: "Land on this city to build a hotel here.",
   no_payment: "That payment was already resolved.",
@@ -44,10 +44,16 @@ const ERR_MSG: Record<string, string> = {
   already_bid: "You've already bid in this auction.",
   rate_limited: "You're going too fast — try again in a moment.",
   game_over: "The game is over.",
+  trade_charge_unaffordable: "Both traders need ₹500+ cash for the trader's-union charge.",
+  trade_invalid: "That trade is no longer valid.",
+  bad_give: "You can't trade one card of a set that already has houses.",
+  bad_get: "They can't trade one card of a set that already has houses.",
 }
-// Errors that mean "you can't build/manage that here" — handled softly (close the
-// deed + gentle hint) rather than shown as a red error.
-const SOFT_ERRORS = new Set(["cannot_manage_now", "max_level", "uneven_build", "no_set_control", "mortgaged"])
+// Errors that mean "you can't build/manage that here" — handled softly (close the deed +
+// gentle hint) rather than shown as a red error. Build-RULE violations (no set control,
+// uneven build) are deliberately NOT soft: they surface the precise ERR_MSG so a player who
+// tries to build without the whole set is told exactly why.
+const SOFT_ERRORS = new Set(["cannot_manage_now", "max_level", "mortgaged"])
 
 // Wide 13×9 ring cell → [col,row]. Corners: 0 Start, 12 Monsoon, 20 Mandi, 32 Tax Raid.
 function cellPos(i: number): [number, number] {
@@ -88,7 +94,7 @@ function ringPath(from: number, to: number): number[] {
 }
 
 const SPECIAL_LABEL: Record<string, string> = {
-  start: "START", monsoon: "MONSOON", mandi: "MANDI", taxraid: "TAX RAID",
+  start: "START", monsoon: "JAIL", mandi: "MANDI", taxraid: "TAX RAID",
 }
 const EVENT_LABEL: Record<string, string> = {
   tax_return: "TAX RETURN", married: "GOT MARRIED", festival: "FESTIVAL", ed_raid: "ED RAID", jnv_revisit: "JNV REVISIT",
@@ -103,7 +109,7 @@ const EVENT_MSG: Record<string, string> = {
 }
 const LANDING_MSG: Record<string, string> = {
   start: "You passed Start",
-  monsoon: "Monsoon break",
+  monsoon: "Jail — just visiting",
   mandi: "Mandi — you scooped the bonus 💰",
   taxraid: "Tax Raid — off to jail! 🚔",
 }
@@ -162,6 +168,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "bribe": return `${nm(e.seat)} bribed out of jail (${rup(e.amount)})`
     case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
+    case "trade_charge": return `trader's-union charge: ${rup(e.costEach)} each`
     case "trade_declined": return `a trade was declined`
     case "trade_countered": return `${nm(e.seat)} countered with a new offer`
     case "trade_withdrawn": return `${nm(e.seat)} withdrew a trade`
@@ -181,29 +188,67 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
 // Signed cash change for YOU from a money event (+in / −out), with a label. Null if it
 // doesn't move your money. Event-card flows (married/ED raid) don't carry a typed amount
 // yet, so they're not itemised here — the running balance still reflects them.
-function moneyDelta(e: Record<string, unknown>, you: number): { delta: number; label: string } | null {
+function moneyDelta(e: Record<string, unknown>, you: number, players: PublicView["players"]): { delta: number; label: string } | null {
+  const nm = (s: unknown) => (typeof s === "number" ? (players[s]?.name.split(" ")[0] ?? "a player") : "the bank")
+  const why = (r: unknown) => { const s = PAYMENT_REASON[r as string] ?? String(r ?? "payment"); return s.charAt(0).toUpperCase() + s.slice(1) }
+  const cty = (i: unknown) => CITIES[i as number]?.name ?? "property"
+  // Trader's-union charge carries no single `amount` — resolve YOUR share first, before the
+  // amount guard below. Traders pay costEach; every other player receives 2×poolEach (one
+  // share from each trader).
+  if (e.type === "trade_charge") {
+    const traders = (e.traders as number[]) ?? []
+    const rest = (e.rest as number[]) ?? []
+    if (traders.includes(you)) return { delta: -Number(e.costEach || 0), label: "Trader's-union charge" }
+    if (rest.includes(you)) return { delta: 2 * Number(e.poolEach || 0), label: "Trader's-union payout" }
+    return null
+  }
   const amt = Number(e.amount) || 0
   if (amt <= 0) return null
   switch (e.type) {
-    case "buy": case "buy_company": case "auction_won": return e.seat === you ? { delta: -amt, label: "Purchase" } : null
-    case "develop": return e.seat === you ? { delta: -amt, label: "Built" } : null
-    case "sell": return e.seat === you ? { delta: amt, label: "Sold to bank" } : null
+    case "buy": return e.seat === you ? { delta: -amt, label: `Bought ${cty(e.cityId)}` } : null
+    case "buy_company": case "auction_won": return e.seat === you ? { delta: -amt, label: "Purchase" } : null
+    case "develop": return e.seat === you ? { delta: -amt, label: `Built on ${cty(e.cityId)}` } : null
+    case "sell": return e.seat === you ? { delta: amt, label: `Sold ${cty(e.cityId)} to bank` } : null
     // rent + company_fee + mandi now move money via payment_paid/collected — the markers below
     // are logged for the game log only, not itemised here (would double-count).
     case "salary": return e.seat === you ? { delta: amt, label: "Salary" } : null
     case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
     case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
-    case "restructure": return e.seat === you ? { delta: amt, label: "Restructure" } : null
+    case "restructure": return e.seat === you ? { delta: amt, label: "Restructure advance" } : null
     case "bribe": return e.seat === you ? { delta: -amt, label: "Jail bribe" } : null
     case "left": return e.seat === you ? { delta: amt, label: "Cashed out" } : null
-    case "payment_collected": return e.seat === you ? { delta: amt, label: "Claimed" } : null
-    case "payment_paid": return e.seat === you ? { delta: -amt, label: "Paid" } : null
-    case "payment_penalty": return e.seat === you ? { delta: -2 * amt, label: "Missed — paid double" } : null
+    case "payment_collected": return e.seat === you ? { delta: amt, label: `${why(e.reason)} collected` } : null
+    case "payment_paid": return e.seat === you ? { delta: -amt, label: `${why(e.reason)} to ${nm(e.to)}` } : null
+    case "payment_penalty": return e.seat === you ? { delta: -2 * amt, label: `${why(e.reason)} missed — paid double` } : null
     default: return null
   }
 }
 
 type MoneyEntry = { d: { delta: number; label: string }; i: number }
+
+// Optimistic view mutators — applied the instant you click a confirmation button so the
+// card/action disappears with no round-trip wait; the server view then replaces it (or a
+// refetch rolls it back on error). Deliberately light: they clear the acted-on card and
+// adjust YOUR cash; ownership/turn reconcile from the authoritative response ~1 tick later.
+const optimisticPay = (p: PublicView["payments"][number], you: number) => (v: PublicView): PublicView => ({
+  ...v,
+  players: v.players.map((pl, i) => (i === you ? { ...pl, cash: pl.cash + (p.dir === "pay" ? -p.amount : p.amount) } : pl)),
+  payments: v.payments.filter((x) => x.id !== p.id),
+})
+const optimisticDropTrade = (id: number) => (v: PublicView): PublicView => ({ ...v, trades: v.trades.filter((t) => t.id !== id) })
+
+// A city is NOT tradeable if any city in its colour set (same owner) carries houses — giving
+// one away would strand the buildings on a broken set. Mirrors engine setHasDevelopment; the
+// engine is authoritative, this just keeps locked cities out of the trade pills.
+const setHasHouses = (view: PublicView, seat: number, zone: number) =>
+  view.cities.some((c, id) => c.owner === seat && CITIES[id].zone === zone && c.level > 0)
+const tradeable = (view: PublicView, seat: number) => (c: { owner: number | null; level: number; mortgaged: boolean; id: number }) =>
+  c.owner === seat && c.level === 0 && !c.mortgaged && !setHasHouses(view, seat, CITIES[c.id].zone)
+const optimisticBribe = (you: number, cost: number) => (v: PublicView): PublicView => ({
+  ...v,
+  phase: v.active === you ? "roll" : v.phase,
+  players: v.players.map((pl, i) => (i === you ? { ...pl, cash: pl.cash - cost, halted: 0 } : pl)),
+})
 
 export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initialGameEndsAt = null, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; initialGameEndsAt?: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
   const [view, setView] = useState<PublicView>(initialView)
@@ -310,8 +355,14 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
     return () => clearTimeout(t)
   }, [eventFx])
 
-  const send = useCallback(async (intent: Intent, closeDeed = false, action?: string) => {
-    setErr(null); setBusy(true)
+  // `optimistic` (when given) mutates the local view the instant you click — the card/button
+  // vanishes and your cash updates with no wait — then the server's authoritative view replaces
+  // it on success, or a refetch restores the truth on error. Used for the confirmation-style
+  // actions (payments, jail bribe, trade responses) that otherwise feel laggy.
+  const send = useCallback(async (intent: Intent, closeDeed = false, action?: string, optimistic?: (v: PublicView) => PublicView) => {
+    setErr(null)
+    if (optimistic) { lastActRef.current = Date.now(); setView((prev) => optimistic(prev)) }
+    setBusy(true)
     try {
       const res = await fetch(`/api/vyapaar/${matchId}/intent`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intent }),
@@ -319,6 +370,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
       const data = await res.json()
       if (!res.ok) {
         const code = data.error ?? "error"
+        if (optimistic) await refetch() // roll back the optimistic view to server truth
         // Develop/manage rejections aren't errors the player did wrong — close the
         // deed and give a gentle nudge instead of a red error box.
         if (SOFT_ERRORS.has(code)) { setOpenTile(null); setErr("Nothing to build here — roll the dice to continue.") }
@@ -328,7 +380,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
         }
       } else { lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
     } finally { setBusy(false) }
-  }, [matchId])
+  }, [matchId, refetch])
 
   const myTurn = view.active === you && !view.ended
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
@@ -346,7 +398,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
     .map(({ e, i }) => ({ line: logLine(e, view.players), i }))
     .filter((x) => x.line).slice(-10)
   const moneyEntries: MoneyEntry[] = view.log
-    .map((e, i) => ({ d: moneyDelta(e as Record<string, unknown>, you), i }))
+    .map((e, i) => ({ d: moneyDelta(e as Record<string, unknown>, you, view.players), i }))
     .filter((x): x is MoneyEntry => x.d !== null)
     .slice(-4).reverse()
   const iLeft = view.players[you]?.left ?? false
@@ -468,7 +520,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   <Dice roll={view.lastRoll} seq={view.lastRoll ? `${view.lastRoll[0]}-${view.lastRoll[1]}` : "none"} animate={lastRollSeat === you} />
                   {myTurn && view.phase === "jail" ? (
                     <div className="vb-jail-acts">
-                      <button className="vb-roll" disabled={busy || view.players[you].cash < bribeCost} onClick={() => send({ type: "bribe_jail" }, false, "Bribe")}>Bribe · ₹{inr(bribeCost)}</button>
+                      <button className="vb-roll" disabled={busy || view.players[you].cash < bribeCost} onClick={() => send({ type: "bribe_jail" }, false, "Bribe", optimisticBribe(you, bribeCost))}>Bribe · ₹{inr(bribeCost)}</button>
                       <button className="vb-jail-sit" disabled={busy} onClick={() => send({ type: "serve_jail" }, false, "Jail")}>Sit it out</button>
                     </div>
                   ) : myTurn && view.phase === "manage"
@@ -486,6 +538,9 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
               </div>
 
               <TokenLayer players={view.players} tokens={playerTokens} you={you} />
+              {/* Jail bars overlay on the Monsoon/Jail corner (pos 12 = col1,row9). z above tokens
+                  so a jailed piece reads as sitting BEHIND the bars. */}
+              <div className="vb-jailbars" style={{ left: 0, top: `${(8 * 100) / 9}%`, width: `${100 / 13}%`, height: `${100 / 9}%` }} />
               {eventFx && <EventFX key={eventFx.key} fx={eventFx} reduce={!!reduce} />}
             </div>
           </div>
@@ -863,17 +918,21 @@ function Token({ seat, pos, url, isYou, name }: { seat: number; pos: number; url
     void controls.start({ left: xs, top: ys, transition: { duration: Math.min(1.5, path.length * 0.14), ease: "easeInOut" } })
   }, [pos, controls, reduce])
   const a0 = tokenAnchor(pos)
+  // Tooltip sits on the INNER side of the token's board edge — opposite the rail the piece
+  // rides. Bottom row → above, top row → below, left col → right, right col → left.
+  const [col, row] = cellPos(pos)
+  const tip = row === 9 ? "up" : row === 1 ? "down" : col === 1 ? "right" : "left"
   return (
     <motion.div
       className={`vb-tok2${CORNERS.has(pos) ? " corner" : ""}`}
       initial={{ left: `${a0.x}%`, top: `${a0.y}%` }}
       animate={controls}
-      style={{ zIndex: 6 + seat, marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }}
+      style={{ zIndex: 20 + seat, marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }}
       onClick={() => { if (!isYou) setShowName((v) => !v) }}
     >
-      {url ? <img src={url} alt="" /> : <span style={{ background: SEAT_COL[seat % 6] }} />}
-      {isYou && <span className="vb-tok-you">You</span>}
-      {!isYou && showName && <span className="vb-tok-name">{name}</span>}
+      {url ? <img src={url} alt="" /> : <span className="vb-tokdot" style={{ background: SEAT_COL[seat % 6] }} />}
+      {isYou && <span className={`vb-toktip vb-tip-${tip}`}>You</span>}
+      {!isYou && showName && <span className={`vb-toktip vb-tip-${tip}`}>{name}</span>}
     </motion.div>
   )
 }
@@ -1034,7 +1093,8 @@ const PAYMENT_REASON: Record<string, string> = {
 // An auto-payment awaiting YOUR approval. Debit → "Allow or pay double"; windfall →
 // "Claim or forfeit". Both show the live 10s countdown that drives the auto-penalty.
 function PaymentCard({ payment, view, busy, onAction }: {
-  payment: PublicView["payments"][number]; view: PublicView; busy: boolean; onAction: (i: Intent) => void
+  payment: PublicView["payments"][number]; view: PublicView; busy: boolean
+  onAction: (i: Intent, closeDeed?: boolean, action?: string, optimistic?: (v: PublicView) => PublicView) => void
 }) {
   const who = payment.party === "bank" ? "the bank" : view.players[payment.party]?.name?.split(" ")[0] ?? "a player"
   const reason = PAYMENT_REASON[payment.reason] ?? payment.reason
@@ -1045,13 +1105,13 @@ function PaymentCard({ payment, view, busy, onAction }: {
         <>
           <p className="vb-pay-body">Pay <b>₹{inr(payment.amount)}</b> to {who} · <i>{reason}</i></p>
           <p className="vb-pay-warn">Allow in <Countdown expiresAt={expiry} ended={view.ended} /> or it&apos;s auto-charged double.</p>
-          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id })}>Allow · ₹{inr(payment.amount)}</button>
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id }, false, "Pay", optimisticPay(payment, view.you))}>Allow · ₹{inr(payment.amount)}</button>
         </>
       ) : (
         <>
           <p className="vb-pay-body">Claim <b>₹{inr(payment.amount)}</b> · <i>{reason}</i></p>
           <p className="vb-pay-warn">Claim in <Countdown expiresAt={expiry} ended={view.ended} /> or you forfeit it.</p>
-          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id })}>Claim · ₹{inr(payment.amount)}</button>
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "confirm_payment", paymentId: payment.id }, false, "Claim", optimisticPay(payment, view.you))}>Claim · ₹{inr(payment.amount)}</button>
         </>
       )}
     </div>
@@ -1111,8 +1171,8 @@ function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView
   const [getCo, setGetCo] = useState<number[]>([])
   const hasOutgoing = (view.trades ?? []).some((t) => t.from === you)
   if (view.ended || myTurn || hasOutgoing) return null
-  const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
-  const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === to && c.level === 0 && !c.mortgaged)
+  const mine = view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, you))
+  const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, to))
   const mineCo = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === you).map((x) => x.ci)
   const theirsCo = to === "" ? [] : view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === to).map((x) => x.ci)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
@@ -1159,7 +1219,8 @@ function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView
 // One active trade in the rail. Incoming (you're the recipient) → Accept / Decline /
 // Counter; outgoing (yours) → summary + Withdraw. Both show a live 60s countdown.
 function TradeCard({ trade, view, you, busy, onAction }: {
-  trade: PublicView["trades"][number]; view: PublicView; you: number; busy: boolean; onAction: (i: Intent) => void
+  trade: PublicView["trades"][number]; view: PublicView; you: number; busy: boolean
+  onAction: (i: Intent, closeDeed?: boolean, action?: string, optimistic?: (v: PublicView) => PublicView) => void
 }) {
   const [countering, setCountering] = useState(false)
   const [give, setGive] = useState<number[]>([])
@@ -1186,15 +1247,15 @@ function TradeCard({ trade, view, you, busy, onAction }: {
         <p className="vb-trade-sum">You give {sideNames(trade.give)} → get {sideNames(trade.get)}</p>
         {pnlLine}
         <div className="vb-trade-btns">
-          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "withdraw_trade", tradeId: trade.id })}>Withdraw</button>
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "withdraw_trade", tradeId: trade.id }, false, "Withdraw", optimisticDropTrade(trade.id))}>Withdraw</button>
         </div>
       </div>
     )
   }
 
   // recipient view — Counter picker uses my level-0 cities + companies to give, proposer's to get
-  const mine = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === you && c.level === 0 && !c.mortgaged)
-  const theirs = view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === trade.from && c.level === 0 && !c.mortgaged)
+  const mine = view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, you))
+  const theirs = view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, trade.from))
   const mineCo = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === you).map((x) => x.ci)
   const theirsCo = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === trade.from).map((x) => x.ci)
   const toggle = (arr: number[], set: (a: number[]) => void, id: number) => set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id])
@@ -1210,8 +1271,8 @@ function TradeCard({ trade, view, you, busy, onAction }: {
       {pnlLine}
       {!countering ? (
         <div className="vb-trade-btns">
-          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: true })}>Accept</button>
-          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: false })}>Decline</button>
+          <button className="vb-act primary" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: true }, false, "Accept", optimisticDropTrade(trade.id))}>Accept</button>
+          <button className="vb-act" disabled={busy} onClick={() => onAction({ type: "respond_trade", tradeId: trade.id, accept: false }, false, "Decline", optimisticDropTrade(trade.id))}>Decline</button>
           <button className="vb-act" disabled={busy} onClick={() => setCountering(true)}>Counter</button>
         </div>
       ) : (
@@ -1462,7 +1523,14 @@ const VB_CSS = `
 .vb-pcell-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px;display:flex;flex-wrap:wrap;gap:3px;width:100%;box-shadow:0 4px 14px rgba(0,0,0,.25);}
 .vb-chip{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.15);}
 .vb-chip-none{font-size:.6rem;color:var(--dim);}
-.vb-tok-you,.vb-tok-name{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;font-size:.55rem;font-weight:700;color:#fff;background:rgba(15,17,17,.85);border-radius:3px;padding:1px 4px;white-space:nowrap;pointer-events:none;}
+/* Token tooltip — a small screenshot-style card, placed on the token's INNER side (opposite
+   the board edge it rides) so it never spills off the board. One variant per side. */
+.vb-toktip{position:absolute;font-size:.58rem;font-weight:700;color:#fff;background:rgba(15,17,17,.92);border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:2px 6px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:40;}
+.vb-tip-up{bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;}
+.vb-tip-down{top:100%;left:50%;transform:translateX(-50%);margin-top:4px;}
+.vb-tip-right{left:100%;top:50%;transform:translateY(-50%);margin-left:4px;}
+.vb-tip-left{right:100%;top:50%;transform:translateY(-50%);margin-right:4px;}
+.vb-jailbars{position:absolute;pointer-events:none;z-index:30;background:repeating-linear-gradient(90deg,rgba(20,22,26,.9) 0 2px,transparent 2px 8px);border-radius:2px;}
 .vb-props-inline{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow-y:auto;}
 .vb-props-inline .vb-prop-card{border-left-width:6px;}
 .vb-cell .vb-log-list{flex:1;min-height:0;max-height:none;}
@@ -1487,8 +1555,9 @@ const VB_CSS = `
 .vb-tok-layer{position:absolute;inset:0;pointer-events:none;z-index:4;}
 .vb-tok2{position:absolute;transform:translate(-50%,-50%);width:6.24%;max-width:31px;aspect-ratio:1;pointer-events:auto;cursor:pointer;}
 .vb-tok2.corner{width:4.32%;max-width:19px;}
-.vb-tok2 img{width:100%;height:100%;border-radius:22%;object-fit:cover;border:1.6px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:block;}
-.vb-tok2 span{display:block;width:72%;height:72%;margin:14%;border-radius:22%;border:1.6px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+/* Tokens use the raw uploaded image as-is — no frame, no crop, no rounded mask. */
+.vb-tok2 img{width:100%;height:100%;object-fit:contain;display:block;}
+.vb-tok2 .vb-tokdot{display:block;width:72%;height:72%;margin:14%;border-radius:22%;border:1.6px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);}
 .vb-auction{display:flex;flex-direction:column;gap:8px;border:1px solid var(--accent);border-radius:2px;padding:10px;}
 .vb-auction-head{margin:0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);}
 .vb-auction-card{border:1px solid var(--line);border-radius:2px;overflow:hidden;background:var(--panel);}

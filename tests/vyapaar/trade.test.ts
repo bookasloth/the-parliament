@@ -26,8 +26,11 @@ describe("card-to-card trading", () => {
     expect(s.cities[0].owner).toBe(2);
     expect(s.cities[1].owner).toBe(2);
     expect(s.cities[6].owner).toBe(1);
-    expect(s.players[1].cash).toBe(cash1); // cash untouched
-    expect(s.players[2].cash).toBe(cash2);
+    // No cash is part of the SWAP, but each trader pays the trader's-union charge (500 bank +
+    // 500 split among the other players). With one other player here that's 1000 each. See
+    // trade-charge.test.ts for the full charge coverage.
+    expect(s.players[1].cash).toBe(cash1 - 1000);
+    expect(s.players[2].cash).toBe(cash2 - 1000);
     expect(s.trades).toHaveLength(0);
   });
 
