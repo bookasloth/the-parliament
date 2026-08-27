@@ -17,6 +17,8 @@ import {
   JAIL_TURNS,
   BRIBE_BANK,
   BRIBE_EACH,
+  TRADE_UNION_BANK,
+  TRADE_UNION_POOL,
   MONSOON_POS,
 } from "./data";
 import type { GameState, Intent, EngineEvent, TradeOffer } from "./state";
@@ -288,10 +290,18 @@ function canManage(s: GameState): boolean {
   return s.phase === "roll" || s.phase === "manage";
 }
 
+/** True if this seat has ANY developed (level>0) city in the given zone. While a set
+ * carries houses, none of its cities may be traded away — doing so would strand the
+ * buildings on a broken set (you can only hold houses when you own the whole set). */
+export function setHasDevelopment(s: GameState, seat: number, zone: number): boolean {
+  return s.cities.some((c, id) => c.owner === seat && CITIES[id].zone === zone && c.level > 0);
+}
+
 /**
  * A trade side is valid when it is CITIES ONLY (never cash), non-empty, and every
  * city is owned by this seat, undeveloped and unmortgaged. Cash is never part of a
- * player trade, so any non-zero cash is rejected outright.
+ * player trade, so any non-zero cash is rejected outright. A city whose colour set
+ * carries any houses is also locked (see setHasDevelopment).
  */
 function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
   if (side.cash !== 0) return false; // cash is never part of a player trade
@@ -306,6 +316,7 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
     seenCity.add(id);
     const c = s.cities[id];
     if (c.owner !== seat || c.level !== 0 || c.mortgaged) return false;
+    if (setHasDevelopment(s, seat, CITIES[id].zone)) return false; // set has houses → locked
   }
   const seenCo = new Set<number>();
   for (const ci of companies) {
@@ -315,6 +326,28 @@ function validTradeSide(s: GameState, seat: number, side: TradeSide): boolean {
     if (s.companies[ci] !== seat) return false; // companies have no levels/mortgage
   }
   return true;
+}
+
+/** Per-trader cost of the trader's-union charge given how many non-trader players remain. */
+function tradeUnionCost(others: number): number {
+  return TRADE_UNION_BANK + (others > 0 ? TRADE_UNION_POOL : 0);
+}
+
+/**
+ * Apply the trader's-union charge to BOTH traders. Each pays TRADE_UNION_BANK to the bank
+ * plus TRADE_UNION_POOL split evenly among the other players. Caller must have verified
+ * both traders can afford tradeUnionCost() first (charge here uses plain cash, no liquidation).
+ * Pushes one trade_charge event carrying the per-seat deltas for the log / money feed.
+ */
+function applyTradeUnionCharge(s: GameState, from: number, to: number, events: EngineEvent[]): void {
+  const rest = s.players.map((_, i) => i).filter((i) => i !== from && i !== to && !s.players[i].left);
+  const poolEach = rest.length ? Math.floor(TRADE_UNION_POOL / rest.length) : 0;
+  const costEach = tradeUnionCost(rest.length);
+  for (const trader of [from, to]) {
+    s.players[trader].cash -= costEach; // full cost leaves the trader…
+    rest.forEach((i) => { s.players[i].cash += poolEach; }); // …pool (floored) handed out, bank keeps the rest
+  }
+  events.push({ type: "trade_charge", traders: [from, to], rest, bankEach: TRADE_UNION_BANK, poolEach, costEach });
 }
 
 /** Move traded cities + companies between owners. Assumes both sides already re-validated. */
@@ -578,7 +611,15 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (!validTradeSide(s, t.from, t.give) || !validTradeSide(s, t.to, t.get)) {
         return { error: "trade_invalid" };
       }
+      // Trader's-union charge: both traders must be able to cover it in cash, else the trade
+      // can't complete (we don't force-liquidate anyone to pay a trade fee).
+      const restCount = s.players.filter((p, i) => i !== t.from && i !== t.to && !p.left).length;
+      const unionCost = tradeUnionCost(restCount);
+      if (s.players[t.from].cash < unionCost || s.players[t.to].cash < unionCost) {
+        return { error: "trade_charge_unaffordable" };
+      }
       applyTradeSwap(s, t);
+      applyTradeUnionCharge(s, t.from, t.to, events);
       events.push({ type: "trade_accepted", from: t.from, to: t.to, tradeId: t.id });
       return { state: s, events };
     }

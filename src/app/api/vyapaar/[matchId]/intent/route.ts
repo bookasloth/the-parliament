@@ -5,14 +5,9 @@ import { handleError } from "@/lib/api"
 import { rateLimitOk } from "@/lib/rate-limit"
 import { applyMatchIntent } from "@/modules/vyapaar/match"
 import type { Intent } from "@/modules/vyapaar/engine/state"
+import { CLIENT_INTENT_TYPES } from "@/modules/vyapaar/engine/intent-types"
 
-// Note: "expire_trade"/"expire_payment" are intentionally absent — they are system-only
-// intents applied by the server's expiry sweeps, never accepted from a client.
-const INTENT_TYPES = new Set([
-  "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
-  "propose_trade", "respond_trade", "counter_trade", "withdraw_trade",
-  "confirm_payment", "restructure", "leave_game", "end_turn",
-])
+const INTENT_TYPES: ReadonlySet<string> = CLIENT_INTENT_TYPES
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v)
 
