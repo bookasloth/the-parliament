@@ -604,30 +604,35 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   />
                 ))}
               </div>
-              <div className="vb-panel-head vb-allprops-h">All properties</div>
+              <div className="vb-panel-head vb-allprops-h">Up for grabs</div>
               <div className="vb-allprops">
                 {CITIES.map((c, id) => (
-                  <PropChip
-                    key={`c${id}`}
-                    letter={c.name.charAt(0)}
-                    bg={ZONE_BG[c.zone]}
-                    dark={ZONE_DARK[c.zone]}
-                    owner={view.cities[id].owner}
-                    title={`${c.name}${view.cities[id].owner !== null ? " · " + (view.players[view.cities[id].owner!]?.name ?? "") : " · free"}`}
-                    onOpen={() => setOpenTile(CITY_POS[id])}
-                  />
+                  view.cities[id].owner === null && (
+                    <PropChip
+                      key={`c${id}`}
+                      letter={c.name.charAt(0)}
+                      bg={ZONE_BG[c.zone]}
+                      dark={ZONE_DARK[c.zone]}
+                      title={`${c.name} · free`}
+                      onOpen={() => setOpenTile(CITY_POS[id])}
+                    />
+                  )
                 ))}
                 {COMPANIES.map((co, ci) => (
-                  <PropChip
-                    key={`co${ci}`}
-                    letter={co.short.charAt(0)}
-                    bg="#8a8f98"
-                    dark={false}
-                    owner={view.companies[ci]}
-                    title={`${co.name}${view.companies[ci] !== null ? " · " + (view.players[view.companies[ci]!]?.name ?? "") : " · free"}`}
-                    onOpen={() => setOpenTile(COMPANY_POS[ci])}
-                  />
+                  view.companies[ci] === null && (
+                    <PropChip
+                      key={`co${ci}`}
+                      letter={co.short.charAt(0)}
+                      bg="#8a8f98"
+                      dark={false}
+                      title={`${co.name} · free`}
+                      onOpen={() => setOpenTile(COMPANY_POS[ci])}
+                    />
+                  )
                 ))}
+                {view.cities.every((c) => c.owner !== null) && view.companies.every((o) => o !== null) && (
+                  <div className="vb-allprops-none">Everything&apos;s been claimed</div>
+                )}
               </div>
             </section>
 
@@ -915,22 +920,21 @@ function PlayerCell({ seat, p, token, isActive, isLeader, online, cityZones, com
   )
 }
 
-// One property chip in the A1 "All properties" map: zone-colour bg + initial letter.
-// Bright = still up for grabs; dimmed with an owner-colour dot = taken. Click → its deed.
-function PropChip({ letter, bg, dark, owner, title, onOpen }: {
-  letter: string; bg: string; dark: boolean; owner: number | null; title: string; onOpen: () => void
+// One chip in the A1 "Up for grabs" map: zone-colour bg + initial letter. Only still-
+// unowned properties render here — a chip vanishes when bought and returns if it's sold
+// back to the bank or its owner leaves. Click → its deed.
+function PropChip({ letter, bg, dark, title, onOpen }: {
+  letter: string; bg: string; dark: boolean; title: string; onOpen: () => void
 }) {
-  const free = owner === null
   return (
     <button
       type="button"
-      className={`vb-pchip ${free ? "free" : "taken"}`}
+      className="vb-pchip"
       style={{ background: bg, color: dark ? "#0F1111" : "#fff" }}
       title={title}
       onClick={onOpen}
     >
       {letter.toUpperCase()}
-      {!free && <span className="vb-pchip-dot" style={{ background: SEAT_COL[owner! % 6] }} />}
     </button>
   )
 }
@@ -1640,14 +1644,13 @@ const VB_CSS = `
 .vb-pcell-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px;display:flex;flex-wrap:wrap;gap:3px;width:100%;box-shadow:0 4px 14px rgba(0,0,0,.25);}
 .vb-chip{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.15);}
 .vb-chip-none{font-size:.6rem;color:var(--dim);}
-/* A1 "all properties" map — bright = free, dim + owner dot = taken */
+/* A1 "up for grabs" map — only still-unowned properties; a chip leaves when bought,
+   returns if it's sold back to the bank or its owner leaves. */
 .vb-allprops-h{margin-top:10px;}
 .vb-allprops{display:grid;grid-template-columns:repeat(auto-fill,minmax(22px,1fr));gap:4px;overflow-y:auto;min-height:0;}
-.vb-pchip{position:relative;aspect-ratio:1;min-width:0;border:none;border-radius:3px;font-family:"Poppins";font-weight:800;font-size:.62rem;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0;}
-.vb-pchip.taken{opacity:.34;filter:saturate(.7);}
-.vb-pchip.free{box-shadow:0 0 0 1.5px rgba(255,255,255,.5);}
-.vb-pchip.free:hover,.vb-pchip.taken:hover{opacity:1;filter:none;outline:1.5px solid var(--accent);}
-.vb-pchip-dot{position:absolute;right:1px;bottom:1px;width:6px;height:6px;border-radius:50%;border:1px solid rgba(255,255,255,.85);}
+.vb-pchip{aspect-ratio:1;min-width:0;border:none;border-radius:3px;font-family:"Poppins";font-weight:800;font-size:.62rem;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0;}
+.vb-pchip:hover{outline:1.5px solid var(--accent);}
+.vb-allprops-none{grid-column:1/-1;font-size:.68rem;color:var(--dim);}
 /* Token tooltip — a small screenshot-style card, placed on the token's INNER side (opposite
    the board edge it rides) so it never spills off the board. One variant per side. */
 .vb-toktip{position:absolute;font-size:.58rem;font-weight:700;color:#fff;background:rgba(15,17,17,.92);border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:2px 6px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:40;}
