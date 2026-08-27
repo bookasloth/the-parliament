@@ -6,6 +6,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/modules/vyapaar/match-actions"
 import { CITIES, COMPANIES, COMPANY_CATS, COMPANY_POS, upgradeCost } from "@/modules/vyapaar/engine/data"
 import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
+import { coachTips, type Tip } from "@/modules/vyapaar/coach"
 import { MatchResults } from "./MatchResults"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
 import type { Intent, TradeSide } from "@/modules/vyapaar/engine/state"
@@ -19,6 +20,15 @@ const ZONE_DARK = [false, false, false, false, true] // yellow → dark text on 
 const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd0"]
 
 const inr = (n: number) => n.toLocaleString("en-IN")
+
+// Boxed how-to tutorial shown left of the dice (numbered, icon + zone-colour accent).
+const HOWTO: { icon: string; head: string; body: string; color: string }[] = [
+  { icon: "🎲", head: "Roll & move.", body: "Land on a tile and act on what's there.", color: "#269CEF" },
+  { icon: "🏙️", head: "Buy it.", body: "Snap up the cities & companies you land on.", color: "#4AB765" },
+  { icon: "🎯", head: "Own 3 of a zone.", body: "That locks the zone — undeveloped rent doubles.", color: "#FF4D93" },
+  { icon: "🏗️", head: "Build up.", body: "Add houses → hotels to spike the rent you charge.", color: "#FE5100" },
+  { icon: "🤝", head: "Trade smart.", body: "Swap cards to complete your zones faster.", color: "#C08A00" },
+]
 
 // Human-readable engine error codes (the API returns raw codes). Anything not
 // listed falls through to the raw code so nothing is silently swallowed.
@@ -204,22 +214,33 @@ function moneyDelta(e: Record<string, unknown>, you: number, players: PublicView
   }
   const amt = Number(e.amount) || 0
   if (amt <= 0) return null
+  if (e.seat !== you) return null
+  const r = String(e.reason ?? "")
   switch (e.type) {
-    case "buy": return e.seat === you ? { delta: -amt, label: `Bought ${cty(e.cityId)}` } : null
-    case "buy_company": case "auction_won": return e.seat === you ? { delta: -amt, label: "Purchase" } : null
-    case "develop": return e.seat === you ? { delta: -amt, label: `Built on ${cty(e.cityId)}` } : null
-    case "sell": return e.seat === you ? { delta: amt, label: `Sold ${cty(e.cityId)} to bank` } : null
-    // rent + company_fee + mandi now move money via payment_paid/collected — the markers below
-    // are logged for the game log only, not itemised here (would double-count).
-    case "salary": return e.seat === you ? { delta: amt, label: "Salary" } : null
-    case "gst": return e.seat === you ? { delta: -amt, label: "GST" } : null
-    case "income": return e.seat === you ? { delta: -amt, label: "Income tax" } : null
-    case "restructure": return e.seat === you ? { delta: amt, label: "Restructure advance" } : null
-    case "bribe": return e.seat === you ? { delta: -amt, label: "Jail bribe" } : null
-    case "left": return e.seat === you ? { delta: amt, label: "Cashed out" } : null
-    case "payment_collected": return e.seat === you ? { delta: amt, label: `${why(e.reason)} collected` } : null
-    case "payment_paid": return e.seat === you ? { delta: -amt, label: `${why(e.reason)} to ${nm(e.to)}` } : null
-    case "payment_penalty": return e.seat === you ? { delta: -2 * amt, label: `${why(e.reason)} missed — paid double` } : null
+    case "buy": return { delta: -amt, label: `Snapped up ${cty(e.cityId)} 🏙️` }
+    case "buy_company": case "auction_won": return { delta: -amt, label: "Bought a company 🏢" }
+    case "develop": return { delta: -amt, label: `Built up ${cty(e.cityId)} 🏗️` }
+    case "sell": return { delta: amt, label: `Sold ${cty(e.cityId)} back 💸` }
+    // rent + company_fee + mandi + event flows all move money via payment_paid/collected.
+    case "salary": return { delta: amt, label: "Payday! 💰" }
+    case "gst": return { delta: -amt, label: "GST bite" }
+    case "income": return { delta: -amt, label: "Income tax" }
+    case "restructure": return { delta: amt, label: "Restructure advance" }
+    case "bribe": return { delta: -amt, label: "Bribed out of jail 🔓" }
+    case "left": return { delta: amt, label: "Cashed out" }
+    case "payment_collected": return { delta: amt, label:
+      r === "rent" ? "Rent rolled in 🤑"
+      : r === "mandi" ? "Mandi windfall 🎁"
+      : r === "event:married" ? "You got married — everyone chipped in 💍"
+      : `${why(e.reason)} — money in 🤑` }
+    case "payment_paid": return { delta: -amt, label:
+      r === "rent" ? `Landed on ${nm(e.to)}'s city 😬`
+      : r === "company_fee" ? `${nm(e.to)}'s service fee 🧾`
+      : r === "event:festival" ? "Festival — you treated everyone 🎉"
+      : r === "event:jnv_revisit" ? "Hosted the JNV revisit 🎓"
+      : r === "event:ed_raid" ? "ED raid 🚨"
+      : `${why(e.reason)} to ${nm(e.to)}` }
+    case "payment_penalty": return { delta: -2 * amt, label: `${why(e.reason)} slipped — paid double 😱` }
     default: return null
   }
 }
@@ -401,6 +422,8 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
     .map((e, i) => ({ d: moneyDelta(e as Record<string, unknown>, you, view.players), i }))
     .filter((x): x is MoneyEntry => x.d !== null)
     .slice(-4).reverse()
+  // Strategy coach: top-5 ranked "what to do next" tips from the (public) board state.
+  const tips = view.ended ? [] : coachTips(view)
   const iLeft = view.players[you]?.left ?? false
 
   // Who rolled the dice currently shown — the dice only tumble when it was YOU.
@@ -507,13 +530,16 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
               <div className="vb-hub">
                 <aside className="vb-hub-side vb-howto">
                   <div className="vb-hub-h">How to play</div>
-                  <ul>
-                    <li>Roll, move, and buy the cities &amp; companies you land on.</li>
-                    <li>Own a whole zone, then build houses → hotels to raise rent.</li>
-                    <li>Land on a rival&apos;s city → pay rent. Land on yours → collect.</li>
-                    <li>Trade cities &amp; companies to complete zones faster.</li>
-                    <li>Grow your net worth — the richest Vyapaari wins. Don&apos;t bleed!</li>
-                  </ul>
+                  <ol className="vb-howto-steps">
+                    {HOWTO.map((s, i) => (
+                      <li key={i} className="vb-howto-step">
+                        <span className="vb-howto-num" style={{ background: s.color }}>{i + 1}</span>
+                        <span className="vb-howto-ic">{s.icon}</span>
+                        <span className="vb-howto-tx"><b>{s.head}</b> {s.body}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="vb-howto-foot">💰 Richest Vyapaari wins — don&apos;t go broke!</div>
                 </aside>
                 <div className="vb-hub-mid">
                   <div className="vb-hub-name">व्यापार</div>
@@ -529,10 +555,20 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
                   <EndWarning gameEndsAt={gameEndsAt} round={view.round} ended={view.ended} />
                 </div>
-                <aside className="vb-hub-side vb-hublog">
-                  <div className="vb-hub-h">Game log</div>
-                  <div className="vb-log-list">
-                    {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
+                <aside className="vb-hub-side vb-hubright">
+                  <div className="vb-hubright-log">
+                    <div className="vb-hub-h">Game log</div>
+                    <div className="vb-log-list">
+                      {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
+                    </div>
+                  </div>
+                  <div className="vb-hubright-coach">
+                    <div className="vb-hub-h">Your coach</div>
+                    <div className="vb-coach-list">
+                      {tips.map((t, i) => (
+                        <CoachTip key={i} tip={t} onOpen={(pos) => setOpenTile(pos)} />
+                      ))}
+                    </div>
                   </div>
                 </aside>
               </div>
@@ -565,6 +601,31 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                     cityZones={view.cities.map((c, id) => ({ ...c, id })).filter((c) => c.owner === seat).map((c) => CITIES[c.id].zone)}
                     companyCount={view.companies.filter((o) => o === seat).length}
                     counter={p.left ? "left" : seat === view.active && !view.ended ? <Countdown expiresAt={turnExpiresAt} ended={view.ended} /> : p.halted ? "halted" : " "}
+                  />
+                ))}
+              </div>
+              <div className="vb-panel-head vb-allprops-h">All properties</div>
+              <div className="vb-allprops">
+                {CITIES.map((c, id) => (
+                  <PropChip
+                    key={`c${id}`}
+                    letter={c.name.charAt(0)}
+                    bg={ZONE_BG[c.zone]}
+                    dark={ZONE_DARK[c.zone]}
+                    owner={view.cities[id].owner}
+                    title={`${c.name}${view.cities[id].owner !== null ? " · " + (view.players[view.cities[id].owner!]?.name ?? "") : " · free"}`}
+                    onOpen={() => setOpenTile(CITY_POS[id])}
+                  />
+                ))}
+                {COMPANIES.map((co, ci) => (
+                  <PropChip
+                    key={`co${ci}`}
+                    letter={co.short.charAt(0)}
+                    bg="#8a8f98"
+                    dark={false}
+                    owner={view.companies[ci]}
+                    title={`${co.name}${view.companies[ci] !== null ? " · " + (view.players[view.companies[ci]!]?.name ?? "") : " · free"}`}
+                    onOpen={() => setOpenTile(COMPANY_POS[ci])}
                   />
                 ))}
               </div>
@@ -851,6 +912,47 @@ function PlayerCell({ seat, p, token, isActive, isLeader, online, cityZones, com
         </div>
       )}
     </div>
+  )
+}
+
+// One property chip in the A1 "All properties" map: zone-colour bg + initial letter.
+// Bright = still up for grabs; dimmed with an owner-colour dot = taken. Click → its deed.
+function PropChip({ letter, bg, dark, owner, title, onOpen }: {
+  letter: string; bg: string; dark: boolean; owner: number | null; title: string; onOpen: () => void
+}) {
+  const free = owner === null
+  return (
+    <button
+      type="button"
+      className={`vb-pchip ${free ? "free" : "taken"}`}
+      style={{ background: bg, color: dark ? "#0F1111" : "#fff" }}
+      title={title}
+      onClick={onOpen}
+    >
+      {letter.toUpperCase()}
+      {!free && <span className="vb-pchip-dot" style={{ background: SEAT_COL[owner! % 6] }} />}
+    </button>
+  )
+}
+
+// One strategy-coach tip. Clickable when it points at a tile (opens that deed).
+const TIP_ICON: Record<Tip["kind"], string> = {
+  build: "🏗️", swap: "🤝", complete: "🎯", unmortgage: "🔓", company: "🏢", "trade-away": "🔁", idle: "🎲",
+}
+function CoachTip({ tip, onOpen }: { tip: Tip; onOpen: (pos: number) => void }) {
+  const clickable = tip.pos != null
+  const accent = tip.zone != null ? ZONE_BG[tip.zone] : "#8a8f98"
+  return (
+    <button
+      type="button"
+      className={`vb-coach-tip ${clickable ? "" : "static"}`}
+      style={{ borderLeftColor: accent }}
+      disabled={!clickable}
+      onClick={clickable ? () => onOpen(tip.pos!) : undefined}
+    >
+      <span className="vb-coach-ic">{TIP_ICON[tip.kind]}</span>
+      <span className="vb-coach-tx">{tip.text}</span>
+    </button>
   )
 }
 
@@ -1364,10 +1466,25 @@ const VB_CSS = `
 .vb-hub-mid{display:flex;flex-direction:column;align-items:center;gap:clamp(10px,2.4vw,24px);min-width:0;}
 .vb-hub-side{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .vb-hub-h{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:6px;}
-.vb-howto ul{margin:0;padding-left:1.05em;display:flex;flex-direction:column;gap:clamp(4px,.9vw,8px);}
-.vb-howto li{font-size:clamp(.58rem,.95vw,.82rem);color:var(--dim);line-height:1.3;}
-.vb-hublog{align-items:stretch;}
-.vb-hublog .vb-log-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+/* mid-left boxed how-to tutorial */
+.vb-howto{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:clamp(8px,1.2vw,14px);gap:0;}
+.vb-howto-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(6px,1.1vw,11px);flex:1;min-height:0;overflow-y:auto;}
+.vb-howto-step{display:grid;grid-template-columns:auto auto 1fr;align-items:start;gap:7px;font-size:clamp(.58rem,.95vw,.8rem);color:var(--dim);line-height:1.3;}
+.vb-howto-num{grid-row:1;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-weight:800;color:#fff;flex:none;margin-top:1px;}
+.vb-howto-ic{font-size:.95rem;line-height:1;}
+.vb-howto-tx b{color:var(--cream);font-weight:700;}
+.vb-howto-foot{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);font-size:clamp(.58rem,.95vw,.8rem);font-weight:700;color:var(--gold);}
+/* mid-right split: game log (top) + coach (bottom) */
+.vb-hubright{align-items:stretch;gap:10px;}
+.vb-hubright-log{flex:0 0 auto;display:flex;flex-direction:column;min-height:0;max-height:38%;}
+.vb-hubright-log .vb-log-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+.vb-hubright-coach{flex:1;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);padding-top:8px;}
+.vb-coach-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.vb-coach-tip{display:flex;align-items:flex-start;gap:7px;text-align:left;width:100%;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:4px;padding:6px 8px;cursor:pointer;font-family:"Poppins";color:var(--dim);transition:border-color .12s,background .12s;}
+.vb-coach-tip:hover:not(.static){border-color:var(--accent);background:var(--panel-2);}
+.vb-coach-tip.static{cursor:default;}
+.vb-coach-ic{font-size:.9rem;line-height:1.2;flex:none;}
+.vb-coach-tx{font-size:.72rem;line-height:1.3;color:var(--cream);}
 @media(max-width:720px){.vb-hub{grid-template-columns:1fr;}.vb-hub-side{display:none;}}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
 .vb-dice{display:flex;gap:16px;perspective:560px;perspective-origin:50% 42%;}
@@ -1523,6 +1640,14 @@ const VB_CSS = `
 .vb-pcell-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px;display:flex;flex-wrap:wrap;gap:3px;width:100%;box-shadow:0 4px 14px rgba(0,0,0,.25);}
 .vb-chip{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.15);}
 .vb-chip-none{font-size:.6rem;color:var(--dim);}
+/* A1 "all properties" map — bright = free, dim + owner dot = taken */
+.vb-allprops-h{margin-top:10px;}
+.vb-allprops{display:grid;grid-template-columns:repeat(auto-fill,minmax(22px,1fr));gap:4px;overflow-y:auto;min-height:0;}
+.vb-pchip{position:relative;aspect-ratio:1;min-width:0;border:none;border-radius:3px;font-family:"Poppins";font-weight:800;font-size:.62rem;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0;}
+.vb-pchip.taken{opacity:.34;filter:saturate(.7);}
+.vb-pchip.free{box-shadow:0 0 0 1.5px rgba(255,255,255,.5);}
+.vb-pchip.free:hover,.vb-pchip.taken:hover{opacity:1;filter:none;outline:1.5px solid var(--accent);}
+.vb-pchip-dot{position:absolute;right:1px;bottom:1px;width:6px;height:6px;border-radius:50%;border:1px solid rgba(255,255,255,.85);}
 /* Token tooltip — a small screenshot-style card, placed on the token's INNER side (opposite
    the board edge it rides) so it never spills off the board. One variant per side. */
 .vb-toktip{position:absolute;font-size:.58rem;font-weight:700;color:#fff;background:rgba(15,17,17,.92);border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:2px 6px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:40;}
