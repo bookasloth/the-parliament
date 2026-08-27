@@ -104,7 +104,7 @@ function ringPath(from: number, to: number): number[] {
 }
 
 const SPECIAL_LABEL: Record<string, string> = {
-  start: "START", monsoon: "JAIL", mandi: "MANDI", taxraid: "TAX RAID",
+  start: "START", monsoon: "KALAPANI", mandi: "MANDI", taxraid: "TAX RAID",
 }
 const EVENT_LABEL: Record<string, string> = {
   tax_return: "TAX RETURN", married: "GOT MARRIED", festival: "FESTIVAL", ed_raid: "ED RAID", jnv_revisit: "JNV REVISIT",
@@ -119,9 +119,9 @@ const EVENT_MSG: Record<string, string> = {
 }
 const LANDING_MSG: Record<string, string> = {
   start: "You passed Start",
-  monsoon: "Jail — just visiting",
+  monsoon: "Kalapani — just visiting",
   mandi: "Mandi — you scooped the bonus 💰",
-  taxraid: "Tax Raid — off to jail! 🚔",
+  taxraid: "Tax Raid — off to Kalapani! 🚔",
 }
 
 // minimal inline icons
@@ -174,9 +174,9 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "develop": return `${nm(e.seat)} built on ${city(e.cityId)}`
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
     case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
-    case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
-    case "ed_raid_jail": return `${nm(e.seat)} dodged the ED raid → jail (${rup(e.amount)})`
-    case "bribe": return `${nm(e.seat)} bribed out of jail (${rup(e.amount)})`
+    case "taxraid": case "jail_doubles": return `${nm(e.seat)} → Kalapani`
+    case "ed_raid_jail": return `${nm(e.seat)} dodged the ED raid → Kalapani (${rup(e.amount)})`
+    case "bribe": return `${nm(e.seat)} bribed out of Kalapani (${rup(e.amount)})`
     case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
     case "trade_charge": return `trader's-union charge: ${rup(e.costEach)} each`
@@ -227,7 +227,7 @@ function moneyDelta(e: Record<string, unknown>, you: number, players: PublicView
     case "gst": return { delta: -amt, label: "GST bite" }
     case "income": return { delta: -amt, label: "Income tax" }
     case "restructure": return { delta: amt, label: "Restructure advance" }
-    case "bribe": return { delta: -amt, label: "Bribed out of jail 🔓" }
+    case "bribe": return { delta: -amt, label: "Bribed out of Kalapani 🔓" }
     case "left": return { delta: amt, label: "Cashed out" }
     case "payment_collected": return { delta: amt, label:
       r === "rent" ? "Rent rolled in 🤑"
@@ -444,7 +444,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
     : view.phase === "buy" ? (landing || "Buy it or decline")
     : view.phase === "manage" ? (landing ? `${landing} — develop or end your turn` : "Develop, then end your turn")
     : view.phase === "auction" ? "Auction in progress"
-    : view.phase === "jail" ? `In jail — ${view.players[you]?.halted ?? 0} turn${(view.players[you]?.halted ?? 0) === 1 ? "" : "s"} left`
+    : view.phase === "jail" ? `In Kalapani — ${view.players[you]?.halted ?? 0} turn${(view.players[you]?.halted ?? 0) === 1 ? "" : "s"} left`
     : ""
   const bribeCost = 1000 + 250 * view.players.filter((p, i) => i !== you && !p.left).length
 
@@ -548,7 +548,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   {myTurn && view.phase === "jail" ? (
                     <div className="vb-jail-acts">
                       <button className="vb-roll" disabled={busy || view.players[you].cash < bribeCost} onClick={() => send({ type: "bribe_jail" }, false, "Bribe", optimisticBribe(you, bribeCost))}>Bribe · ₹{inr(bribeCost)}</button>
-                      <button className="vb-jail-sit" disabled={busy} onClick={() => send({ type: "serve_jail" }, false, "Jail")}>Sit it out</button>
+                      <button className="vb-jail-sit" disabled={busy} onClick={() => send({ type: "serve_jail" }, false, "Kalapani")}>Sit it out</button>
                     </div>
                   ) : myTurn && view.phase === "manage"
                     ? <button className="vb-roll" disabled={busy} onClick={() => send({ type: "end_turn" }, false, "End turn")}>End turn</button>
@@ -1051,21 +1051,24 @@ function Token({ seat, pos, url, isYou, name, jail = null }: { seat: number; pos
   // rides. Bottom row → above, top row → below, left col → right, right col → left.
   const [col, row] = cellPos(pos)
   const tip = row === 9 ? "up" : row === 1 ? "down" : col === 1 ? "right" : "left"
-  // Jail: pack pieces into a balanced grid centred in the corner (1 or 2 columns), sized as
-  // big as fits for the current count. Otherwise use the normal per-seat fan.
+  // Jail: place pieces on the vertices of a regular shape (2=line, 3=triangle, 4=square,
+  // 5=pentagon, 6=hexagon) around the corner centre — an ellipse (taller than wide, to fit
+  // the narrow-tall corner cell) so they keep their distance and never overlap. Shrinks the
+  // pieces as more pile in. A lone inmate just sits centred. Otherwise the normal seat fan.
   const layout: CSSProperties = jail
-    ? (() => {
-        const cols = jail.count <= 1 ? 1 : 2
-        const rows = Math.ceil(jail.count / cols)
-        const c = jail.slot % cols, r = Math.floor(jail.slot / cols)
-        const step = jail.count <= 2 ? 13 : jail.count <= 4 ? 11 : 9
-        const w = jail.count <= 2 ? 5.6 : jail.count <= 4 ? 4.4 : 3.6
-        return {
-          width: `${w}%`, maxWidth: `${jail.count <= 2 ? 26 : jail.count <= 4 ? 20 : 16}px`,
-          marginLeft: `${(c - (cols - 1) / 2) * step}px`,
-          marginTop: `${(r - (rows - 1) / 2) * step}px`,
-        }
-      })()
+    ? (jail.count <= 1
+        ? { width: "24px", height: "24px" }
+        : (() => {
+            const n = jail.count
+            const ang = (2 * Math.PI * jail.slot) / n - Math.PI / 2 // first vertex at the top
+            const rx = 7 + n * 1.1, ry = 10 + n * 1.4               // narrow-tall ellipse
+            const size = Math.max(11, Math.min(18, 20 - (n - 2) * 1.6))
+            return {
+              width: `${size}px`, height: `${size}px`,
+              marginLeft: `${rx * Math.cos(ang)}px`,
+              marginTop: `${ry * Math.sin(ang)}px`,
+            }
+          })())
     : { marginLeft: `${(seat - 2.5) * 5}px`, marginTop: `${((seat % 3) - 1) * 4}px` }
   return (
     <motion.div
