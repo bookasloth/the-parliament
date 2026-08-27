@@ -21,13 +21,13 @@ const SEAT_COL = ["#269CEF", "#FFCC1C", "#4AB765", "#FF4D93", "#FE5100", "#8b6fd
 
 const inr = (n: number) => n.toLocaleString("en-IN")
 
-// Boxed how-to tutorial shown left of the dice (numbered, icon + zone-colour accent).
-const HOWTO: { icon: string; head: string; body: string; color: string }[] = [
-  { icon: "🎲", head: "Roll & move.", body: "Land on a tile and act on what's there.", color: "#269CEF" },
-  { icon: "🏙️", head: "Buy it.", body: "Snap up the cities & companies you land on.", color: "#4AB765" },
-  { icon: "🎯", head: "Own 3 of a zone.", body: "That locks the zone — undeveloped rent doubles.", color: "#FF4D93" },
-  { icon: "🏗️", head: "Build up.", body: "Add houses → hotels to spike the rent you charge.", color: "#FE5100" },
-  { icon: "🤝", head: "Trade smart.", body: "Swap cards to complete your zones faster.", color: "#C08A00" },
+// Boxed how-to tutorial shown left of the dice (plain numbered steps, no icons/colours).
+const HOWTO: { head: string; body: string }[] = [
+  { head: "Roll & move.", body: "Land on a tile and act on what's there." },
+  { head: "Buy it.", body: "Snap up the cities & companies you land on." },
+  { head: "Own 3 of a zone.", body: "That locks the zone — undeveloped rent doubles." },
+  { head: "Build up.", body: "Add houses → hotels to spike the rent you charge." },
+  { head: "Trade smart.", body: "Swap cards to complete your zones faster." },
 ]
 
 // Human-readable engine error codes (the API returns raw codes). Anything not
@@ -534,13 +534,12 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   <ol className="vb-howto-steps">
                     {HOWTO.map((s, i) => (
                       <li key={i} className="vb-howto-step">
-                        <span className="vb-howto-num" style={{ background: s.color }}>{i + 1}</span>
-                        <span className="vb-howto-ic">{s.icon}</span>
+                        <span className="vb-howto-num">{i + 1}</span>
                         <span className="vb-howto-tx"><b>{s.head}</b> {s.body}</span>
                       </li>
                     ))}
                   </ol>
-                  <div className="vb-howto-foot">💰 Richest Vyapaari wins — don&apos;t go broke!</div>
+                  <div className="vb-howto-foot">Richest Vyapaari wins — don&apos;t go broke!</div>
                 </aside>
                 <div className="vb-hub-mid">
                   <div className="vb-hub-name">व्यापार</div>
@@ -556,20 +555,10 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   {rollStatus && <div className="vb-roll-status">{rollStatus}</div>}
                   <EndWarning gameEndsAt={gameEndsAt} round={view.round} ended={view.ended} />
                 </div>
-                <aside className="vb-hub-side vb-hubright">
-                  <div className="vb-hubright-log">
-                    <div className="vb-hub-h">Game log</div>
-                    <div className="vb-log-list">
-                      {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
-                    </div>
-                  </div>
-                  <div className="vb-hubright-coach">
-                    <div className="vb-hub-h">Your coach</div>
-                    <div className="vb-coach-list">
-                      {tips.map((t, i) => (
-                        <CoachTip key={i} tip={t} onOpen={(pos) => setOpenTile(pos)} />
-                      ))}
-                    </div>
+                <aside className="vb-hub-side vb-hublog">
+                  <div className="vb-hub-h">Game log</div>
+                  <div className="vb-log-list">
+                    {logLines.length ? logLines.map((x) => <div key={x.i} className="vb-log-line">{x.line}</div>) : <div className="vb-log-empty">No moves yet</div>}
                   </div>
                 </aside>
               </div>
@@ -637,10 +626,16 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
               </div>
             </section>
 
-            {/* B1 — your money: live balance (odometer) + recent transactions */}
+            {/* B1 — your money: live balance (odometer) + recent transactions, coach beneath */}
             <section className="vb-cell">
               <div className="vb-panel-head">Your balance</div>
               <MoneyMeter balance={view.players[you]?.cash ?? 0} entries={moneyEntries} />
+              <div className="vb-panel-head vb-coach-h">Your coach</div>
+              <div className="vb-coach-list">
+                {tips.map((t, i) => (
+                  <CoachTip key={i} tip={t} onOpen={(pos) => setOpenTile(pos)} />
+                ))}
+              </div>
             </section>
 
             {/* A2 — your properties (inline, click a card to open its deed) */}
@@ -1513,20 +1508,19 @@ const VB_CSS = `
 .vb-hub-mid{display:flex;flex-direction:column;align-items:center;gap:clamp(10px,2.4vw,24px);min-width:0;}
 .vb-hub-side{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .vb-hub-h{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:6px;}
-/* mid-left boxed how-to tutorial */
+/* mid-left boxed how-to tutorial — neutral numbers, no icons, small type */
 .vb-howto{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:clamp(8px,1.2vw,14px);gap:0;}
-.vb-howto-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(6px,1.1vw,11px);flex:1;min-height:0;overflow-y:auto;}
-.vb-howto-step{display:grid;grid-template-columns:auto auto 1fr;align-items:start;gap:7px;font-size:clamp(.58rem,.95vw,.8rem);color:var(--dim);line-height:1.3;}
-.vb-howto-num{grid-row:1;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-weight:800;color:#fff;flex:none;margin-top:1px;}
-.vb-howto-ic{font-size:.95rem;line-height:1;}
+.vb-howto-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(5px,.9vw,9px);flex:1;min-height:0;overflow-y:auto;}
+.vb-howto-step{display:grid;grid-template-columns:auto 1fr;align-items:start;gap:6px;font-size:clamp(.5rem,.8vw,.7rem);color:var(--dim);line-height:1.28;}
+.vb-howto-num{width:14px;height:14px;border-radius:50%;display:grid;place-items:center;font-size:.56rem;font-weight:700;color:var(--ink-2);background:var(--line);flex:none;margin-top:1px;}
 .vb-howto-tx b{color:var(--cream);font-weight:700;}
-.vb-howto-foot{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);font-size:clamp(.58rem,.95vw,.8rem);font-weight:700;color:var(--gold);}
-/* mid-right split: game log (top) + coach (bottom) */
-.vb-hubright{align-items:stretch;gap:10px;}
-.vb-hubright-log{flex:0 0 auto;display:flex;flex-direction:column;min-height:0;max-height:38%;}
-.vb-hubright-log .vb-log-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
-.vb-hubright-coach{flex:1;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);padding-top:8px;}
-.vb-coach-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.vb-howto-foot{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);font-size:clamp(.5rem,.8vw,.7rem);font-weight:700;color:var(--gold);}
+/* right hub: game log (single box) */
+.vb-hublog{align-items:stretch;}
+.vb-hublog .vb-log-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+/* coach — now at the bottom of B1 (Your balance) */
+.vb-coach-h{margin-top:10px;}
+.vb-coach-list{min-height:0;max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
 .vb-coach-tip{display:flex;align-items:flex-start;gap:7px;text-align:left;width:100%;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:4px;padding:6px 8px;cursor:pointer;font-family:"Poppins";color:var(--dim);transition:border-color .12s,background .12s;}
 .vb-coach-tip:hover:not(.static){border-color:var(--accent);background:var(--panel-2);}
 .vb-coach-tip.static{cursor:default;}
