@@ -35,22 +35,23 @@ describe("Indian-business events queue confirm-or-penalty payments", () => {
     expect(s.payments).toHaveLength(0);
   });
 
-  it("ED Raid: allow pays the bank 1000; miss pays double with the extra split", () => {
+  it("ED Raid: pay ₹2000 in time (allow), or miss the window → jail + ₹2000 (no double)", () => {
     const s = game(3);
     applyEvent(s, "ed_raid");
     const p = s.payments![0];
-    expect(p).toMatchObject({ actor: 0, dir: "pay", amount: 1000, party: "bank" });
-    // allow → exactly 1000 leaves the game
+    expect(p).toMatchObject({ actor: 0, dir: "pay", amount: 2000, party: "bank" });
+    // allow → exactly 2000 leaves the game, you stay free
     const allow = game(3);
     applyEvent(allow, "ed_raid");
     applyIntent(allow, 0, { type: "confirm_payment", paymentId: allow.payments![0].id });
-    expect(allow.players[0].cash).toBe(25000 - 1000);
-    // miss → 2000 total: 1000 to bank + extra 1000 (500 bank, 500 split to seats 1 & 2)
+    expect(allow.players[0].cash).toBe(25000 - 2000);
+    expect(allow.players[0].halted).toBe(0);
+    // miss → charged ₹2000 once (NOT doubled, no split) and sent to jail
     applyIntent(s, 0, { type: "expire_payment", paymentId: p.id });
     expect(s.players[0].cash).toBe(25000 - 2000);
-    const rest = 1000 - Math.floor(1000 / 2); // 500 split among 2 others → 250 each
-    expect(s.players[1].cash).toBe(25000 + Math.floor(rest / 2));
-    expect(s.players[2].cash).toBe(25000 + Math.floor(rest / 2));
+    expect(s.players[1].cash).toBe(25000); // others untouched — no penalty split
+    expect(s.players[2].cash).toBe(25000);
+    expect(s.players[0].halted).toBeGreaterThan(0); // jailed
   });
 
   it("Got Married: each other player owes the active player (allow settles it)", () => {
@@ -82,7 +83,7 @@ describe("Indian-business events queue confirm-or-penalty payments", () => {
     expect(EVENTS.tax_return.val).toBe(1000);
     expect(EVENTS.married.val).toBe(500);
     expect(EVENTS.festival.val).toBe(500);
-    expect(EVENTS.ed_raid.val).toBe(1000);
+    expect(EVENTS.ed_raid.val).toBe(2000);
     expect(EVENTS.jnv_revisit.val).toBe(6000);
   });
 

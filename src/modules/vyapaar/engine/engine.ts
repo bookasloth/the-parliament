@@ -504,7 +504,10 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
     }
 
     case "develop": {
-      if (!canManage(s)) return { error: "cannot_manage_now" };
+      // Building is only legal in `manage` — i.e. right after you ROLL and land on your own
+      // set city. No building from the `roll` phase, so you can't farm a house every turn
+      // without moving (you must roll the dice between builds).
+      if (s.phase !== "manage") return { error: "cannot_manage_now" };
       const id = intent.cityId;
       if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
       const c = s.cities[id];
@@ -689,6 +692,16 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       const p = list.find((x) => x.id === intent.paymentId);
       if (!p) return { error: "no_payment" };
       s.payments = list.filter((x) => x.id !== p.id);
+      // Dodge an ED raid past its 10s window → pay the raid once (no double) AND go to jail.
+      if (p.reason === "event:ed_raid" && p.dir === "pay") {
+        charge(s, p.actor, p.amount, "bank", events);
+        s.players[p.actor].pos = MONSOON_POS;
+        s.players[p.actor].halted = JAIL_TURNS;
+        s.players[p.actor].doubles = 0;
+        if (p.actor === s.active) s.pendingDouble = false;
+        events.push({ type: "ed_raid_jail", seat: p.actor, amount: p.amount });
+        return { state: s, events };
+      }
       if (p.dir === "collect") {
         events.push({ type: "payment_forfeited", seat: p.actor, amount: p.amount, reason: p.reason });
         return { state: s, events };

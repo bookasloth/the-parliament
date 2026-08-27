@@ -175,6 +175,7 @@ function logLine(e: Record<string, unknown>, players: PublicView["players"]): st
     case "mortgage": return `${nm(e.seat)} mortgaged ${city(e.cityId)}`
     case "unmortgage": return `${nm(e.seat)} cleared ${city(e.cityId)}`
     case "taxraid": case "jail_doubles": return `${nm(e.seat)} → jail`
+    case "ed_raid_jail": return `${nm(e.seat)} dodged the ED raid → jail (${rup(e.amount)})`
     case "bribe": return `${nm(e.seat)} bribed out of jail (${rup(e.amount)})`
     case "trade_proposed": return `${nm(e.seat)} proposed a trade to ${nm(e.to)}`
     case "trade_accepted": return `${nm(e.from)} & ${nm(e.to)} traded`
@@ -500,7 +501,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                       </div>
                       <div className="vb-mid" dangerouslySetInnerHTML={{ __html: cs.mortgaged ? "" : buildIcons(cs.level, city.zone) }} />
                       <div className="vb-price" style={{ color: ZONE_TX[city.zone] }}>{cs.mortgaged ? "mortgaged" : inr(city.price)}</div>
-                      {cs.owner !== null && <span className="vb-own" style={{ background: SEAT_COL[cs.owner % 6] }} />}
+                      {cs.owner !== null && <OwnerMark owner={cs.owner} token={playerTokens[cs.owner] ?? null} />}
                     </div>
                   )
                 }
@@ -513,7 +514,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                       <div className="vb-strip vb-grey"><span className="vb-nm">{co.short}</span></div>
                       <div className="vb-mid"><span className="vb-cat" dangerouslySetInnerHTML={{ __html: CAT_ICON[co.category] }} /></div>
                       <div className="vb-price vb-co">{inr(co.buy)}</div>
-                      {owner !== null && <span className="vb-own" style={{ background: SEAT_COL[owner % 6] }} />}
+                      {owner !== null && <OwnerMark owner={owner} token={playerTokens[owner] ?? null} />}
                     </div>
                   )
                 }
@@ -650,7 +651,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                   {myCities.map((c) => (
                     <button key={`c${c.id}`} className="vb-prop-card" style={{ borderLeftColor: ZONE_BG[CITIES[c.id].zone] }} onClick={() => setOpenTile(CITY_POS[c.id])}>
                       <span className="vb-prop-nm">{CITIES[c.id].name}</span>
-                      <span className="vb-prop-sub">{c.mortgaged ? "mortgaged" : c.level === 0 ? "unbuilt" : `level ${c.level}`}</span>
+                      {c.mortgaged
+                        ? <span className="vb-prop-sub">mortgaged</span>
+                        : c.level === 0
+                          ? <span className="vb-prop-sub">unbuilt</span>
+                          : <span className="vb-prop-icons" dangerouslySetInnerHTML={{ __html: buildIcons(c.level, CITIES[c.id].zone) }} />}
                     </button>
                   ))}
                   {myCompanyIds.map((ci) => (
@@ -918,6 +923,15 @@ function PlayerCell({ seat, p, token, isActive, isLeader, online, cityZones, com
       )}
     </div>
   )
+}
+
+// Owner badge on a board tile: the owner's mascot (small, ~¼ of a moving token) pinned to
+// the top corner — opposite the piece(s), which sit along the bottom. Falls back to a
+// seat-colour dot when that player has no mascot image.
+function OwnerMark({ owner, token }: { owner: number; token: string | null }) {
+  return token
+    ? <img src={token} alt="" className="vb-own vb-own-img" />
+    : <span className="vb-own" style={{ background: SEAT_COL[owner % 6] }} />
 }
 
 // One chip in the A1 "Up for grabs" map: zone-colour bg + initial letter. Only still-
@@ -1410,7 +1424,7 @@ const CAT_ICON = [
 ]
 const SPECIAL_ICON: Record<string, string> = {
   start: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M5 4h9l-2 3 2 3H5"/></svg>`,
-  monsoon: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 10a3 3 0 0 1 .3-6 4 4 0 0 1 7.5 1.2A2.7 2.7 0 0 1 14 10Z"/><path d="M7 13l-1 3M11 13l-1 3M14 13l-1 2"/></svg>`,
+  monsoon: ``, // jail corner — no icon; the bars overlay + jailed pieces tell the story
   mandi: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="10" cy="5.5" rx="6" ry="2.5"/><path d="M4 5.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4M4 9.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4"/></svg>`,
   taxraid: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 2 16h16Z"/><path d="M10 8v4"/><circle cx="10" cy="14.2" r=".4" fill="currentColor"/></svg>`,
 }
@@ -1454,6 +1468,7 @@ const VB_CSS = `
 .vb-price{text-align:center;font-size:clamp(4px,.62vw,8px);font-weight:700;padding:0 2px 2px;line-height:1.1;}
 .vb-price.vb-co{color:var(--grey-2);}
 .vb-own{position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:2px;border:1px solid #fff;}
+.vb-own-img{width:34%;max-width:11px;height:auto;aspect-ratio:1;border-radius:50%;object-fit:cover;border:1px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3);}
 .vb-special{background:#F2F2F2;align-items:center;justify-content:center;gap:2px;padding:2px;}
 .vb-special .vb-sic{color:var(--ink);width:clamp(11px,1.5vw,20px);height:clamp(11px,1.5vw,20px);}
 .vb-slb{font-size:clamp(4px,.6vw,7px);font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-2);text-align:center;line-height:1;}
@@ -1572,6 +1587,8 @@ const VB_CSS = `
 .vb-prop-card{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:2px;padding:9px 12px;cursor:pointer;text-align:left;font-family:"Poppins";}
 .vb-prop-nm{font-weight:600;font-size:.86rem;color:var(--cream);}
 .vb-prop-sub{font-size:.66rem;color:var(--dim);}
+.vb-prop-icons{display:inline-flex;align-items:center;gap:1px;flex:none;}
+.vb-prop-icons svg{width:14px;height:14px;}
 .vb-scrim{position:fixed;inset:0;background:rgba(15,17,17,.8);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
 .vb-over{width:min(340px,100%);background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
 .vb-over-crown{width:44px;height:36px;color:var(--yellow);}

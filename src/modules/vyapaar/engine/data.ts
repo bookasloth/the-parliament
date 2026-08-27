@@ -140,7 +140,7 @@ export const EVENTS: Record<EventId, EventDef> = {
   tax_return: { id: "tax_return", op: "cash", val: 1000 },
   married: { id: "married", op: "collectEach", val: 500 },
   festival: { id: "festival", op: "payEach", val: 500 },
-  ed_raid: { id: "ed_raid", op: "feeToBank", val: 1000 },
+  ed_raid: { id: "ed_raid", op: "feeToBank", val: 2000 }, // pay in the 10s window or it's jail + this
   jnv_revisit: { id: "jnv_revisit", op: "payEachSplit", val: 6000 },
 };
 // Fixed cell → event assignment (positions unchanged; give/take alternate around the ring).
