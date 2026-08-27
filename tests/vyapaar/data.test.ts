@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CITIES, ZONES, COMPANIES, upgradeCost, MAX_LEVEL } from "@/modules/vyapaar/engine/data";
+import { CITIES, ZONES, COMPANIES, upgradeCost, MAX_LEVEL, ZONE_DOUBLE } from "@/modules/vyapaar/engine/data";
 
 describe("vyapaar data", () => {
   it("has 25 cities, 5 per zone, authored zone-grouped", () => {
@@ -20,6 +20,15 @@ describe("vyapaar data", () => {
       expect(c.rent).toHaveLength(7);
       for (let i = 1; i < c.rent.length; i++) expect(c.rent[i]).toBeGreaterThan(c.rent[i - 1]);
       expect(c.price).toBeGreaterThan(0);
+    }
+  });
+
+  it("makes the first house worth building: 1-house rent beats the zone-set (base x ZONE_DOUBLE) rent", () => {
+    // Regression: base and 1-house rungs were authored independently, so 23/25 cities had
+    // 1House <= base*ZONE_DOUBLE — building the first house gave zero (or negative) rent.
+    for (const c of CITIES) {
+      const zoneSetRent = c.rent[0] * ZONE_DOUBLE;
+      expect(c.rent[1]).toBeGreaterThan(zoneSetRent);
     }
   });
 

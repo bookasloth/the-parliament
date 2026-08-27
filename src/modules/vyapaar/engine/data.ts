@@ -19,35 +19,35 @@ export interface CityDef {
 // 15-19 = West, 20-24 = Central. (Board placement is cheapest-first — board.ts sorts by price.)
 export const CITIES: CityDef[] = [
   // North (zone 0)
-  { name: "Delhi", zone: 0, price: 9000, rent: [450, 900, 1350, 2000, 2700, 3600, 4950] },
-  { name: "Chandigarh", zone: 0, price: 6500, rent: [350, 650, 1000, 1450, 1950, 2600, 3600] },
-  { name: "Jaipur", zone: 0, price: 5800, rent: [300, 600, 850, 1300, 1750, 2300, 3200] },
-  { name: "Lucknow", zone: 0, price: 5200, rent: [250, 500, 800, 1150, 1550, 2100, 2850] },
-  { name: "Dehradun", zone: 0, price: 4200, rent: [200, 400, 650, 950, 1250, 1700, 2300] },
+  { name: "Delhi", zone: 0, price: 9000, rent: [450, 1350, 2025, 2700, 3375, 4050, 4725] },
+  { name: "Chandigarh", zone: 0, price: 6500, rent: [350, 1050, 1575, 2100, 2625, 3150, 3675] },
+  { name: "Jaipur", zone: 0, price: 5800, rent: [300, 900, 1350, 1800, 2250, 2700, 3150] },
+  { name: "Lucknow", zone: 0, price: 5200, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Dehradun", zone: 0, price: 4200, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
   // South (zone 1)
-  { name: "Bengaluru", zone: 1, price: 8800, rent: [450, 900, 1300, 1950, 2650, 3500, 4850] },
-  { name: "Hyderabad", zone: 1, price: 8000, rent: [400, 800, 1200, 1750, 2400, 3200, 4400] },
-  { name: "Chennai", zone: 1, price: 7500, rent: [400, 750, 1100, 1650, 2250, 3000, 4100] },
-  { name: "Kochi", zone: 1, price: 4800, rent: [250, 500, 700, 1050, 1450, 1900, 2650] },
-  { name: "Coimbatore", zone: 1, price: 4500, rent: [250, 450, 700, 1000, 1350, 1800, 2500] },
+  { name: "Bengaluru", zone: 1, price: 8800, rent: [450, 1350, 2025, 2700, 3375, 4050, 4725] },
+  { name: "Hyderabad", zone: 1, price: 8000, rent: [400, 1200, 1800, 2400, 3000, 3600, 4200] },
+  { name: "Chennai", zone: 1, price: 7500, rent: [400, 1200, 1800, 2400, 3000, 3600, 4200] },
+  { name: "Kochi", zone: 1, price: 4800, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Coimbatore", zone: 1, price: 4500, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
   // East (zone 2)
-  { name: "Kolkata", zone: 2, price: 7200, rent: [350, 700, 1100, 1600, 2150, 2900, 3950] },
-  { name: "Bhubaneswar", zone: 2, price: 5000, rent: [250, 500, 750, 1100, 1500, 2000, 2750] },
-  { name: "Guwahati", zone: 2, price: 4600, rent: [250, 450, 700, 1000, 1400, 1850, 2550] },
-  { name: "Patna", zone: 2, price: 4300, rent: [200, 450, 650, 950, 1300, 1700, 2350] },
-  { name: "Ranchi", zone: 2, price: 3800, rent: [200, 400, 550, 850, 1150, 1500, 2100] },
+  { name: "Kolkata", zone: 2, price: 7200, rent: [350, 1050, 1575, 2100, 2625, 3150, 3675] },
+  { name: "Bhubaneswar", zone: 2, price: 5000, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Guwahati", zone: 2, price: 4600, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Patna", zone: 2, price: 4300, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
+  { name: "Ranchi", zone: 2, price: 3800, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
   // West (zone 3)
-  { name: "Mumbai", zone: 3, price: 9500, rent: [500, 950, 1450, 2100, 2850, 3800, 5250] },
-  { name: "Pune", zone: 3, price: 6800, rent: [350, 700, 1000, 1500, 2050, 2700, 3750] },
-  { name: "Ahmedabad", zone: 3, price: 6200, rent: [300, 600, 950, 1350, 1850, 2500, 3400] },
-  { name: "Surat", zone: 3, price: 5500, rent: [300, 550, 850, 1200, 1650, 2200, 3000] },
-  { name: "Vadodara", zone: 3, price: 4400, rent: [200, 450, 650, 950, 1300, 1750, 2400] },
+  { name: "Mumbai", zone: 3, price: 9500, rent: [500, 1500, 2250, 3000, 3750, 4500, 5250] },
+  { name: "Pune", zone: 3, price: 6800, rent: [350, 1050, 1575, 2100, 2625, 3150, 3675] },
+  { name: "Ahmedabad", zone: 3, price: 6200, rent: [300, 900, 1350, 1800, 2250, 2700, 3150] },
+  { name: "Surat", zone: 3, price: 5500, rent: [300, 900, 1350, 1800, 2250, 2700, 3150] },
+  { name: "Vadodara", zone: 3, price: 4400, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
   // Central (zone 4)
-  { name: "Indore", zone: 4, price: 5600, rent: [300, 550, 850, 1250, 1700, 2250, 3100] },
-  { name: "Bhopal", zone: 4, price: 4900, rent: [250, 500, 750, 1100, 1450, 1950, 2700] },
-  { name: "Nagpur", zone: 4, price: 4700, rent: [250, 450, 700, 1050, 1400, 1900, 2600] },
-  { name: "Raipur", zone: 4, price: 4000, rent: [200, 400, 600, 900, 1200, 1600, 2200] },
-  { name: "Jabalpur", zone: 4, price: 3500, rent: [200, 350, 500, 800, 1050, 1400, 1900] },
+  { name: "Indore", zone: 4, price: 5600, rent: [300, 900, 1350, 1800, 2250, 2700, 3150] },
+  { name: "Bhopal", zone: 4, price: 4900, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Nagpur", zone: 4, price: 4700, rent: [250, 750, 1125, 1500, 1875, 2250, 2625] },
+  { name: "Raipur", zone: 4, price: 4000, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
+  { name: "Jabalpur", zone: 4, price: 3500, rent: [200, 600, 900, 1200, 1500, 1800, 2100] },
 ];
 
 export const UPGRADE_COST_RATIO = 0.1; // house/hotel cost per level = 10% of buy (tunable by harness)
@@ -98,6 +98,11 @@ export const RESTRUCTURE_PENALTY = 1200; // per-lap salary cut (3 × 1200 = 3600
 export const JAIL_TURNS = 3; // turns you sit out after Tax Raid (no rolling while jailed)
 export const BRIBE_BANK = 1000; // pay the bank this…
 export const BRIBE_EACH = 250; // …plus this to every other player to walk out of jail early
+// Trader's union charge: each of the two traders pays TRADE_UNION_BANK to the bank plus
+// TRADE_UNION_POOL split evenly among the OTHER (non-trader) players. No other players ⇒
+// only the bank charge applies.
+export const TRADE_UNION_BANK = 500;
+export const TRADE_UNION_POOL = 500;
 export const MAX_ROUNDS = 40;
 export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;
