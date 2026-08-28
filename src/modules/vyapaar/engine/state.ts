@@ -23,6 +23,7 @@ export type Intent =
   | { type: "withdraw_trade"; tradeId: number }
   | { type: "expire_trade"; tradeId: number }
   | { type: "confirm_payment"; paymentId: number }
+  | { type: "confirm_all_payments" }
   | { type: "expire_payment"; paymentId: number }
   | { type: "restructure" }
   | { type: "bribe_jail" }

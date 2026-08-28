@@ -22,13 +22,21 @@ describe("no consecutive house farming — build only in manage phase", () => {
     expect(s.cities[0].level).toBe(0); // nothing built
   });
 
-  it("allows building in the manage phase (after landing on your set) and ends the turn", () => {
+  it("allows building in the manage phase and keeps building this visit (no auto turn-end)", () => {
     const s = controllingNorth();
     s.phase = "manage";
-    const r = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("state" in r).toBe(true);
+    applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect(s.cities[0].level).toBe(1);
-    expect(s.active).not.toBe(0); // developing IS your move — turn passed
+    expect(s.active).toBe(0); // stays your turn — build deep, then end_turn yourself
+    expect(s.phase).toBe("manage");
+    // even-build: raise the others to level 1 before city 0 goes to 2
+    applyIntent(s, 0, { type: "develop", cityId: 1 });
+    applyIntent(s, 0, { type: "develop", cityId: 2 });
+    applyIntent(s, 0, { type: "develop", cityId: 0 });
+    expect(s.cities[0].level).toBe(2);
+    // end the turn explicitly
+    applyIntent(s, 0, { type: "end_turn" });
+    expect(s.active).not.toBe(0);
   });
 });
 

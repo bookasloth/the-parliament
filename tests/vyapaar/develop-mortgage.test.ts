@@ -20,26 +20,25 @@ describe("develop / mortgage", () => {
     expect("state" in r).toBe(true);
     expect(s.cities[0].level).toBe(1);
     expect(s.players[0].cash).toBe(7500 - cost);
-    expect(s.active).toBe(1); // building is one-per-turn — it ended seat 0's turn
-    // even-building: back on seat 0's turn, can't take city 0 to level 2 while 1 and 2 are level 0
-    s.active = 0; s.phase = "manage";
+    expect(s.active).toBe(0); // build stays in `manage` — keep building this visit
+    expect(s.phase).toBe("manage");
+    // even-building: can't take city 0 to level 2 while 1 and 2 are still level 0
     const r2 = applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect("error" in r2 && r2.error).toBe("uneven_build");
     expect(s.cities[0].level).toBe(1);
   });
 
-  it("one build ends the turn; a house can be built off-tile but a hotel needs you on the city", () => {
+  it("build deep in one visit; a house can be built off-tile but a hotel needs you on the city", () => {
     const s = createGame(1, ["a", "b"]);
     ownNorthSet(s);
     s.players[0].pos = 0; // on Start, not on any North city
-    // House (level 0→1) is allowed off-tile and passes the turn
+    // House (level 0→1) is allowed off-tile and stays your turn
     const h = applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect("state" in h).toBe(true);
     expect(s.cities[0].level).toBe(1);
-    expect(s.active).toBe(1);
-    // Bring the whole set to level 3 (all houses), back to seat 0's turn
+    expect(s.active).toBe(0);
+    // Bring the whole set to level 3 (all houses)
     s.cities[0].level = 3; s.cities[1].level = 3; s.cities[2].level = 3;
-    s.active = 0; s.phase = "manage";
     // Hotel (3→4) off-tile is refused...
     const off = applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect("error" in off && off.error).toBe("must_be_on_city");
@@ -49,7 +48,7 @@ describe("develop / mortgage", () => {
     const on = applyIntent(s, 0, { type: "develop", cityId: 0 });
     expect("state" in on).toBe(true);
     expect(s.cities[0].level).toBe(4);
-    expect(s.active).toBe(1); // still ends the turn
+    expect(s.active).toBe(0); // still your turn — end it yourself when done
   });
 
   it("refuses development without set control", () => {

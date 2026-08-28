@@ -525,10 +525,11 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       s.players[seat].cash -= cost;
       c.level++;
       events.push({ type: "develop", seat, cityId: id, level: c.level, amount: cost });
-      // One build per turn: developing IS your move — you don't also roll. End the turn.
+      // Build as much as you can afford this visit (houses → hotels) — stays in `manage` so
+      // you keep building or end the turn. You still can't build without landing on your set,
+      // so there's no roll-phase farming; deep development just needs the landing.
       s.pendingCity = null;
       s.pendingCompany = null;
-      advanceTurn(s, events);
       return { state: s, events };
     }
 
@@ -681,6 +682,26 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       } else {
         const paid = charge(s, seat, p.amount, p.party, events);
         events.push({ type: "payment_paid", seat, to: p.party === "bank" ? undefined : p.party, amount: paid, reason: p.reason });
+      }
+      return { state: s, events };
+    }
+
+    case "confirm_all_payments": {
+      // Clear the whole queue at once — settle every pending payment this seat owns, in order.
+      // Same per-payment logic as confirm_payment; stops if a charge bankrupts you mid-way.
+      const list = s.payments ?? [];
+      const mine = list.filter((x) => x.actor === seat);
+      if (!mine.length) return { error: "no_payment" };
+      s.payments = list.filter((x) => x.actor !== seat);
+      for (const p of mine) {
+        if (s.players[seat].left) break; // a prior charge wiped you out — nothing left to settle
+        if (p.dir === "collect") {
+          credit(s, seat, p.amount);
+          events.push({ type: "payment_collected", seat, amount: p.amount, reason: p.reason });
+        } else {
+          const paid = charge(s, seat, p.amount, p.party, events);
+          events.push({ type: "payment_paid", seat, to: p.party === "bank" ? undefined : p.party, amount: paid, reason: p.reason });
+        }
       }
       return { state: s, events };
     }

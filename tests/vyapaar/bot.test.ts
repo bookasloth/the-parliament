@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { botIntent, driveBots, isBotUserId, BOT_USERS } from "@/modules/vyapaar/bot";
+import { botIntent, driveBots, isBotUserId, BOT_USERS, findBotSwap, botAcceptsTrade } from "@/modules/vyapaar/bot";
 
 describe("botIntent — the policy", () => {
   it("rolls in the roll phase and sits out jail", () => {
@@ -64,6 +64,47 @@ describe("driveBots — plays whole games without error", () => {
     const steps = driveBots(s, new Set([1])); // seat 0 is human, active
     expect(steps).toHaveLength(0); // active seat 0 isn't a bot → nothing driven
     expect(s.ended).toBe(false);
+  });
+});
+
+describe("bot trading — mutual set-completing swaps", () => {
+  // seat0: 2 of North (needs id2, held by seat1). seat1: 2 of West (needs id17, held by seat0).
+  function crossHolding() {
+    const s = createGame(1, ["a", "b"], 25000);
+    for (const id of [0, 1]) s.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    s.cities[2] = { owner: 1, level: 0, mortgaged: false };
+    for (const id of [15, 16]) s.cities[id] = { owner: 1, level: 0, mortgaged: false };
+    s.cities[17] = { owner: 0, level: 0, mortgaged: false };
+    return s;
+  }
+
+  it("finds the mutual swap and the recipient accepts it (both complete a set)", () => {
+    const s = crossHolding();
+    const swap = findBotSwap(s, 0, new Set([0, 1]));
+    expect(swap).toBeTruthy();
+    expect(swap!.to).toBe(1);
+    expect(swap!.give.cities).toEqual([17]); // seat0 gives its West piece
+    expect(swap!.get.cities).toEqual([2]);   // seat0 gets the North piece
+    // recipient seat1 receives id17 → completes West, gives id2 → accept
+    const offer = { id: 1, from: 0, to: 1, give: swap!.give, get: swap!.get, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer)).toBe(true);
+  });
+
+  it("refuses a trade that doesn't win a set", () => {
+    const s = crossHolding();
+    // offer seat1 a useless North piece for its West piece → seat1 would LOSE progress
+    const offer = { id: 2, from: 0, to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [15] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer)).toBe(false);
+  });
+
+  it("bots actually trade during all-bot games", () => {
+    let trades = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const s = createGame(seed, ["a", "b", "c", "d"], 200000);
+      const steps = driveBots(s, new Set([0, 1, 2, 3]));
+      trades += steps.filter((x) => x.intent.type === "trade_accepted" as string || x.intent.type === "propose_trade").length;
+    }
+    expect(trades).toBeGreaterThan(0);
   });
 });
 
