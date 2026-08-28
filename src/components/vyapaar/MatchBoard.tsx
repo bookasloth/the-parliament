@@ -680,6 +680,11 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                 {myTurn && view.phase === "buy" && (
                   <button className="vb-act primary" disabled={busy} onClick={() => setOpenTile(buyTarget)}>Review purchase</button>
                 )}
+                {(view.payments ?? []).length >= 2 && (
+                  <button className="vb-act primary vb-payall" disabled={busy} onClick={() => send({ type: "confirm_all_payments" }, false, "Pay all")}>
+                    Pay all {(view.payments ?? []).length} at once
+                  </button>
+                )}
                 {(view.payments ?? []).map((p) => (
                   <PaymentCard key={p.id} payment={p} view={view} busy={busy} onAction={send} />
                 ))}
@@ -1568,6 +1573,7 @@ const VB_CSS = `
 .vb-actions{display:flex;flex-wrap:wrap;gap:8px;}
 .vb-act{font-family:"Poppins";font-weight:600;font-size:.84rem;padding:.55rem .9rem;border-radius:2px;border:1px solid var(--line);background:var(--panel-2);color:var(--cream);cursor:pointer;}
 .vb-act.primary{border:none;color:#fff;background:var(--accent);}
+.vb-payall{width:100%;}
 .vb-act:disabled{opacity:.5;cursor:not-allowed;}
 .vb-bid{display:flex;gap:6px;}.vb-bid input{width:90px;background:var(--panel-2);border:1px solid var(--line);border-radius:2px;color:var(--cream);padding:.5rem;font-family:"Poppins";}
 .vb-trade{background:var(--panel-2);border:1px solid var(--gold);border-radius:2px;padding:10px 12px;font-size:.84rem;}

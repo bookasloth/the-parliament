@@ -10,5 +10,5 @@ import type { Intent } from "./state"
 export const CLIENT_INTENT_TYPES: ReadonlySet<Exclude<Intent["type"], "expire_trade" | "expire_payment">> = new Set([
   "roll", "buy", "decline", "bid", "develop", "mortgage", "unmortgage", "sell",
   "propose_trade", "respond_trade", "counter_trade", "withdraw_trade",
-  "confirm_payment", "restructure", "bribe_jail", "serve_jail", "leave_game", "end_turn",
+  "confirm_payment", "confirm_all_payments", "restructure", "bribe_jail", "serve_jail", "leave_game", "end_turn",
 ] as const)
