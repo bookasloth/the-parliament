@@ -525,10 +525,11 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       s.players[seat].cash -= cost;
       c.level++;
       events.push({ type: "develop", seat, cityId: id, level: c.level, amount: cost });
-      // One build per turn: developing IS your move — you don't also roll. End the turn.
+      // Build as much as you can afford this visit (houses → hotels) — stays in `manage` so
+      // you keep building or end the turn. You still can't build without landing on your set,
+      // so there's no roll-phase farming; deep development just needs the landing.
       s.pendingCity = null;
       s.pendingCompany = null;
-      advanceTurn(s, events);
       return { state: s, events };
     }
 

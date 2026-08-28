@@ -255,7 +255,11 @@ async function commitMatchState(
   appendedLog: { seat: number; intent: Intent }[],
   resetTimer: boolean,
 ): Promise<Date | null> {
-  const log = [...(match.actionLog as { seat: number; intent: Intent }[]), ...appendedLog]
+  // Stamp each step with the wall-clock time it was persisted (engine has no clock). Enables
+  // post-hoc analysis: payment latency, turn duration, who dawdles. Replay ignores `t`.
+  const nowMs = Date.now()
+  const stamped = appendedLog.map((s) => ({ ...s, t: nowMs }))
+  const log = [...(match.actionLog as { seat: number; intent: Intent; t?: number }[]), ...stamped]
   // Only refresh the 30s deadline when the ACTIVE player's turn actually advanced. An
   // off-turn trade/bid from a non-active seat must NOT extend the active player's clock —
   // otherwise two colluders could keep resetting it and stall an AFK player forever.
