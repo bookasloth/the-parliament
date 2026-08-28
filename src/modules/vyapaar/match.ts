@@ -12,7 +12,7 @@ import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import { stampNewPayments, sweepExpiredPayments } from "./engine/payment-expiry"
-import { driveBots, isBotUserId, BOT_OPENING_CASH } from "./bot"
+import { driveBots, isBotUserId, botOpeningCash } from "./bot"
 import crypto from "node:crypto"
 
 // Hard wall-clock cap: a game force-ends 60 minutes after it was created, whichever of
@@ -127,7 +127,7 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     const seated = room.members
     const names = seated.map((m) => m.user.displayName || m.user.legalName)
     // Bots play off a fixed stack (they never settle to a real wallet); humans use their coins.
-    const openingCash = seated.map((m) => (isBotUserId(m.userId) ? BOT_OPENING_CASH : m.user.vyapaarWallet))
+    const openingCash = seated.map((m) => (isBotUserId(m.userId) ? botOpeningCash(m.userId) : m.user.vyapaarWallet))
     const botSeats = new Set(seated.map((m, i) => ({ m, i })).filter((x) => isBotUserId(x.m.userId)).map((x) => x.i))
     const seed = crypto.randomInt(2 ** 31)
     const state = createGame(seed, names, openingCash)

@@ -9,20 +9,37 @@ import type { GameState, Intent } from "./engine/state";
 // prisma/seeds/vyapaar-bots.sql — their ids are the constants below, so a seat is a bot
 // iff its userId is in this set (no schema flag, no per-turn lookup).
 
-export const BOT_USERS = [
-  { id: "00000000-0000-4000-8000-0000000000b1", username: "bot_ravi", name: "Ravi (bot)" },
-  { id: "00000000-0000-4000-8000-0000000000b2", username: "bot_meera", name: "Meera (bot)" },
-  { id: "00000000-0000-4000-8000-0000000000b3", username: "bot_arjun", name: "Arjun (bot)" },
-  { id: "00000000-0000-4000-8000-0000000000b4", username: "bot_sana", name: "Sana (bot)" },
-  { id: "00000000-0000-4000-8000-0000000000b5", username: "bot_dev", name: "Dev (bot)" },
-] as const;
-const BOT_IDS = new Set<string>(BOT_USERS.map((b) => b.id));
-
-export function isBotUserId(userId: string): boolean {
-  return BOT_IDS.has(userId);
+// A generated board piece: a rounded token with the character's initials on a signature
+// colour, as a self-contained data-URI SVG (no CDN upload needed). Swap `token` for a real
+// image URL later and everything downstream just works.
+function tokenSvg(initials: string, bg: string): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='9' fill='${bg}'/><text x='20' y='27' font-family='Poppins,Arial,sans-serif' font-size='16' font-weight='700' fill='#fff' text-anchor='middle'>${initials}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-export const BOT_OPENING_CASH = 25000; // fixed stack; bots never settle to a real wallet
+export const BOT_USERS = [
+  { id: "00000000-0000-4000-8000-0000000000b1", username: "bot_abuddhi", name: "A Buddhi",       cash: 200000, token: tokenSvg("AB", "#6C3EF5") },
+  { id: "00000000-0000-4000-8000-0000000000b2", username: "bot_vflash",  name: "V Flash",        cash: 200000, token: tokenSvg("VF", "#E8A400") },
+  { id: "00000000-0000-4000-8000-0000000000b3", username: "bot_dkboss",  name: "DK Boss",        cash: 100000, token: tokenSvg("DK", "#111827") },
+  { id: "00000000-0000-4000-8000-0000000000b4", username: "bot_chimlig", name: "Chimli G",       cash: 100000, token: tokenSvg("CG", "#E84393") },
+  { id: "00000000-0000-4000-8000-0000000000b5", username: "bot_pkaddoo", name: "P Kaddoo",       cash: 150000, token: tokenSvg("PK", "#F97316") },
+  { id: "00000000-0000-4000-8000-0000000000b6", username: "bot_dhamma",  name: "Little Dhamma",  cash: 150000, token: tokenSvg("LD", "#10B981") },
+] as const;
+const BOT_BY_ID = new Map<string, (typeof BOT_USERS)[number]>(BOT_USERS.map((b) => [b.id, b]));
+
+export function isBotUserId(userId: string): boolean {
+  return BOT_BY_ID.has(userId);
+}
+
+/** A bot's fixed opening stack (they never settle to a real wallet), or a default. */
+export function botOpeningCash(userId: string): number {
+  return BOT_BY_ID.get(userId)?.cash ?? 150000;
+}
+
+/** A bot's special board token (data-URI piece), or null for a non-bot. */
+export function botToken(userId: string): string | null {
+  return BOT_BY_ID.get(userId)?.token ?? null;
+}
 
 const RESERVE = 2000; // cash a bot keeps in hand rather than spending to the last rupee
 

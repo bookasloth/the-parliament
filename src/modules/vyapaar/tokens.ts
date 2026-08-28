@@ -44,12 +44,13 @@ function shuffled(pool: number[], seed: number): number[] {
  * (indices 1..6), ordered deterministically by the matchId. A table is at most 6
  * players, so the pool covers all non-permanent seats with no collisions.
  */
-export function assignTokens(players: { seat: number; email: string | null }[], matchId: string): (string | null)[] {
+export function assignTokens(players: { seat: number; email: string | null; token?: string | null }[], matchId: string): (string | null)[] {
   const out: (string | null)[] = []
   const pool = shuffled([1, 2, 3, 4, 5, 6], hash(matchId))
   let pi = 0
   for (const p of [...players].sort((a, b) => a.seat - b.seat)) {
-    if (p.email === PERMANENT_EMAIL) out[p.seat] = TOKENS[0]
+    if (p.token) out[p.seat] = p.token // a pinned piece (e.g. a bot's own token) wins
+    else if (p.email === PERMANENT_EMAIL) out[p.seat] = TOKENS[0]
     else out[p.seat] = TOKENS[pool[pi++]] ?? null
   }
   return out
