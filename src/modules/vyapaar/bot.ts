@@ -9,21 +9,18 @@ import type { GameState, Intent } from "./engine/state";
 // prisma/seeds/vyapaar-bots.sql — their ids are the constants below, so a seat is a bot
 // iff its userId is in this set (no schema flag, no per-turn lookup).
 
-// A generated board piece: a rounded token with the character's initials on a signature
-// colour, as a self-contained data-URI SVG (no CDN upload needed). Swap `token` for a real
-// image URL later and everything downstream just works.
-function tokenSvg(initials: string, bg: string): string {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='9' fill='${bg}'/><text x='20' y='27' font-family='Poppins,Arial,sans-serif' font-size='16' font-weight='700' fill='#fff' text-anchor='middle'>${initials}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
+// Each bot's board piece is a PNG on the same CDN as the human token pieces. Upload these
+// filenames (see the list in the PR/notes); until they exist the <img> just shows a broken
+// piece — the game is unaffected.
+const TOK = "https://company-assets.bookasloth.in/nnawca/images/tokens";
 
 export const BOT_USERS = [
-  { id: "00000000-0000-4000-8000-0000000000b1", username: "bot_abuddhi", name: "A Buddhi",       cash: 200000, token: tokenSvg("AB", "#6C3EF5") },
-  { id: "00000000-0000-4000-8000-0000000000b2", username: "bot_vflash",  name: "V Flash",        cash: 200000, token: tokenSvg("VF", "#E8A400") },
-  { id: "00000000-0000-4000-8000-0000000000b3", username: "bot_dkboss",  name: "DK Boss",        cash: 100000, token: tokenSvg("DK", "#111827") },
-  { id: "00000000-0000-4000-8000-0000000000b4", username: "bot_chimlig", name: "Chimli G",       cash: 100000, token: tokenSvg("CG", "#E84393") },
-  { id: "00000000-0000-4000-8000-0000000000b5", username: "bot_pkaddoo", name: "P Kaddoo",       cash: 150000, token: tokenSvg("PK", "#F97316") },
-  { id: "00000000-0000-4000-8000-0000000000b6", username: "bot_dhamma",  name: "Little Dhamma",  cash: 150000, token: tokenSvg("LD", "#10B981") },
+  { id: "00000000-0000-4000-8000-0000000000b1", username: "bot_abuddhi", name: "A Buddhi",       cash: 200000, token: `${TOK}/bot-abuddhi.png` },
+  { id: "00000000-0000-4000-8000-0000000000b2", username: "bot_vflash",  name: "V Flash",        cash: 200000, token: `${TOK}/bot-vflash.png` },
+  { id: "00000000-0000-4000-8000-0000000000b3", username: "bot_dkboss",  name: "DK Boss",        cash: 100000, token: `${TOK}/bot-dkboss.png` },
+  { id: "00000000-0000-4000-8000-0000000000b4", username: "bot_chimlig", name: "Chimli G",       cash: 100000, token: `${TOK}/bot-chimlig.png` },
+  { id: "00000000-0000-4000-8000-0000000000b5", username: "bot_pkaddoo", name: "P Kaddoo",       cash: 150000, token: `${TOK}/bot-pkaddoo.png` },
+  { id: "00000000-0000-4000-8000-0000000000b6", username: "bot_dhamma",  name: "Little Dhamma",  cash: 150000, token: `${TOK}/bot-dhamma.png` },
 ] as const;
 const BOT_BY_ID = new Map<string, (typeof BOT_USERS)[number]>(BOT_USERS.map((b) => [b.id, b]));
 
