@@ -12,6 +12,7 @@ import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import { stampNewPayments, sweepExpiredPayments } from "./engine/payment-expiry"
+import { driveBots, isBotUserId, BOT_OPENING_CASH } from "./bot"
 import crypto from "node:crypto"
 
 // Hard wall-clock cap: a game force-ends 60 minutes after it was created, whichever of
@@ -102,7 +103,8 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
   const room0 = await prisma.vyapaarRoom.findUnique({ where: { id: roomId }, select: { members: { select: { userId: true } } } })
   if (!room0) throw new ForbiddenError("Room not found")
   const memberIds = room0.members.map((m) => m.userId).sort()
-  await Promise.all(memberIds.map(ensureVyapaarEnrollment))
+  // Bots have no real wallet to enrol — only humans go through enrollment.
+  await Promise.all(memberIds.filter((id) => !isBotUserId(id)).map(ensureVyapaarEnrollment))
 
   const res = await prisma.$transaction(async (tx) => {
     // Lock the participating users' rows so concurrent starts sharing a member serialize.
@@ -124,13 +126,17 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
 
     const seated = room.members
     const names = seated.map((m) => m.user.displayName || m.user.legalName)
-    const openingCash = seated.map((m) => m.user.vyapaarWallet)
+    // Bots play off a fixed stack (they never settle to a real wallet); humans use their coins.
+    const openingCash = seated.map((m) => (isBotUserId(m.userId) ? BOT_OPENING_CASH : m.user.vyapaarWallet))
+    const botSeats = new Set(seated.map((m, i) => ({ m, i })).filter((x) => isBotUserId(x.m.userId)).map((x) => x.i))
     const seed = crypto.randomInt(2 ** 31)
     const state = createGame(seed, names, openingCash)
+    // If the opening seat(s) are bots, play them out immediately so a human never waits on a bot.
+    const botSteps = driveBots(state, botSeats)
     const match = await tx.vyapaarMatch.create({
       data: {
-        roomId: room.id, seed: BigInt(seed), state: state as unknown as object, actionLog: [],
-        status: "active", activeSeat: 0, turnExpiresAt: turnExpiresAtFor(state, Date.now()),
+        roomId: room.id, seed: BigInt(seed), state: state as unknown as object, actionLog: botSteps as unknown as object,
+        status: "active", activeSeat: state.active, turnExpiresAt: turnExpiresAtFor(state, Date.now()),
         players: { create: seated.map((m, i) => ({ userId: m.userId, seat: i, openingCash: openingCash[i] })) },
       },
       select: { id: true },
@@ -177,6 +183,8 @@ async function settleMatch(
       where: { matchId_seat: { matchId, seat: p.seat } },
       data: { resultCash, placement: placementBySeat.get(p.seat)! },
     })
+    // Bots carry no real wallet/ledger/stats — record their placement above, but never mint coins.
+    if (isBotUserId(p.userId)) continue
     // VyapaarLedger has no matchId column (M1 schema: userId/delta/reason/refId) — refId carries the match id.
     await tx.vyapaarLedger.create({
       data: { userId: p.userId, delta: resultCash - p.openingCash, reason: "game_settlement", refId: matchId },
@@ -220,6 +228,7 @@ async function settleLeaver(
     where: { matchId_seat: { matchId, seat: p.seat } },
     data: { resultCash },
   })
+  if (isBotUserId(p.userId)) return // bots record resultCash but never touch a real wallet
   await tx.vyapaarLedger.create({
     data: { userId: p.userId, delta, reason: "game_leave", refId: matchId },
   })
@@ -315,13 +324,16 @@ export async function applyMatchIntent(
     const expired = [...sweepExpiredTrades(state, now), ...sweepExpiredPayments(state, now)]
     const r = applyIntent(state, me.seat, intent)
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
+    // Play out any bot seats the move handed the turn to, so humans never wait on a bot.
+    const botSeats = new Set(match.players.filter((p) => isBotUserId(p.userId)).map((p) => p.seat))
+    const botSteps = driveBots(r.state, botSeats)
     stampNewTrades(r.state, now) // give any just-proposed/countered trade its 60s clock
     stampNewPayments(r.state, now) // and any just-queued auto-payment its 10s clock
 
     // Refresh the deadline only when the active player's turn advanced — an off-turn
     // trade/bid (non-active seat, same active player) must not reset the clock.
     const resetTimer = me.seat === activeBefore || r.state.active !== activeBefore
-    const expiresAt = await commitMatchState(tx, match, r.state, [...expired, { seat: me.seat, intent }], resetTimer)
+    const expiresAt = await commitMatchState(tx, match, r.state, [...expired, { seat: me.seat, intent }, ...botSteps], resetTimer)
     return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
   if ("view" in result) {
@@ -360,6 +372,7 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
       const appended: { seat: number; intent: Intent }[] = []
       appended.push(...sweepExpiredTrades(state, now.getTime())) // clear expired trades too
       appended.push(...sweepExpiredPayments(state, now.getTime())) // and auto-resolve overdue payments
+      const botSeats = new Set(match.players.filter((p) => isBotUserId(p.userId)).map((p) => p.seat))
       let guard = 0
       while (!state.ended && state.active === startSeat && guard++ < 40) {
         const step = nextAutoIntent(state)
@@ -368,6 +381,8 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
         if ("error" in r) break // defensive: a non-advancing auto-step would otherwise busy-loop
         appended.push(step)
       }
+      // Once the timed-out turn is unstuck, play out any bot seats that now hold the turn.
+      appended.push(...driveBots(state, botSeats))
       if (appended.length === 0) return null
       stampNewPayments(state, now.getTime()) // an auto-played landing may have queued payments
       // Auto-resolve always plays a full turn (loops until active changes or ended), so the

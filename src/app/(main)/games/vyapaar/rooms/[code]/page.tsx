@@ -7,6 +7,8 @@ import { RoomActions } from "@/components/vyapaar/RoomActions"
 import { RoomRealtime } from "@/components/vyapaar/RoomRealtime"
 import { StartGameButton } from "@/components/vyapaar/StartGameButton"
 import { JoinSeatButton } from "@/components/vyapaar/JoinSeatButton"
+import { AddBotButton, RemoveBotButton } from "@/components/vyapaar/BotControls"
+import { isBotUserId } from "@/modules/vyapaar/bot"
 import { MAX_SEATS } from "@/config/vyapaar-rooms"
 
 export const dynamic = "force-dynamic"
@@ -31,6 +33,7 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
           <p className="text-sm text-gray-500">{room.visibility} · {room.status}</p>
         </div>
         <div className="flex items-center gap-3">
+          {isHost && room.status === "open" && room.members.length < MAX_SEATS && <AddBotButton roomId={room.id} />}
           {isHost && room.status === "open" && room.members.length >= 2 && <StartGameButton roomId={room.id} />}
           {isMember && room.status === "in_game" && matchId && (
             <Link href={`/games/vyapaar/matches/${matchId}`} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
@@ -51,6 +54,8 @@ export default async function RoomPage({ params }: { params: Promise<{ code: str
               <span className="font-medium">
                 {m.user.displayName || m.user.legalName}
                 {m.userId === room.hostId && <span className="ml-2 text-xs text-amber-600">host</span>}
+                {isBotUserId(m.userId) && <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">bot</span>}
+                {isBotUserId(m.userId) && isHost && room.status === "open" && <RemoveBotButton roomId={room.id} seat={i} />}
               </span>
             ) : !isMember && room.status === "open" ? (
               <JoinSeatButton code={room.code} seat={i} />
