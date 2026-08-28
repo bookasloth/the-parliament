@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation"
 import { requireUser } from "@/modules/auth/session"
 import { ForbiddenError } from "@/lib/errors"
-import { createRoom, joinRoom, leaveRoom, setRoomVisibility } from "@/modules/vyapaar/rooms"
+import { createRoom, joinRoom, leaveRoom, setRoomVisibility, addBotToRoom, removeBotFromRoom } from "@/modules/vyapaar/rooms"
 
 export async function createRoomAction(visibility: "private" | "public") {
   const user = await requireUser()
@@ -27,6 +27,28 @@ export async function leaveRoomAction(roomId: string) {
   const user = await requireUser()
   await leaveRoom(user.id, roomId)
   redirect("/games/vyapaar")
+}
+
+export async function addBotAction(roomId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser()
+  try {
+    await addBotToRoom(user.id, roomId)
+    return { ok: true }
+  } catch (e) {
+    if (e instanceof ForbiddenError) return { ok: false, error: e.message }
+    throw e
+  }
+}
+
+export async function removeBotAction(roomId: string, seat: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser()
+  try {
+    await removeBotFromRoom(user.id, roomId, seat)
+    return { ok: true }
+  } catch (e) {
+    if (e instanceof ForbiddenError) return { ok: false, error: e.message }
+    throw e
+  }
 }
 
 export async function setVisibilityAction(roomId: string, visibility: "private" | "public") {

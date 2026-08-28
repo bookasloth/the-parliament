@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { generateRoomCode, resolveSeat, pickNewHost } from "./rooms-logic"
+import { BOT_USERS, isBotUserId } from "./bot"
 import { MAX_SEATS, ROOM_TTL_DAYS } from "@/config/vyapaar-rooms"
 import { broadcastToTopic, roomTopic } from "@/lib/supabase-realtime"
 
@@ -73,6 +74,55 @@ export async function joinRoom(userId: string, code: string, preferredSeat?: num
     }
   }
   throw new ForbiddenError("Room is full")
+}
+
+/** Host seats a computer player in the next free seat. Reuses the fixed bot User rows. */
+export async function addBotToRoom(userId: string, roomId: string): Promise<{ seat: number }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await prisma.$transaction(async (tx) => {
+        const room = await tx.vyapaarRoom.findUnique({
+          where: { id: roomId },
+          select: { id: true, hostId: true, status: true, members: { select: { userId: true, seat: true } } },
+        })
+        if (!room || room.status === "expired") throw new ForbiddenError("Room not found")
+        if (room.hostId !== userId) throw new ForbiddenError("Only the host can add bots")
+        if (room.status !== "open") throw new ForbiddenError("Room is not open")
+        const seat = resolveSeat(room.members.map((m) => m.seat))
+        if (seat === null) throw new ForbiddenError("Room is full")
+        const taken = new Set(room.members.map((m) => m.userId))
+        const bot = BOT_USERS.find((b) => !taken.has(b.id))
+        if (!bot) throw new ForbiddenError("No more bots available")
+        await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId: bot.id, seat } })
+        await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
+        return { seat, roomId: room.id }
+      })
+      pingLobby(res.roomId)
+      return { seat: res.seat }
+    } catch (e) {
+      if (isUniqueViolation(e) && attempt < 2) continue // lost the seat race; retry fresh
+      throw e
+    }
+  }
+  throw new ForbiddenError("Could not add a bot")
+}
+
+/** Host removes a bot from a seat (e.g. to free it for a human). No-op on a human seat. */
+export async function removeBotFromRoom(userId: string, roomId: string, seat: number): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const room = await tx.vyapaarRoom.findUnique({
+      where: { id: roomId },
+      select: { id: true, hostId: true, status: true, members: { select: { userId: true, seat: true } } },
+    })
+    if (!room) throw new ForbiddenError("Room not found")
+    if (room.hostId !== userId) throw new ForbiddenError("Only the host can remove bots")
+    if (room.status !== "open") throw new ForbiddenError("Room is not open")
+    const member = room.members.find((m) => m.seat === seat)
+    if (!member || !isBotUserId(member.userId)) throw new ForbiddenError("That seat isn't a bot")
+    await tx.vyapaarRoomMember.deleteMany({ where: { roomId, userId: member.userId } })
+    await tx.vyapaarRoom.update({ where: { id: roomId }, data: { lastActiveAt: new Date() } })
+  })
+  pingLobby(roomId)
 }
 
 export async function leaveRoom(userId: string, roomId: string): Promise<void> {
