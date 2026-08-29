@@ -26,7 +26,9 @@ async function main() {
 
   const user = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, isSuperAdmin: true, status: "active" },
+    // emailVerifiedAt is required for credentials sign-in (authorize() blocks
+    // unverified emails) — set it on both paths so a provisioned admin can log in.
+    update: { passwordHash, isSuperAdmin: true, status: "active", emailVerifiedAt: new Date() },
     create: {
       email,
       passwordHash,
@@ -36,6 +38,7 @@ async function main() {
       memberType: "staff",
       isSuperAdmin: true,
       onboardingCompleted: true,
+      emailVerifiedAt: new Date(),
       status: "active",
     },
     select: { id: true, email: true, isSuperAdmin: true },
