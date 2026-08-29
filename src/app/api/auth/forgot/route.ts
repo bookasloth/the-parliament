@@ -38,11 +38,18 @@ export async function POST(req: NextRequest) {
 
       const user = await prisma.user.findUnique({
         where: { email: normalized },
-        select: { id: true, email: true, legalName: true, passwordHash: true },
+        select: { id: true, email: true, legalName: true, passwordHash: true, memberType: true },
       })
       if (user) {
         const raw = await createResetToken(user.id, 60)
-        await sendEmail("password_reset", user.email, {
+        // The merged official/admin account (memberType "system") logs in as
+        // admin@nnawca.com, which isn't a receivable inbox — deliver its reset
+        // link to the owner's recovery address instead so admin recovery works.
+        const to =
+          user.memberType === "system"
+            ? (process.env.ADMIN_RECOVERY_EMAIL || "sndatarkar@gmail.com")
+            : user.email
+        await sendEmail("password_reset", to, {
           legalName: user.legalName,
           resetUrl: resetUrl(raw),
           isNew: user.passwordHash === null,
