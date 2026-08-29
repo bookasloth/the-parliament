@@ -12,6 +12,7 @@ export type EmailTemplates = {
   email_verification: { legalName: string; code: string }
   email_verify_link: { legalName: string; verifyUrl: string }
   password_reset: { legalName: string; resetUrl: string; isNew: boolean }
+  password_reset_code: { legalName: string; code: string }
   payment_receipt: { legalName: string; planName: string; amountInr: string; invoiceUrl: string; invoiceNumber: string }
   verification_approved: { legalName: string; loginUrl: string }
   verification_rejected: { legalName: string; reason: string }
@@ -96,6 +97,23 @@ const templates: { [K in keyof EmailTemplates]: EmailTemplate<EmailTemplates[K]>
           p(`Hi ${d.legalName}, ${d.isNew ? "set a password to start using NNAWCA." : "use the button below to set a new password."}`) +
           button(d.isNew ? "Set my password" : "Reset password", d.resetUrl, "blue") +
           small("This link expires soon. If you didn't request it, you can safely ignore this email."),
+        reason: "This is a transactional message about your account.",
+      }),
+  },
+  password_reset_code: {
+    subject: () => "Your NNAWCA admin reset code",
+    text: (d) =>
+      `Hi ${d.legalName},\n\nYour admin password reset code is: ${d.code}\n\nEnter it on the reset page with your new password. It expires in 15 minutes. If you didn't request this, ignore this email — nothing will change.`,
+    html: (d) =>
+      emailShell({
+        accent: "blue",
+        pill: "Security",
+        eyebrow: "Admin · Password reset",
+        heading: "Your reset code",
+        body:
+          p(`Hi ${d.legalName}, use this one-time code to set a new admin password.`) +
+          codeBox(d.code) +
+          small("The code expires in <strong>15 minutes</strong>. Didn't request it? You can safely ignore this email — nothing will change."),
         reason: "This is a transactional message about your account.",
       }),
   },
@@ -630,6 +648,7 @@ export const EMAIL_CATEGORY: Record<keyof EmailTemplates, EmailCategory> = {
   email_verification: "transactional",
   email_verify_link: "transactional",
   password_reset: "transactional",
+  password_reset_code: "transactional",
   payment_receipt: "transactional",
   verification_approved: "transactional",
   verification_rejected: "transactional",

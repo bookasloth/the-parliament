@@ -23,6 +23,64 @@ export async function createResetToken(userId: string, ttlMinutes = 60): Promise
   return raw
 }
 
+// 6-char alphanumeric code alphabet — upper-case, ambiguous chars (I/O/0/1)
+// removed so a code read off an email screen can't be mistyped. 32^6 ≈ 1.07e9
+// combos; safe because the confirm endpoint scopes to one user + rate-limits.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+/** Cryptographically-random 6-char alphanumeric reset code (unbiased). */
+export function generateCode(len = 6): string {
+  let out = ""
+  for (let i = 0; i < len; i++) out += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)]
+  return out
+}
+
+/** Create a single-use 6-char reset code. Returns the raw code (hash stored).
+ *  Short TTL (15 min default) since the code is low-entropy vs a 32-byte token. */
+export async function createResetCode(userId: string, ttlMinutes = 15): Promise<string> {
+  const raw = generateCode()
+  await prisma.verificationToken.create({
+    data: {
+      userId,
+      purpose: PURPOSE,
+      tokenHash: hash(raw),
+      expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
+    },
+  })
+  return raw
+}
+
+/** Consume a code that must belong to `userId` (binds email+code so a low-entropy
+ *  code can't be brute-forced across accounts) and set the new password. */
+export async function resetPasswordWithCode(
+  userId: string,
+  rawCode: string,
+  passwordHash: string,
+): Promise<boolean> {
+  const code = (rawCode || "").trim().toUpperCase()
+  if (!code) return false
+  const t = await prisma.verificationToken.findFirst({
+    where: {
+      userId,
+      tokenHash: hash(code),
+      purpose: PURPOSE,
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
+  })
+  if (!t) return false
+  await prisma.$transaction([
+    prisma.verificationToken.update({ where: { id: t.id }, data: { consumedAt: new Date() } }),
+    prisma.verificationToken.updateMany({
+      where: { userId, purpose: PURPOSE, consumedAt: null },
+      data: { consumedAt: new Date() },
+    }),
+    prisma.user.update({ where: { id: userId }, data: { passwordHash, emailVerifiedAt: new Date() } }),
+  ])
+  return true
+}
+
 export function resetUrl(rawToken: string): string {
   const base = process.env.AUTH_URL ?? "http://localhost:3000"
   return `${base.replace(/\/$/, "")}/auth/reset?token=${rawToken}`

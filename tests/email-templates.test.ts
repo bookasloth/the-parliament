@@ -10,6 +10,7 @@ const SAMPLE: { [K in keyof EmailTemplates]: EmailTemplates[K] } = {
   email_verification: { legalName: "Shubham", code: "789201" },
   email_verify_link: { legalName: "Shubham", verifyUrl: "https://x/verify?t=1" },
   password_reset: { legalName: "Shubham", resetUrl: "https://x/reset?t=1", isNew: false },
+  password_reset_code: { legalName: "Shubham", code: "ABC234" },
   payment_receipt: { legalName: "Shubham", planName: "Life Member", amountInr: "5000.00", invoiceUrl: "https://x/api/membership/invoice/inv_1", invoiceNumber: "NNAWCA/2026-27/000001" },
   verification_approved: { legalName: "Shubham", loginUrl: "https://x/login" },
   verification_rejected: { legalName: "Shubham", reason: "ID photo unreadable" },
@@ -75,7 +76,7 @@ describe("email-layout shell", () => {
 
 describe("lib/email templates", () => {
   it("covers all keys, each mapped to a category", () => {
-    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(31)
+    expect(EMAIL_TEMPLATE_KEYS).toHaveLength(32)
     for (const k of EMAIL_TEMPLATE_KEYS) expect(EMAIL_CATEGORY[k]).toBeTruthy()
   })
 

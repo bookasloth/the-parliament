@@ -12,6 +12,7 @@ function AdminLoginInner() {
   const router = useRouter()
   const params = useSearchParams()
   const callbackUrl = params.get("callbackUrl") || "/admin"
+  const justReset = params.get("reset") === "1"
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -54,6 +55,11 @@ function AdminLoginInner() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {justReset && !error && (
+        <p className="rounded-[4px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+          Password updated. Sign in with your new password.
+        </p>
+      )}
       {error && (
         <p className="rounded-[4px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
           {error}
@@ -83,7 +89,7 @@ function AdminLoginInner() {
       </button>
 
       <div className="text-center">
-        <a href="/auth/forgot" className="text-xs text-gray-500 hover:text-gray-700">
+        <a href="/auth/admin/reset" className="text-xs text-gray-500 hover:text-gray-700">
           Forgot password?
         </a>
       </div>
