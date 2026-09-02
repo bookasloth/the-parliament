@@ -167,6 +167,16 @@ export async function uploadCommitteePhoto(key: string, bytes: Uint8Array, conte
 /** Delete a stored object by its `storage_path`. Best-effort: throws only if the
  *  request itself fails, so callers can treat cleanup as non-fatal. A 404 (object
  *  already gone) is treated as success. */
+/** Extract the in-bucket path from one of our public storage URLs, or null if
+ *  the URL isn't ours. The inverse of the public URL builder. */
+export function pathFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  const base = publicBase()
+  if (!base || !url.startsWith(base)) return null
+  const path = url.slice(base.length)
+  return path.length > 0 ? path : null
+}
+
 export async function deleteStorageObject(path: string): Promise<void> {
   const { url, key } = config()
   const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
