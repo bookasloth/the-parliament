@@ -3,12 +3,51 @@
 import { revalidatePath, updateTag } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { joinGroup, leaveGroup } from "@/modules/groups/service"
+import { joinGroup, leaveGroup, createGroupPost, getGroupFeed } from "@/modules/groups/service"
 import { groupRequestSchema, type SubmitGroupRequestInput } from "@/modules/groups/request-schema"
 import { sendNotification } from "@/modules/notifications/service"
 import { enforceRateLimit } from "@/lib/rate-limit"
+import { validatePostMedia, publicUrlFor } from "@/lib/r2"
+import { mapRowToFeedPost } from "@/app/(main)/feed/map-row"
+import type { FeedPost } from "@/components/shared/FeedCard"
 
 export type { SubmitGroupRequestInput }
+
+/** Create a post inside a group (members only). Text + optional images. */
+export async function createGroupPostAction(input: {
+  groupId: string
+  body: string
+  media?: { key: string; type: "image" | "video" }[]
+}): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser()
+  try {
+    await enforceRateLimit({ bucket: "group.post", identifier: user.id, limit: 20, windowSec: 3600 })
+    const keys = (input.media ?? []).map((m) => m.key)
+    if (keys.length) await validatePostMedia(user.id, keys)
+    const media = (input.media ?? []).map((m) => ({ key: m.key, type: m.type, url: publicUrlFor(m.key) }))
+    await createGroupPost({
+      userId: user.id,
+      groupId: input.groupId,
+      body: input.body,
+      format: media.length ? "image" : "text",
+      media: media.length ? media : undefined,
+    })
+    revalidatePath(`/groups/${input.groupId}`)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to post" }
+  }
+}
+
+/** Load a group's post feed as mapped FeedPosts (membership-gated). */
+export async function loadGroupFeedAction(groupId: string): Promise<FeedPost[]> {
+  const user = await requireUser()
+  const res = await getGroupFeed(groupId, user.id)
+  if (!res) return []
+  const following = await prisma.follow.findMany({ where: { followerId: user.id }, select: { followingId: true } })
+  const followingIds = new Set(following.map((f) => f.followingId))
+  return res.rows.map((r) => mapRowToFeedPost(r, followingIds))
+}
 
 /** Post a help request to a group. Requires active membership. */
 export async function submitGroupRequestAction(

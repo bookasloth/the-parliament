@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma"
 import { relativeTime } from "@/lib/relative-time"
 import { getDefaultSchoolId } from "@/lib/school"
 import { sendNotification } from "@/modules/notifications/service"
+import { ForbiddenError } from "@/lib/errors"
+import { createPost, type PostFormat } from "@/modules/feed/posts"
+import { getFeed } from "@/modules/feed/query"
 
 /** Group shape consumed by the groups list client page. */
 export interface GroupListItem {
@@ -431,6 +434,70 @@ async function notifyGroupAdminsOfJoin(userId: string, groupId: string): Promise
 
 export async function leaveGroup(userId: string, groupId: string): Promise<void> {
   await prisma.groupMember.deleteMany({ where: { groupId, userId } })
+}
+
+/** Active membership check (throws otherwise) → returns the group's schoolId. */
+async function assertActiveMember(userId: string, groupId: string): Promise<{ schoolId: string; visibility: string }> {
+  const [group, m] = await Promise.all([
+    prisma.group.findUnique({ where: { id: groupId }, select: { schoolId: true, visibility: true } }),
+    prisma.groupMember.findUnique({ where: { groupId_userId: { groupId, userId } }, select: { status: true } }),
+  ])
+  if (!group) throw new ForbiddenError("Group not found")
+  if (m?.status !== "active") throw new ForbiddenError("Join the group to post here")
+  return { schoolId: group.schoolId, visibility: group.visibility }
+}
+
+/**
+ * Create a post inside a group (audit P1-6). Members only. The post carries the
+ * groupId and visibilityScope "groups" so it shows in the group feed and is
+ * EXCLUDED from the global feed (which filters groupId: null).
+ */
+export async function createGroupPost(input: {
+  userId: string
+  groupId: string
+  body?: string
+  format?: PostFormat
+  media?: { key: string; type: string; url?: string }[]
+  linkUrl?: string
+}) {
+  const { schoolId } = await assertActiveMember(input.userId, input.groupId)
+  // Group posts don't carry a category in the UI; use any of the school's seeded
+  // categories to satisfy the required FK.
+  const cat = await prisma.postCategory.findFirst({ where: { schoolId }, select: { key: true } })
+  if (!cat) throw new ForbiddenError("No post category configured")
+  return createPost({
+    authorId: input.userId,
+    schoolId,
+    groupId: input.groupId,
+    categoryKey: cat.key,
+    format: input.format ?? "text",
+    body: input.body,
+    media: input.media,
+    linkUrl: input.linkUrl,
+    visibilityScope: "groups",
+  })
+}
+
+/**
+ * The group's post feed (audit P1-6). Private groups are members-only; public
+ * groups are readable by any signed-in member of the site. Reuses getFeed so
+ * block/hidden/seen scoping and the ranked order come for free.
+ */
+export async function getGroupFeed(groupId: string, viewerId: string | undefined) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { schoolId: true, visibility: true },
+  })
+  if (!group) return null
+  if (group.visibility === "private") {
+    if (!viewerId) return null
+    const m = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId: viewerId } },
+      select: { status: true },
+    })
+    if (m?.status !== "active") return null
+  }
+  return getFeed({ schoolId: group.schoolId, groupId, viewerId, pageSize: 20 })
 }
 
 export interface GroupDetail {

@@ -27,6 +27,7 @@ export async function loadMoreProfilePostsAction(
     pageSize,
     rankerName: "recency",
     cursor,
+    groupId: null,
   })
 
   const posts: ProfileTimelinePost[] = rows.map((r) => {

@@ -308,6 +308,13 @@ export async function listSavedPosts(viewerId: string, limit = 30) {
  *  `followers`/`groups`-scoped post is readable only by the author or a follower,
  *  and never across a block. Previously this only checked deletedAt/status, so a
  *  followers-only post was world-readable (and OG-renderable) by URL. */
+/** The post's groupId (or null). Kept out of postSelect so the FeedPost shape is
+ *  unchanged; a cheap targeted lookup for the visibility gate. */
+async function postGroupId(id: string): Promise<string | null> {
+  const p = await prisma.post.findUnique({ where: { id }, select: { groupId: true } })
+  return p?.groupId ?? null
+}
+
 export async function getPostById(id: string, viewerId?: string) {
   const post = await prisma.post.findFirst({
     where: { id, deletedAt: null, status: "visible" },
@@ -318,8 +325,17 @@ export async function getPostById(id: string, viewerId?: string) {
   const authorId = post.author.id
   const isAuthor = !!viewerId && viewerId === authorId
   if (!isAuthor) {
-    // Restricted scopes require a follow edge from viewer → author.
-    if (post.visibilityScope === "followers" || post.visibilityScope === "groups") {
+    // Group posts require active group membership; other restricted scopes
+    // ("followers") require a follow edge (audit P0-3 / P1-6).
+    const groupId = await postGroupId(post.id)
+    if (groupId) {
+      if (!viewerId) return null
+      const m = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId, userId: viewerId } },
+        select: { status: true },
+      })
+      if (m?.status !== "active") return null
+    } else if (post.visibilityScope === "followers") {
       if (!viewerId) return null
       const follows = await prisma.follow.findFirst({
         where: { followerId: viewerId, followingId: authorId },

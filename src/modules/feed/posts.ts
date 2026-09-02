@@ -27,12 +27,20 @@ export async function assertCanInteract(
 ): Promise<{ id: string; authorId: string }> {
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, authorId: true, deletedAt: true, status: true, visibilityScope: true },
+    select: { id: true, authorId: true, deletedAt: true, status: true, visibilityScope: true, groupId: true },
   })
   if (!post || post.deletedAt || post.status !== "visible") throw new ForbiddenError("Post not found")
   if (viewerId !== post.authorId) {
     if (await isBlockedBetween(viewerId, post.authorId)) throw new ForbiddenError("Post not found")
-    if (post.visibilityScope === "followers" || post.visibilityScope === "groups") {
+    if (post.groupId) {
+      // A group post is interactable by active group members (audit P1-6), not by
+      // followers of the author.
+      const m = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId: post.groupId, userId: viewerId } },
+        select: { status: true },
+      })
+      if (m?.status !== "active") throw new ForbiddenError("Post not found")
+    } else if (post.visibilityScope === "followers") {
       const f = await prisma.follow.findFirst({
         where: { followerId: viewerId, followingId: post.authorId },
         select: { id: true },
