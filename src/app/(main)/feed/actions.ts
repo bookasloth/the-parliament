@@ -10,6 +10,7 @@ import {
   editPost,
   deletePost,
   sharePost,
+  unsharePost,
   toggleSavePost,
   givePostAward,
   votePoll,
@@ -36,9 +37,12 @@ import type { FeedPost } from "@/components/shared/FeedCard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/r2"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function reactToPost(postId: string, type: ReactionType) {
   const user = await requireUser()
+  // Anti-abuse (audit P1-11): reactions are frequent but not unbounded.
+  await enforceRateLimit({ bucket: "feed.react", identifier: user.id, limit: 120, windowSec: 60 })
   const result = await toggleReaction({ userId: user.id, postId, type })
   revalidatePath("/feed")
   return result
@@ -87,6 +91,7 @@ export async function refreshPostCountsAction(postIds: string[]): Promise<PostCo
 
 export async function votePollAction(_postId: string, pollId: string, optionId: string) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "feed.pollvote", identifier: user.id, limit: 60, windowSec: 60 })
   // No revalidatePath: the client's PollCard is optimistic and the vote is
   // persisted here. Revalidating re-streamed /feed and reset the whole list a
   // few seconds after voting (felt like a random refresh). /feed is
@@ -96,6 +101,7 @@ export async function votePollAction(_postId: string, pollId: string, optionId: 
 
 export async function commentOnPost(postId: string, body: string, parentId?: string, imageUrl?: string) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "feed.comment", identifier: user.id, limit: 30, windowSec: 300 })
   const comment = await createComment({ userId: user.id, postId, body, parentId, imageUrl })
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
@@ -241,10 +247,19 @@ export async function deletePostAction(postId: string) {
 
 export async function sharePostAction(postId: string, comment?: string) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "feed.share", identifier: user.id, limit: 20, windowSec: 3600 })
   await sharePost({ userId: user.id, postId, comment })
   revalidatePath("/feed")
   revalidatePath(`/feed/${postId}`)
   return { ok: true as const }
+}
+
+export async function unsharePostAction(postId: string) {
+  const user = await requireUser()
+  const res = await unsharePost({ userId: user.id, postId })
+  revalidatePath("/feed")
+  revalidatePath(`/feed/${postId}`)
+  return res
 }
 
 export async function toggleSavePostAction(postId: string) {

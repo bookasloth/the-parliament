@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { env } from "@/config/env"
 import { sendNotification } from "@/modules/notifications/service"
+import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
 import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
@@ -117,8 +118,9 @@ export async function getFollowData(userId: string): Promise<{
     mapUser(f.follower as MappedUser, { since: monthYear(f.createdAt) }),
   )
 
-  // Suggestions: active users I don't already follow.
-  const followedIds = new Set<string>([userId, ...allFollowingIds.map((f) => f.followingId)])
+  // Suggestions: active users I don't already follow (and haven't blocked / been blocked by).
+  const blocked = await blockedIdsFor(userId)
+  const followedIds = new Set<string>([userId, ...allFollowingIds.map((f) => f.followingId), ...blocked])
   const suggestionRows = await prisma.user.findMany({
     where: { status: "active", deletedAt: null, id: { notIn: Array.from(followedIds) } },
     select: userSelect,
@@ -140,6 +142,9 @@ export async function getFollowingIds(userId: string): Promise<Set<string>> {
 
 export async function followUser(followerId: string, followingId: string): Promise<void> {
   if (followerId === followingId) return
+
+  // A block severs the graph both ways — neither party can (re)follow the other.
+  if (await isBlockedBetween(followerId, followingId)) return
 
   // Only a genuinely new follow should create the row + notify (no dupes on re-follow).
   const existing = await prisma.follow.findUnique({

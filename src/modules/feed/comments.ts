@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/modules/auth/session"
 import { awardKarma } from "@/modules/karma/ledger"
+import { sendNotification } from "@/modules/notifications/service"
 import { KARMA } from "@/config/karma"
 
 export type CommentReactionType = "upvote" | "downvote"
@@ -25,7 +26,7 @@ export async function toggleCommentReaction(input: {
 }) {
   const comment = await prisma.comment.findFirst({
     where: { id: input.commentId, deletedAt: null },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, postId: true },
   })
   if (!comment) throw new ForbiddenError("Comment not found")
 
@@ -103,6 +104,21 @@ export async function toggleCommentReaction(input: {
         entityType: "comment",
         entityId: comment.id,
       })
+      // Notify the comment author their comment was upvoted (audit P1-3 — comment
+      // reactions notified nobody). In-app only; coalesced by the 6h window.
+      const actor = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { displayName: true, legalName: true },
+      })
+      const fromName = actor?.displayName || actor?.legalName || "Someone"
+      await sendNotification({
+        userId: comment.authorId,
+        kind: "reaction_on_comment",
+        title: `${fromName} liked your comment`,
+        entityType: "post",
+        entityId: comment.postId,
+        sendEmail: false,
+      }).catch(() => {})
     } else {
       await awardKarma({
         userId: input.userId,

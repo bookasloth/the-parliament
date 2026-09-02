@@ -43,6 +43,7 @@ async function CommunityData({ sp }: { sp: Record<string, string | undefined> })
   const [{ rows, total }, facets, { totalActive, verifiedCount }] = await Promise.all([
     getDirectoryCached({
       schoolId,
+      viewerId: me?.id,
       q: sp.q || undefined,
       batchId: sp.batch || undefined,
       houseId: sp.house || undefined,

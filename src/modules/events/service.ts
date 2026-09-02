@@ -1,6 +1,29 @@
 import { prisma } from "@/lib/prisma"
 import type { EventRsvpStatus } from "@/generated/prisma/enums"
 import { sendEmail } from "@/lib/email"
+import { sendNotification } from "@/modules/notifications/service"
+
+/** In-app ping to an event's host when someone RSVPs "going" (audit P1-3). */
+async function notifyHostOfRsvp(userId: string, eventId: string): Promise<void> {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { hostId: true, title: true },
+  })
+  if (!event || event.hostId === userId) return
+  const attendee = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { displayName: true, legalName: true },
+  })
+  const fromName = attendee?.displayName || attendee?.legalName || "Someone"
+  await sendNotification({
+    userId: event.hostId,
+    kind: "event_rsvp",
+    title: `${fromName} is going to ${event.title}`,
+    entityType: "event",
+    entityId: eventId,
+    sendEmail: false,
+  })
+}
 
 /** EventItem shape consumed by the events client UI. Mirrors the mock array. */
 export interface EventItem {
@@ -109,6 +132,9 @@ export async function rsvpEvent(
     await sendRsvpConfirmation(userId, eventId).catch((e) =>
       console.error("rsvp confirmation email failed", { userId, eventId }, e),
     )
+    // Notify the host that someone is coming (audit P1-3 — RSVPs notified only
+    // the attendee, never the host). In-app only; coalesced per event.
+    await notifyHostOfRsvp(userId, eventId).catch(() => {})
   }
   return row
 }

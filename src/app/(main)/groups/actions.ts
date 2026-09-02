@@ -5,7 +5,8 @@ import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { joinGroup, leaveGroup } from "@/modules/groups/service"
 import { groupRequestSchema, type SubmitGroupRequestInput } from "@/modules/groups/request-schema"
-import { sendEmail } from "@/lib/email"
+import { sendNotification } from "@/modules/notifications/service"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export type { SubmitGroupRequestInput }
 
@@ -48,15 +49,27 @@ async function notifyGroupMembers(groupId: string, authorId: string, category: s
   const baseUrl = process.env.AUTH_URL || "https://nnawca.org"
   const groupUrl = `${baseUrl}/groups/${groupId}`
 
+  // Route through sendNotification (audit P1-3): the old raw sendEmail loop
+  // skipped the bell, push, coalescing and per-user preferences. This delivers
+  // in-app + push + email (via the group_request template) and honours opt-outs.
   await Promise.all(
     members.map((m) =>
-      sendEmail("group_request", m.user.email, { fromName, groupName: group.name, category, body, groupUrl }, m.user.id),
+      sendNotification({
+        userId: m.user.id,
+        kind: "group_request",
+        title: `${fromName} posted in ${group.name}`,
+        body: `${category}: ${body.slice(0, 140)}`,
+        entityType: "group",
+        entityId: groupId,
+        email: { fromName, groupName: group.name, category, body, groupUrl },
+      }).catch(() => {}),
     ),
   )
 }
 
 export async function joinGroupAction(groupId: string) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "group.join", identifier: user.id, limit: 30, windowSec: 3600 })
   await joinGroup(user.id, groupId)
   // Member count lives in the cached shared list (tag "groups").
   updateTag("groups")

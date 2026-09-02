@@ -12,6 +12,36 @@ import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { fetchLinkPreview } from "@/lib/og-preview"
 import { getDefaultSchoolId } from "@/lib/school"
 import { getCurrent } from "@/modules/membership/service"
+import { isBlockedBetween } from "@/modules/connections/blocks"
+
+/**
+ * Gate any interaction (react, comment, share, award, vote) with the SAME
+ * visibility rules the feed enforces (audit P0-4): the post must be live, the
+ * two users must not have blocked each other, and a `followers`/`groups`-scoped
+ * post is interactable only by the author or a follower. Returns the post's id +
+ * authorId for the caller. Throws ForbiddenError otherwise.
+ */
+export async function assertCanInteract(
+  viewerId: string,
+  postId: string,
+): Promise<{ id: string; authorId: string }> {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, authorId: true, deletedAt: true, status: true, visibilityScope: true },
+  })
+  if (!post || post.deletedAt || post.status !== "visible") throw new ForbiddenError("Post not found")
+  if (viewerId !== post.authorId) {
+    if (await isBlockedBetween(viewerId, post.authorId)) throw new ForbiddenError("Post not found")
+    if (post.visibilityScope === "followers" || post.visibilityScope === "groups") {
+      const f = await prisma.follow.findFirst({
+        where: { followerId: viewerId, followingId: post.authorId },
+        select: { id: true },
+      })
+      if (!f) throw new ForbiddenError("Post not found")
+    }
+  }
+  return { id: post.id, authorId: post.authorId }
+}
 
 /**
  * Categories that require a paid membership benefit to post. Enforced at BOTH
@@ -421,12 +451,14 @@ export async function publishDraft(input: { postId: string; authorId: string }) 
 export async function votePoll(input: { userId: string; pollId: string; optionId: string }) {
   const option = await prisma.pollOption.findUnique({
     where: { id: input.optionId },
-    select: { id: true, pollId: true, poll: { select: { expiresAt: true } } },
+    select: { id: true, pollId: true, poll: { select: { expiresAt: true, postId: true } } },
   })
   if (!option || option.pollId !== input.pollId) throw new ForbiddenError("Option not on this poll")
   if (option.poll.expiresAt && option.poll.expiresAt < new Date()) {
     throw new ForbiddenError("Poll has closed")
   }
+  // Same visibility/block gate as every other interaction (audit P0-4).
+  await assertCanInteract(input.userId, option.poll.postId)
 
   const existing = await prisma.pollVote.findUnique({
     where: { userId_pollId: { userId: input.userId, pollId: input.pollId } },
@@ -504,11 +536,7 @@ export async function toggleReaction(input: {
   postId: string
   type: ReactionType
 }) {
-  const post = await prisma.post.findUnique({
-    where: { id: input.postId },
-    select: { id: true, authorId: true, deletedAt: true },
-  })
-  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+  const post = await assertCanInteract(input.userId, input.postId)
 
   const existing = await prisma.reaction.findUnique({
     where: {
@@ -633,11 +661,16 @@ export async function sharePost(input: {
   postId: string
   comment?: string
 }) {
-  const post = await prisma.post.findUnique({
-    where: { id: input.postId },
-    select: { id: true, deletedAt: true },
+  const post = await assertCanInteract(input.userId, input.postId)
+
+  // Dedupe: one share per user per post (audit P1-10 — sharing was unbounded, so
+  // a user could inflate shareCount/ranking in a loop). Re-sharing returns the
+  // existing row without re-incrementing.
+  const existing = await prisma.postShare.findFirst({
+    where: { originalPostId: input.postId, sharerId: input.userId },
+    select: { id: true },
   })
-  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+  if (existing) return existing
 
   const share = await prisma.postShare.create({
     data: {
@@ -648,7 +681,33 @@ export async function sharePost(input: {
   })
   // share_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
+
+  // Notify the author their post was shared (audit P1-3 — shares notified nobody).
+  if (input.userId !== post.authorId) {
+    const actor = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { displayName: true, legalName: true },
+    })
+    const fromName = actor?.displayName || actor?.legalName || "Someone"
+    await sendNotification({
+      userId: post.authorId,
+      kind: "share_on_post",
+      title: `${fromName} shared your post`,
+      entityType: "post",
+      entityId: input.postId,
+      sendEmail: false,
+    }).catch(() => {})
+  }
   return share
+}
+
+/** Remove the viewer's share of a post (audit P1-10 — there was no unshare). */
+export async function unsharePost(input: { userId: string; postId: string }) {
+  const del = await prisma.postShare.deleteMany({
+    where: { originalPostId: input.postId, sharerId: input.userId },
+  })
+  if (del.count > 0) await recomputeRankingScore(input.postId)
+  return { unshared: del.count > 0 }
 }
 
 export async function toggleSavePost(input: { userId: string; postId: string }) {
@@ -681,11 +740,7 @@ export async function givePostAward(input: {
   const spec = POST_AWARDS[input.awardKey]
   if (!spec) throw new ForbiddenError("Unknown award")
 
-  const post = await prisma.post.findUnique({
-    where: { id: input.postId },
-    select: { id: true, authorId: true, deletedAt: true },
-  })
-  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+  const post = await assertCanInteract(input.userId, input.postId)
   if (post.authorId === input.userId) throw new ForbiddenError("Can't award own post")
 
   const { spendKarma, awardKarma } = await import("@/modules/karma/ledger")
@@ -718,6 +773,21 @@ export async function givePostAward(input: {
       karmaCost: spec.cost,
     },
   })
+
+  // Notify the author their post was awarded (audit P1-3 — awards notified nobody).
+  const giver = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { displayName: true, legalName: true },
+  })
+  const fromName = giver?.displayName || giver?.legalName || "Someone"
+  await sendNotification({
+    userId: post.authorId,
+    kind: "award_on_post",
+    title: `${fromName} gave your post a ${spec.label} award`,
+    entityType: "post",
+    entityId: post.id,
+    sendEmail: false,
+  }).catch(() => {})
   return award
 }
 
@@ -734,11 +804,7 @@ export async function createComment(input: {
   // Only accept image URLs that point at our own storage bucket — never an
   // arbitrary client-supplied third-party URL.
   if (image && !isOurPublicUrl(image)) throw new ForbiddenError("Invalid image reference")
-  const post = await prisma.post.findUnique({
-    where: { id: input.postId },
-    select: { id: true, authorId: true, deletedAt: true },
-  })
-  if (!post || post.deletedAt) throw new ForbiddenError("Post not found")
+  const post = await assertCanInteract(input.userId, input.postId)
 
   const comment = await prisma.comment.create({
     data: {

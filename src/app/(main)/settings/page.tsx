@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma"
 import EmailPrefsForm from "./email-prefs-form"
 import PasswordForm from "./password-form"
 import PrivacyForm from "./privacy-form"
+import { BlockedAccounts } from "./blocked-accounts"
+import { reactivateAccountFormAction } from "./actions"
+import { listBlockedUsers } from "@/modules/connections/blocks"
 import { EMAIL_PREF_KEYS, type EmailPrefKey } from "./prefs"
 
 export const dynamic = "force-dynamic"
@@ -50,6 +53,8 @@ export default async function SettingsPage() {
     EMAIL_PREF_KEYS.map(k => [k, savedPrefs ? (savedPrefs[k] as boolean) : true]),
   ) as Record<EmailPrefKey, boolean>
 
+  const blockedUsers = await listBlockedUsers(sessionUser.id)
+
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
       <div className="mx-auto max-w-2xl px-4 py-8">
@@ -84,6 +89,24 @@ export default async function SettingsPage() {
             </div>
           </section>
 
+          {user.status === "inactive" && (
+            <section className="rounded-[5px] border border-amber-300 bg-amber-50 p-6">
+              <h2 className="text-lg font-semibold text-amber-900 mb-1">Your account is deactivated</h2>
+              <p className="text-sm text-amber-800 mb-4">
+                You’ve deactivated your account, so you can’t post, comment, or message. Reactivate to
+                restore full access — your profile and content are still here.
+              </p>
+              <form action={reactivateAccountFormAction}>
+                <button
+                  type="submit"
+                  className="rounded-[4px] bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                >
+                  Reactivate my account
+                </button>
+              </form>
+            </section>
+          )}
+
           {user.profile && (
             <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile</h2>
@@ -107,6 +130,8 @@ export default async function SettingsPage() {
           )}
 
           <EmailPrefsForm initial={initialPrefs} />
+
+          <BlockedAccounts initial={blockedUsers} />
 
           <PasswordForm hasPassword={Boolean(user.passwordHash)} />
         </div>

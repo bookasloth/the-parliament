@@ -5,7 +5,10 @@ import { isOurPublicUrl } from "@/lib/supabase-storage"
 import { broadcast } from "@/lib/supabase-realtime"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
+import { isBlockedBetween, blockUser as blockUserCanonical } from "@/modules/connections/blocks"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
+
+export { unblockUser } from "@/modules/connections/blocks"
 
 const MAX_MESSAGE_LEN = 5000
 
@@ -17,19 +20,6 @@ export function dmKeyFor(a: string, b: string): string {
  *  has arrived since. A newer message (equal timestamp doesn't count) reveals it. */
 export function isChatHidden(clearedAt: Date | null, lastMessageAt: Date | null): boolean {
   return !!(clearedAt && lastMessageAt && lastMessageAt <= clearedAt)
-}
-
-async function isBlockedBetween(a: string, b: string): Promise<boolean> {
-  const block = await prisma.userBlock.findFirst({
-    where: {
-      OR: [
-        { blockerId: a, blockedId: b },
-        { blockerId: b, blockedId: a },
-      ],
-    },
-    select: { blockerId: true },
-  })
-  return !!block
 }
 
 export async function canMessage(viewerId: string, otherId: string): Promise<boolean> {
@@ -414,20 +404,18 @@ export async function clearConversation(viewerId: string, conversationId: string
 }
 
 export async function blockUser(viewerId: string, otherId: string): Promise<void> {
-  if (viewerId === otherId) throw new ForbiddenError("Cannot block yourself")
-  await prisma.userBlock.upsert({
-    where: { blockerId_blockedId: { blockerId: viewerId, blockedId: otherId } },
-    create: { blockerId: viewerId, blockedId: otherId },
-    update: {},
-  })
+  await blockUserCanonical(viewerId, otherId)
 }
 
 export async function reportUser(viewerId: string, otherId: string, reason: string): Promise<void> {
   if (viewerId === otherId) throw new ForbiddenError("Cannot report yourself")
   const trimmed = (reason || "other").slice(0, 40)
+  // entityType "profile" (not "user") so the moderation queue can resolve it and
+  // apply a consequence — resolveEntityAuthor + applyModerationConsequence both
+  // handle "profile" (audit P0-5).
   await prisma.contentReport.upsert({
-    where: { reporterId_entityType_entityId: { reporterId: viewerId, entityType: "user", entityId: otherId } },
-    create: { reporterId: viewerId, entityType: "user", entityId: otherId, reason: trimmed },
+    where: { reporterId_entityType_entityId: { reporterId: viewerId, entityType: "profile", entityId: otherId } },
+    create: { reporterId: viewerId, entityType: "profile", entityId: otherId, reason: trimmed },
     update: { reason: trimmed },
   })
 }

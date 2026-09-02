@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { requireUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { prisma } from "@/lib/prisma"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import {
   cancelRsvp, getEventById, rsvpEvent, type EventItem,
   isEventHost, setCheckIn, canLeaveFeedback, submitFeedback, isValidRating,
@@ -78,6 +79,7 @@ export async function createEventAction(
  */
 export async function rsvpAction(eventId: string) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "event.rsvp", identifier: user.id, limit: 40, windowSec: 3600 })
 
   const existing = await getEventById(eventId, user.id)
   if (existing?.interested) {

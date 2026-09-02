@@ -82,6 +82,16 @@ export async function blockUserAction(otherId: string) {
   }
 }
 
+export async function unblockUserAction(otherId: string) {
+  const u = await requireUser()
+  try {
+    await svc.unblockUser(u.id, otherId)
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }
+  }
+}
+
 export async function reportUserAction(otherId: string, reason: string) {
   const u = await requireUser()
   try {

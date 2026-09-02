@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { sendNotification } from "@/modules/notifications/service"
+import { blockedIdsFor } from "@/modules/connections/blocks"
 
 // Usernames are lowercase slugs (see generateUsername). Match @handle tokens in
 // post/comment bodies. Deduped, lowercased, capped so a body stuffed with @s
@@ -36,8 +37,12 @@ export async function notifyMentions(input: {
       where: { username: { in: handles }, status: "active" },
       select: { id: true },
     })
+    // Never notify (or record a mention for) someone in a block relation with
+    // the author (audit P0-7).
+    const blocked = await blockedIdsFor(input.authorId)
     for (const u of users) {
       if (u.id === input.authorId) continue
+      if (blocked.has(u.id)) continue
       await prisma.postMention
         .create({ data: { postId: input.postId, mentionType: "user", userId: u.id } })
         .catch(() => {})

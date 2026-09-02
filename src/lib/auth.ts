@@ -10,6 +10,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { shouldRefreshToken } from "@/lib/session-refresh";
 import { resolveActivePlan, type MembershipRow } from "@/lib/membership-cycle";
+import { canSignIn } from "@/lib/account-status";
 import type { BenefitTier, PlanCode } from "@/config/membership";
 
 // Precomputed once at module load. Compared against for unknown emails so an
@@ -65,6 +66,14 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
         // unverified). Imported members verify via the reset flow.
         if (!user.emailVerifiedAt) {
           await audit({ actorId: user.id, action: "auth.login.unverified", payload: { ip } });
+          return null;
+        }
+        // Moderator-blocked accounts (suspended/banned) cannot obtain a session —
+        // otherwise a banned user just signs in again and the ban is cosmetic.
+        // `inactive` (self-closed) is allowed through so a reactivation flow can
+        // recover it.
+        if (!canSignIn(user.status)) {
+          await audit({ actorId: user.id, action: "auth.login.blocked", payload: { ip, status: user.status } });
           return null;
         }
         await audit({ actorId: user.id, action: "auth.login.success", payload: { ip } });
@@ -138,6 +147,7 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
             })),
           );
           token.membershipStatus = resolved.planCode;
+          token.status = user.status;
           token.username = user.username ?? undefined;
           token.roles = user.userRoles.map((r) => r.role);
           token.isAdmin = computeIsAdmin({
@@ -161,6 +171,7 @@ export const { handlers, auth: baseAuth, signIn, signOut } = NextAuth({
         session.user.onboardingStep = token.onboardingStep as string;
         session.user.onboardingCompleted = token.onboardingCompleted as boolean;
         session.user.membershipStatus = token.membershipStatus as string;
+        session.user.status = (token.status as string) ?? "active";
         session.user.username = token.username as string;
         session.user.isAdmin = (token.isAdmin as boolean) ?? false;
         session.user.roles = (token.roles as string[]) ?? [];

@@ -12,7 +12,6 @@ import {
   ListChecks,
   HelpCircle,
   Users,
-  UsersRound,
   VenetianMask,
   Hash,
   Globe,
@@ -81,7 +80,8 @@ const TYPE_FOR_FORMAT: Record<string, PostType> = {
 const AUDIENCES = [
   { key: "public", label: "Public", icon: Globe, sub: "Anyone on NNAWCA" },
   { key: "followers", label: "Followers", icon: Users, sub: "Only people who follow you" },
-  { key: "groups", label: "My Groups", icon: UsersRound, sub: "Members of the groups you're in" },
+  // "My Groups" removed until group posting exists — it mapped to a scope the
+  // feed served publicly (audit P0-3). Re-add when group feeds enforce it.
   { key: "anonymous", label: "Anonymous", icon: VenetianMask, sub: "Name shown cryptically · photo hidden" },
 ]
 

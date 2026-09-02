@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { blockedIdsFor } from "@/modules/connections/blocks"
 
 export interface DirectoryFilters {
   q?: string
@@ -14,6 +15,10 @@ export interface DirectoryFilters {
   verifiedOnly?: boolean
   schoolId?: string
   sort?: "active" | "newest" | "name"
+  /** The signed-in viewer. Drives privacy: `private` profiles are never listed,
+   *  `connections` profiles only to connected viewers, and blocked users are
+   *  excluded both ways. Omit for a logged-out call (public profiles only). */
+  viewerId?: string
 }
 
 export interface DirectoryPage {
@@ -73,6 +78,45 @@ export async function searchDirectory(
   if (filters.divisionId) {
     where.userDivisions = { some: { divisionId: filters.divisionId } }
   }
+
+  // ── Privacy gate (audit P0-8) ──────────────────────────────────────────────
+  // The directory used to ignore Profile.visibility, listing "Private" members
+  // with full name/employer/city. Enforce it here, plus symmetric block exclusion.
+  const viewerId = filters.viewerId
+  const allowedVis: ("public" | "alumni")[] = viewerId ? ["public", "alumni"] : ["public"]
+  const [blocked, connectedIds] = viewerId
+    ? await Promise.all([
+        blockedIdsFor(viewerId),
+        prisma.follow
+          .findMany({
+            where: { OR: [{ followerId: viewerId }, { followingId: viewerId }] },
+            select: { followerId: true, followingId: true },
+          })
+          .then((rows) => {
+            const s = new Set<string>()
+            for (const r of rows) s.add(r.followerId === viewerId ? r.followingId : r.followerId)
+            return s
+          }),
+      ])
+    : [new Set<string>(), new Set<string>()]
+
+  const andClauses: Prisma.UserWhereInput[] = [
+    {
+      OR: [
+        { profile: { is: { visibility: { in: allowedVis } } } },
+        // Profiles with no Profile row default to `alumni` — visible to members.
+        ...(viewerId ? [{ profile: { is: null } } as Prisma.UserWhereInput] : []),
+        // `connections`-scoped profiles only to a connected viewer.
+        ...(connectedIds.size > 0
+          ? [{ id: { in: [...connectedIds] }, profile: { is: { visibility: "connections" as const } } }]
+          : []),
+        // The viewer always sees their own row.
+        ...(viewerId ? [{ id: viewerId }] : []),
+      ],
+    },
+  ]
+  if (blocked.size > 0) andClauses.push({ id: { notIn: [...blocked] } })
+  where.AND = andClauses
 
   const orderBy: Prisma.UserOrderByWithRelationInput[] =
     filters.sort === "newest"
