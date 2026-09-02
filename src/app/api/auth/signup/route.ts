@@ -10,6 +10,7 @@ import { getDefaultSchoolId } from "@/lib/school";
 import { parseBatchValue } from "@/lib/houses";
 import { revalidateTag } from "next/cache";
 import { autoAssignGroups } from "@/modules/groups/service";
+import { resolveInviter } from "@/modules/connections/invites";
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
@@ -18,6 +19,8 @@ export const signupSchema = z.object({
   // Optional JNV identity collected on the signup card.
   house: z.string().trim().max(40).optional(),
   batchValue: z.string().trim().regex(/^\d{4}-\d{4}$/, "Invalid batch").optional(),
+  // Referral attribution (audit P1-19) — inviter's user id from ?ref=.
+  ref: z.string().uuid().optional(),
 });
 
 function clientIp(req: NextRequest): string {
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const { name, email, password, house, batchValue } = parsed.data;
+    const { name, email, password, house, batchValue, ref } = parsed.data;
 
     const normalizedEmail = email;
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -95,6 +98,9 @@ export async function POST(req: NextRequest) {
     const baseUsername = generateUsername(name);
     const username = await ensureUniqueUsername(baseUsername);
 
+    // Referral attribution (audit P1-19): only a real, distinct inviter counts.
+    const invitedById = await resolveInviter(ref, normalizedEmail);
+
     // Self-signup does NOT prove email ownership. Create the account with a null
     // emailVerifiedAt; the credentials login gate rejects it until the emailed
     // verification link is clicked (imported members verify via the reset flow).
@@ -107,6 +113,7 @@ export async function POST(req: NextRequest) {
         emailVerifiedAt: null,
         status: "active",
         onboardingStep: "profile",
+        invitedById,
       },
     });
 

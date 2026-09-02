@@ -129,6 +129,7 @@ model User {
   benefitTier          String    @default("base") @map("benefit_tier") @db.VarChar(20)
   passOutYear          Int?      @map("pass_out_year")
   isSuperAdmin         Boolean   @default(false) @map("is_super_admin")
+  invitedById          String?   @map("invited_by_id") @db.Uuid // referral attribution (audit P1-19)
   botWelcomedAt        DateTime? @map("bot_welcomed_at") @db.Timestamptz
   verificationData     Json?     @map("verification_data")
   membershipData       Json?     @map("membership_data")

@@ -48,6 +48,8 @@ export function SignupCard() {
     setError("");
     setLoading(true);
     const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+    // Referral attribution (audit P1-19): forward ?ref= from an invite link.
+    const ref = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null;
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,6 +59,7 @@ export function SignupCard() {
         password,
         ...(house ? { house } : {}),
         ...(batch ? { batchValue: batch } : {}),
+        ...(ref ? { ref } : {}),
       }),
     });
     setLoading(false);
