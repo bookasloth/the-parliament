@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
 import { colorAvatar } from "@/lib/avatar"
 import { NetworkClient } from "./network-client"
+import { mutualCountsFor } from "@/modules/connections/service"
 import {
   suggestedEvents, chapters, recentActivity,
   type NetworkAlumni,
@@ -53,6 +54,9 @@ export default async function NetworkPage() {
     },
   })
 
+  // Real mutual-connection counts (audit P1-18) instead of a hardcoded 0.
+  const mutualCounts = await mutualCountsFor(meId, rows.map((u) => u.id))
+
   const suggestedAlumni: NetworkAlumni[] = rows.map((u) => {
     const p = u.profile
     const batch = p?.batch?.label ?? ""
@@ -72,7 +76,7 @@ export default async function NetworkPage() {
       city: p?.city ?? undefined,
       industry: p?.industry ?? undefined,
       avatar: p?.photoUrl || colorAvatar(u.id),
-      mutualCount: 0,
+      mutualCount: mutualCounts.get(u.id) ?? 0,
       socialProof,
     }
   })

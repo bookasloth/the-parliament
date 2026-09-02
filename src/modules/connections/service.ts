@@ -58,7 +58,7 @@ function monthYear(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric" })
 }
 
-function mapUser(u: MappedUser, extra?: { since?: string }): AlumniUser {
+function mapUser(u: MappedUser, extra?: { since?: string; mutualCount?: number }): AlumniUser {
   const name = u.displayName || u.legalName
   const houseColor = u.profile?.house?.colorHex ?? "#94a3b8"
   const avatar =
@@ -111,24 +111,70 @@ export async function getFollowData(userId: string): Promise<{
     }),
   ])
 
+  // Real mutual counts (audit P1-18) for every card shown, not a hardcoded 0.
+  const shownIds = [
+    ...followingRows.map((f) => f.following.id),
+    ...followerRows.map((f) => f.follower.id),
+  ]
+  const listMutuals = await mutualCountsFor(userId, [...new Set(shownIds)])
+
   const following = followingRows.map((f) =>
-    mapUser(f.following as MappedUser, { since: monthYear(f.createdAt) }),
+    mapUser(f.following as MappedUser, { since: monthYear(f.createdAt), mutualCount: listMutuals.get(f.following.id) ?? 0 }),
   )
   const followers = followerRows.map((f) =>
-    mapUser(f.follower as MappedUser, { since: monthYear(f.createdAt) }),
+    mapUser(f.follower as MappedUser, { since: monthYear(f.createdAt), mutualCount: listMutuals.get(f.follower.id) ?? 0 }),
   )
 
-  // Suggestions: active users I don't already follow (and haven't blocked / been blocked by).
+  // Suggestions: active users I don't already follow (and haven't blocked / been
+  // blocked by), RANKED by mutuals + same batch/house + recency (was an arbitrary
+  // 6 rows). ponytail: ranks a recent candidate pool in app code — fine to a few
+  // thousand; push into SQL if the member base gets large.
   const blocked = await blockedIdsFor(userId)
   const followedIds = new Set<string>([userId, ...allFollowingIds.map((f) => f.followingId), ...blocked])
-  const suggestionRows = await prisma.user.findMany({
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { profile: { select: { houseId: true, batchId: true } } } })
+  const myHouse = me?.profile?.houseId ?? null
+  const myBatch = me?.profile?.batchId ?? null
+
+  const candidates = await prisma.user.findMany({
     where: { status: "active", deletedAt: null, id: { notIn: Array.from(followedIds) } },
-    select: userSelect,
-    take: 6,
+    select: { ...userSelect, profile: { select: { photoUrl: true, headline: true, city: true, houseId: true, batchId: true, house: { select: { name: true, colorHex: true } }, batch: { select: { label: true } } } } },
+    orderBy: { createdAt: "desc" },
+    take: 60,
   })
-  const suggestions = suggestionRows.map((u) => mapUser(u as MappedUser))
+  const candMutuals = await mutualCountsFor(userId, candidates.map((c) => c.id))
+  const scored = candidates
+    .map((c) => {
+      const mutual = candMutuals.get(c.id) ?? 0
+      const sameBatch = myBatch && c.profile?.batchId === myBatch ? 1 : 0
+      const sameHouse = myHouse && c.profile?.houseId === myHouse ? 1 : 0
+      return { c, mutual, score: mutual * 3 + sameBatch * 2 + sameHouse }
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6)
+  const suggestions = scored.map(({ c, mutual }) => mapUser(c as unknown as MappedUser, { mutualCount: mutual }))
 
   return { following, followers, suggestions }
+}
+
+/**
+ * Mutual-connection counts (audit P1-18): for each candidate, how many people
+ * BOTH the viewer and that candidate follow. Previously every card showed
+ * "0 mutual" because the value was hardcoded. One grouped query over the
+ * candidates' follow edges restricted to the viewer's own following set.
+ */
+export async function mutualCountsFor(viewerId: string, candidateIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  if (candidateIds.length === 0) return out
+  const viewerFollowing = await prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } })
+  const viewerSet = viewerFollowing.map((f) => f.followingId)
+  if (viewerSet.length === 0) return out
+  const rows = await prisma.follow.groupBy({
+    by: ["followerId"],
+    where: { followerId: { in: candidateIds }, followingId: { in: viewerSet } },
+    _count: { followingId: true },
+  })
+  for (const r of rows) out.set(r.followerId, r._count.followingId)
+  return out
 }
 
 /** Ids the given user currently follows — for hydrating Follow buttons. */

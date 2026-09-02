@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { AlumniProfileCard } from "@/components/shared/AlumniProfileCard"
 import { FollowButton } from "@/components/shared/FollowButton"
+import { InviteFriend } from "./invite-friend"
 import type { AlumniCard, Membership } from "@/lib/homepage-data"
 
 type TabType = "following" | "followers" | "suggestions"
@@ -151,6 +152,9 @@ export default function ConnectionsClient({
       </header>
 
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
+        <div className="max-w-md">
+          <InviteFriend />
+        </div>
         {/* Tabs */}
         <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden">
           <div className="flex overflow-x-auto scrollbar-none">
