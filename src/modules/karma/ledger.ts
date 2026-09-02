@@ -411,6 +411,141 @@ export async function spendKarma(input: {
   })
 }
 
+// ─────────────────────────────────────────────
+// Reversal (audit P1-9)
+// ─────────────────────────────────────────────
+
+/** Action types whose forward award did NOT feed the 30-day pool (excludeFromEarned).
+ *  A reversal must mirror that — never claw back earned-30d it never granted. Pure. */
+export function isEarnExcludedAction(actionType: string): boolean {
+  return actionType === "post_award_received" || actionType.startsWith("membership")
+}
+
+/** Post engagement whose karma should be clawed back when a post is removed
+ *  (audit E-2: "reputation earned by removed spam persists"). Includes the award
+ *  giver's spend (redemption_spend on a post entity is always a post award), so a
+ *  removed post refunds their karma. */
+export const POST_REMOVAL_ACTIONS = [
+  "post_like_actor", "post_like_publisher",
+  "downvote_post_actor", "downvote_publisher",
+  "share_actor", "share_publisher",
+  "post_award_received", "redemption_spend",
+] as const
+
+/** Compute the inverse balance deltas for one original transaction. Pure so the
+ *  math is unit-tested without a DB. Mirrors the forward path in awardKarma:
+ *  balance took `applied` (clamped ≥ FLOOR), lifetime took only positive applied,
+ *  earned-30d took positive applied unless the action was earn-excluded. */
+export function reversalDeltas(applied: number, actionType: string): {
+  balanceDelta: number
+  earnedDelta: number
+  lifeDelta: number
+} {
+  return {
+    balanceDelta: -applied || 0, // `|| 0` avoids -0 when applied is 0
+    lifeDelta: applied > 0 ? -applied : 0,
+    earnedDelta: applied > 0 && !isEarnExcludedAction(actionType) ? -applied : 0,
+  }
+}
+
+export interface ReverseFilter {
+  /** Restrict to these action types (e.g. POST_REMOVAL_ACTIONS). */
+  actionTypes?: readonly string[]
+  /** Restrict to a single earning user (the unreact case). */
+  userId?: string
+  /** Restrict to a single counterparty (the unreact case). */
+  counterpartyId?: string
+}
+
+/**
+ * Reverse the karma tied to a piece of content (audit P1-9). Idempotent: each
+ * reversal row carries entityType "karma_reversal" and entityId = the ORIGINAL
+ * transaction's id, so re-running skips originals already reversed. Balance is
+ * re-clamped at the floor; earned-30d/lifetime are decremented by exactly what
+ * the original granted (never below zero). Daily counters/pair-day are left
+ * untouched — they are day-bucketed and self-correct.
+ */
+export async function reverseKarmaForContent(
+  entityType: string,
+  entityId: string,
+  filter: ReverseFilter = {},
+): Promise<{ reversed: number }> {
+  const originals = await prisma.karmaTransaction.findMany({
+    where: {
+      entityType,
+      entityId,
+      reasonCode: { not: "reversal" },
+      ...(filter.actionTypes ? { actionType: { in: [...filter.actionTypes] } } : {}),
+      ...(filter.userId ? { userId: filter.userId } : {}),
+      ...(filter.counterpartyId ? { counterpartyId: filter.counterpartyId } : {}),
+    },
+    select: { id: true, userId: true, counterpartyId: true, role: true, actionType: true, baseValue: true, appliedValue: true },
+  })
+  if (originals.length === 0) return { reversed: 0 }
+
+  // Skip originals already reversed (their id appears as a reversal's entityId).
+  const alreadyReversed = new Set(
+    (
+      await prisma.karmaTransaction.findMany({
+        where: { entityType: "karma_reversal", entityId: { in: originals.map((o) => o.id) } },
+        select: { entityId: true },
+      })
+    ).map((r) => r.entityId),
+  )
+
+  let reversed = 0
+  for (const o of originals) {
+    if (alreadyReversed.has(o.id)) continue
+    const applied = o.appliedValue.toNumber()
+    if (applied === 0) {
+      // Nothing to undo money-wise, but still stamp a marker so it isn't reconsidered.
+      await prisma.karmaTransaction.create({
+        data: {
+          userId: o.userId, counterpartyId: o.counterpartyId, role: o.role,
+          actionType: `reverse:${o.actionType}`.slice(0, 40),
+          baseValue: new Prisma.Decimal(0), appliedValue: new Prisma.Decimal(0),
+          reasonCode: "reversal", entityType: "karma_reversal", entityId: o.id,
+        },
+      })
+      reversed++
+      continue
+    }
+    const { balanceDelta, earnedDelta, lifeDelta } = reversalDeltas(applied, o.actionType)
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.userKarma.findUnique({ where: { userId: o.userId } })
+      const prevBalance = existing?.karmaBalance.toNumber() ?? 0
+      const prevEarned = existing?.earnedKarma30d.toNumber() ?? 0
+      const prevLife = existing?.lifetimeEarned.toNumber() ?? 0
+      await tx.userKarma.upsert({
+        where: { userId: o.userId },
+        create: {
+          userId: o.userId,
+          karmaBalance: new Prisma.Decimal(Math.max(KARMA.TOTAL_FLOOR, balanceDelta)),
+          earnedKarma30d: new Prisma.Decimal(Math.max(0, earnedDelta)),
+          lifetimeEarned: new Prisma.Decimal(Math.max(0, lifeDelta)),
+        },
+        update: {
+          karmaBalance: new Prisma.Decimal(Math.max(KARMA.TOTAL_FLOOR, prevBalance + balanceDelta)),
+          earnedKarma30d: new Prisma.Decimal(Math.max(0, prevEarned + earnedDelta)),
+          lifetimeEarned: new Prisma.Decimal(Math.max(0, prevLife + lifeDelta)),
+        },
+      })
+      await tx.karmaTransaction.create({
+        data: {
+          userId: o.userId, counterpartyId: o.counterpartyId, role: o.role,
+          actionType: `reverse:${o.actionType}`.slice(0, 40),
+          baseValue: new Prisma.Decimal(o.baseValue.toNumber() * -1),
+          appliedValue: new Prisma.Decimal(-applied),
+          reasonCode: "reversal", entityType: "karma_reversal", entityId: o.id,
+        },
+      })
+    })
+    reversed++
+  }
+  return { reversed }
+}
+
 export async function getBalance(userId: string): Promise<KarmaBalance> {
   const row = await prisma.userKarma.findUnique({ where: { userId } })
   if (!row) return { balance: 0, earned30d: 0, lifetimeEarned: 0 }

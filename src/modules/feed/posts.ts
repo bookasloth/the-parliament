@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@/generated/prisma/client"
 import { ForbiddenError } from "@/lib/errors"
-import { awardKarma } from "@/modules/karma/ledger"
+import { awardKarma, reverseKarmaForContent, POST_REMOVAL_ACTIONS } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
 import { sendNotification } from "@/modules/notifications/service"
 import { notifyMentions } from "@/modules/feed/mentions"
@@ -521,6 +521,12 @@ export async function deletePost(input: { postId: string; userId: string }) {
     data: { deletedAt: new Date(), status: "deleted" },
   })
 
+  // Claw back the karma this post earned (audit P1-9 / E-2): likes, downvotes,
+  // shares, awards received, and refund the award givers' spend. Idempotent.
+  await reverseKarmaForContent("post", post.id, { actionTypes: POST_REMOVAL_ACTIONS }).catch((e) =>
+    console.error("karma reversal (post delete) failed", post.id, e),
+  )
+
   await audit({
     actorId: input.userId,
     action: "post.delete",
@@ -552,6 +558,19 @@ export async function toggleReaction(input: {
   // (post_counter_triggers migration) — this only writes the reaction row.
   if (existing && existing.type === input.type) {
     await prisma.reaction.delete({ where: { id: existing.id } })
+    // Reverse the karma this reaction granted (audit P1-9) so a like→unlike loop
+    // can't farm reputation. Scoped to THIS actor's pair on the post: their own
+    // actor-side award, and the author's publisher credit from this actor.
+    if (input.userId !== post.authorId) {
+      await reverseKarmaForContent("post", post.id, {
+        userId: input.userId,
+        actionTypes: ["post_like_actor", "downvote_post_actor"],
+      }).catch(() => {})
+      await reverseKarmaForContent("post", post.id, {
+        counterpartyId: input.userId,
+        actionTypes: ["post_like_publisher", "downvote_publisher"],
+      }).catch(() => {})
+    }
     // Un-voting shifts the author's reputation → re-rank their recent posts.
     await recomputeAuthorRanking(post.authorId)
     return { reacted: false }
@@ -915,6 +934,12 @@ export async function deleteComment(input: { userId: string; commentId: string }
   if (c.authorId !== input.userId) throw new ForbiddenError("Not the author")
 
   await prisma.comment.update({ where: { id: c.id }, data: { deletedAt: new Date() } })
+  // Reverse karma earned by reactions on this comment (audit P1-9). Comment
+  // reaction karma is keyed on entityType "comment"; comment-creation karma is
+  // keyed on the post entity (shared across comments) and is intentionally left.
+  await reverseKarmaForContent("comment", c.id).catch((e) =>
+    console.error("karma reversal (comment delete) failed", c.id, e),
+  )
   // comment_count is maintained by a DB trigger (post_counter_triggers migration),
   // which counts only non-deleted comments — so the soft-delete above is reflected.
   await recomputeRankingScore(c.postId)

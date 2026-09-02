@@ -112,6 +112,12 @@ export async function applyModerationConsequence(
   switch (entityType) {
     case "post":
       await prisma.post.update({ where: { id: entityId }, data: { status: resolution } })
+      // A full removal claws back the post's earned karma (audit P1-9 / E-2).
+      // A "hidden" (softer) state leaves karma intact.
+      if (resolution === "removed") {
+        const { reverseKarmaForContent, POST_REMOVAL_ACTIONS } = await import("@/modules/karma/ledger")
+        await reverseKarmaForContent("post", entityId, { actionTypes: [...POST_REMOVAL_ACTIONS] }).catch(() => {})
+      }
       break
     case "comment": {
       await prisma.comment.update({ where: { id: entityId }, data: { deletedAt: new Date() } })
@@ -119,6 +125,10 @@ export async function applyModerationConsequence(
       if (c) {
         const { recomputeRankingScore } = await import("@/modules/feed/posts")
         await recomputeRankingScore(c.postId)
+      }
+      if (resolution === "removed") {
+        const { reverseKarmaForContent } = await import("@/modules/karma/ledger")
+        await reverseKarmaForContent("comment", entityId).catch(() => {})
       }
       break
     }
