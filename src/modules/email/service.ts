@@ -243,8 +243,10 @@ export async function deliver(args: DeliverArgs): Promise<{ messageId: string | 
 export async function drainEmailOutbox(limit = 200): Promise<{ sent: number; failed: number; skipped: number }> {
   if (insideQuietHours()) return { sent: 0, failed: 0, skipped: 0 }
 
+  const now = new Date()
   const rows = await prisma.emailMessage.findMany({
-    where: { status: "queued" },
+    // Skip rows whose backoff hasn't elapsed yet (audit P1-8).
+    where: { status: "queued", OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] },
     orderBy: { queuedAt: "asc" },
     take: limit,
   })
@@ -296,13 +298,35 @@ export async function drainEmailOutbox(limit = 200): Promise<{ sent: number; fai
       sent++
     } catch (e) {
       const errMsg = (e as Error).message
-      await prisma.emailMessage.update({ where: { id: row.id }, data: { status: "failed", error: errMsg } })
-      await audit({ action: "email.drain.failed", entityId: row.id, payload: { error: errMsg } })
-      failed++
+      // Retry with exponential backoff instead of failing terminally (audit P1-8).
+      // A transient SMTP blip no longer permanently drops a reset/receipt email.
+      const attempts = row.attempts + 1
+      if (attempts >= MAX_EMAIL_ATTEMPTS) {
+        await prisma.emailMessage.update({ where: { id: row.id }, data: { status: "failed", error: errMsg, attempts } })
+        await audit({ action: "email.drain.failed", entityId: row.id, payload: { error: errMsg, attempts } })
+        failed++
+      } else {
+        const delayMs = emailBackoffMs(attempts)
+        await prisma.emailMessage.update({
+          where: { id: row.id },
+          data: { status: "queued", error: errMsg, attempts, nextAttemptAt: new Date(now.getTime() + delayMs) },
+        })
+        // Not counted as failed — it's still queued for a later attempt.
+      }
     }
   }
 
   return { sent, failed, skipped }
+}
+
+/** Max delivery attempts before an email is marked permanently failed. */
+export const MAX_EMAIL_ATTEMPTS = 5
+
+/** Exponential backoff (minutes → ms) for retry attempt N: 2,8,32,128 min…
+ *  Pure so it's unit-tested. */
+export function emailBackoffMs(attempt: number): number {
+  const minutes = 2 * Math.pow(4, Math.max(0, attempt - 1))
+  return Math.min(minutes, 6 * 60) * 60_000 // cap at 6h
 }
 
 /** DB-template send: look up + fill the template, then hand off to deliver(). */

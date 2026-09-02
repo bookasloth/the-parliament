@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client"
 import { ForbiddenError } from "@/lib/errors"
 import { awardKarma, reverseKarmaForContent, POST_REMOVAL_ACTIONS } from "@/modules/karma/ledger"
 import { KARMA } from "@/config/karma"
-import { sendNotification } from "@/modules/notifications/service"
+import { sendNotification, deleteNotificationsForEntity } from "@/modules/notifications/service"
 import { notifyMentions } from "@/modules/feed/mentions"
 import { syncPostHashtags } from "@/modules/feed/hashtags"
 import { audit } from "@/lib/audit"
@@ -534,6 +534,8 @@ export async function deletePost(input: { postId: string; userId: string }) {
   await reverseKarmaForContent("post", post.id, { actionTypes: POST_REMOVAL_ACTIONS }).catch((e) =>
     console.error("karma reversal (post delete) failed", post.id, e),
   )
+  // Drop notifications pointing at the gone post so their deep links don't 404 (P1-4).
+  await deleteNotificationsForEntity("post", post.id).catch(() => {})
 
   await audit({
     actorId: input.userId,
@@ -628,6 +630,7 @@ export async function toggleReaction(input: {
       const fromName = actor?.displayName || actor?.legalName || "Someone"
       await sendNotification({
         userId: post.authorId,
+        actorId: input.userId,
         kind: "reaction_on_post",
         title: `${fromName} reacted to your post`,
         entityType: "post",
@@ -718,6 +721,7 @@ export async function sharePost(input: {
     const fromName = actor?.displayName || actor?.legalName || "Someone"
     await sendNotification({
       userId: post.authorId,
+      actorId: input.userId,
       kind: "share_on_post",
       title: `${fromName} shared your post`,
       entityType: "post",
@@ -809,6 +813,7 @@ export async function givePostAward(input: {
   const fromName = giver?.displayName || giver?.legalName || "Someone"
   await sendNotification({
     userId: post.authorId,
+    actorId: input.userId,
     kind: "award_on_post",
     title: `${fromName} gave your post a ${spec.label} award`,
     entityType: "post",
@@ -888,6 +893,7 @@ export async function createComment(input: {
     const postUrl = `${process.env.AUTH_URL || ""}/feed/${post.id}`
     await sendNotification({
       userId: post.authorId,
+      actorId: input.userId,
       kind: "comment_on_post",
       title: `${fromName} commented on your post`,
       entityType: "post",

@@ -265,7 +265,9 @@ export default function ConversationView({
     setInput("")
     setReplyTarget(null)
 
-    const res = await sendMessageAction(conversationId, body, [], reply?.id)
+    // optimisticId doubles as the idempotency key (audit P1-16): a retried send
+    // of this same message carries the same key and the server dedupes it.
+    const res = await sendMessageAction(conversationId, body, [], reply?.id, optimisticId)
     if (res.ok) {
       setMessages((prev) => prev.map((m) => (m.id === optimisticId ? res.msg : m)))
     } else {
@@ -311,7 +313,7 @@ export default function ConversationView({
         alert(data.error ?? "Upload failed")
         return
       }
-      const res = await sendMessageAction(conversationId, "", [data.url as string], replyTarget?.id)
+      const res = await sendMessageAction(conversationId, "", [data.url as string], replyTarget?.id, `img-${Date.now()}`)
       if (res.ok) {
         setReplyTarget(null)
         setMessages((prev) => [...prev, res.msg])

@@ -973,6 +973,7 @@ model Message {
   senderId       String    @map("sender_id") @db.Uuid
   body           String
   media          Json      @default("[]")
+  clientMsgId    String?   @map("client_msg_id") @db.VarChar(64) // client-generated idempotency key (audit P1-16)
   replyToId      String?   @map("reply_to_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   editedAt       DateTime? @map("edited_at") @db.Timestamptz
@@ -985,6 +986,7 @@ model Message {
   replies      Message[]         @relation("message_reply")
   reactions    MessageReaction[]
 
+  @@unique([conversationId, clientMsgId]) // dedupe double-sends (audit P1-16)
   @@index([senderId, createdAt])
   @@index([conversationId, createdAt])
   @@map("messages")
@@ -1013,6 +1015,7 @@ model MessageReaction {
 model Notification {
   id         String    @id @default(uuid()) @db.Uuid
   userId     String    @map("user_id") @db.Uuid
+  actorId    String?   @map("actor_id") @db.Uuid // who triggered it (for grouping / block-suppression / re-render)
   type       String    @db.VarChar(40)
   title      String    @db.VarChar(200)
   body       String?
@@ -1026,7 +1029,21 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead, createdAt])
+  @@index([entityType, entityId]) // dead-link cleanup when the target is deleted
   @@map("notifications")
+}
+
+// Per-viewer bell/push preferences (audit P1-5). Distinct from EmailPreference
+// (which governs email). `mutedKinds` lists notification kinds the user has
+// silenced (no bell row, no push); email for those is still governed by
+// EmailPreference. FK-less like EmailPreference to keep the User model lean.
+model NotificationPreference {
+  userId      String   @id @map("user_id") @db.Uuid
+  pushEnabled Boolean  @default(true) @map("push_enabled")
+  mutedKinds  String[] @default([]) @map("muted_kinds")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("notification_preferences")
 }
 
 // Feed announcements — a timed banner shown at the top of the member feed while
@@ -2070,6 +2087,8 @@ model EmailMessage {
   queuedAt      DateTime  @default(now()) @map("queued_at") @db.Timestamptz
   sentAt        DateTime? @map("sent_at") @db.Timestamptz
   error         String?
+  attempts      Int       @default(0) // delivery attempts so far (audit P1-8)
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.Timestamptz // earliest retry time (backoff)
   providerMsgId String?   @map("provider_msg_id") @db.VarChar(160)
   metadata      Json      @default("{}")
 
