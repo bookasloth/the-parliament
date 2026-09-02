@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import Image from "next/image"
 import type { RealtimeChannel } from "@supabase/supabase-js"
@@ -55,12 +55,14 @@ export type NavbarViewer = {
 }
 
 /* ---------------- Search scopes (Quora-style) ---------------- */
+// All scopes route to the unified /search backend (audit P1-1). Previously these
+// pointed at /community, /feed, etc. and only /community actually read `q`.
 const SEARCH_SCOPES = [
-  { key: "profiles", label: "Profiles", icon: Users, href: "/community" },
-  { key: "posts", label: "Posts", icon: FileText, href: "/feed" },
-  { key: "groups", label: "Groups", icon: UsersRound, href: "/groups" },
-  { key: "events", label: "Events", icon: Calendar, href: "/events" },
-  { key: "businesses", label: "Businesses", icon: Building2, href: "/business" },
+  { key: "people", label: "Profiles", icon: Users, href: "/search?scope=people" },
+  { key: "posts", label: "Posts", icon: FileText, href: "/search?scope=posts" },
+  { key: "groups", label: "Groups", icon: UsersRound, href: "/search?scope=groups" },
+  { key: "events", label: "Events", icon: Calendar, href: "/search?scope=events" },
+  { key: "businesses", label: "Businesses", icon: Building2, href: "/search?scope=businesses" },
 ]
 
 const SUGGESTED_SEARCHES = [
@@ -107,7 +109,7 @@ function SearchPanel({ query }: { query: string }) {
             {SEARCH_SCOPES.map(scope => (
               <li key={scope.key}>
                 <a
-                  href={`${scope.href}?q=${encodeURIComponent(query.trim())}`}
+                  href={`${scope.href}&q=${encodeURIComponent(query.trim())}`}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group"
                 >
                   <Search className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
@@ -132,7 +134,7 @@ function SearchPanel({ query }: { query: string }) {
             {SUGGESTED_SEARCHES.map((s, i) => (
               <li key={i}>
                 <a
-                  href={`/community?q=${encodeURIComponent(s.text)}`}
+                  href={`/search?q=${encodeURIComponent(s.text)}`}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
                 >
                   {s.trending
@@ -196,6 +198,17 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
   const [query, setQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const router = useRouter()
+
+  // Enter in the search box runs the unified search (audit P1-1).
+  function submitSearch(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return
+    const q = query.trim()
+    if (q.length < 2) return
+    setSearchOpen(false)
+    setMobileSearchOpen(false)
+    router.push(`/search?q=${encodeURIComponent(q)}`)
+  }
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
 
@@ -336,6 +349,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onFocus={() => setSearchOpen(true)}
+              onKeyDown={submitSearch}
               placeholder="Search…"
               className="w-full rounded-[3px] border border-gray-200 bg-gray-50 pl-10 pr-4 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-colors"
             />
@@ -573,6 +587,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
+              onKeyDown={submitSearch}
               placeholder="Search NNAWCA…"
               className="w-full rounded-[3px] border border-gray-200 bg-gray-50 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10"
             />

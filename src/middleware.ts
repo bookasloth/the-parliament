@@ -18,6 +18,7 @@ const PRIVATE_PREFIXES = [
   "/feed",
   "/mention",
   "/community",
+  "/search",
   "/groups",
   "/business/new", // public: directory + /business/[slug]; only listing creation is gated
   "/membership/checkout", // /membership itself is public pricing
