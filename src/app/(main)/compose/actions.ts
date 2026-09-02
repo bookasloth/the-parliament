@@ -7,6 +7,7 @@ import { getDefaultSchoolId } from "@/lib/school"
 import { createPost, publishDraft, deletePost, updateDraft, type PostFormat } from "@/modules/feed/posts"
 import { draftSaveMode } from "@/modules/feed/draft-autosave"
 import { publicUrlFor, validatePostMedia } from "@/lib/r2"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 const VALID_FORMATS: PostFormat[] = ["text", "image", "link", "quote", "question", "poll"]
 
@@ -24,6 +25,11 @@ export async function createPostAction(input: {
   asDraft?: boolean
 }) {
   const user = await requireUser()
+  // Anti-spam (audit P1-11): cap post creation. Drafts don't publish, so only
+  // gate real posts here.
+  if (!input.asDraft) {
+    await enforceRateLimit({ bucket: "compose.post", identifier: user.id, limit: 20, windowSec: 3600 })
+  }
   const schoolId = await getDefaultSchoolId()
   if (!schoolId) throw new Error("No school configured")
 

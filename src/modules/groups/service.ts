@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { relativeTime } from "@/lib/relative-time"
 import { getDefaultSchoolId } from "@/lib/school"
+import { sendNotification } from "@/modules/notifications/service"
 
 /** Group shape consumed by the groups list client page. */
 export interface GroupListItem {
@@ -389,11 +390,43 @@ export async function autoAssignGroups(userId: string): Promise<void> {
 }
 
 export async function joinGroup(userId: string, groupId: string): Promise<void> {
+  const existing = await prisma.groupMember.findUnique({
+    where: { groupId_userId: { groupId, userId } },
+    select: { status: true },
+  })
   await prisma.groupMember.upsert({
     where: { groupId_userId: { groupId, userId } },
     update: { status: "active" },
     create: { groupId, userId, role: "member", status: "active" },
   })
+  // Notify group admins on a genuinely new join (audit P1-3 — joins notified
+  // nobody). Skip re-activations. Best-effort, in-app only.
+  if (!existing) await notifyGroupAdminsOfJoin(userId, groupId).catch(() => {})
+}
+
+async function notifyGroupAdminsOfJoin(userId: string, groupId: string): Promise<void> {
+  const [group, admins, joiner] = await Promise.all([
+    prisma.group.findUnique({ where: { id: groupId }, select: { name: true } }),
+    prisma.groupMember.findMany({
+      where: { groupId, role: "admin", status: "active", userId: { not: userId } },
+      select: { userId: true },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, legalName: true } }),
+  ])
+  if (!group || admins.length === 0) return
+  const fromName = joiner?.displayName || joiner?.legalName || "Someone"
+  await Promise.all(
+    admins.map((a) =>
+      sendNotification({
+        userId: a.userId,
+        kind: "group_join",
+        title: `${fromName} joined ${group.name}`,
+        entityType: "group",
+        entityId: groupId,
+        sendEmail: false,
+      }).catch(() => {}),
+    ),
+  )
 }
 
 export async function leaveGroup(userId: string, groupId: string): Promise<void> {

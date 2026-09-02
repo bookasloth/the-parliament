@@ -661,7 +661,16 @@ export async function sharePost(input: {
   postId: string
   comment?: string
 }) {
-  await assertCanInteract(input.userId, input.postId)
+  const post = await assertCanInteract(input.userId, input.postId)
+
+  // Dedupe: one share per user per post (audit P1-10 — sharing was unbounded, so
+  // a user could inflate shareCount/ranking in a loop). Re-sharing returns the
+  // existing row without re-incrementing.
+  const existing = await prisma.postShare.findFirst({
+    where: { originalPostId: input.postId, sharerId: input.userId },
+    select: { id: true },
+  })
+  if (existing) return existing
 
   const share = await prisma.postShare.create({
     data: {
@@ -672,7 +681,33 @@ export async function sharePost(input: {
   })
   // share_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
+
+  // Notify the author their post was shared (audit P1-3 — shares notified nobody).
+  if (input.userId !== post.authorId) {
+    const actor = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { displayName: true, legalName: true },
+    })
+    const fromName = actor?.displayName || actor?.legalName || "Someone"
+    await sendNotification({
+      userId: post.authorId,
+      kind: "share_on_post",
+      title: `${fromName} shared your post`,
+      entityType: "post",
+      entityId: input.postId,
+      sendEmail: false,
+    }).catch(() => {})
+  }
   return share
+}
+
+/** Remove the viewer's share of a post (audit P1-10 — there was no unshare). */
+export async function unsharePost(input: { userId: string; postId: string }) {
+  const del = await prisma.postShare.deleteMany({
+    where: { originalPostId: input.postId, sharerId: input.userId },
+  })
+  if (del.count > 0) await recomputeRankingScore(input.postId)
+  return { unshared: del.count > 0 }
 }
 
 export async function toggleSavePost(input: { userId: string; postId: string }) {
@@ -738,6 +773,21 @@ export async function givePostAward(input: {
       karmaCost: spec.cost,
     },
   })
+
+  // Notify the author their post was awarded (audit P1-3 — awards notified nobody).
+  const giver = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { displayName: true, legalName: true },
+  })
+  const fromName = giver?.displayName || giver?.legalName || "Someone"
+  await sendNotification({
+    userId: post.authorId,
+    kind: "award_on_post",
+    title: `${fromName} gave your post a ${spec.label} award`,
+    entityType: "post",
+    entityId: post.id,
+    sendEmail: false,
+  }).catch(() => {})
   return award
 }
 

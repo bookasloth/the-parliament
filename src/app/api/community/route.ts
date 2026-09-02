@@ -3,6 +3,7 @@ import { getDefaultSchoolId } from "@/lib/school"
 import { searchDirectory } from "@/modules/directory/service"
 import { requireUser } from "@/modules/auth/session"
 import { handleError } from "@/lib/api"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 const PAGE_SIZE = 24
 
@@ -13,6 +14,9 @@ export async function GET(req: Request) {
     // middleware does NOT cover /api, so the route must gate itself or the
     // whole roster is anonymously scrapeable.
     const viewer = await requireUser()
+    // Throttle roster enumeration (audit P1-2): this returns real legal names +
+    // employers, so cap how fast one member can page the whole directory.
+    await enforceRateLimit({ bucket: "community.list", identifier: viewer.id, limit: 120, windowSec: 60 })
 
     const url = new URL(req.url)
     const sp = url.searchParams

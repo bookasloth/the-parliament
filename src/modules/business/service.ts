@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { sendNotification } from "@/modules/notifications/service"
 import { EMPLOYEE_SIZES } from "./constants"
 
 function slugify(name: string): string {
@@ -120,6 +121,12 @@ export async function upsertReview(input: {
   const rating = input.rating
   if (!isValidRating(rating)) throw new Error("Rating must be an integer between 1 and 5")
 
+  // Detect a genuinely new review (vs an edit) so the owner is notified once.
+  const priorReview = await prisma.businessReview.findUnique({
+    where: { businessId_reviewerId: { businessId: input.businessId, reviewerId: input.reviewerId } },
+    select: { id: true },
+  })
+
   await prisma.$transaction(async (tx) => {
     await tx.businessReview.upsert({
       where: { businessId_reviewerId: { businessId: input.businessId, reviewerId: input.reviewerId } },
@@ -136,6 +143,30 @@ export async function upsertReview(input: {
       data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count },
     })
   })
+
+  // Notify the owner of a NEW review (audit P1-3 — reviews notified nobody).
+  if (!priorReview) {
+    const biz = await prisma.business.findUnique({
+      where: { id: input.businessId },
+      select: { ownerId: true, name: true, slug: true },
+    })
+    if (biz && biz.ownerId !== input.reviewerId) {
+      const reviewer = await prisma.user.findUnique({
+        where: { id: input.reviewerId },
+        select: { displayName: true, legalName: true },
+      })
+      const fromName = reviewer?.displayName || reviewer?.legalName || "Someone"
+      await sendNotification({
+        userId: biz.ownerId,
+        kind: "business_review",
+        title: `${fromName} reviewed ${biz.name}`,
+        body: `${rating}★`,
+        entityType: "business",
+        entityId: input.businessId,
+        sendEmail: false,
+      }).catch(() => {})
+    }
+  }
 }
 
 export { EMPLOYEE_SIZES }

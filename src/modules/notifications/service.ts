@@ -22,6 +22,13 @@ export type NotificationKind =
   | "new_follower"
   | "comment_on_post"
   | "reaction_on_post"
+  | "share_on_post"
+  | "award_on_post"
+  | "reaction_on_comment"
+  | "business_review"
+  | "event_rsvp"
+  | "group_join"
+  | "group_request"
   | "mention"
   | "contact_reveal_request"
   | "new_event_in_batch"
@@ -46,6 +53,7 @@ const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   reaction_milestone: "reaction_milestone",
   endorsement_request: "endorsement_request",
   moderation_warning: "moderation_warning",
+  group_request: "group_request",
   // endorsement_received is in-app only (no email template).
 }
 
@@ -151,18 +159,25 @@ export async function sendNotification<K extends NotificationKind>(
 }
 
 export async function markRead(userId: string, notificationId: string) {
-  await prisma.notification.updateMany({
-    where: { id: notificationId, userId, isRead: false },
+  const res = await prisma.notification.updateMany({
+    where: { id: notificationId, userId, isRead: false, type: { not: "new_message" } },
     data: { isRead: true, readAt: new Date() },
   })
-  try { await redis.decr(`notif:unread:${userId}`) } catch {}
+  // Only decrement when a counted unread actually flipped (audit P1-4): the old
+  // code decremented on every call, so marking an already-read notification (or
+  // a DM row that never counted) drifted the counter permanently negative.
+  if (res.count > 0) {
+    try { await redis.decr(`notif:unread:${userId}`) } catch {}
+  }
 }
 
 export async function unreadCount(userId: string): Promise<number> {
   // Redis counter is the fast path; DB is the fallback + source of truth.
   try {
     const cached = await redis.get<number>(`notif:unread:${userId}`)
-    if (cached !== null && cached !== undefined) return Math.max(0, cached)
+    // A negative cached value means the counter drifted — fall through to
+    // recompute from the DB and reseed, so it self-heals (audit P1-4).
+    if (cached !== null && cached !== undefined && cached >= 0) return cached
   } catch {}
   const count = await prisma.notification.count({
     where: { userId, isRead: false, type: { not: "new_message" } },
@@ -217,9 +232,10 @@ export async function markAllRead(userId: string): Promise<void> {
 
 export async function deleteNotification(userId: string, id: string): Promise<void> {
   // Check if unread before deleting — need to adjust counter
-  const row = await prisma.notification.findFirst({ where: { id, userId }, select: { isRead: true } })
+  const row = await prisma.notification.findFirst({ where: { id, userId }, select: { isRead: true, type: true } })
   await prisma.notification.deleteMany({ where: { id, userId } })
-  if (row && !row.isRead) {
+  // Only unread, counted (non-DM) rows contributed to the counter.
+  if (row && !row.isRead && row.type !== "new_message") {
     try { await redis.decr(`notif:unread:${userId}`) } catch {}
   }
 }
