@@ -369,6 +369,7 @@ const commentSelect = {
   imageUrl: true,
   likeCount: true,
   createdAt: true,
+  editedAt: true,
   parentId: true,
   author: {
     select: {
@@ -404,9 +405,17 @@ export async function listPostComments(
   postId: string,
   limit = 100,
   viewerId?: string,
+  /** Keyset cursor: only top-level comments created strictly after this ISO time
+   *  (audit P1-20 pagination — the old 100-cap left later comments unreachable). */
+  afterCreatedAt?: string,
 ): Promise<PostCommentRow[]> {
   const top0 = await prisma.comment.findMany({
-    where: { postId, deletedAt: null, parentId: null },
+    where: {
+      postId,
+      deletedAt: null,
+      parentId: null,
+      ...(afterCreatedAt ? { createdAt: { gt: new Date(afterCreatedAt) } } : {}),
+    },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: commentSelect,

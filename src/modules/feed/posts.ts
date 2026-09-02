@@ -939,6 +939,21 @@ export async function hidePost(input: { userId: string; postId: string }) {
 }
 
 /** Soft-delete a comment (author only). Decrements the post's comment count. */
+/** Edit a comment's text (author only). Sets editedAt for the "(edited)" marker
+ *  (audit P1-20). Rejects an empty edit unless the comment carries an image. */
+export async function editComment(input: { userId: string; commentId: string; body: string }) {
+  const c = await prisma.comment.findUnique({
+    where: { id: input.commentId },
+    select: { id: true, authorId: true, imageUrl: true, deletedAt: true },
+  })
+  if (!c || c.deletedAt) throw new ForbiddenError("Comment not found")
+  if (c.authorId !== input.userId) throw new ForbiddenError("Not the author")
+  const body = input.body.trim()
+  if (!body && !c.imageUrl) throw new ForbiddenError("Empty comment")
+  await prisma.comment.update({ where: { id: c.id }, data: { body, editedAt: new Date() } })
+  return { id: c.id, body, editedAt: new Date().toISOString() }
+}
+
 export async function deleteComment(input: { userId: string; commentId: string }) {
   const c = await prisma.comment.findUnique({
     where: { id: input.commentId },

@@ -17,6 +17,7 @@ function toView(
     body: r.body,
     imageUrl: r.imageUrl ?? null,
     createdAt: r.createdAt.toISOString(),
+    editedAt: r.editedAt ? r.editedAt.toISOString() : null,
     score: r.likeCount,
     myReaction: r.myReaction,
     isAuthor: r.author.id === postAuthorId,

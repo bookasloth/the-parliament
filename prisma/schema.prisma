@@ -672,6 +672,7 @@ model Comment {
   body      String
   imageUrl  String?   @map("image_url")
   likeCount Int       @default(0) @map("like_count")
+  editedAt  DateTime? @map("edited_at") @db.Timestamptz // set on author edit (audit P1-20)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
