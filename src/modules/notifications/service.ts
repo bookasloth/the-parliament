@@ -65,17 +65,37 @@ export interface NotificationInput<K extends NotificationKind> {
   entityType?: string
   entityId?: string
   imageUrl?: string
+  /** Who triggered this (audit P1-4) — enables grouping, block-suppression and
+   *  re-render after a rename. Optional; older call sites omit it. */
+  actorId?: string
   email?: K extends keyof EmailTemplates ? EmailTemplates[K] : never
   sendEmail?: boolean
+}
+
+// In-app + push preferences (audit P1-5). Absent row = all on. Cached per request
+// is unnecessary (one lookup per notification); kept simple.
+async function loadPrefs(userId: string): Promise<{ pushEnabled: boolean; mutedKinds: string[] }> {
+  try {
+    const row = await prisma.notificationPreference.findUnique({ where: { userId } })
+    return { pushEnabled: row?.pushEnabled ?? true, mutedKinds: row?.mutedKinds ?? [] }
+  } catch {
+    return { pushEnabled: true, mutedKinds: [] }
+  }
 }
 
 export async function sendNotification<K extends NotificationKind>(
   input: NotificationInput<K>,
 ): Promise<void> {
+  // Preferences (audit P1-5): a muted kind creates no bell row and no push (email
+  // for that kind is still governed separately by EmailPreference). DMs are never
+  // muteable here (they're the messages inbox, not the bell).
+  const prefs = await loadPrefs(input.userId)
+  const muted = input.kind !== "new_message" && prefs.mutedKinds.includes(input.kind)
+
   // Coalesce: if an unread notification of the same kind for the same entity is
   // still fresh, refresh it (bubble to top) instead of adding another row.
   let coalesced = false
-  if (input.entityType && input.entityId) {
+  if (!muted && input.entityType && input.entityId) {
     const recent = await prisma.notification.findFirst({
       where: {
         userId: input.userId,
@@ -96,11 +116,12 @@ export async function sendNotification<K extends NotificationKind>(
     }
   }
 
-  if (!coalesced) {
+  if (!muted && !coalesced) {
     await prisma.notification.create({
       data: {
         userId: input.userId,
         type: input.kind,
+        actorId: input.actorId,
         title: input.title,
         body: input.body,
         entityType: input.entityType,
@@ -116,11 +137,12 @@ export async function sendNotification<K extends NotificationKind>(
 
   // Nudge the recipient's notification bell to refetch instantly (realtime),
   // instead of waiting out its poll. Best-effort; the poll is the fallback.
-  void broadcastToUser(input.userId, "notification", { at: Date.now() })
+  if (!muted) void broadcastToUser(input.userId, "notification", { at: Date.now() })
 
   // Web push to the device (works when the tab is closed). Skip on a coalesced
-  // burst so one post's reaction storm doesn't buzz the phone repeatedly.
-  if (!coalesced) {
+  // burst so one post's reaction storm doesn't buzz the phone repeatedly, when
+  // the kind is muted, or when the viewer turned push off (audit P1-5).
+  if (!muted && !coalesced && prefs.pushEnabled) {
     void sendPush(input.userId, {
       title: input.title,
       body: input.body,
@@ -156,6 +178,60 @@ export async function sendNotification<K extends NotificationKind>(
   } catch {
     void deliver()
   }
+}
+
+/**
+ * Delete notifications that point at a now-gone entity (audit P1-4) so their
+ * deep links don't 404. Resets the affected users' cached unread counters so the
+ * bell count doesn't drift. Best-effort.
+ */
+export async function deleteNotificationsForEntity(entityType: string, entityId: string): Promise<void> {
+  const affected = await prisma.notification.findMany({
+    where: { entityType, entityId },
+    select: { userId: true },
+  })
+  if (affected.length === 0) return
+  await prisma.notification.deleteMany({ where: { entityType, entityId } })
+  // Force each affected user's counter to recompute from the DB on next read.
+  const userIds = [...new Set(affected.map((a) => a.userId))]
+  await Promise.all(userIds.map((id) => redis.del(`notif:unread:${id}`).catch(() => {})))
+}
+
+// User-muteable notification kinds (audit P1-5), with display labels. Not every
+// kind is here — account/verification/moderation notifications are not muteable.
+export const MUTEABLE_KINDS: { kind: NotificationKind; label: string }[] = [
+  { kind: "reaction_on_post", label: "Reactions on your posts" },
+  { kind: "comment_on_post", label: "Comments & replies" },
+  { kind: "share_on_post", label: "Shares of your posts" },
+  { kind: "award_on_post", label: "Awards on your posts" },
+  { kind: "reaction_on_comment", label: "Likes on your comments" },
+  { kind: "new_follower", label: "New followers" },
+  { kind: "mention", label: "Mentions" },
+  { kind: "group_join", label: "New members in your groups" },
+  { kind: "group_request", label: "Group requests" },
+  { kind: "event_rsvp", label: "RSVPs to your events" },
+  { kind: "business_review", label: "Reviews on your business" },
+]
+const MUTEABLE_SET = new Set(MUTEABLE_KINDS.map((m) => m.kind as string))
+
+export interface NotificationPrefs {
+  pushEnabled: boolean
+  mutedKinds: string[]
+}
+
+export async function getNotificationPrefs(userId: string): Promise<NotificationPrefs> {
+  const row = await prisma.notificationPreference.findUnique({ where: { userId } })
+  return { pushEnabled: row?.pushEnabled ?? true, mutedKinds: row?.mutedKinds ?? [] }
+}
+
+/** Persist bell/push prefs. Only known muteable kinds are stored (trust boundary). */
+export async function setNotificationPrefs(userId: string, input: NotificationPrefs): Promise<void> {
+  const mutedKinds = [...new Set(input.mutedKinds)].filter((k) => MUTEABLE_SET.has(k))
+  await prisma.notificationPreference.upsert({
+    where: { userId },
+    update: { pushEnabled: input.pushEnabled, mutedKinds },
+    create: { userId, pushEnabled: input.pushEnabled, mutedKinds },
+  })
 }
 
 export async function markRead(userId: string, notificationId: string) {

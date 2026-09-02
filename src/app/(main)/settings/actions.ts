@@ -10,6 +10,18 @@ import { isProfileVisibility } from "@/modules/profile/privacy"
 import { reactivateAccount } from "@/modules/admin/users"
 import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
+import { setNotificationPrefs } from "@/modules/notifications/service"
+
+/** Save the viewer's bell/push notification preferences (audit P1-5). */
+export async function updateNotificationPrefsAction(input: { pushEnabled: boolean; mutedKinds: string[] }) {
+  const user = await requireUser()
+  await setNotificationPrefs(user.id, {
+    pushEnabled: !!input.pushEnabled,
+    mutedKinds: Array.isArray(input.mutedKinds) ? input.mutedKinds.map(String) : [],
+  })
+  revalidatePath("/settings")
+  return { ok: true as const }
+}
 
 /** `<form action>`-shaped wrapper (must return void) for the reactivate button. */
 export async function reactivateAccountFormAction(_formData: FormData): Promise<void> {

@@ -169,6 +169,7 @@ export async function followUser(followerId: string, followingId: string): Promi
     const profileUrl = `${env.authUrl}/${follower?.username ?? followerId}`
     await sendNotification({
       userId: followingId,
+      actorId: followerId,
       kind: "new_follower",
       title: `${fromName} started following you`,
       entityType: "user",

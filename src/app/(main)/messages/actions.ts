@@ -28,14 +28,14 @@ export async function startConversationAction(otherId: string) {
   }
 }
 
-export async function sendMessageAction(conversationId: string, body: string, media: string[] = [], replyToId?: string) {
+export async function sendMessageAction(conversationId: string, body: string, media: string[] = [], replyToId?: string, clientMsgId?: string) {
   const u = await requireUser()
   try {
     // Anti-spam send throttle. Generous for real chat (a burst of 40/min is well
     // above human typing) but stops automated flooding — the one comms path that
     // previously had no limiter.
     await enforceRateLimit({ bucket: "dm.send", identifier: u.id, limit: 40, windowSec: 60 })
-    const msg = await svc.sendMessage(u.id, conversationId, { body, media, replyToId })
+    const msg = await svc.sendMessage(u.id, conversationId, { body, media, replyToId, clientMsgId })
     return { ok: true as const, msg }
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : "Failed" }

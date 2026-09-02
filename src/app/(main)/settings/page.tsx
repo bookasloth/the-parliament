@@ -5,8 +5,10 @@ import EmailPrefsForm from "./email-prefs-form"
 import PasswordForm from "./password-form"
 import PrivacyForm from "./privacy-form"
 import { BlockedAccounts } from "./blocked-accounts"
+import { NotificationPrefsForm } from "./notification-prefs-form"
 import { reactivateAccountFormAction } from "./actions"
 import { listBlockedUsers } from "@/modules/connections/blocks"
+import { getNotificationPrefs, MUTEABLE_KINDS } from "@/modules/notifications/service"
 import { EMAIL_PREF_KEYS, type EmailPrefKey } from "./prefs"
 
 export const dynamic = "force-dynamic"
@@ -53,7 +55,10 @@ export default async function SettingsPage() {
     EMAIL_PREF_KEYS.map(k => [k, savedPrefs ? (savedPrefs[k] as boolean) : true]),
   ) as Record<EmailPrefKey, boolean>
 
-  const blockedUsers = await listBlockedUsers(sessionUser.id)
+  const [blockedUsers, notifPrefs] = await Promise.all([
+    listBlockedUsers(sessionUser.id),
+    getNotificationPrefs(sessionUser.id),
+  ])
 
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
@@ -128,6 +133,8 @@ export default async function SettingsPage() {
               }}
             />
           )}
+
+          <NotificationPrefsForm initial={notifPrefs} kinds={MUTEABLE_KINDS.map((k) => ({ kind: k.kind, label: k.label }))} />
 
           <EmailPrefsForm initial={initialPrefs} />
 

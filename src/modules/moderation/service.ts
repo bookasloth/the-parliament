@@ -117,6 +117,8 @@ export async function applyModerationConsequence(
       if (resolution === "removed") {
         const { reverseKarmaForContent, POST_REMOVAL_ACTIONS } = await import("@/modules/karma/ledger")
         await reverseKarmaForContent("post", entityId, { actionTypes: [...POST_REMOVAL_ACTIONS] }).catch(() => {})
+        const { deleteNotificationsForEntity } = await import("@/modules/notifications/service")
+        await deleteNotificationsForEntity("post", entityId).catch(() => {})
       }
       break
     case "comment": {

@@ -230,9 +230,26 @@ export async function getMessages(
 export async function sendMessage(
   viewerId: string,
   conversationId: string,
-  input: { body: string; media?: string[]; replyToId?: string },
+  input: { body: string; media?: string[]; replyToId?: string; clientMsgId?: string },
 ): Promise<MessageView> {
   const body = input.body.trim()
+  // Idempotency (audit P1-16): a double-tap on a flaky connection used to insert
+  // two messages. A client-supplied key dedupes — if we already stored one for
+  // this (conversation, key), return it instead of inserting again.
+  const clientMsgId = input.clientMsgId?.slice(0, 64) || null
+  if (clientMsgId) {
+    const dupe = await prisma.message.findUnique({
+      where: { conversationId_clientMsgId: { conversationId, clientMsgId } },
+      select: { id: true, senderId: true, body: true, media: true, createdAt: true, editedAt: true, deletedAt: true },
+    })
+    if (dupe) {
+      return {
+        id: dupe.id, senderId: dupe.senderId, body: dupe.body, media: dupe.media as string[],
+        createdAt: dupe.createdAt.toISOString(), editedAt: dupe.editedAt?.toISOString() ?? null,
+        deleted: !!dupe.deletedAt, reactions: [], replyTo: null,
+      }
+    }
+  }
   if (body.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
   const media = input.media ?? []
   if (media.some((m) => !isOurPublicUrl(m))) throw new ForbiddenError("Invalid media URL")
@@ -256,12 +273,13 @@ export async function sendMessage(
     { id: string; sender_id: string; body: string; media: string[]; created_at: Date }[]
   >`
     WITH ins AS (
-      INSERT INTO messages (id, conversation_id, sender_id, body, media, reply_to_id, created_at)
-      SELECT gen_random_uuid(), ${conversationId}::uuid, ${viewerId}::uuid, ${body}, ${JSON.stringify(media)}::jsonb, ${input.replyToId ?? null}::uuid, now()
+      INSERT INTO messages (id, conversation_id, sender_id, body, media, client_msg_id, reply_to_id, created_at)
+      SELECT gen_random_uuid(), ${conversationId}::uuid, ${viewerId}::uuid, ${body}, ${JSON.stringify(media)}::jsonb, ${clientMsgId}, ${input.replyToId ?? null}::uuid, now()
       WHERE EXISTS (
         SELECT 1 FROM conversation_participants
         WHERE conversation_id = ${conversationId}::uuid AND user_id = ${viewerId}::uuid
       )
+      ON CONFLICT (conversation_id, client_msg_id) DO NOTHING
       RETURNING id, sender_id, body, media, created_at
     ), bump AS (
       UPDATE conversations SET last_message_at = now()
@@ -269,8 +287,22 @@ export async function sendMessage(
     )
     SELECT id, sender_id, body, media, created_at FROM ins
   `
-  const msg = rows[0]
-  if (!msg) throw new ForbiddenError("Not a participant")
+  let msg = rows[0]
+  if (!msg) {
+    // 0 rows means either a not-a-participant insert OR a lost idempotency race
+    // (a concurrent identical send won the unique key). Disambiguate by re-reading
+    // the stored row for this key before rejecting.
+    if (clientMsgId) {
+      const raced = await prisma.message.findUnique({
+        where: { conversationId_clientMsgId: { conversationId, clientMsgId } },
+        select: { id: true, senderId: true, body: true, media: true, createdAt: true },
+      })
+      if (raced) {
+        msg = { id: raced.id, sender_id: raced.senderId, body: raced.body, media: raced.media as string[], created_at: raced.createdAt }
+      }
+    }
+    if (!msg) throw new ForbiddenError("Not a participant")
+  }
 
   const view: MessageView = {
     id: msg.id, senderId: msg.sender_id, body: msg.body, media: msg.media,
