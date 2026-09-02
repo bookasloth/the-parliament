@@ -6,6 +6,7 @@ import {
   toggleReaction,
   createComment,
   deleteComment,
+  editComment,
   hidePost,
   editPost,
   deletePost,
@@ -181,6 +182,28 @@ export async function deleteCommentAction(postId: string, commentId: string) {
   await deleteComment({ userId: user.id, commentId })
   revalidatePath(`/feed/${postId}`)
   return { ok: true as const }
+}
+
+export async function editCommentAction(postId: string, commentId: string, body: string) {
+  const user = await requireUser()
+  const res = await editComment({ userId: user.id, commentId, body })
+  revalidatePath(`/feed/${postId}`)
+  return { ok: true as const, ...res }
+}
+
+/** Next page of top-level comments (audit P1-20) — created after `afterIso`. */
+export async function loadMoreCommentsAction(postId: string, afterIso: string): Promise<InlineComments> {
+  const viewer = await optionalUser()
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { authorId: true, commentCount: true, deletedAt: true } })
+  if (!post || post.deletedAt) return { comments: [], count: 0, viewer: null }
+  const rows = await listPostComments(postId, 50, viewer?.id, afterIso)
+  let followingIds = new Set<string>()
+  if (viewer?.id && rows.length) {
+    const authorIds = [...new Set(rows.flatMap((r) => [r.author.id, ...r.replies.map((rep) => rep.author.id)]))]
+    const follows = await prisma.follow.findMany({ where: { followerId: viewer.id, followingId: { in: authorIds } }, select: { followingId: true } })
+    followingIds = new Set(follows.map((f) => f.followingId))
+  }
+  return { comments: buildCommentViews(rows, post.authorId, followingIds), count: post.commentCount, viewer: null }
 }
 
 export async function hidePostAction(postId: string) {

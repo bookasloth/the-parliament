@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useOptimistic, useRef, useState, useTransition, type ChangeEvent } from "react"
 import { ThumbsDown, ThumbsUp, Flag, ImageIcon, MoreHorizontal, Trash2, X } from "lucide-react"
-import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction } from "../actions"
+import { commentOnPost, reactToComment, deleteCommentAction, reportCommentAction, editCommentAction, loadMoreCommentsAction } from "../actions"
 import { VerifiedBadge } from "@/components/shared/feed-card/blocks"
 import type { FeedMembership } from "@/components/shared/feed-card/types"
 import EmojiPicker from "@/components/shared/EmojiPicker"
@@ -42,6 +42,7 @@ export interface CommentView {
   body: string
   imageUrl: string | null
   createdAt: string // ISO
+  editedAt: string | null // set on author edit → renders "(edited)"
   score: number
   myReaction: "upvote" | "downvote" | null
   isAuthor: boolean
@@ -85,6 +86,7 @@ type OptimisticAction =
   | { type: "reply"; parentId: string; comment: CommentView }
   | { type: "vote"; id: string; next: "upvote" | "downvote" | null; delta: number }
   | { type: "remove"; id: string }
+  | { type: "edit"; id: string; body: string; editedAt: string }
 
 // Pure reducer — used both for the transient optimistic overlay AND to commit a
 // change into the real base state once the server confirms it. (The base can't
@@ -104,6 +106,11 @@ function applyCommentAction(state: CommentView[], action: OptimisticAction): Com
     return state
       .filter((c) => c.id !== action.id)
       .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== action.id) }))
+  if (action.type === "edit") {
+    const e = (c: CommentView): CommentView =>
+      c.id === action.id ? { ...c, body: action.body, editedAt: action.editedAt } : c
+    return state.map((c) => ({ ...e(c), replies: c.replies.map(e) }))
+  }
   // vote — patch matching top-level or reply.
   const patch = (c: CommentView): CommentView =>
     c.id === action.id ? { ...c, score: c.score + action.delta, myReaction: action.next } : c
@@ -138,6 +145,7 @@ function makeView(
     imageUrl,
     replyingTo,
     createdAt: new Date().toISOString(),
+    editedAt: null,
     score: 0,
     myReaction: null,
     isAuthor: false,
@@ -218,9 +226,25 @@ function CommentFollow({ authorId, initialFollowing }: { authorId: string; initi
   )
 }
 
-function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null }) {
+function CommentBubble({ c, viewer, onEdit }: { c: CommentView; viewer: Viewer | null; onEdit?: (id: string, body: string) => Promise<void> }) {
   const isOptimistic = c.id.startsWith("optimistic-")
   const canFollow = !!viewer && viewer.id !== c.author.id
+  const mine = !!viewer && viewer.id === c.author.id && !isOptimistic
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(c.body)
+  const [saving, setSaving] = useState(false)
+
+  async function saveEdit() {
+    const body = draft.trim()
+    if ((!body && !c.imageUrl) || !onEdit) return
+    setSaving(true)
+    try {
+      await onEdit(c.id, body)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <>
       <Avatar c={c} />
@@ -240,6 +264,12 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
               <span className="text-xs text-gray-400 whitespace-nowrap">
                 · {isOptimistic ? "Posting…" : relativeTime(c.createdAt)}
               </span>
+              {c.editedAt && !editing && <span className="text-xs text-gray-400">(edited)</span>}
+              {mine && onEdit && !editing && (
+                <button onClick={() => { setDraft(c.body); setEditing(true) }} className="text-xs text-gray-400 hover:text-brand">
+                  Edit
+                </button>
+              )}
             </div>
             {c.author.batch && (
               <div className="-mt-0.5 text-[12px] text-gray-500 leading-tight">{c.author.batch}</div>
@@ -252,10 +282,28 @@ function CommentBubble({ c, viewer }: { c: CommentView; viewer: Viewer | null })
             Replying to <span className="font-medium text-brand">@{c.replyingTo}</span>
           </div>
         )}
-        {c.body && (
+        {editing ? (
           <div className="mt-1">
-            <Body text={c.body} />
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={2}
+              autoFocus
+              className="w-full resize-none rounded-[4px] border border-gray-200 px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+            />
+            <div className="mt-1 flex gap-2">
+              <button onClick={saveEdit} disabled={saving} className="rounded-[3px] bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setEditing(false)} className="rounded-[3px] px-3 py-1 text-xs text-gray-500 hover:bg-gray-100">Cancel</button>
+            </div>
           </div>
+        ) : (
+          c.body && (
+            <div className="mt-1">
+              <Body text={c.body} />
+            </div>
+          )
         )}
         {c.imageUrl && (
           <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
@@ -294,6 +342,7 @@ function CommentMenu({
     return () => document.removeEventListener("mousedown", h)
   }, [])
   if (!viewer || c.id.startsWith("optimistic-")) return null
+  const mine = viewer.id === c.author.id
   return (
     <div className="relative ml-1" ref={ref}>
       <button
@@ -305,7 +354,7 @@ function CommentMenu({
       </button>
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 w-32 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
-          {c.isAuthor ? (
+          {mine ? (
             <button
               onClick={() => { setOpen(false); onDelete(c) }}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-gray-50"
@@ -386,6 +435,7 @@ function CommentItem({
   onVote,
   onDelete,
   onReport,
+  onEdit,
 }: {
   comment: CommentView
   viewer: Viewer | null
@@ -393,6 +443,7 @@ function CommentItem({
   onVote: (c: CommentView, type: "upvote" | "downvote") => void
   onDelete: (c: CommentView) => void
   onReport: (c: CommentView) => void
+  onEdit: (id: string, body: string) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
@@ -419,7 +470,7 @@ function CommentItem({
   return (
     <li className="px-5 py-4">
       <div className="flex gap-3">
-        <CommentBubble c={comment} viewer={viewer} />
+        <CommentBubble c={comment} viewer={viewer} onEdit={onEdit} />
       </div>
 
       <VoteRow
@@ -472,7 +523,7 @@ function CommentItem({
           {comment.replies.map((r) => (
             <li key={r.id} className={r.id.startsWith("optimistic-") ? "opacity-70" : ""}>
               <div className="flex gap-3">
-                <CommentBubble c={r} viewer={viewer} />
+                <CommentBubble c={r} viewer={viewer} onEdit={onEdit} />
               </div>
               <VoteRow
                 c={r}
@@ -537,6 +588,27 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
   )
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  // Pagination (audit P1-20): the first load caps at 100 top-level comments; more
+  // are fetched keyset-by-createdAt on demand.
+  const [hasMore, setHasMore] = useState(initialComments.length >= 100)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  async function loadMore() {
+    if (loadingMore || base.length === 0) return
+    setLoadingMore(true)
+    try {
+      const lastCreatedAt = base.reduce((m, c) => (c.createdAt > m ? c.createdAt : m), "")
+      const res = await loadMoreCommentsAction(postId, lastCreatedAt)
+      const existing = new Set(base.map((c) => c.id))
+      const fresh = res.comments.filter((c) => !existing.has(c.id))
+      if (fresh.length) setBase((s) => [...s, ...fresh])
+      if (res.comments.length < 50) setHasMore(false)
+    } catch {
+      setError("Failed to load more comments.")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // Top-ranked: highest score first, newest breaks ties.
   const sorted = [...comments].sort(
@@ -616,6 +688,21 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
         setError("Failed to delete the comment. Please try again.")
       }
     })
+  }
+
+  async function handleEdit(id: string, body: string) {
+    if (!viewer) return
+    const editedAt = new Date().toISOString()
+    const action: OptimisticAction = { type: "edit", id, body, editedAt }
+    // Commit straight to base (the edit form already showed the pending state);
+    // a failure surfaces an error and the next load corrects it.
+    try {
+      await editCommentAction(postId, id, body)
+      setBase((s) => applyCommentAction(s, action))
+    } catch {
+      setError("Failed to edit the comment. Please try again.")
+      throw new Error("edit failed")
+    }
   }
 
   function handleReport(c: CommentView) {
@@ -729,10 +816,23 @@ export default function CommentsSection({ postId, initialComments, viewer, embed
               onVote={handleVote}
               onDelete={handleDelete}
               onReport={handleReport}
+              onEdit={handleEdit}
             />
           ))
         )}
       </ul>
+
+      {hasMore && (
+        <div className="border-t border-gray-100 px-5 py-3 text-center">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="text-sm font-semibold text-brand hover:underline disabled:opacity-50"
+          >
+            {loadingMore ? "Loading…" : "Load more comments"}
+          </button>
+        </div>
+      )}
     </section>
   )
 }
