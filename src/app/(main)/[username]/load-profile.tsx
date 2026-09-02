@@ -203,7 +203,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         orderBy: [{ sortOrder: "asc" }, { endYear: "desc" }],
       }),
       user.schoolId
-        ? getFeed({ schoolId: user.schoolId, authorId: user.id, viewerId, pageSize: 20, rankerName: "recency" })
+        ? getFeed({ schoolId: user.schoolId, authorId: user.id, viewerId, pageSize: 20, rankerName: "recency", groupId: null })
         : Promise.resolve({ rows: [] as Awaited<ReturnType<typeof getFeed>>["rows"], nextCursor: null }),
       Promise.all([
         prisma.follow.findMany({

@@ -41,7 +41,7 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
 
   if (schoolId) {
     const [{ rows, caughtUp: cu, nextCursor: nc, shuffleSeed: seed }, u, [users, pinned]] = await Promise.all([
-      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly, trending, hashtag }),
+      getFeed({ schoolId, viewerId: viewer?.id, pageSize: FIRST_PAGE_SIZE, followingOnly, trending, hashtag, groupId: null }),
       viewer?.id ? loadViewer(viewer.id) : Promise.resolve(null),
       Promise.all([
         prisma.user.findMany({

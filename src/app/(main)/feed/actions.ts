@@ -404,6 +404,7 @@ export async function loadMoreFeedAction(
     followingOnly,
     trending,
     hashtag,
+    groupId: null, // main/mention/hashtag feeds never include group-scoped posts
     ...mentionFilter,
     // Caught-up recycle: force the shuffled path and reuse the visit's seed so
     // pages share one order. Non-caught-up keysets via the cursor.
