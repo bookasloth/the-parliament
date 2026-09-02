@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Flag, Warning, User, ShieldCheck } from "@phosphor-icons/react"
 import { PageHeader, StatCard, Button, Table, Thead, Tbody, Tr, Th, Td, EmptyState, Modal, useRowAction } from "../admin-ui"
 import { assignClusterAction, resolveClusterAction } from "./actions"
+import type { EntityPreview } from "@/modules/moderation/service"
 
 export interface ReportRow {
   entityType: string
@@ -16,6 +17,7 @@ export interface ReportRow {
   lastAt: string
   assignee: string | null
   assignedToMe: boolean
+  preview: EntityPreview | null
 }
 
 export interface ReportStats {
@@ -120,9 +122,22 @@ export default function ReportsClient({ clusters, stats }: { clusters: ReportRow
               <Tbody>
                 {rows.map((row) => (
                   <Tr key={rowKey(row)}>
-                    <Td className="whitespace-nowrap">
-                      <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">{row.entityType}</span>
-                      <span className="ml-2 font-mono text-[11px] text-gray-500">{row.entityId.slice(0, 8)}</span>
+                    <Td className="max-w-[320px]">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">{row.entityType}</span>
+                        {row.preview?.removed && <span className="rounded-[3px] bg-rose-50/60 px-1.5 py-0.5 text-[10px] text-rose-600">removed</span>}
+                        {row.preview?.href && (
+                          <a href={row.preview.href} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:underline">open ↗</a>
+                        )}
+                      </div>
+                      {row.preview ? (
+                        <div className="mt-1">
+                          {row.preview.authorName && <span className="text-[11px] font-medium text-gray-700">{row.preview.authorName}: </span>}
+                          <span className="text-[12px] text-gray-600">{row.preview.snippet || <span className="italic text-gray-400">{row.preview.title}</span>}</span>
+                        </div>
+                      ) : (
+                        <span className="mt-1 block font-mono text-[11px] text-gray-400">{row.entityId.slice(0, 8)} · content unavailable</span>
+                      )}
                     </Td>
                     <Td>
                       <span className={`inline-flex min-w-[1.5rem] justify-center rounded-[3px] px-1.5 py-0.5 text-[11px] font-semibold ${row.reportCount > 1 ? "bg-rose-50/60 text-rose-700" : "bg-gray-100 text-gray-600"}`}>
@@ -168,6 +183,20 @@ export default function ReportsClient({ clusters, stats }: { clusters: ReportRow
               <span className="rounded-[3px] bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700">{active.entityType}</span>{" "}
               <span className="font-mono text-[11px] text-gray-500">{active.entityId.slice(0, 8)}</span>.
             </p>
+
+            {active.preview && (
+              <div className="rounded-[4px] border border-gray-200 bg-gray-50 p-3">
+                {active.preview.authorName && <p className="text-[11px] font-medium text-gray-700">{active.preview.authorName}</p>}
+                <p className="mt-0.5 text-xs text-gray-700 whitespace-pre-wrap break-words">{active.preview.snippet || active.preview.title}</p>
+                {active.preview.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={active.preview.imageUrl} alt="" className="mt-2 max-h-40 rounded-[3px] object-cover" />
+                )}
+                {active.preview.href && (
+                  <a href={active.preview.href} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[11px] text-blue-500 hover:underline">Open content ↗</a>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="mb-1 block text-[11px] uppercase tracking-wide text-gray-500">Resolution</label>

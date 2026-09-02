@@ -1,6 +1,6 @@
 import { requirePermission } from "@/lib/gate"
 import { prisma } from "@/lib/prisma"
-import { listReportClusters } from "@/modules/moderation/service"
+import { listReportClusters, getEntityPreview, type EntityPreview } from "@/modules/moderation/service"
 import ReportsClient, { type ReportRow } from "./reports-client"
 
 export const dynamic = "force-dynamic"
@@ -18,6 +18,11 @@ export default async function AdminReportsPage() {
     : []
   const nameById = new Map(assignees.map((a) => [a.id, a.displayName || a.legalName || a.username || a.id]))
 
+  // Preview the reported content so moderators see WHAT was reported (P1-13).
+  const previews = await Promise.all(clusters.map((c) => getEntityPreview(c.entityType, c.entityId).catch(() => null)))
+  const previewByKey = new Map<string, EntityPreview>()
+  previews.forEach((p, i) => { if (p) previewByKey.set(`${clusters[i].entityType}:${clusters[i].entityId}`, p) })
+
   const rows: ReportRow[] = clusters.map((c) => ({
     entityType: c.entityType,
     entityId: c.entityId,
@@ -28,6 +33,7 @@ export default async function AdminReportsPage() {
     lastAt: c.lastAt,
     assignee: c.assigneeId ? nameById.get(c.assigneeId) ?? null : null,
     assignedToMe: c.assigneeId === admin.id,
+    preview: previewByKey.get(`${c.entityType}:${c.entityId}`) ?? null,
   }))
 
   const stats = {

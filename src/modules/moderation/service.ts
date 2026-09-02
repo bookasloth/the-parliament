@@ -72,6 +72,73 @@ export interface ReportInput {
   details?: string
 }
 
+export interface EntityPreview {
+  entityType: string
+  entityId: string
+  title: string
+  snippet: string | null
+  imageUrl: string | null
+  authorName: string | null
+  href: string | null
+  removed: boolean
+}
+
+const clip = (s: string | null | undefined, n = 240) => (s ? s.slice(0, n) : null)
+
+/**
+ * Resolve WHAT was reported so a moderator can see the content in the queue
+ * (audit P1-13/T-5) instead of a bare id. Content is shown to reviewers only.
+ */
+export async function getEntityPreview(entityType: string, entityId: string): Promise<EntityPreview | null> {
+  const base: Omit<EntityPreview, "title" | "snippet" | "imageUrl" | "authorName" | "href" | "removed"> = { entityType, entityId }
+  const name = (u: { displayName: string | null; legalName: string } | null | undefined) => (u ? u.displayName || u.legalName : null)
+  switch (entityType) {
+    case "post": {
+      const p = await prisma.post.findUnique({
+        where: { id: entityId },
+        select: { body: true, media: true, status: true, deletedAt: true, author: { select: { displayName: true, legalName: true } } },
+      })
+      if (!p) return null
+      const media = Array.isArray(p.media) ? (p.media as { url?: string }[]) : []
+      return { ...base, title: "Post", snippet: clip(p.body), imageUrl: media[0]?.url ?? null, authorName: name(p.author), href: `/feed/${entityId}`, removed: !!p.deletedAt || p.status !== "visible" }
+    }
+    case "comment": {
+      const c = await prisma.comment.findUnique({
+        where: { id: entityId },
+        select: { body: true, imageUrl: true, postId: true, deletedAt: true, author: { select: { displayName: true, legalName: true } } },
+      })
+      if (!c) return null
+      return { ...base, title: "Comment", snippet: clip(c.body), imageUrl: c.imageUrl, authorName: name(c.author), href: `/feed/${c.postId}`, removed: !!c.deletedAt }
+    }
+    case "business": {
+      const b = await prisma.business.findUnique({
+        where: { id: entityId },
+        select: { name: true, tagline: true, description: true, slug: true, status: true, owner: { select: { displayName: true, legalName: true } } },
+      })
+      if (!b) return null
+      return { ...base, title: `Business · ${b.name}`, snippet: clip(b.tagline || b.description), imageUrl: null, authorName: name(b.owner), href: `/business/${b.slug}`, removed: b.status === "suspended" }
+    }
+    case "profile": {
+      const u = await prisma.user.findUnique({
+        where: { id: entityId },
+        select: { displayName: true, legalName: true, username: true, profile: { select: { headline: true, bio: true, visibility: true } } },
+      })
+      if (!u) return null
+      return { ...base, title: `Profile · ${name(u)}`, snippet: clip(u.profile?.headline || u.profile?.bio), imageUrl: null, authorName: name(u), href: u.username ? `/${u.username}` : null, removed: u.profile?.visibility === "private" }
+    }
+    case "message": {
+      const m = await prisma.message.findUnique({
+        where: { id: entityId },
+        select: { body: true, deletedAt: true, sender: { select: { displayName: true, legalName: true } } },
+      })
+      if (!m) return null
+      return { ...base, title: "Direct message", snippet: clip(m.body), imageUrl: null, authorName: name(m.sender), href: null, removed: !!m.deletedAt }
+    }
+    default:
+      return { ...base, title: entityType, snippet: null, imageUrl: null, authorName: null, href: null, removed: false }
+  }
+}
+
 /** Release ranking penalty when post reports are dismissed (audit P0-10), floored
  *  at 0, then re-rank. */
 async function releasePostPenalty(postId: string, by: number): Promise<void> {

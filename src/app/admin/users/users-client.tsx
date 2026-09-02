@@ -477,6 +477,9 @@ export default function AdminUsersClient({
                         <button onClick={() => openHistory(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <ClockCounterClockwise className="h-4 w-4" weight="duotone" /> Karma history
                         </button>
+                        <a href={`/admin/users/${u.id}`} onClick={() => setActiveMenu(null)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
+                          <ClockCounterClockwise className="h-4 w-4" weight="duotone" /> Activity timeline
+                        </a>
                         <button onClick={() => openBadges(u)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
                           <Medal className="h-4 w-4" weight="duotone" /> Manage badges
                         </button>
