@@ -20,6 +20,7 @@ export const USER_ACTIONS = [
   "ban",
   "reset-password",
   "delete",
+  "hard-delete",
   "set-role",
   "remove-role",
 ] as const
@@ -35,6 +36,7 @@ export const USER_ACTION_PERMISSION: Record<UserAction, Permission> = {
   activate: "members:moderate",
   ban: "members:moderate",
   delete: "members:moderate",
+  "hard-delete": "members:hard_delete",
   "reset-password": "members:reset",
   "set-role": "admins:manage",
   "remove-role": "admins:manage",
@@ -46,6 +48,7 @@ const SELF_FORBIDDEN: ReadonlySet<UserAction> = new Set([
   "suspend",
   "ban",
   "delete",
+  "hard-delete",
   "remove-role",
 ])
 
@@ -102,6 +105,14 @@ export async function actOnUser(
         where: { id: targetId },
         data: { deletedAt: new Date(), status: "inactive" },
       })
+      break
+    case "hard-delete":
+      // GDPR-style erasure (audit P0-9): strip PII and anonymise to "Former
+      // member". Content stays (authored by an anonymous former member) so
+      // threads others replied to stay coherent — the product decision. Because
+      // every read joins author live, the anonymised name propagates everywhere
+      // with no denormalized copies to fix. Irreversible (status → banned).
+      await anonymiseUser(targetId)
       break
     case "reset-password": {
       const raw = await createResetToken(targetId, 60 * 24) // 24h
@@ -230,6 +241,57 @@ export async function liftSuspension(
     data: { moderatorId: actorId, targetType: "user", targetId, action: "unsuspend" },
   })
   return { ok: true }
+}
+
+/**
+ * Anonymise a user to "Former member" (audit P0-9). Strips PII from the user +
+ * profile, frees the unique email/username, and blocks future sign-in
+ * (status → banned). Content is retained but now shows as an anonymous former
+ * member (author is joined live, so no denormalized names to rewrite).
+ * ponytail: R2 media (avatar/cover objects) is not purged here — media GC is a
+ * separate job (audit P1-7); this nulls the URLs so nothing references them.
+ */
+export async function anonymiseUser(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.profile.updateMany({
+      where: { userId },
+      data: {
+        photoUrl: null, coverUrl: null, bio: null, city: null, homeTown: null,
+        correspondenceAddress: null, headline: null, linkedinUrl: null,
+        profession: null, company: null, designation: null, bloodGroup: null,
+        socialLinks: {}, skills: [], visibility: "private", showOnMap: false,
+        isPublicIndexed: false, contactAlwaysShare: false,
+      },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        legalName: "Former member",
+        displayName: "Former member",
+        username: null,
+        email: `deleted+${userId}@nnawca.invalid`,
+        mobileE164: null,
+        passwordHash: null,
+        dateOfBirth: null,
+        gender: null,
+        deletedAt: new Date(),
+        status: "banned",
+      },
+    }),
+  ])
+}
+
+/**
+ * Reactivate a self-deactivated account (audit P0-9): `inactive` → `active`.
+ * A no-op for any other status (never un-bans / un-suspends). Returns whether it
+ * flipped.
+ */
+export async function reactivateAccount(userId: string): Promise<boolean> {
+  const res = await prisma.user.updateMany({
+    where: { id: userId, status: "inactive" },
+    data: { status: "active", deletedAt: null },
+  })
+  return res.count > 0
 }
 
 export const MEMBERSHIP_TIERS = [

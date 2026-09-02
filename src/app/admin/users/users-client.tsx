@@ -490,6 +490,9 @@ export default function AdminUsersClient({
                         <button onClick={() => runAction(u.id, "delete", `Delete ${u.name}? This soft-deletes the account.`)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">
                           <Trash className="h-4 w-4" weight="duotone" /> Delete account
                         </button>
+                        <button onClick={() => runAction(u.id, "hard-delete", `Permanently erase ${u.name}? This strips their personal data and anonymises them to "Former member". Cannot be undone. (Super-admin only.)`)} className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-rose-700 hover:bg-rose-50">
+                          <Trash className="h-4 w-4" weight="fill" /> Erase (GDPR)
+                        </button>
                       </div>
                     )}
                   </Td>

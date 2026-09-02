@@ -12,6 +12,7 @@ declare module "next-auth" {
       onboardingCompleted?: boolean
       onboardingStep?: string
       membershipStatus?: string
+      status?: string
       isAdmin?: boolean
       roles?: string[]
     }
@@ -24,6 +25,7 @@ declare module "next-auth/jwt" {
     onboardingCompleted?: boolean
     onboardingStep?: string
     membershipStatus?: string
+    status?: string
     isAdmin?: boolean
     roles?: string[]
     /** Unix seconds of the last DB refresh — gates how often the jwt callback re-queries the user. */

@@ -13,6 +13,7 @@ import type { FeedMembership, BorderType } from "@/components/shared/feed-card/t
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
+import { isBlockedBetween } from "@/modules/connections/blocks"
 import { RestrictedProfile } from "./restricted-profile"
 
 function fmt(d: Date | null | undefined): string {
@@ -120,6 +121,12 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   // pooler latency on a top-traffic page).
   const viewerId = session?.user?.id
   const isOwnProfile = viewerId === user.id
+
+  // Symmetric block (audit P0-7): a blocked profile reads as non-existent to the
+  // blocker (and vice-versa), never a stub that leaks name/photo.
+  if (viewerId && !isOwnProfile && (await isBlockedBetween(viewerId, user.id))) {
+    notFound()
+  }
 
   // ── Privacy gate (Profile.visibility) ──────────────────────────────────────
   // Enforce the whole-profile visibility BEFORE any heavy fetch or view-logging:

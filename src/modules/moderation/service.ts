@@ -72,6 +72,105 @@ export interface ReportInput {
   details?: string
 }
 
+/** Release ranking penalty when post reports are dismissed (audit P0-10), floored
+ *  at 0, then re-rank. */
+async function releasePostPenalty(postId: string, by: number): Promise<void> {
+  const p = await prisma.post.findUnique({ where: { id: postId }, select: { reportPenalty: true } })
+  if (!p) return
+  const next = Math.max(0, Number(p.reportPenalty) - by)
+  await prisma.post.update({ where: { id: postId }, data: { reportPenalty: next } })
+  const { recomputeRankingScore } = await import("@/modules/feed/posts")
+  await recomputeRankingScore(postId)
+}
+
+/** Tell the author their content was taken down (audit T-6 — removals used to be
+ *  silent). In-app only; best-effort. */
+export async function notifyContentRemoved(entityType: ReportableEntity, entityId: string, hidden: boolean) {
+  const author = await resolveEntityAuthor(entityType, entityId)
+  if (!author) return
+  await sendNotification({
+    userId: author.userId,
+    kind: "moderation_warning",
+    title: hidden ? "A post was hidden by a moderator" : "Your content was removed",
+    body: `Your ${entityType} was ${hidden ? "hidden" : "removed"} for violating the community rules. If you think this was a mistake, reply to a committee member.`,
+    entityType,
+    entityId,
+    sendEmail: false,
+  }).catch((e) => console.error("removal notify failed", e))
+}
+
+/**
+ * Apply a hide/remove consequence to ANY reportable entity — not just posts
+ * (audit P0-5). Before this, resolving a report on a comment/profile/business/DM
+ * cleared the queue and logged a removal while the content stayed up. Idempotent.
+ */
+export async function applyModerationConsequence(
+  entityType: ReportableEntity,
+  entityId: string,
+  resolution: "hidden" | "removed",
+): Promise<void> {
+  switch (entityType) {
+    case "post":
+      await prisma.post.update({ where: { id: entityId }, data: { status: resolution } })
+      break
+    case "comment": {
+      await prisma.comment.update({ where: { id: entityId }, data: { deletedAt: new Date() } })
+      const c = await prisma.comment.findUnique({ where: { id: entityId }, select: { postId: true } })
+      if (c) {
+        const { recomputeRankingScore } = await import("@/modules/feed/posts")
+        await recomputeRankingScore(c.postId)
+      }
+      break
+    }
+    case "message":
+      await prisma.message.update({ where: { id: entityId }, data: { deletedAt: new Date() } })
+      break
+    case "business":
+      await prisma.business.update({ where: { id: entityId }, data: { status: "suspended" } })
+      break
+    case "profile":
+      // entityId is the user id. Force the profile private (removes it from every
+      // members-facing surface) without deleting the account.
+      await prisma.profile.update({ where: { userId: entityId }, data: { visibility: "private" } }).catch(() => {})
+      break
+    case "vyapaar_bug":
+      break // no content to hide
+  }
+}
+
+/**
+ * Reverse a hide/remove (audit P0-6 — previously irreversible). Logged as a
+ * `restore` ModerationAction by the caller/action. Profiles restore to `alumni`
+ * (the default members-visible scope) since the prior value isn't recorded.
+ */
+export async function restoreContent(entityType: ReportableEntity, entityId: string): Promise<void> {
+  switch (entityType) {
+    case "post":
+      await prisma.post.update({ where: { id: entityId }, data: { status: "visible" } })
+      break
+    case "comment": {
+      await prisma.comment.update({ where: { id: entityId }, data: { deletedAt: null } })
+      const c = await prisma.comment.findUnique({ where: { id: entityId }, select: { postId: true } })
+      if (c) {
+        const { recomputeRankingScore } = await import("@/modules/feed/posts")
+        await recomputeRankingScore(c.postId)
+      }
+      break
+    }
+    case "message":
+      await prisma.message.update({ where: { id: entityId }, data: { deletedAt: null } })
+      break
+    case "business":
+      await prisma.business.update({ where: { id: entityId }, data: { status: "approved" } })
+      break
+    case "profile":
+      await prisma.profile.update({ where: { userId: entityId }, data: { visibility: "alumni" } }).catch(() => {})
+      break
+    case "vyapaar_bug":
+      break
+  }
+}
+
 export async function fileReport(input: ReportInput) {
   const existed = await prisma.contentReport.findUnique({
     where: {
@@ -105,7 +204,9 @@ export async function fileReport(input: ReportInput) {
     },
   })
 
-  if (input.entityType === "post") {
+  // Penalise ranking only for a genuinely NEW report (audit P0-10). Previously
+  // this ran on every upsert, so a user could re-file to bury a post repeatedly.
+  if (input.entityType === "post" && !existed) {
     await prisma.post.update({
       where: { id: input.entityId },
       data: { reportPenalty: { increment: 1 } },
@@ -264,8 +365,11 @@ export async function resolveCluster(opts: {
     data: { status: opts.resolution, resolvedBy: opts.reviewerId, resolvedAt: new Date() },
   })
 
-  if ((opts.resolution === "hidden" || opts.resolution === "removed") && opts.entityType === "post") {
-    await prisma.post.update({ where: { id: opts.entityId }, data: { status: opts.resolution } })
+  if (opts.resolution === "hidden" || opts.resolution === "removed") {
+    await applyModerationConsequence(opts.entityType, opts.entityId, opts.resolution)
+    await notifyContentRemoved(opts.entityType, opts.entityId, opts.resolution === "hidden")
+  } else if (opts.resolution === "dismissed" && opts.entityType === "post") {
+    await releasePostPenalty(opts.entityId, open.length)
   }
 
   await logModerationAction({
@@ -312,11 +416,11 @@ export async function resolveReport(opts: {
     },
   })
 
-  if ((opts.resolution === "hidden" || opts.resolution === "removed") && r.entityType === "post") {
-    await prisma.post.update({
-      where: { id: r.entityId },
-      data: { status: opts.resolution },
-    })
+  if (opts.resolution === "hidden" || opts.resolution === "removed") {
+    await applyModerationConsequence(r.entityType as ReportableEntity, r.entityId, opts.resolution)
+    await notifyContentRemoved(r.entityType as ReportableEntity, r.entityId, opts.resolution === "hidden")
+  } else if (opts.resolution === "dismissed" && r.entityType === "post") {
+    await releasePostPenalty(r.entityId, 1)
   }
 
   await audit({

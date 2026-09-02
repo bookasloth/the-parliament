@@ -47,8 +47,11 @@ export async function createPostAction(input: {
   // Anonymous is an identity flag (author hidden), not an audience — the post
   // is otherwise public. Map the other audiences to a visibility scope.
   const anonymous = input.audience === "anonymous"
+  // "groups" scope intentionally unmapped — the composer option was removed
+  // (audit P0-3) because the feed served it publicly. Only followers is a real
+  // restricted scope today.
   const visibilityScope =
-    anonymous ? "public" : input.audience === "followers" ? "followers" : input.audience === "groups" ? "groups" : "public"
+    !anonymous && input.audience === "followers" ? "followers" : "public"
 
   const post = await createPost({
     authorId: user.id,

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     // Members only. This returns real legal names + city + batch + tier;
     // middleware does NOT cover /api, so the route must gate itself or the
     // whole roster is anonymously scrapeable.
-    await requireUser()
+    const viewer = await requireUser()
 
     const url = new URL(req.url)
     const sp = url.searchParams
@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     const { rows, total } = await searchDirectory(
       {
         schoolId,
+        viewerId: viewer.id,
         q: sp.get("q") || undefined,
         batchId: sp.get("batch") || undefined,
         houseId: sp.get("house") || undefined,

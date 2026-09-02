@@ -5,6 +5,7 @@ import { recencyCursorWhere, rankedCursorWhere, isRankedCursor, type FeedCursor 
 import { organizeCommentThread } from "./comment-thread"
 import { trendingWindowStart } from "./trending"
 import { postHashtagWhere } from "@/lib/rich-text"
+import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
 
 export { recencyCursorWhere, rankedCursorWhere, type FeedCursor } from "./cursor"
 
@@ -302,13 +303,33 @@ export async function listSavedPosts(viewerId: string, limit = 30) {
   return rows.map((r) => ({ ...r, viewerReaction: viewerReactionByPostId.get(r.id) ?? null }))
 }
 
-/** Fetch a single post + author + viewer reaction, or null. Excludes deleted. */
+/** Fetch a single post + author + viewer reaction, or null. Excludes deleted.
+ *  Enforces the SAME visibility rules as the feed (audit P0-3/F-4): a
+ *  `followers`/`groups`-scoped post is readable only by the author or a follower,
+ *  and never across a block. Previously this only checked deletedAt/status, so a
+ *  followers-only post was world-readable (and OG-renderable) by URL. */
 export async function getPostById(id: string, viewerId?: string) {
   const post = await prisma.post.findFirst({
     where: { id, deletedAt: null, status: "visible" },
     select: postSelect(viewerId),
   })
   if (!post) return null
+
+  const authorId = post.author.id
+  const isAuthor = !!viewerId && viewerId === authorId
+  if (!isAuthor) {
+    // Restricted scopes require a follow edge from viewer → author.
+    if (post.visibilityScope === "followers" || post.visibilityScope === "groups") {
+      if (!viewerId) return null
+      const follows = await prisma.follow.findFirst({
+        where: { followerId: viewerId, followingId: authorId },
+        select: { id: true },
+      })
+      if (!follows) return null
+    }
+    // Never surface across a block, in either direction.
+    if (viewerId && (await isBlockedBetween(viewerId, authorId))) return null
+  }
 
   const viewerReaction = viewerId
     ? await prisma.reaction.findUnique({
@@ -368,7 +389,7 @@ export async function listPostComments(
   limit = 100,
   viewerId?: string,
 ): Promise<PostCommentRow[]> {
-  const top = await prisma.comment.findMany({
+  const top0 = await prisma.comment.findMany({
     where: { postId, deletedAt: null, parentId: null },
     orderBy: { createdAt: "asc" },
     take: limit,
@@ -376,13 +397,19 @@ export async function listPostComments(
   })
   // All replies on the post (not just direct children of top) so reply-to-reply
   // chains resolve to their ancestor instead of vanishing.
-  const replies = top.length
+  const replies0 = top0.length
     ? await prisma.comment.findMany({
         where: { postId, deletedAt: null, parentId: { not: null } },
         orderBy: { createdAt: "asc" },
         select: commentSelect,
       })
     : []
+
+  // Symmetric block (audit P0-7): drop comments authored by anyone the viewer has
+  // blocked or been blocked by, before threading.
+  const blocked = await blockedIdsFor(viewerId)
+  const top = blocked.size ? top0.filter((c) => !blocked.has(c.author.id)) : top0
+  const replies = blocked.size ? replies0.filter((c) => !blocked.has(c.author.id)) : replies0
 
   const handleOf = (c: CommentBase): string | null =>
     c.author.username ?? c.author.displayName ?? c.author.legalName ?? null
