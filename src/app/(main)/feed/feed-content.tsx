@@ -579,8 +579,9 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar — Timewheel ads (hidden for ad-free paid tiers) */}
-          {!adFree && (
+          {/* Right Sidebar — Timewheel ads. Hidden for ad-free paid tiers, but
+              life members still get the sidebar display ad (in-feed ads stay off). */}
+          {(!adFree || viewer?.membership === "life") && (
             <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
               <div className="sticky top-20">
                 <TimewheelAdCard />

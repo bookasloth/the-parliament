@@ -136,7 +136,7 @@ export async function getFollowData(userId: string): Promise<{
   const myBatch = me?.profile?.batchId ?? null
 
   const candidates = await prisma.user.findMany({
-    where: { status: "active", deletedAt: null, id: { notIn: Array.from(followedIds) } },
+    where: { status: "active", deletedAt: null, memberType: { notIn: ["bot", "system"] }, id: { notIn: Array.from(followedIds) } },
     select: { ...userSelect, profile: { select: { photoUrl: true, headline: true, city: true, houseId: true, batchId: true, house: { select: { name: true, colorHex: true } }, batch: { select: { label: true } } } } },
     orderBy: { createdAt: "desc" },
     take: 60,

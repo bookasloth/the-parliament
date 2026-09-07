@@ -50,6 +50,7 @@ export async function searchDirectory(
   const where: Prisma.UserWhereInput = {
     status: "active",
     deletedAt: null,
+    memberType: { notIn: ["bot", "system"] }, // hide Vyapaar bots / NNAWCA bot from the directory
   }
   if (filters.schoolId) where.schoolId = filters.schoolId
   if (filters.memberType) where.memberType = filters.memberType

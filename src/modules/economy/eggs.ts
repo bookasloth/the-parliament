@@ -63,7 +63,7 @@ export async function resolveMonthlyEggs(): Promise<{
 }> {
   // Find max egg balance
   const top = await prisma.user.findFirst({
-    where: { deletedAt: null, status: "active" },
+    where: { deletedAt: null, status: "active", memberType: { notIn: ["bot", "system"] } },
     orderBy: { eggBalance: "desc" },
     select: { eggBalance: true },
   })
@@ -71,7 +71,7 @@ export async function resolveMonthlyEggs(): Promise<{
 
   // All tied at the max
   const topHolders = await prisma.user.findMany({
-    where: { deletedAt: null, status: "active", eggBalance: top.eggBalance },
+    where: { deletedAt: null, status: "active", memberType: { notIn: ["bot", "system"] }, eggBalance: top.eggBalance },
     select: { id: true, eggBalance: true },
   })
 
@@ -90,7 +90,7 @@ export async function resetAllEggs(): Promise<number> {
 /** Egg leaderboard: users with most eggs (the losers). */
 export async function eggLeaderboard(limit = 10): Promise<{ id: string; username: string | null; displayName: string | null; legalName: string; eggBalance: number }[]> {
   return prisma.user.findMany({
-    where: { deletedAt: null, status: "active" },
+    where: { deletedAt: null, status: "active", memberType: { notIn: ["bot", "system"] } },
     orderBy: { eggBalance: "desc" },
     take: limit,
     select: { id: true, username: true, displayName: true, legalName: true, eggBalance: true },

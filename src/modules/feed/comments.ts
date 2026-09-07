@@ -210,6 +210,7 @@ export async function searchMentionTargets(
   const baseWhere = {
     id: { not: viewerId },
     status: "active" as const,
+    memberType: { notIn: ["bot", "system"] }, // don't suggest bots in @mention autocomplete
     username: { not: null },
     ...nameFilter,
   }

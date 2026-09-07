@@ -40,6 +40,7 @@ export async function getFollowSuggestions(userId: string): Promise<SuggestedPer
       where: {
         deletedAt: null,
         status: "active",
+        memberType: { notIn: ["bot", "system"] }, // never suggest Vyapaar bots / the NNAWCA bot
         id: { notIn: [...excluded] },
         username: { not: null },
         ...where,
