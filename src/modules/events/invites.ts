@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { sendNotification } from "@/modules/notifications/service"
+import { enqueueOutbox } from "@/modules/outbox/enqueue"
+
+/** Recipients notified per drain tick before the fan-out re-queues a continuation
+ *  (audit IP-5). Bounds one invocation so a large audience never hits the 60s
+ *  function ceiling and there's no fixed recipient cap. */
+const INVITE_PAGE = 500
 
 // Priority invite waves: best members hear first, each tier 2 hours after the
 // previous. Tiers map to User.membershipStatus values.
@@ -65,44 +71,63 @@ export async function processDueInviteWaves(now: Date = new Date()): Promise<{ w
     if (claimed.count === 0) continue
 
     try {
-      const sent = await sendWave(wave.eventId, wave.tier)
-      recipients += sent
+      // Hand the actual send-out to the outbox (audit IP-5): enqueue the first
+      // recipient page; the drain delivers it in bounded chunks and re-queues
+      // continuations. The wave flips to "sent" (= dispatched) immediately so a
+      // later cron tick won't re-enqueue it; sentCount fills in as chunks drain.
+      await enqueueOutbox({ type: "fanout_event_invite", payload: { eventId: wave.eventId, tier: wave.tier } })
       await prisma.eventInviteWave.update({
         where: { id: wave.id },
-        data: { status: "sent", sentAt: new Date(), sentCount: sent },
+        data: { status: "sent", sentAt: new Date(), sentCount: 0 },
       })
     } catch (e) {
       console.error(`event invite wave ${wave.id} failed`, e)
       await prisma.eventInviteWave.update({ where: { id: wave.id }, data: { status: "failed" } })
     }
   }
+  // recipients is delivered asynchronously by the outbox now, so it's not known here.
   return { waves: due.length, recipients }
 }
 
-async function sendWave(eventId: string, tier: string): Promise<number> {
+/**
+ * Deliver ONE page of an invite wave, then re-enqueue a continuation if more
+ * recipients remain (audit IP-5 fan-out handler). Keyset-paginated by user id so
+ * pages never overlap or skip. Replaces the old inline 5000-cap serial loop:
+ * an arbitrarily large audience now delivers across drain ticks with no cap and
+ * no 60s-timeout risk. At-least-once is safe here — a re-sent page coalesces into
+ * the recipient's existing `new_event_in_batch` row (no duplicate bell).
+ */
+export async function sendEventInviteChunk(input: {
+  eventId: string
+  tier: string
+  cursor?: string | null
+  pageSize?: number
+}): Promise<void> {
   const event = await prisma.event.findUnique({
-    where: { id: eventId },
+    where: { id: input.eventId },
     select: { title: true, status: true },
   })
   // Skip if the event was cancelled/unpublished after scheduling.
-  if (!event || event.status !== "published") return 0
-  const statuses = statusesForTier(tier)
-  if (!statuses.length) return 0
+  if (!event || event.status !== "published") return
+  const statuses = statusesForTier(input.tier)
+  if (!statuses.length) return
 
+  const pageSize = input.pageSize ?? INVITE_PAGE
   const base = process.env.AUTH_URL || "https://nnawca.org"
-  const eventUrl = `${base}/events/${eventId}`
-  // Members of this tier who aren't current students of the school.
-  // ponytail: capped per wave; a single-school base is well under this.
+  const eventUrl = `${base}/events/${input.eventId}`
   const recipients = await prisma.user.findMany({
     where: {
       status: "active",
       memberType: { notIn: ["student", "bot", "system"] }, // never invite bots (fake @bots.internal emails)
       membershipStatus: { in: statuses },
       email: { not: "" },
+      ...(input.cursor ? { id: { gt: input.cursor } } : {}),
     },
+    orderBy: { id: "asc" },
+    take: pageSize,
     select: { id: true },
-    take: 5000,
   })
+  if (recipients.length === 0) return
 
   for (const r of recipients) {
     await sendNotification({
@@ -110,9 +135,21 @@ async function sendWave(eventId: string, tier: string): Promise<number> {
       kind: "new_event_in_batch",
       title: `New alumni event: ${event.title}`,
       entityType: "event",
-      entityId: eventId,
+      entityId: input.eventId,
       email: { eventTitle: event.title, eventUrl },
     }).catch((e) => console.error(`event invite send failed for ${r.id}`, e))
   }
-  return recipients.length
+
+  // Running tally on the wave (best-effort display; no wave row in ad-hoc sends).
+  await prisma.eventInviteWave
+    .updateMany({ where: { eventId: input.eventId, tier: input.tier }, data: { sentCount: { increment: recipients.length } } })
+    .catch(() => {})
+
+  // A full page means there may be more — continue from the last id next tick.
+  if (recipients.length === pageSize) {
+    await enqueueOutbox({
+      type: "fanout_event_invite",
+      payload: { eventId: input.eventId, tier: input.tier, cursor: recipients[recipients.length - 1].id, pageSize },
+    })
+  }
 }
