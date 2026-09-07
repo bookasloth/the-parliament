@@ -14,6 +14,16 @@ export type AccountStatus = "active" | "inactive" | "suspended" | "banned"
 /** Statuses a moderator applies — hard-blocked from BOTH sign-in and actions. */
 const HARD_BLOCKED: ReadonlySet<string> = new Set(["suspended", "banned"])
 
+/**
+ * Author statuses whose EXISTING CONTENT is hidden from other users (posts,
+ * comments, profile timeline, search) — the moderation states only. Read paths
+ * filter `author.status NOT IN` this list (audit CP0-2: suspend/ban blocked the
+ * actor from acting but left their already-published content fully visible).
+ * Self-deactivated (`inactive`) content stays visible — deactivation isn't a
+ * moderation action. Kept in sync with HARD_BLOCKED.
+ */
+export const HIDDEN_AUTHOR_STATUSES = ["suspended", "banned"] as const
+
 /** True if the account may obtain a session (sign in). */
 export function canSignIn(status: string | null | undefined): boolean {
   return !HARD_BLOCKED.has(status ?? "active")

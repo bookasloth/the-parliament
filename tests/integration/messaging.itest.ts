@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead, getConversationMeta } from "@/modules/messaging/service";
+import { dmKeyFor, canMessage, findOrCreateConversation, listConversations, getMessages, sendMessage, editMessage, deleteMessage, markRead, getConversationMeta, toggleReaction, blockUser, unblockUser } from "@/modules/messaging/service";
 
 // Storage validation reads SUPABASE_URL at call time — pin it so the media-URL
 // tests below can build a matching in-domain URL regardless of the real env.
@@ -118,6 +118,32 @@ describe("sendMessage validation", () => {
     await expect(sendMessage(a, id, { body: tooLong })).rejects.toThrow();
     const m = await sendMessage(a, id, { body: "short" });
     await expect(editMessage(a, m.id, tooLong)).rejects.toThrow();
+  });
+});
+
+describe("block severs an existing conversation (audit CP0-4)", () => {
+  it("refuses send/edit/react once either party blocks, and re-allows after unblock", async () => {
+    const a = await makeUser(), b = await makeUser();
+    await follow(a, b);
+    const { id } = await findOrCreateConversation(a, b);
+    // Baseline: both can send before any block.
+    const mA = await sendMessage(a, id, { body: "hi from a" });
+    await sendMessage(b, id, { body: "hi from b" });
+
+    // a blocks b. canMessage-at-create only gated the START; the send path must
+    // re-check, so a blocked party can no longer push into the existing thread.
+    await blockUser(a, b);
+    await expect(sendMessage(b, id, { body: "still here?" })).rejects.toThrow();
+    // The blocker is symmetric — a can't deliver into the thread either.
+    await expect(sendMessage(a, id, { body: "no" })).rejects.toThrow();
+    // Editing / reacting also broadcast to the other party → both blocked.
+    await expect(editMessage(a, mA.id, "edited")).rejects.toThrow();
+    await expect(toggleReaction(b, mA.id, "👍")).rejects.toThrow();
+
+    // Unblocking restores the thread.
+    await unblockUser(a, b);
+    const resumed = await sendMessage(b, id, { body: "back" });
+    expect(resumed.body).toBe("back");
   });
 });
 
