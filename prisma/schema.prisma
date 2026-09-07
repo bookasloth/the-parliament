@@ -1018,6 +1018,11 @@ model Notification {
   id         String    @id @default(uuid()) @db.Uuid
   userId     String    @map("user_id") @db.Uuid
   actorId    String?   @map("actor_id") @db.Uuid // who triggered it (for grouping / block-suppression / re-render)
+  // Aggregation (audit N-1): a coalesced burst tracks how many DISTINCT actors it
+  // represents + the most-recent few ids, so the bell can say "Priya and 4 others"
+  // instead of silently overwriting to the latest actor and losing the rest.
+  actorCount Int       @default(1) @map("actor_count")
+  actorIds   String[]  @default([]) @map("actor_ids") @db.Uuid
   type       String    @db.VarChar(40)
   title      String    @db.VarChar(200)
   body       String?

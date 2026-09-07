@@ -19,6 +19,7 @@ export default async function NotificationsPage() {
         imageUrl: n.imageUrl,
         isRead: n.isRead,
         createdAt: n.createdAt.toISOString(),
+        actorCount: n.actorCount,
         href: links[i].href,
         ctas: links[i].ctas,
       }))}

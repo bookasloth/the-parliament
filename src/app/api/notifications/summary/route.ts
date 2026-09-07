@@ -3,6 +3,7 @@ import { handleError, ok } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
 import { unreadCount, listNotifications, markAllRead, markRead } from "@/modules/notifications/service"
 import { resolveNotifLinks } from "@/modules/notifications/links"
+import { othersSuffix } from "@/modules/notifications/aggregate"
 
 // GET → unread count + recent notifications for the navbar bell.
 export async function GET() {
@@ -14,7 +15,8 @@ export async function GET() {
       count,
       items: rows.map((n, i) => ({
         id: n.id,
-        title: n.title,
+        // Bake the "and N others" aggregate into the bell title (audit N-1).
+        title: othersSuffix(n.actorCount) ? `${n.title} ${othersSuffix(n.actorCount)}` : n.title,
         body: n.body,
         imageUrl: n.imageUrl,
         isRead: n.isRead,

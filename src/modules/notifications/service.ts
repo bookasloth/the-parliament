@@ -5,6 +5,7 @@ import { sendEmail, type EmailTemplates } from "@/lib/email"
 import { broadcastToUser } from "@/lib/supabase-realtime"
 import { sendPush } from "@/lib/web-push"
 import { throttleBroadcast } from "./broadcast-throttle"
+import { mergeActor } from "./aggregate"
 
 export function pushUrlFor(entityType?: string, entityId?: string): string {
   if (entityType === "post" && entityId) return `/feed/${entityId}`
@@ -106,12 +107,23 @@ export async function sendNotification<K extends NotificationKind>(
         isRead: false,
         createdAt: { gt: new Date(Date.now() - COALESCE_WINDOW_MS) },
       },
-      select: { id: true },
+      select: { id: true, actorCount: true, actorIds: true },
     })
     if (recent) {
+      // Fold this actor into the aggregate (audit N-1): a new distinct actor
+      // bumps the count so the bell reads "latest and N others" instead of the
+      // old behaviour of silently overwriting to the latest actor alone.
+      const agg = mergeActor({ actorCount: recent.actorCount, actorIds: recent.actorIds }, input.actorId)
       await prisma.notification.update({
         where: { id: recent.id },
-        data: { title: input.title, body: input.body, imageUrl: input.imageUrl, createdAt: new Date() },
+        data: {
+          title: input.title,
+          body: input.body,
+          imageUrl: input.imageUrl,
+          createdAt: new Date(),
+          actorCount: agg.actorCount,
+          actorIds: agg.actorIds,
+        },
       })
       coalesced = true
     }
@@ -123,6 +135,7 @@ export async function sendNotification<K extends NotificationKind>(
         userId: input.userId,
         type: input.kind,
         actorId: input.actorId,
+        actorIds: input.actorId ? [input.actorId] : [],
         title: input.title,
         body: input.body,
         entityType: input.entityType,
@@ -279,6 +292,8 @@ export interface NotificationRow {
   entityId: string | null
   isRead: boolean
   createdAt: Date
+  /** Distinct actors folded into this (coalesced) row — drives "and N others". */
+  actorCount: number
 }
 
 export async function listNotifications(
@@ -300,6 +315,7 @@ export async function listNotifications(
       entityId: true,
       isRead: true,
       createdAt: true,
+      actorCount: true,
     },
   })
 }
