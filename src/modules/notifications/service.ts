@@ -4,6 +4,7 @@ import { redis } from "@/lib/redis"
 import { sendEmail, type EmailTemplates } from "@/lib/email"
 import { broadcastToUser } from "@/lib/supabase-realtime"
 import { sendPush } from "@/lib/web-push"
+import { throttleBroadcast } from "./broadcast-throttle"
 
 export function pushUrlFor(entityType?: string, entityId?: string): string {
   if (entityType === "post" && entityId) return `/feed/${entityId}`
@@ -137,7 +138,12 @@ export async function sendNotification<K extends NotificationKind>(
 
   // Nudge the recipient's notification bell to refetch instantly (realtime),
   // instead of waiting out its poll. Best-effort; the poll is the fallback.
-  if (!muted) void broadcastToUser(input.userId, "notification", { at: Date.now() })
+  // Coalesced sends don't change the unread count, so there's nothing to refetch
+  // — skip them (this is what kills the per-like broadcast storm / self-DoS). A
+  // per-user throttle further collapses cross-entity bursts into one nudge.
+  if (!muted && !coalesced && (await throttleBroadcast(input.userId))) {
+    void broadcastToUser(input.userId, "notification", { at: Date.now() })
+  }
 
   // Web push to the device (works when the tab is closed). Skip on a coalesced
   // burst so one post's reaction storm doesn't buzz the phone repeatedly, when
