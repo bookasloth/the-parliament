@@ -6,6 +6,7 @@ import { organizeCommentThread } from "./comment-thread"
 import { trendingWindowStart } from "./trending"
 import { postHashtagWhere } from "@/lib/rich-text"
 import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
+import { visibleAuthorWhere, followersAudienceWhere } from "./visibility"
 
 export { recencyCursorWhere, rankedCursorWhere, type FeedCursor } from "./cursor"
 
@@ -83,28 +84,35 @@ export async function getFeed(filters: FeedFilters) {
     if (cat) where.categoryId = cat.id
   }
 
+  // Author gate: hide posts by suspended/banned authors from EVERY viewer (audit
+  // CP0-2 — moderation blocked the actor but left their content live). Merged with
+  // the optional batch/house facet so both ride one `author` relation filter.
+  const authorWhere = visibleAuthorWhere()
   if (filters.batchId || filters.houseId) {
-    where.author = {
+    authorWhere.profile = {
       is: {
-        profile: {
-          is: {
-            ...(filters.batchId ? { batchId: filters.batchId } : {}),
-            ...(filters.houseId ? { houseId: filters.houseId } : {}),
-          },
-        },
+        ...(filters.batchId ? { batchId: filters.batchId } : {}),
+        ...(filters.houseId ? { houseId: filters.houseId } : {}),
       },
     }
   }
+  where.author = { is: authorWhere }
 
-  // Per-viewer scoping (skipped on a single-author page): blocks, follow graph,
-  // hidden posts, and "followers"-visibility enforcement.
+  // Per-viewer scoping. Block-exclusion and "followers"-visibility apply on BOTH
+  // the ranked feed AND a single-author profile timeline (audit CP0-1: the
+  // profile branch — `filters.authorId` set — used to skip ALL of this, leaking
+  // followers-only posts and a blocked author's posts to any viewer, logged-out
+  // included). Seen/hidden exclusion and follow-affinity stay feed-only concepts
+  // (a profile shows the full history in order, seen posts included).
   const followingSet = new Set<string>()
   // Ids the viewer has already seen — excluded so the feed never repeats.
   // Kept separate from the hidden set because the "caught up" fallback re-runs
   // with only hidden excluded (seen posts may resurface, hidden never do).
   let hiddenIds: string[] = []
   let seenIds: string[] = []
-  if (filters.viewerId && !filters.authorId) {
+  const isFeedScope = !filters.authorId
+  const viewingOwnTimeline = !!filters.authorId && filters.viewerId === filters.authorId
+  if (filters.viewerId) {
     const viewerId = filters.viewerId
     const [blocks, follows, hidden, seen] = await Promise.all([
       prisma.userBlock.findMany({
@@ -112,43 +120,58 @@ export async function getFeed(filters: FeedFilters) {
         select: { blockerId: true, blockedId: true },
       }),
       prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } }),
-      prisma.hiddenPost.findMany({ where: { userId: viewerId }, select: { postId: true } }),
-      prisma.postImpression.findMany({
-        where: { userId: viewerId },
-        orderBy: { seenAt: "desc" },
-        take: SEEN_EXCLUSION_WINDOW,
-        select: { postId: true },
-      }),
+      isFeedScope
+        ? prisma.hiddenPost.findMany({ where: { userId: viewerId }, select: { postId: true } })
+        : Promise.resolve([] as { postId: string }[]),
+      isFeedScope
+        ? prisma.postImpression.findMany({
+            where: { userId: viewerId },
+            orderBy: { seenAt: "desc" },
+            take: SEEN_EXCLUSION_WINDOW,
+            select: { postId: true },
+          })
+        : Promise.resolve([] as { postId: string }[]),
     ])
     const blocked = new Set(
       blocks.map((b) => (b.blockerId === viewerId ? b.blockedId : b.blockerId)),
     )
     for (const f of follows) followingSet.add(f.followingId)
 
-    if (filters.followingOnly) {
+    if (isFeedScope && filters.followingOnly) {
       const allowed = [...followingSet, viewerId].filter((id) => !blocked.has(id))
       where.authorId = { in: allowed }
     } else if (blocked.size > 0) {
-      where.authorId = { notIn: [...blocked] }
+      if (isFeedScope) {
+        where.authorId = { notIn: [...blocked] }
+      } else if (filters.authorId && blocked.has(filters.authorId)) {
+        // Profile timeline of a user in a block relationship: return nothing (the
+        // profile page already 404s on a block — this is defense-in-depth so the
+        // timeline query can never surface a blocked author's posts).
+        where.id = { in: [] }
+      }
     }
 
-    // "not interested" (hidden) never resurface; recently-seen posts are excluded
-    // so each visit surfaces fresh content.
-    hiddenIds = hidden.map((h) => h.postId)
-    seenIds = seen.map((s) => s.postId)
-    const excludeIds = filters.skipSeenExclusion
-      ? hiddenIds
-      : planExclusions(hiddenIds, seenIds)
-    if (excludeIds.length > 0) where.id = { notIn: excludeIds }
-
-    // Followers-scoped posts are visible only to the author's followers (or self).
-    // ponytail: "groups" scope treated as public here; group-feed enforcement lives
-    // in the groups module.
-    where.OR = [
-      { visibilityScope: { not: "followers" } },
-      { authorId: { in: [...followingSet, viewerId] } },
-    ]
+    if (isFeedScope) {
+      // "not interested" (hidden) never resurface; recently-seen posts are excluded
+      // so each visit surfaces fresh content.
+      hiddenIds = hidden.map((h) => h.postId)
+      seenIds = seen.map((s) => s.postId)
+      const excludeIds = filters.skipSeenExclusion
+        ? hiddenIds
+        : planExclusions(hiddenIds, seenIds)
+      if (excludeIds.length > 0) where.id = { notIn: excludeIds }
+    }
   }
+
+  // Followers-scope audience gate — feed AND profile, logged-in AND logged-out
+  // (audit CP0-1). Only skipped when the author views their own timeline.
+  const audience = followersAudienceWhere({
+    viewerId: filters.viewerId,
+    followingIds: followingSet,
+    viewingOwnTimeline,
+  })
+  if (audience?.OR) where.OR = audience.OR
+  else if (audience?.visibilityScope) where.visibilityScope = audience.visibilityScope
 
   // Both feeds keyset-paginate over a TOTAL order so pages never dup/skip:
   //   recency → (createdAt, id) DESC
@@ -286,7 +309,7 @@ export async function getFeed(filters: FeedFilters) {
 /** Posts the viewer has saved (newest first), shaped like getFeed rows. */
 export async function listSavedPosts(viewerId: string, limit = 30) {
   const saved = await prisma.savedPost.findMany({
-    where: { userId: viewerId, post: { deletedAt: null, status: "visible" } },
+    where: { userId: viewerId, post: { deletedAt: null, status: "visible", author: { is: visibleAuthorWhere() } } },
     orderBy: { savedAt: "desc" },
     take: limit,
     select: { post: { select: postSelect(viewerId) } },
@@ -317,7 +340,7 @@ async function postGroupId(id: string): Promise<string | null> {
 
 export async function getPostById(id: string, viewerId?: string) {
   const post = await prisma.post.findFirst({
-    where: { id, deletedAt: null, status: "visible" },
+    where: { id, deletedAt: null, status: "visible", author: { is: visibleAuthorWhere() } },
     select: postSelect(viewerId),
   })
   if (!post) return null
@@ -409,11 +432,13 @@ export async function listPostComments(
    *  (audit P1-20 pagination — the old 100-cap left later comments unreachable). */
   afterCreatedAt?: string,
 ): Promise<PostCommentRow[]> {
+  // author-status gate hides comments by suspended/banned authors (audit CP0-2).
   const top0 = await prisma.comment.findMany({
     where: {
       postId,
       deletedAt: null,
       parentId: null,
+      author: { is: visibleAuthorWhere() },
       ...(afterCreatedAt ? { createdAt: { gt: new Date(afterCreatedAt) } } : {}),
     },
     orderBy: { createdAt: "asc" },
@@ -424,7 +449,7 @@ export async function listPostComments(
   // chains resolve to their ancestor instead of vanishing.
   const replies0 = top0.length
     ? await prisma.comment.findMany({
-        where: { postId, deletedAt: null, parentId: { not: null } },
+        where: { postId, deletedAt: null, parentId: { not: null }, author: { is: visibleAuthorWhere() } },
         orderBy: { createdAt: "asc" },
         select: commentSelect,
       })

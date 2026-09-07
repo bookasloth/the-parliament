@@ -62,6 +62,23 @@ async function assertParticipant(viewerId: string, conversationId: string) {
   if (!p) throw new ForbiddenError("Not a participant")
 }
 
+/**
+ * A block severs an EXISTING thread too (audit CP0-4): sending, editing, or
+ * reacting is refused when either party has blocked the other. `canMessage` only
+ * gates conversation *creation*, so every write path that delivers new content to
+ * the other participant must re-check the block. Assumes 1:1 DMs (the only kind
+ * that exist) — the "other participant" is the single non-viewer member.
+ */
+async function assertNotBlockedInConversation(viewerId: string, conversationId: string): Promise<void> {
+  const other = await prisma.conversationParticipant.findFirst({
+    where: { conversationId, userId: { not: viewerId } },
+    select: { userId: true },
+  })
+  if (other && (await isBlockedBetween(viewerId, other.userId))) {
+    throw new ForbiddenError("You can't message this person")
+  }
+}
+
 export async function listConversations(viewerId: string): Promise<ConversationSummary[]> {
   const rows = await prisma.conversation.findMany({
     // lastMessageAt is only set by sendMessage, so an opened-but-never-used chat
@@ -254,6 +271,9 @@ export async function sendMessage(
   const media = input.media ?? []
   if (media.some((m) => !isOurPublicUrl(m))) throw new ForbiddenError("Invalid media URL")
   if (!body && media.length === 0) throw new ForbiddenError("Empty message")
+  // A block on an existing thread stops new messages (audit CP0-4). Checked after
+  // the idempotency early-return so retrying an already-sent message still resolves.
+  await assertNotBlockedInConversation(viewerId, conversationId)
 
   // A reply can only quote a message from the SAME conversation.
   let replyStub: ReplyStub | null = null
@@ -376,6 +396,7 @@ async function assertAuthor(viewerId: string, messageId: string): Promise<{ conv
 
 export async function editMessage(viewerId: string, messageId: string, body: string): Promise<void> {
   const { conversationId } = await assertAuthor(viewerId, messageId)
+  await assertNotBlockedInConversation(viewerId, conversationId)
   const trimmed = body.trim()
   if (!trimmed) throw new ForbiddenError("Empty message")
   if (trimmed.length > MAX_MESSAGE_LEN) throw new ForbiddenError("Message too long")
@@ -400,6 +421,7 @@ export async function toggleReaction(viewerId: string, messageId: string, emoji:
   const m = await prisma.message.findUnique({ where: { id: messageId }, select: { conversationId: true, deletedAt: true } })
   if (!m || m.deletedAt) throw new ForbiddenError("Message not found")
   await assertParticipant(viewerId, m.conversationId)
+  await assertNotBlockedInConversation(viewerId, m.conversationId)
 
   const existing = await prisma.messageReaction.findUnique({
     where: { messageId_userId: { messageId, userId: viewerId } },

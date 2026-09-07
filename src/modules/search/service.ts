@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { blockedIdsFor } from "@/modules/connections/blocks"
 import { searchDirectory, type DirectoryRow } from "@/modules/directory/service"
+import { visibleAuthorWhere } from "@/modules/feed/visibility"
 
 // Unified search (audit P1-1). Before this, the navbar offered five scopes and
 // only "people" actually searched — the other four silently rendered the
@@ -82,6 +83,8 @@ async function searchPosts(q: string, schoolId: string, blocked: Set<string>, li
       // Only publicly-scoped posts are searchable — followers/groups-only posts
       // stay private (audit P0-3 alignment).
       visibilityScope: { notIn: ["followers", "groups"] },
+      // Hide posts by suspended/banned authors (audit CP0-2).
+      author: { is: visibleAuthorWhere() },
       body: { contains: q, mode: "insensitive" },
       ...(blocked.size ? { authorId: { notIn: [...blocked] } } : {}),
     },

@@ -13,7 +13,7 @@ import type { FeedMembership, BorderType } from "@/components/shared/feed-card/t
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
-import { isBlockedBetween } from "@/modules/connections/blocks"
+import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
 import { RestrictedProfile } from "./restricted-profile"
 
 function fmt(d: Date | null | undefined): string {
@@ -192,7 +192,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         .catch(() => {}),
     )
   }
-  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current, taggedMentions] =
+  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current, taggedMentions, taggedBlocked] =
     await Promise.all([
       prisma.experience.findMany({
         where: { userId: user.id },
@@ -248,13 +248,13 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         select: {
           post: {
             select: {
-              id: true, body: true, media: true, status: true,
+              id: true, body: true, media: true, status: true, visibilityScope: true,
               createdAt: true, deletedAt: true,
               upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true,
               author: {
                 select: {
                   id: true, username: true, legalName: true, displayName: true,
-                  isVerified: true, membershipStatus: true,
+                  isVerified: true, membershipStatus: true, status: true,
                   profile: {
                     select: {
                       photoUrl: true,
@@ -271,6 +271,8 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
           },
         },
       }),
+      // Viewer's symmetric block set — tagged posts by blocked users are dropped.
+      blockedIdsFor(viewerId),
     ])
 
   const experienceItems: ExperienceItem[] = experiences.map((e) => ({
@@ -319,8 +321,21 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
   const BORDER_MAP: Record<string, BorderType> = {
     premium: "darkBlue", life: "gold", student: "green", associate: "blue", inactive: "grey", committee: "rgby",
   }
+  // Tagged posts are authored by THIRD parties, so this list must apply the same
+  // audience rules as the feed (audit CP0-1/CP0-2): drop soft-deleted/removed,
+  // group posts (in-group only), suspended/banned authors, blocked users, and
+  // followers-only posts unless the viewer is the author or follows them.
   const tagged: ProfileViewData["tagged"] = (taggedMentions as any[])
-    .filter((m) => m.post && !m.post.deletedAt && m.post.status === "visible")
+    .filter((m) => {
+      const pt = m.post
+      if (!pt || pt.deletedAt || pt.status !== "visible") return false
+      if (pt.group) return false
+      const a = pt.author
+      if (a.status === "suspended" || a.status === "banned") return false
+      if (taggedBlocked.has(a.id)) return false
+      if (pt.visibilityScope === "followers" && !(viewerId === a.id || viewerFollowing.has(a.id))) return false
+      return true
+    })
     .map((m) => {
       const pt = m.post
       const a = pt.author
