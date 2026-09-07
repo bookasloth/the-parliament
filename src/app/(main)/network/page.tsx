@@ -4,6 +4,7 @@ import { getDefaultSchoolId } from "@/lib/school"
 import { colorAvatar } from "@/lib/avatar"
 import { NetworkClient } from "./network-client"
 import { mutualCountsFor } from "@/modules/connections/service"
+import { blockedIdsFor } from "@/modules/connections/blocks"
 import {
   suggestedEvents, chapters, recentActivity,
   type NetworkAlumni,
@@ -17,7 +18,7 @@ export default async function NetworkPage() {
   const meId = sessionUser.id
   const schoolId = (await getDefaultSchoolId()) ?? undefined
 
-  const [meUser, myFollows, followerCount] = await Promise.all([
+  const [meUser, myFollows, followerCount, blocked] = await Promise.all([
     prisma.user.findUnique({
       where: { id: meId },
       select: {
@@ -27,9 +28,12 @@ export default async function NetworkPage() {
     }),
     prisma.follow.findMany({ where: { followerId: meId }, select: { followingId: true } }),
     prisma.follow.count({ where: { followingId: meId } }),
+    blockedIdsFor(meId),
   ])
 
-  const excluded = new Set<string>([meId, ...myFollows.map((f) => f.followingId)])
+  // Exclude self, people already followed, and anyone in a block relationship
+  // (audit: /network suggestions skipped the block filter the other paths apply).
+  const excluded = new Set<string>([meId, ...myFollows.map((f) => f.followingId), ...blocked])
 
   const meBatch = meUser?.profile?.batch?.label ?? ""
   const meCity = meUser?.profile?.city ?? ""
@@ -45,7 +49,9 @@ export default async function NetworkPage() {
   }
 
   const rows = await prisma.user.findMany({
-    where: { status: "active", deletedAt: null, id: { notIn: [...excluded] }, ...(schoolId ? { schoolId } : {}) },
+    // memberType filter hides the NNAWCA/Vyapaar bot + system accounts from
+    // "people to follow" (audit; matches the other suggestion paths).
+    where: { status: "active", deletedAt: null, memberType: { notIn: ["bot", "system"] }, id: { notIn: [...excluded] }, ...(schoolId ? { schoolId } : {}) },
     orderBy: [{ isVerified: "desc" }, { createdAt: "desc" }],
     take: 48,
     select: {

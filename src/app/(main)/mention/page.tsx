@@ -38,6 +38,10 @@ async function MentionData() {
         mentionsUserId: viewer.id,
         mentionsHouseId: profile?.houseId ?? undefined,
         mentionsBatchId: profile?.batchId ?? undefined,
+        // Exclude group posts (audit): an @house/@batch mention inside a private
+        // group must not surface to non-members via the mention feed. Group
+        // mentions still appear in the group feed itself.
+        groupId: null,
       }),
       loadViewer(viewer.id),
       prisma.follow.findMany({ where: { followerId: viewer.id }, select: { followingId: true } }),

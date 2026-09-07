@@ -215,6 +215,9 @@ export async function hidePostAction(postId: string) {
 
 export async function reportCommentAction(postId: string, commentId: string, reason: string) {
   const user = await requireUser()
+  // Same 20/day bucket as POST /api/reports so the two paths share one counter
+  // (audit: the UI report actions were previously unthrottled).
+  await enforceRateLimit({ bucket: "reports.create", identifier: user.id, limit: 20, windowSec: 86400 })
   await fileReport({
     reporterId: user.id,
     entityType: "comment" as ReportableEntity,
@@ -325,6 +328,7 @@ export async function reportPostAction(
   details?: string,
 ) {
   const user = await requireUser()
+  await enforceRateLimit({ bucket: "reports.create", identifier: user.id, limit: 20, windowSec: 86400 })
   await fileReport({
     reporterId: user.id,
     entityType: "post" as ReportableEntity,
