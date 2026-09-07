@@ -9,6 +9,7 @@ import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "./actions"
+import { othersSuffix } from "@/modules/notifications/aggregate"
 
 // Filter tabs → the notification types each bucket covers (null = everything).
 const FILTERS: { key: string; label: string; types: string[] | null }[] = [
@@ -28,6 +29,7 @@ export interface NotifRow {
   imageUrl: string | null
   isRead: boolean
   createdAt: string
+  actorCount: number
   href: string
   ctas: { label: string; href: string; primary?: boolean }[]
 }
@@ -151,7 +153,12 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pr-6">
-                          <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {n.title}
+                            {othersSuffix(n.actorCount) && (
+                              <span className="font-normal text-gray-500"> {othersSuffix(n.actorCount)}</span>
+                            )}
+                          </p>
                           {n.body && (
                             <p className="text-sm text-gray-600 leading-snug mt-0.5">{n.body}</p>
                           )}
