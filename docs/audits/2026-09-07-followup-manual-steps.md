@@ -60,6 +60,16 @@ Being fixed in the spawned session `task_a6295964`. Migrations create `poll_opti
 
 ---
 
+## 5. Outbox activation (transactional outbox — audit IP-5)
+
+The outbox ships in code (table migration auto-applies on deploy; `toggleReaction` now enqueues the author-ranking recompute instead of running ≤100 synchronous UPDATEs per vote). It needs its **drain trigger** turned on:
+
+1. **Run `supabase/outbox-drain-cron.sql` on the prod DB** (substitute `<AUTH_URL>` + `<CRON_SECRET>`). This schedules a pg_cron job that pings `/api/cron/outbox` every 15s — the primary drain. Mirrors the existing `vyapaar-turn-timer-cron.sql`.
+2. `vercel.json` already has a once-daily fallback drain (`/api/cron/outbox` at 02:45). **Until you run the SQL, ranking recompute only drains once a day** — reactions still work and counters are live (DB triggers); only the ranked-order refresh lags. Self-healing, but run the SQL to make ranking ~15s-fresh.
+3. No new env vars — reuses `CRON_SECRET`.
+
+Ranking is now eventually-consistent (~15s with pg_cron). The feed is `force-dynamic` and re-queried on navigation, so the lag is invisible; coalescing makes it cheaper than the old per-vote recompute.
+
 ## Already done in code (no action needed)
 
 - **CP0-1 / CP0-2 / CP0-4** — merged to `master` (PR #429).

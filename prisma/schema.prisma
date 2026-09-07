@@ -2042,6 +2042,32 @@ model ProcessedWebhookEvent {
   @@map("processed_webhook_events")
 }
 
+// Transactional outbox for fire-and-forget side effects (audit IP-5). A producer
+// writes an intent row (ideally inside its own DB transaction) instead of doing
+// the work inline; a cron-pinged drain claims due rows with FOR UPDATE SKIP
+// LOCKED, coalesces by (type, dedupeKey), dispatches to a handler, and retries
+// with backoff. Moves heavy/at-scale work (ranking recompute, notification
+// fan-out) off the request path and makes it durable + reconcilable.
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  type          String    @db.VarChar(60)
+  payload       Json      @default("{}")
+  // Collapses many intents into one unit of work while pending (e.g. all votes on
+  // one author's posts → a single ranking recompute). Null = never coalesced.
+  dedupeKey     String?   @map("dedupe_key") @db.VarChar(200)
+  status        String    @default("pending") @db.VarChar(12) // pending | done | failed
+  attempts      Int       @default(0)
+  // Doubles as the claim lease: a drain bumps this forward while processing, so a
+  // crashed drain's rows become due again automatically (at-least-once).
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz
+
+  @@index([status, nextAttemptAt])
+  @@map("outbox_events")
+}
+
 model AuditLog {
   id         BigInt   @id @default(autoincrement())
   actorId    String?  @map("actor_id") @db.Uuid

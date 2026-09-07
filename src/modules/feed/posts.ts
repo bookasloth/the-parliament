@@ -6,6 +6,7 @@ import { KARMA } from "@/config/karma"
 import { sendNotification, deleteNotificationsForEntity } from "@/modules/notifications/service"
 import { notifyMentions } from "@/modules/feed/mentions"
 import { syncPostHashtags } from "@/modules/feed/hashtags"
+import { enqueueOutbox } from "@/modules/outbox/enqueue"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
@@ -582,7 +583,9 @@ export async function toggleReaction(input: {
       }).catch(() => {})
     }
     // Un-voting shifts the author's reputation → re-rank their recent posts.
-    await recomputeAuthorRanking(post.authorId)
+    // Off the request path via the outbox (audit IP-5 / #1 scale risk): this was
+    // up to 100 synchronous UPDATEs per vote. Coalesced per author.
+    await enqueueOutbox({ type: "recompute_author_ranking", payload: { authorId: post.authorId }, dedupeKey: post.authorId })
     return { reacted: false }
   }
 
@@ -678,7 +681,8 @@ export async function toggleReaction(input: {
   }
 
   // A vote changes this author's net reputation → propagate to their posts.
-  await recomputeAuthorRanking(post.authorId)
+  // Deferred to the outbox (audit IP-5), coalesced per author.
+  await enqueueOutbox({ type: "recompute_author_ranking", payload: { authorId: post.authorId }, dedupeKey: post.authorId })
   return { reacted: true }
 }
 
