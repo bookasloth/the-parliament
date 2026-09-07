@@ -106,6 +106,19 @@ export async function postEventTomorrow(now: Date): Promise<number> {
   return posted
 }
 
+/** How to name a game winner in a public post: @-mention a real member by their
+ *  handle (so they get a mention notification + profile link), else fall back to
+ *  the stored label. Bots/system accounts and handle-less users keep the label. */
+export function winnerMention(
+  winnerKey: string,
+  winnerLabel: string,
+  members: Map<string, { username: string | null; memberType: string }>,
+): string {
+  const m = members.get(winnerKey)
+  if (m?.username && m.memberType !== "bot" && m.memberType !== "system") return `@${m.username}`
+  return winnerLabel
+}
+
 /** Daily: post individual game winners frozen in the last ~26h (weekly/monthly/
  *  yearly periods; daily champions are too noisy). Runs after alfazy-champions. */
 export async function postGamesResults(now: Date): Promise<boolean> {
@@ -117,10 +130,16 @@ export async function postGamesResults(now: Date): Promise<boolean> {
     },
     orderBy: { totalScore: "desc" },
     take: 10,
-    select: { period: true, winnerLabel: true, totalScore: true, game: { select: { title: true } } },
+    select: { period: true, winnerKey: true, winnerLabel: true, totalScore: true, game: { select: { title: true } } },
   })
   if (champs.length === 0) return false
-  const lines = champs.map((c) => `🏆 ${c.game.title} (${c.period}): ${c.winnerLabel} — ${c.totalScore} pts`)
+  // Resolve individual winnerKeys (userIds) → handles so the post @mentions them.
+  const winners = await prisma.user.findMany({
+    where: { id: { in: [...new Set(champs.map((c) => c.winnerKey))] } },
+    select: { id: true, username: true, memberType: true },
+  })
+  const memberMap = new Map(winners.map((w) => [w.id, w]))
+  const lines = champs.map((c) => `🏆 ${c.game.title} (${c.period}): ${winnerMention(c.winnerKey, c.winnerLabel, memberMap)} — ${c.totalScore} pts`)
   const body = `🎮 NNAWCA game results are in!\n\n${lines.join("\n")}\n\nCongratulations, champions! Think you can top the leaderboard? 🕹️ #NNAWCA #games`
   return !!(await botAnnounce({ body }))
 }

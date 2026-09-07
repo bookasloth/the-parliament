@@ -96,7 +96,7 @@ async function sendWave(eventId: string, tier: string): Promise<number> {
   const recipients = await prisma.user.findMany({
     where: {
       status: "active",
-      memberType: { not: "student" },
+      memberType: { notIn: ["student", "bot", "system"] }, // never invite bots (fake @bots.internal emails)
       membershipStatus: { in: statuses },
       email: { not: "" },
     },
