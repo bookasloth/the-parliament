@@ -165,9 +165,41 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): Feed
       }
     : undefined
 
+  // Repost embed (audit repost-as-object). A repost Post carries the reshared
+  // original in `repostOf` (already viewer-gated in getFeed/getPostById — a hidden
+  // original arrives as null → tombstone). Presence of `repost` tells the card to
+  // render the embedded original beneath the reposter's (optional) comment.
+  const repostOf = (row as { repostOf?: {
+    id: string
+    body: string | null
+    media: unknown
+    createdAt: Date
+    author: { username: string | null; legalName: string; displayName: string; profile: { photoUrl: string | null } | null }
+  } | null }).repostOf ?? null
+  const isRepost = row.format === "repost" || (row as { repostOfId?: string | null }).repostOfId != null
+  const repost: FeedPost["repost"] = isRepost
+    ? {
+        original: repostOf
+          ? {
+              id: repostOf.id,
+              authorName: repostOf.author.displayName || repostOf.author.legalName,
+              authorUsername: repostOf.author.username ?? undefined,
+              avatar:
+                repostOf.author.profile?.photoUrl ??
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(repostOf.author.displayName || repostOf.author.legalName)}`,
+              timestamp: relativeTime(repostOf.createdAt),
+              text: repostOf.body ?? undefined,
+              image: mediaUrls(repostOf.media)[0],
+              href: `/feed/${repostOf.id}`,
+            }
+          : null,
+      }
+    : undefined
+
   return {
     id: row.id,
     authorId: author.id,
+    repost,
     isFollowing: followingIds?.has(author.id) ?? false,
     username: anon ? undefined : author.username ?? undefined,
     savedByViewer: savedRows.length > 0,

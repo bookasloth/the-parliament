@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { visibleAuthorWhere, followersAudienceWhere } from "@/modules/feed/visibility"
+import { visibleAuthorWhere, followersAudienceWhere, isRepostOriginalHidden } from "@/modules/feed/visibility"
 
 // Pure audience-rule builders (audit CP0-1 profile-timeline leak + CP0-2
 // suspended/banned content suppression). No DB — callers pass the follow set.
@@ -61,5 +61,40 @@ describe("followersAudienceWhere", () => {
     })
     const ids = (w!.OR as [unknown, { authorId: { in: string[] } }])[1].authorId.in
     expect(ids).toEqual(["x", "me"])
+  })
+})
+
+describe("isRepostOriginalHidden", () => {
+  const visible = {
+    deletedAt: null as Date | null,
+    status: "visible",
+    visibilityScope: "network",
+    authorId: "author",
+    author: { status: "active" },
+  }
+  const viewer = { viewerId: "v", followingIds: new Set<string>(), blockedIds: new Set<string>() }
+
+  it("shows a public, live original by an active author", () => {
+    expect(isRepostOriginalHidden(visible, viewer)).toBe(false)
+  })
+  it("hides a deleted or removed original", () => {
+    expect(isRepostOriginalHidden({ ...visible, deletedAt: new Date() }, viewer)).toBe(true)
+    expect(isRepostOriginalHidden({ ...visible, status: "removed" }, viewer)).toBe(true)
+  })
+  it("hides an original whose author is suspended or banned", () => {
+    expect(isRepostOriginalHidden({ ...visible, author: { status: "suspended" } }, viewer)).toBe(true)
+    expect(isRepostOriginalHidden({ ...visible, author: { status: "banned" } }, viewer)).toBe(true)
+  })
+  it("hides across a block relationship", () => {
+    expect(isRepostOriginalHidden(visible, { ...viewer, blockedIds: new Set(["author"]) })).toBe(true)
+  })
+  it("hides a followers-only original from a non-follower, shows it to a follower/author", () => {
+    const fo = { ...visible, visibilityScope: "followers" }
+    expect(isRepostOriginalHidden(fo, viewer)).toBe(true) // non-follower
+    expect(isRepostOriginalHidden(fo, { ...viewer, followingIds: new Set(["author"]) })).toBe(false)
+    expect(isRepostOriginalHidden(fo, { viewerId: "author", followingIds: new Set(), blockedIds: new Set() })).toBe(false)
+  })
+  it("logged-out viewer can't see a followers-only original", () => {
+    expect(isRepostOriginalHidden({ ...visible, visibilityScope: "followers" }, { followingIds: new Set(), blockedIds: new Set() })).toBe(true)
   })
 })

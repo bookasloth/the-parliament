@@ -16,6 +16,7 @@ import {
   Edit3,
   UserPlus,
   Pin,
+  Repeat2,
 } from "lucide-react"
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
@@ -36,6 +37,40 @@ export { avatarColors, TEXT_BG } from "./feed-card/types"
 export type { FeedPost, BorderType, FeedMembership } from "./feed-card/types"
 export { PollCard } from "./feed-card/blocks"
 export { ReactionBar } from "./feed-card/reaction-bar"
+
+// Repost-as-object (audit): the reshared original embedded beneath the reposter's
+// (optional) comment. `original` null → the viewer can't see it → tombstone.
+// external avatar/image hosts (ui-avatars, storage) → plain <img> like the OG ads.
+function RepostEmbed({ repost }: { repost: NonNullable<FeedPost["repost"]> }) {
+  const o = repost.original
+  return (
+    <div className="mt-2">
+      <div className="mb-1 flex items-center gap-1 text-[11px] font-medium text-gray-400">
+        <Repeat2 className="h-3.5 w-3.5" /> Reposted
+      </div>
+      {!o ? (
+        <div className="rounded-[6px] border border-gray-200 bg-gray-50 px-3 py-4 text-center text-xs text-gray-400">
+          This post is no longer available
+        </div>
+      ) : (
+        <a href={o.href} className="block overflow-hidden rounded-[6px] border border-gray-200 hover:bg-gray-50">
+          <div className="flex items-center gap-2 px-3 pt-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={o.avatar} alt="" className="h-5 w-5 rounded-full object-cover" loading="lazy" />
+            <span className="text-xs font-semibold text-gray-900">{o.authorName}</span>
+            <span className="text-[11px] text-gray-400">· {o.timestamp}</span>
+          </div>
+          {o.text && <p className="whitespace-pre-line px-3 pt-1 text-sm text-gray-700 line-clamp-4">{o.text}</p>}
+          {o.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={o.image} alt="" className="mt-2 max-h-72 w-full object-cover" loading="lazy" />
+          )}
+          <div className="pb-2.5" />
+        </a>
+      )}
+    </div>
+  )
+}
 
 // --- Feed Card (the standard post card used everywhere) ---
 export function FeedCard({
@@ -374,6 +409,8 @@ export function FeedCard({
             <RichText text={post.content} collapsible />
           )
         )}
+
+        {post.repost && <RepostEmbed repost={post.repost} />}
 
         {post.isSponsored && (
           // Facebook-style link ad: normal primary text, thumbnail, then a grey
