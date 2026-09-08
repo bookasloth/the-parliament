@@ -32,6 +32,36 @@ export function visibleAuthorWhere(): Prisma.UserWhereInput {
  * ponytail: `groups`-scope is treated as public here; group-feed enforcement
  * lives in the groups module and the profile timeline passes `groupId: null`.
  */
+/**
+ * Whether the ORIGINAL embedded in a repost must be hidden from this viewer
+ * (audit repost-as-object). A hidden original renders as a tombstone instead of
+ * leaking its content: it's deleted/removed, its author is suspended/banned, the
+ * viewer is in a block relationship with the author, or it's followers-only and
+ * the viewer neither authored it nor follows the author. Pure — the caller passes
+ * the viewer's already-fetched follow/block sets.
+ */
+export function isRepostOriginalHidden(
+  original: {
+    deletedAt: Date | null
+    status: string
+    visibilityScope: string
+    authorId: string
+    author: { status: string }
+  },
+  viewer: { viewerId?: string; followingIds: Set<string>; blockedIds: Set<string> },
+): boolean {
+  if (original.deletedAt || original.status !== "visible") return true
+  if (original.author.status === "suspended" || original.author.status === "banned") return true
+  if (viewer.blockedIds.has(original.authorId)) return true
+  if (
+    original.visibilityScope === "followers" &&
+    original.authorId !== viewer.viewerId &&
+    !viewer.followingIds.has(original.authorId)
+  )
+    return true
+  return false
+}
+
 export function followersAudienceWhere(opts: {
   viewerId?: string
   followingIds: Iterable<string>

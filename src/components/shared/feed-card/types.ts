@@ -49,6 +49,21 @@ export interface FeedPost {
     myOptionId?: string | null
     isClosed?: boolean
   }
+  /** Repost-as-object: present when this card is a reshare. The reposter is the
+   *  card's own author; `original` is the embedded reshared post, or null when the
+   *  viewer can't see it (deleted/removed/blocked/followers-only) → tombstone. */
+  repost?: {
+    original: {
+      id: string
+      authorName: string
+      authorUsername?: string
+      avatar: string
+      timestamp: string
+      text?: string
+      image?: string
+      href: string
+    } | null
+  }
   isSponsored?: boolean
   sponsorName?: string
   /** Line under the sponsor name (like a profile's batch line). */

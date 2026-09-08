@@ -695,53 +695,86 @@ export async function sharePost(input: {
   postId: string
   comment?: string
 }) {
-  const post = await assertCanInteract(input.userId, input.postId)
+  // Resharing a repost reshares the TRUE original (flatten — no repost chains).
+  const target = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { repostOfId: true },
+  })
+  const originalId = target?.repostOfId ?? input.postId
+  // You can only reshare something you can actually see (block + visibility gate).
+  const original = await assertCanInteract(input.userId, originalId)
 
-  // Dedupe: one share per user per post (audit P1-10 — sharing was unbounded, so
-  // a user could inflate shareCount/ranking in a loop). Re-sharing returns the
+  // Dedupe: one share per user per original (audit P1-10 — sharing was unbounded,
+  // so a user could inflate shareCount/ranking in a loop). Re-sharing returns the
   // existing row without re-incrementing.
   const existing = await prisma.postShare.findFirst({
-    where: { originalPostId: input.postId, sharerId: input.userId },
+    where: { originalPostId: originalId, sharerId: input.userId },
     select: { id: true },
   })
   if (existing) return existing
 
-  const share = await prisma.postShare.create({
-    data: {
-      originalPostId: input.postId,
-      sharerId: input.userId,
-      comment: input.comment,
-    },
+  const meta = await prisma.post.findUnique({
+    where: { id: originalId },
+    select: { schoolId: true, categoryId: true },
   })
+  const share = await prisma.postShare.create({
+    data: { originalPostId: originalId, sharerId: input.userId, comment: input.comment },
+  })
+  // The reshare as a first-class feed object (audit repost-as-object): a Post of
+  // format "repost" pointing at the original. The unique (authorId, repostOfId)
+  // is the concurrency backstop — a double-tap that races past the check above
+  // hits it and is swallowed (the PostShare row already recorded the share).
+  if (meta) {
+    await prisma.post
+      .create({
+        data: {
+          schoolId: meta.schoolId,
+          authorId: input.userId,
+          categoryId: meta.categoryId,
+          format: "repost",
+          body: input.comment ?? null,
+          repostOfId: originalId,
+          visibilityScope: "network",
+        },
+      })
+      .catch(() => {})
+  }
   // share_count is maintained by a DB trigger (post_counter_triggers migration).
-  await recomputeRankingScore(input.postId)
+  await recomputeRankingScore(originalId)
 
   // Notify the author their post was shared (audit P1-3 — shares notified nobody).
-  if (input.userId !== post.authorId) {
+  if (input.userId !== original.authorId) {
     const actor = await prisma.user.findUnique({
       where: { id: input.userId },
       select: { displayName: true, legalName: true },
     })
     const fromName = actor?.displayName || actor?.legalName || "Someone"
     await sendNotification({
-      userId: post.authorId,
+      userId: original.authorId,
       actorId: input.userId,
       kind: "share_on_post",
       title: `${fromName} shared your post`,
       entityType: "post",
-      entityId: input.postId,
+      entityId: originalId,
       sendEmail: false,
     }).catch(() => {})
   }
   return share
 }
 
-/** Remove the viewer's share of a post (audit P1-10 — there was no unshare). */
+/** Remove the viewer's share of a post (audit P1-10 — there was no unshare):
+ *  drops both the PostShare counter row and the repost feed object. */
 export async function unsharePost(input: { userId: string; postId: string }) {
-  const del = await prisma.postShare.deleteMany({
-    where: { originalPostId: input.postId, sharerId: input.userId },
+  const target = await prisma.post.findUnique({
+    where: { id: input.postId },
+    select: { repostOfId: true },
   })
-  if (del.count > 0) await recomputeRankingScore(input.postId)
+  const originalId = target?.repostOfId ?? input.postId
+  const del = await prisma.postShare.deleteMany({
+    where: { originalPostId: originalId, sharerId: input.userId },
+  })
+  await prisma.post.deleteMany({ where: { authorId: input.userId, repostOfId: originalId } })
+  if (del.count > 0) await recomputeRankingScore(originalId)
   return { unshared: del.count > 0 }
 }
 

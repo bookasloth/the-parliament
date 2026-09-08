@@ -586,6 +586,11 @@ model Post {
   rankingScore    Decimal   @default(0) @map("ranking_score") @db.Decimal(10, 3)
   status          PostStatus @default(visible)
   quoteSource     String?   @map("quote_source")
+  // Repost-as-object (audit): a repost IS a Post (format "repost") pointing at the
+  // original it reshares. Flows through the feed/ranking/pagination like any post;
+  // renders the embedded original inline. Reposts of reposts are flattened to the
+  // true original, so repostOf is always a non-repost.
+  repostOfId      String?   @map("repost_of_id") @db.Uuid
   isAnonymous     Boolean   @default(false) @map("is_anonymous")
   textBg          String?   @map("text_bg") @db.VarChar(20)
   viewCount       Int       @default(0) @map("view_count")
@@ -596,6 +601,9 @@ model Post {
   author   User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   category PostCategory @relation(fields: [categoryId], references: [id])
   group    Group?       @relation(fields: [groupId], references: [id])
+
+  repostOf Post?  @relation("post_repost", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts  Post[] @relation("post_repost")
 
   comments Comment[]
   shares   PostShare[]
@@ -614,6 +622,8 @@ model Post {
   @@index([schoolId, engagementScore])
   @@index([schoolId, isPinned])
   @@index([groupId, createdAt])
+  @@index([repostOfId])
+  @@unique([authorId, repostOfId]) // one repost per user per original (nulls unconstrained)
   @@map("posts")
 }
 

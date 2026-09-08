@@ -6,7 +6,7 @@ import { organizeCommentThread } from "./comment-thread"
 import { trendingWindowStart } from "./trending"
 import { postHashtagWhere } from "@/lib/rich-text"
 import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
-import { visibleAuthorWhere, followersAudienceWhere } from "./visibility"
+import { visibleAuthorWhere, followersAudienceWhere, isRepostOriginalHidden } from "./visibility"
 
 export { recencyCursorWhere, rankedCursorWhere, type FeedCursor } from "./cursor"
 
@@ -105,6 +105,9 @@ export async function getFeed(filters: FeedFilters) {
   // included). Seen/hidden exclusion and follow-affinity stay feed-only concepts
   // (a profile shows the full history in order, seen posts included).
   const followingSet = new Set<string>()
+  // Viewer's block set (both directions) — hoisted to gate embedded repost
+  // originals after the fetch (a blocked author's post must not leak via a repost).
+  const blockedSet = new Set<string>()
   // Ids the viewer has already seen — excluded so the feed never repeats.
   // Kept separate from the hidden set because the "caught up" fallback re-runs
   // with only hidden excluded (seen posts may resurface, hidden never do).
@@ -132,18 +135,16 @@ export async function getFeed(filters: FeedFilters) {
           })
         : Promise.resolve([] as { postId: string }[]),
     ])
-    const blocked = new Set(
-      blocks.map((b) => (b.blockerId === viewerId ? b.blockedId : b.blockerId)),
-    )
+    for (const b of blocks) blockedSet.add(b.blockerId === viewerId ? b.blockedId : b.blockerId)
     for (const f of follows) followingSet.add(f.followingId)
 
     if (isFeedScope && filters.followingOnly) {
-      const allowed = [...followingSet, viewerId].filter((id) => !blocked.has(id))
+      const allowed = [...followingSet, viewerId].filter((id) => !blockedSet.has(id))
       where.authorId = { in: allowed }
-    } else if (blocked.size > 0) {
+    } else if (blockedSet.size > 0) {
       if (isFeedScope) {
-        where.authorId = { notIn: [...blocked] }
-      } else if (filters.authorId && blocked.has(filters.authorId)) {
+        where.authorId = { notIn: [...blockedSet] }
+      } else if (filters.authorId && blockedSet.has(filters.authorId)) {
         // Profile timeline of a user in a block relationship: return nothing (the
         // profile page already 404s on a block — this is defense-in-depth so the
         // timeline query can never surface a blocked author's posts).
@@ -262,6 +263,16 @@ export async function getFeed(filters: FeedFilters) {
     })
   }
 
+  // Gate embedded repost originals (audit repost-as-object): a hidden original
+  // (deleted / removed / suspended-author / blocked / followers-only the viewer
+  // can't see) is nulled so map-row renders a tombstone instead of leaking it.
+  // Works for logged-out too (empty follow/block sets still enforce the rest).
+  for (const r of rows) {
+    if (r.repostOf && isRepostOriginalHidden(r.repostOf, { viewerId: filters.viewerId, followingIds: followingSet, blockedIds: blockedSet })) {
+      r.repostOf = null
+    }
+  }
+
   // Reactions live in a polymorphic table — fetch viewer's rows in one shot.
   let viewerReactionByPostId = new Map<string, string>()
   if (filters.viewerId && rows.length > 0) {
@@ -315,6 +326,10 @@ export async function listSavedPosts(viewerId: string, limit = 30) {
     select: { post: { select: postSelect(viewerId) } },
   })
   const rows = saved.map((s) => s.post)
+  // Tombstone a saved repost whose original is gone/removed (audit repost-as-object).
+  for (const r of rows) {
+    if (r.repostOf && (r.repostOf.deletedAt || r.repostOf.status !== "visible")) r.repostOf = null
+  }
   let viewerReactionByPostId = new Map<string, string>()
   if (rows.length > 0) {
     const rx = await prisma.reaction.findMany({
@@ -368,6 +383,24 @@ export async function getPostById(id: string, viewerId?: string) {
     }
     // Never surface across a block, in either direction.
     if (viewerId && (await isBlockedBetween(viewerId, authorId))) return null
+  }
+
+  // Gate the embedded repost original for this viewer (audit repost-as-object).
+  if (post.repostOf) {
+    const o = post.repostOf
+    const blockedIds = new Set<string>()
+    const followingIds = new Set<string>()
+    if (viewerId && o.authorId !== viewerId) {
+      if (await isBlockedBetween(viewerId, o.authorId)) blockedIds.add(o.authorId)
+      else if (o.visibilityScope === "followers") {
+        const f = await prisma.follow.findFirst({
+          where: { followerId: viewerId, followingId: o.authorId },
+          select: { id: true },
+        })
+        if (f) followingIds.add(o.authorId)
+      }
+    }
+    if (isRepostOriginalHidden(o, { viewerId, followingIds, blockedIds })) post.repostOf = null
   }
 
   const viewerReaction = viewerId
@@ -501,6 +534,31 @@ function postSelect(viewerId?: string) {
     isAnonymous: true,
     textBg: true,
     visibilityScope: true,
+    repostOfId: true,
+    // Compact embed of the reshared original (audit repost-as-object). Gated
+    // per-viewer in app code (see gateEmbeddedReposts / getPostById) — a hidden
+    // original is nulled to render a tombstone, never leaked.
+    repostOf: {
+      select: {
+        id: true,
+        body: true,
+        media: true,
+        createdAt: true,
+        deletedAt: true,
+        status: true,
+        visibilityScope: true,
+        authorId: true,
+        author: {
+          select: {
+            username: true,
+            legalName: true,
+            displayName: true,
+            status: true,
+            profile: { select: { photoUrl: true } },
+          },
+        },
+      },
+    },
     isPinned: true,
     isEdited: true,
     editedAt: true,
