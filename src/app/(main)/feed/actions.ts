@@ -472,7 +472,7 @@ export async function loadMoreFeedAction(
       )
     : undefined
   return {
-    posts: rows.map((r) => mapRowToFeedPost(r, followingIds)),
+    posts: rows.map((r) => mapRowToFeedPost(r, followingIds, viewer?.id)),
     hasMore: rows.length === pageSize,
     nextPage: page + 1,
     nextCursor,

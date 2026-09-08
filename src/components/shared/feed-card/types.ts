@@ -28,6 +28,10 @@ export interface FeedPost {
   isVerified?: boolean
   isPinned?: boolean
   isEdited?: boolean
+  /** Anonymous post: a lucide icon key + avatar-circle colour shown instead of a
+   *  real avatar (see config/anon-identities). Presence signals an anon post. */
+  anonIcon?: string
+  anonColor?: string
   content?: string
   /** Facebook-style coloured background id for short text posts (see TEXT_BG). */
   textBg?: string

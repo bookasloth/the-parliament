@@ -1,6 +1,7 @@
 import type { getFeed } from "@/modules/feed/query"
 import type { FeedPost, FeedMembership, BorderType } from "@/components/shared/FeedCard"
 import type { MediaItem } from "@/components/shared/MediaGallery"
+import { anonIdentity } from "@/config/anon-identities"
 
 type FeedRow = Awaited<ReturnType<typeof getFeed>>["rows"][number]
 
@@ -102,10 +103,13 @@ export function relativeTime(date: Date): string {
   return `${Math.floor(mo / 12)}y`
 }
 
-export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): FeedPost {
+export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>, viewerId?: string): FeedPost {
   const author = row.author
   const anon = (row as { isAnonymous?: boolean }).isAnonymous ?? false
-  const name = anon ? "Anonymous JNVian" : author.displayName || author.legalName
+  // Anonymous posts get a stable-per-post codename + icon (config/anon-identities),
+  // seeded by post id so they can't be correlated across a person's posts.
+  const identity = anon ? anonIdentity(row.id) : null
+  const name = identity ? identity.name : author.displayName || author.legalName
   const membership = MEMBERSHIPS.includes(author.membershipStatus as FeedMembership)
     ? (author.membershipStatus as FeedMembership)
     : "associate"
@@ -114,8 +118,9 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): Feed
     : author.profile?.house
       ? { name: author.profile.house.name, color: author.profile.house.colorHex }
       : undefined
+  // anon → icon avatar (FeedCard renders anonIcon); real avatar otherwise.
   const avatar = anon
-    ? `https://ui-avatars.com/api/?name=${encodeURIComponent("Anonymous")}&background=e5e7eb&color=6b7280`
+    ? ""
     : author.profile?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
 
   const savedRows = (row as { savedBy?: { userId: string }[] }).savedBy ?? []
@@ -198,10 +203,16 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>): Feed
 
   return {
     id: row.id,
-    authorId: author.id,
+    // Leak fix: an anon post's real authorId is withheld from everyone EXCEPT the
+    // author themselves (so they still get their own edit/delete menu). Default is
+    // safe — no viewerId → treated as non-author → id hidden.
+    authorId: anon ? (viewerId && viewerId === author.id ? author.id : undefined) : author.id,
     repost,
-    isFollowing: followingIds?.has(author.id) ?? false,
+    // Don't reveal the follow relationship for anon posts either.
+    isFollowing: anon ? false : followingIds?.has(author.id) ?? false,
     username: anon ? undefined : author.username ?? undefined,
+    anonIcon: identity?.icon,
+    anonColor: identity?.color,
     savedByViewer: savedRows.length > 0,
     viewerReaction,
     name,

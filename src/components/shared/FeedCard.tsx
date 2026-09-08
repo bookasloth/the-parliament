@@ -17,7 +17,21 @@ import {
   UserPlus,
   Pin,
   Repeat2,
+  Skull,
+  Ghost,
+  VenetianMask,
+  Drama,
+  Bot,
 } from "lucide-react"
+
+// Anonymous-post icon pool (config/anon-identities keys → lucide components).
+const ANON_ICON_MAP: Record<string, typeof Skull> = {
+  skull: Skull,
+  ghost: Ghost,
+  mask: VenetianMask,
+  drama: Drama,
+  bot: Bot,
+}
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, RichTextInline, MediaSection, QuoteBlock, LinkPreviewCard, HelpCircle } from "./feed-card/blocks"
@@ -264,15 +278,30 @@ export function FeedCard({
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
-            {/* Avatar */}
+            {/* Avatar — anon posts get a lucide icon on a coloured tile instead
+                of a real photo (no profile link). */}
             <a href={profileHref} className="flex-shrink-0">
-              <Image
-                src={post.avatar}
-                alt={post.name}
-                width={40}
-                height={40}
-                className="h-9 w-9 rounded-[4px] object-cover ring-1 ring-gray-200 sm:h-10 sm:w-10"
-              />
+              {post.anonIcon ? (
+                (() => {
+                  const AnonI = ANON_ICON_MAP[post.anonIcon] ?? Ghost
+                  return (
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-[4px] ring-1 ring-gray-200 sm:h-10 sm:w-10"
+                      style={{ backgroundColor: post.anonColor ?? "#6b7280" }}
+                    >
+                      <AnonI className="h-5 w-5 text-white" />
+                    </div>
+                  )
+                })()
+              ) : (
+                <Image
+                  src={post.avatar}
+                  alt={post.name}
+                  width={40}
+                  height={40}
+                  className="h-9 w-9 rounded-[4px] object-cover ring-1 ring-gray-200 sm:h-10 sm:w-10"
+                />
+              )}
             </a>
             {/* Info */}
             <div className="min-w-0">

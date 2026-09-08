@@ -48,7 +48,7 @@ async function MentionData() {
     ])
 
     const followingIds = new Set(followRows.map((f) => f.followingId))
-    posts = rows.map((r) => mapRowToFeedPost(r, followingIds))
+    posts = rows.map((r) => mapRowToFeedPost(r, followingIds, viewer.id))
     hasMore = rows.length === PAGE_SIZE
     nextCursor = nc
 

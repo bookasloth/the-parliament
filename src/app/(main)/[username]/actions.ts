@@ -31,7 +31,7 @@ export async function loadMoreProfilePostsAction(
   })
 
   const posts: ProfileTimelinePost[] = rows.map((r) => {
-    const post = mapRowToFeedPost(r)
+    const post = mapRowToFeedPost(r, undefined, viewer?.id)
     return { post, isAuthor: viewer?.id === post.authorId, initialSaved: post.savedByViewer ?? false }
   })
   return { posts, nextCursor }

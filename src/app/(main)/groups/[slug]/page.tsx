@@ -37,7 +37,7 @@ export default async function GroupDetailPage({
     ])
     if (feed) {
       const followingIds = new Set(following.map((f) => f.followingId))
-      initialPosts = feed.rows.map((r) => mapRowToFeedPost(r, followingIds))
+      initialPosts = feed.rows.map((r) => mapRowToFeedPost(r, followingIds, user.id))
     }
     if (me) {
       viewer = {

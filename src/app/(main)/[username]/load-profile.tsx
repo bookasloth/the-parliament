@@ -298,7 +298,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
 
   // Timeline posts (visible only), rendered with the same FeedCard as the feed.
   const posts: ProfileViewData["posts"] = feed.rows.map((r) => {
-    const post = mapRowToFeedPost(r)
+    const post = mapRowToFeedPost(r, undefined, viewerId)
     return { post, isAuthor: viewerId === post.authorId, initialSaved: post.savedByViewer ?? false }
   })
   // Followers list (people who follow THIS profile) + the viewer's own follow
