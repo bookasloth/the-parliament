@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowDownAZ,
   ShoppingBag,
+  BookA,
   type LucideIcon,
 } from "lucide-react"
 
@@ -43,6 +44,7 @@ export const DEFAULT_SIDEBAR_NAV: SidebarNav = {
     { label: "Achievements", href: "/achievements", icon: Award },
     { label: "Membership", href: "/membership", icon: CreditCard },
     { label: "Shell Store", href: "/store", icon: ShoppingBag },
+    { label: "Glossary", href: "/glossary", icon: BookA },
   ],
 }
 
@@ -56,6 +58,7 @@ export const SIDEBAR_NAV = {
       { label: "Drafts", href: "/compose/drafts", icon: FileText },
       { label: "New post", href: "/compose", icon: PenLine },
       { label: "Membership", href: "/membership", icon: CreditCard },
+      { label: "Glossary", href: "/glossary", icon: BookA },
     ],
   },
   games: {
