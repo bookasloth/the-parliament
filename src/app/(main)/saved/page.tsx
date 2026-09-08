@@ -17,7 +17,7 @@ export default async function SavedPage() {
       (f) => f.followingId,
     ),
   )
-  const posts = rows.map((r) => mapRowToFeedPost(r, followingIds))
+  const posts = rows.map((r) => mapRowToFeedPost(r, followingIds, viewer.id))
 
   return (
     <div className="mx-auto max-w-[680px] px-4 sm:px-6 py-6">

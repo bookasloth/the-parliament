@@ -46,7 +46,7 @@ export async function loadGroupFeedAction(groupId: string): Promise<FeedPost[]> 
   if (!res) return []
   const following = await prisma.follow.findMany({ where: { followerId: user.id }, select: { followingId: true } })
   const followingIds = new Set(following.map((f) => f.followingId))
-  return res.rows.map((r) => mapRowToFeedPost(r, followingIds))
+  return res.rows.map((r) => mapRowToFeedPost(r, followingIds, user.id))
 }
 
 /** Post a help request to a group. Requires active membership. */

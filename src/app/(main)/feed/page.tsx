@@ -89,7 +89,7 @@ async function FeedData({ tab, pinnedNewId, tag }: { tab?: string; pinnedNewId?:
     // teaser.
     const tier = (viewer?.membershipStatus ?? "student") as PlanCode
     const paid = isPaidTier(tier)
-    mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds)), tier)
+    mappedReal = injectFeedAds(rows.map((r) => mapRowToFeedPost(r, followingIds, viewer?.id)), tier)
 
     if (pinnedNewId && viewer?.id) {
       const idx = mappedReal.findIndex((p) => p.id === pinnedNewId)
