@@ -39,6 +39,30 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/r2"
 import { enforceRateLimit } from "@/lib/rate-limit"
+import { cached, redis } from "@/lib/redis"
+import { countNewSince, splitCacheHits, type RecentPost, type PostCounts } from "@/modules/feed/poll-cache"
+
+// Short TTLs for the feed's 30s-poll queries — long enough to collapse the
+// per-client herd, short enough that the pill/counters feel live (audit P-1).
+const FEED_RECENT_TTL = 15
+const FEED_RECENT_LIMIT = 60
+const FEED_COUNTS_TTL = 15
+
+// Viewer-INDEPENDENT recent-posts list for a school, cached so every client's 30s
+// "new posts" poll doesn't each run a COUNT on the school. Each viewer's pill is
+// derived from this shared list in memory (countNewSince). Safe: ids/timestamps
+// of visible posts only — no per-viewer data cached.
+async function recentSchoolPosts(schoolId: string): Promise<RecentPost[]> {
+  return cached(`feed:recent:${schoolId}`, FEED_RECENT_TTL, async () => {
+    const rows = await prisma.post.findMany({
+      where: { schoolId, deletedAt: null, status: "visible" },
+      orderBy: { createdAt: "desc" },
+      take: FEED_RECENT_LIMIT,
+      select: { createdAt: true, authorId: true },
+    })
+    return rows.map((r) => ({ createdAt: r.createdAt.toISOString(), authorId: r.authorId }))
+  })
+}
 
 export async function reactToPost(postId: string, type: ReactionType) {
   const user = await requireUser()
@@ -49,32 +73,15 @@ export async function reactToPost(postId: string, type: ReactionType) {
   return result
 }
 
-/** Count visible posts created after `sinceIso` — drives the "N new posts" pill. */
+/** Count visible posts created after `sinceIso` — drives the "N new posts" pill.
+ *  Reads the school-wide cached recent list (no per-client COUNT herd) and derives
+ *  the count in memory; capped at FEED_RECENT_LIMIT ("60+" is all the pill needs). */
 export async function countNewPostsAction(sinceIso: string) {
   const schoolId = await getDefaultSchoolId()
   if (!schoolId) return { count: 0 }
-  const since = new Date(sinceIso)
-  if (Number.isNaN(since.getTime())) return { count: 0 }
   const viewer = await optionalUser()
-  const count = await prisma.post.count({
-    where: {
-      schoolId,
-      deletedAt: null,
-      status: "visible",
-      createdAt: { gt: since },
-      // Don't nag the viewer about their own just-posted content.
-      ...(viewer?.id ? { authorId: { not: viewer.id } } : {}),
-    },
-  })
-  return { count }
-}
-
-export interface PostCounts {
-  id: string
-  upvoteCount: number
-  downvoteCount: number
-  commentCount: number
-  shareCount: number
+  const recent = await recentSchoolPosts(schoolId)
+  return { count: countNewSince(recent, sinceIso, viewer?.id) }
 }
 
 /** Fresh engagement counters for the currently-visible posts — drives the live
@@ -83,11 +90,29 @@ export interface PostCounts {
 export async function refreshPostCountsAction(postIds: string[]): Promise<PostCounts[]> {
   const ids = prepareImpressionBatch(postIds, 50)
   if (ids.length === 0) return []
-  const rows = await prisma.post.findMany({
-    where: { id: { in: ids }, deletedAt: null },
-    select: { id: true, upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true },
-  })
-  return rows
+
+  // Per-post counter cache (viewer-independent) — popular posts polled by many
+  // clients are served from Redis; only cache misses hit the DB. TTL keeps it
+  // ≈live (trigger-maintained counts; the actor's own change is already optimistic).
+  let hits: (PostCounts | null)[] = []
+  try {
+    hits = await redis.mget<PostCounts[]>(...ids.map((id) => `feed:counts:${id}`))
+  } catch {
+    hits = ids.map(() => null)
+  }
+  const { hits: out, missIds } = splitCacheHits(ids, hits)
+
+  if (missIds.length > 0) {
+    const rows = await prisma.post.findMany({
+      where: { id: { in: missIds }, deletedAt: null },
+      select: { id: true, upvoteCount: true, downvoteCount: true, commentCount: true, shareCount: true },
+    })
+    try {
+      await Promise.all(rows.map((r) => redis.set(`feed:counts:${r.id}`, r, { ex: FEED_COUNTS_TTL })))
+    } catch {}
+    out.push(...rows)
+  }
+  return out
 }
 
 export async function votePollAction(_postId: string, pollId: string, optionId: string) {
