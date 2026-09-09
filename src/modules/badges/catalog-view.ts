@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CATEGORY_ORDER, CATEGORY_LABEL, type BadgeCategory, type BadgeRarity } from "@/config/badges";
 import type { BadgeView } from "@/components/shared/badges/BadgeCard";
+import { unlockRanksForUser } from "./ranks";
 
 export interface CatalogData {
   totalCount: number;
@@ -25,6 +26,7 @@ export async function getBadgeCatalog(viewerId?: string): Promise<CatalogData> {
   ]);
 
   const earned = new Set(earnedRows.map((r) => r.badgeId));
+  const ranks = viewerId ? await unlockRanksForUser(viewerId) : new Map<string, number>();
   const byCategory = new Map<BadgeCategory, BadgeView[]>();
   let earnedCount = 0;
 
@@ -39,6 +41,7 @@ export async function getBadgeCatalog(viewerId?: string): Promise<CatalogData> {
       rarity: b.rarity as BadgeRarity,
       isHidden: b.isHidden,
       earned: isEarned,
+      unlockRank: isEarned ? ranks.get(b.id) ?? null : null,
       requirement: !isEarned && b.progressTarget ? `Target: ${b.progressTarget.toLocaleString("en-IN")}` : null,
     };
     const cat = (b.category as BadgeCategory) ?? "special";

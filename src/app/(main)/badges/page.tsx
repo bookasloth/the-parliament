@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Medal } from "lucide-react";
+import { Crown } from "lucide-react";
 import { optionalUser } from "@/modules/auth/session";
 import { getBadgeCatalog } from "@/modules/badges/catalog-view";
+import { LeftRailShell } from "@/components/shared/ProfileSidebar";
+import { SIDEBAR_NAV } from "@/config/sidebar-nav";
 import BadgeCard from "@/components/shared/badges/BadgeCard";
 import { RARITY_TONE, RARITY_LABEL, RARITY_ORDER } from "@/components/shared/badges/rarity";
 import { keyToSlug } from "@/modules/badges/slug";
@@ -14,21 +16,18 @@ export default async function BadgesCatalogPage() {
   const cat = await getBadgeCatalog(session?.id);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
+    <LeftRailShell nav={SIDEBAR_NAV.feed}>
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-          <Medal className="h-5 w-5" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Badges</h1>
-          <p className="text-sm text-gray-500">
-            Every achievement on the platform{session ? ` · you've earned ${cat.earnedCount} of ${cat.totalCount}` : ` · ${cat.totalCount} to collect`}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Badges</h1>
+          <p className="mt-0.5 text-sm text-gray-500">
+            {session ? `You've earned ${cat.earnedCount} of ${cat.totalCount}.` : `${cat.totalCount} achievements to collect.`}
           </p>
         </div>
-        <Link href="/leaderboard" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand">
-          Leaderboard
-        </Link>
+        <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+          <Crown className="h-4 w-4" /> Collect badges. Be legendary.
+        </span>
       </div>
 
       {/* Rarity legend */}
@@ -42,14 +41,17 @@ export default async function BadgesCatalogPage() {
       </div>
 
       {/* Categories */}
-      <div className="space-y-8">
+      <div className="space-y-9">
         {cat.categories.map((c) => (
           <section key={c.key}>
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
-              <span className="inline-block h-[15px] w-[5px] rounded-[3px] bg-brand" />
-              {c.label}
-            </h2>
-            <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="inline-block h-6 w-1.5 rounded-full bg-brand" />
+              <h2 className="text-lg font-bold text-gray-900">{c.label}</h2>
+              <span className="text-xs font-medium text-gray-400">
+                {c.badges.filter((b) => b.earned).length}/{c.badges.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
               {c.badges.map((b) => (
                 <BadgeCard key={b.key} badge={b} href={`/badges/${keyToSlug(b.key)}`} />
               ))}
@@ -57,6 +59,6 @@ export default async function BadgesCatalogPage() {
           </section>
         ))}
       </div>
-    </div>
+    </LeftRailShell>
   );
 }

@@ -7,6 +7,7 @@ import {
   type BadgeRarity,
 } from "@/config/badges";
 import type { BadgeView } from "@/components/shared/badges/BadgeCard";
+import { unlockRanksForUser } from "./ranks";
 
 export interface RecentUnlock {
   key: string;
@@ -57,6 +58,7 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
 
   const earnedAt = new Map(earnedRows.map((r) => [r.badgeId, r.awardedAt]));
   const earnedSource = new Map(earnedRows.map((r) => [r.badgeId, r.source]));
+  const ranks = earnedRows.length ? await unlockRanksForUser(userId) : new Map<string, number>();
 
   let score = 0;
   let earnedCount = 0;
@@ -90,6 +92,7 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
       isHidden: b.isHidden,
       earned,
       awardedAt,
+      unlockRank: earned ? ranks.get(b.id) ?? null : null,
       requirement: !earned && b.progressTarget ? `Target: ${b.progressTarget.toLocaleString("en-IN")}` : null,
     };
     const cat = (b.category as BadgeCategory) ?? "special";

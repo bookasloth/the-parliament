@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { slugToKey } from "./slug";
+import { unlockRankFor } from "./ranks";
+import { taglineFor } from "@/config/badge-taglines";
 import type { BadgeRarity } from "@/config/badges";
 
 export interface BadgeEarner {
@@ -24,8 +26,11 @@ export interface BadgeDetail {
   isHidden: boolean;
   awardMode: string;
   requirement: string | null;
+  tagline: string;
   totalEarned: number;
   viewerEarned: boolean;
+  /** The viewer's own unlock rank (Nth to earn it), when earned. */
+  viewerRank: number | null;
   earners: BadgeEarner[]; // ordered by unlock time (earliest first)
 }
 
@@ -72,6 +77,8 @@ export async function getBadgeDetail(slug: string, viewerId?: string): Promise<B
     prisma.userBadge.count({ where: { badgeId: badge.id } }),
   ]);
 
+  const viewerRank = viewerId ? await unlockRankFor(viewerId, badge.id) : null;
+
   const earners: BadgeEarner[] = rows
     .filter((r) => !r.user.deletedAt)
     .map((r, i) => ({
@@ -96,8 +103,10 @@ export async function getBadgeDetail(slug: string, viewerId?: string): Promise<B
     isHidden: badge.isHidden,
     awardMode: badge.awardMode,
     requirement: badge.progressTarget ? `Target: ${badge.progressTarget.toLocaleString("en-IN")}` : null,
+    tagline: taglineFor(badge.key),
     totalEarned: total,
-    viewerEarned: viewerId ? earners.some((e) => e.userId === viewerId) : false,
+    viewerEarned: viewerRank != null,
+    viewerRank,
     earners,
   };
 }
