@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { BadgeRarity } from "@/config/badges";
 import { RARITY_TONE, RARITY_LABEL, BADGE_FALLBACK } from "./rarity";
 
@@ -24,7 +25,7 @@ const SIZE = {
  * greyed with a lock; a locked HIDDEN badge is a mystery ("???"), its name and
  * art withheld. Tooltip (title attr) carries the description / unlock date.
  */
-export default function BadgeCard({ badge, size = "md" }: { badge: BadgeView; size?: "sm" | "md" }) {
+export default function BadgeCard({ badge, size = "md", href }: { badge: BadgeView; size?: "sm" | "md"; href?: string }) {
   const s = SIZE[size];
   const tone = RARITY_TONE[badge.rarity];
   const mystery = !badge.earned && badge.isHidden;
@@ -36,8 +37,18 @@ export default function BadgeCard({ badge, size = "md" }: { badge: BadgeView; si
       ? `${badge.label} · ${RARITY_LABEL[badge.rarity]}${badge.awardedAt ? ` · earned ${badge.awardedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}${badge.description ? `\n${badge.description}` : ""}`
       : `${badge.label} · Locked${badge.requirement ? ` · ${badge.requirement}` : ""}${badge.description ? `\n${badge.description}` : ""}`;
 
+  const Wrap = href
+    ? ({ children }: { children: React.ReactNode }) => (
+        <Link href={href} className="flex flex-col items-center gap-1.5 text-center" title={tip}>
+          {children}
+        </Link>
+      )
+    : ({ children }: { children: React.ReactNode }) => (
+        <div className="flex flex-col items-center gap-1.5 text-center" title={tip}>{children}</div>
+      );
+
   return (
-    <div className="flex flex-col items-center gap-1.5 text-center" title={tip}>
+    <Wrap>
       <div
         className={`relative flex ${s.tile} items-center justify-center rounded-[8px] ${s.pad} ring-1 ${
           badge.earned ? `${tone.bg} ${tone.ring}` : "bg-gray-100 ring-gray-200"
@@ -66,6 +77,6 @@ export default function BadgeCard({ badge, size = "md" }: { badge: BadgeView; si
       >
         {name}
       </span>
-    </div>
+    </Wrap>
   );
 }

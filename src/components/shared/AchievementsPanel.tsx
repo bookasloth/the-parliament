@@ -1,7 +1,8 @@
 import Link from "next/link"
 import type { BadgeRarity } from "@/config/badges"
 import TrophyCase from "./TrophyCase"
-import BadgeCard from "./badges/BadgeCard"
+
+const BADGE_FALLBACK = "/achievements/badge.svg"
 
 /**
  * Profile "Achievements" card — earned Badges + Collectables (Rotten Eggs /
@@ -17,7 +18,7 @@ const EGG_ICON = "/achievements/rotten-egg.svg"
 const KARMA_ICON = "/achievements/karma.svg"
 const SHELL_ICON = "/achievements/shell.svg"
 
-const BADGES_SHOWN = 5
+const BADGES_SHOWN = 3
 
 export type AchievementBadge = { key: string; label: string; iconUrl: string | null; rarity: BadgeRarity }
 
@@ -39,7 +40,7 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
   const { ownerFirstName, ownerUsername, userId, badges, totalBadges, eggs, shells, karma } = data
   const shown = badges.slice(0, BADGES_SHOWN)
   const overflow = totalBadges - shown.length
-  const achievementsHref = `/${ownerUsername}/achievements`
+  const badgesHref = `/${ownerUsername}/badges`
 
   return (
     <div className="rounded-[5px] border border-gray-200/80 bg-white soft-shadow overflow-hidden">
@@ -50,35 +51,36 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
       </div>
 
       <div className="px-7 pb-6 pt-3">
-        {/* Badges */}
-        <div className="mb-2 flex items-center justify-between">
-          <h4 className={`${SUBHEAD} mb-0`}>Badges</h4>
-          <Link href={achievementsHref} className="text-xs font-semibold text-brand hover:underline">
-            View all
-          </Link>
-        </div>
+        {/* Badges — one compact row: up to 3 icons + a "+N" box */}
+        <h4 className={SUBHEAD}>Badges</h4>
         {totalBadges === 0 ? (
-          <p className="mb-4 text-xs text-gray-400">No badges yet — stay active to start earning.</p>
+          <p className="mb-2 text-xs text-gray-400">No badges yet — stay active to start earning.</p>
         ) : (
-          <div className="mb-4 grid grid-cols-5 gap-2">
+          <div className="mb-2 flex gap-2.5">
             {shown.map((b) => (
-              <Link key={b.key} href={achievementsHref}>
-                <BadgeCard
-                  size="sm"
-                  badge={{ ...b, description: null, isHidden: false, earned: true }}
-                />
+              <Link
+                key={b.key}
+                href={badgesHref}
+                title={b.label}
+                className="flex h-14 w-14 items-center justify-center rounded-[8px] border border-gray-200 bg-white p-2 hover:border-brand"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="h-full w-full object-contain" />
               </Link>
             ))}
             {overflow > 0 && (
               <Link
-                href={achievementsHref}
-                className="flex h-12 w-12 items-center justify-center self-start rounded-[8px] bg-gray-100 text-xs font-bold text-gray-500 ring-1 ring-gray-200 hover:bg-gray-200"
+                href={badgesHref}
+                className="flex h-14 w-14 items-center justify-center rounded-[8px] border border-gray-200 bg-gray-50 text-sm font-bold text-brand hover:border-brand"
               >
                 +{overflow}
               </Link>
             )}
           </div>
         )}
+        <Link href={badgesHref} className="mb-5 inline-block text-xs font-semibold text-brand hover:underline">
+          View Your Badges
+        </Link>
 
         {/* Collectables */}
         <h4 className={SUBHEAD}>Collectables</h4>
