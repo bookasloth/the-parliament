@@ -31,7 +31,8 @@ import { mergePostCounts } from "@/modules/feed/live-counts"
 import type { FeedCursor } from "@/modules/feed/cursor"
 import { PostSkeleton } from "@/components/shared/feed-skeletons"
 import Image from "next/image"
-import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard"
+import { AdCard } from "@/components/shared/AdCard"
+import { showSidebarAd } from "@/config/ad-sets"
 import { PeopleYouMayKnow } from "./PeopleYouMayKnow"
 
 export type SuggestedConnection = {
@@ -579,12 +580,14 @@ export function FeedContent({
             )}
           </div>
 
-          {/* Right Sidebar — Timewheel ads. Hidden for ad-free paid tiers, but
-              life members still get the sidebar display ad (in-feed ads stay off). */}
-          {(!adFree || viewer?.membership === "life") && (
+          {/* Right Sidebar — display ad. Hidden for premium/committee; life
+              members still get it (only in-feed ads are off for them). Feed owns
+              its own markup here because it already holds the viewer tier —
+              other pages use <AdRail/>, which shares the same gate. */}
+          {showSidebarAd(viewer?.membership) && (
             <div className="hidden lg:block w-full lg:w-[340px] flex-shrink-0">
               <div className="sticky top-20">
-                <TimewheelAdCard />
+                <AdCard set="seoAi" />
               </div>
             </div>
           )}

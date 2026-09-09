@@ -3,6 +3,8 @@ import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
 import { ProfileSidebarView, type SidebarViewer } from "./ProfileSidebarView"
 import type { SidebarNav } from "@/config/sidebar-nav"
+import type { AdSetKey } from "@/config/ad-sets"
+import { AdRail } from "./AdRail"
 
 export type { SidebarViewer } from "./ProfileSidebarView"
 
@@ -44,7 +46,16 @@ export async function ProfileSidebar({
  * Standard left-rail page shell: 280px sticky ProfileSidebar + main column.
  * For simple single-column server pages (games, etc.). Feed keeps its own 3-col grid.
  */
-export function LeftRailShell({ nav, children }: { nav?: SidebarNav; children: ReactNode }) {
+export function LeftRailShell({
+  nav,
+  adSet,
+  children,
+}: {
+  nav?: SidebarNav
+  /** Render the sticky display-ad rail on the right with this creative set. */
+  adSet?: AdSetKey
+  children: ReactNode
+}) {
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
       <div className="flex flex-col lg:flex-row gap-8">
@@ -54,6 +65,7 @@ export function LeftRailShell({ nav, children }: { nav?: SidebarNav; children: R
           </div>
         </aside>
         <div className="flex-1 min-w-0">{children}</div>
+        {adSet && <AdRail set={adSet} />}
       </div>
     </div>
   )

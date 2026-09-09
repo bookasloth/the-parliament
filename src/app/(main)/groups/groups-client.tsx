@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import Image from "next/image"
 import {
   Search, Plus, Users, Lock, Globe, ChevronRight, Bell, BellOff,
@@ -49,9 +49,11 @@ export const MOCK_GROUPS: Group[] = [
 export default function GroupsClient({
   groups = MOCK_GROUPS,
   sidebarViewer = null,
+  adRail = null,
 }: {
   groups?: Group[]
   sidebarViewer?: SidebarViewer | null
+  adRail?: ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -102,7 +104,7 @@ export default function GroupsClient({
       </header>
 
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5">
-        <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.groups}>
+        <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.groups} adRail={adRail}>
         <div className="space-y-4">
         {/* Search */}
         <div className="relative">

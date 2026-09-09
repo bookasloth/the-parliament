@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getDefaultSchoolId } from "@/lib/school"
 import { colorAvatar } from "@/lib/avatar"
 import { NetworkClient } from "./network-client"
+import { AdRail } from "@/components/shared/AdRail"
 import { mutualCountsFor } from "@/modules/connections/service"
 import { blockedIdsFor } from "@/modules/connections/blocks"
 import {
@@ -97,6 +98,7 @@ export default async function NetworkPage() {
       recentActivity={recentActivity}
       suggestedEvents={suggestedEvents}
       chapters={chapters}
+      adRail={<AdRail set="content" />}
     />
   )
 }

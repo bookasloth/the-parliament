@@ -190,10 +190,15 @@ export function RailSkeletonShell({ children }: { children: ReactNode }) {
 export function RailColumns({
   sidebarViewer,
   nav,
+  adRail,
   children,
 }: {
   sidebarViewer: SidebarViewer | null
   nav?: SidebarNav
+  /** Right-hand display-ad rail. A slot rather than a set key because this
+   *  renders inside a client tree — the page's server wrapper passes a
+   *  pre-rendered `<AdRail set="…"/>` in. */
+  adRail?: ReactNode
   children: ReactNode
 }) {
   return (
@@ -208,6 +213,7 @@ export function RailColumns({
         </div>
       </aside>
       <div className="flex-1 min-w-0">{children}</div>
+      {adRail}
     </div>
   )
 }

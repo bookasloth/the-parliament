@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import { optionalUser } from "@/modules/auth/session"
 import { getMemberAlbumBySlug } from "@/modules/gallery/service"
 import AlbumClient from "./album-client"
+import { AdRail } from "@/components/shared/AdRail"
 
 export const dynamic = "force-dynamic"
 
@@ -19,5 +20,5 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
   const data = await getMemberAlbumBySlug(slug)
   if (!data) notFound()
 
-  return <AlbumClient album={data.album} initialImages={data.images} viewerId={user.id} isAdmin={Boolean(user.isAdmin)} />
+  return <AlbumClient album={data.album} initialImages={data.images} viewerId={user.id} isAdmin={Boolean(user.isAdmin)} adRail={<AdRail set="content" />} />
 }

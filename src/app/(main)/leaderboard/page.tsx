@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Trophy } from "lucide-react";
 import { optionalUser } from "@/modules/auth/session";
 import { getLeaderboard, type LeaderRow } from "@/modules/badges/leaderboard";
+import { AdRail } from "@/components/shared/AdRail";
 
 export const metadata = { title: "Achievement Leaderboard" };
 
@@ -16,7 +17,10 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-3xl">
+      {/* Board keeps its max-w-3xl measure; the pair stays centred so the board
+          doesn't shift for ad-free tiers (where AdRail renders nothing). */}
+      <div className="flex justify-center gap-8">
+      <div className="w-full min-w-0 max-w-3xl">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
@@ -65,6 +69,8 @@ export default async function LeaderboardPage() {
             </span>
           </div>
         )}
+      </div>
+      <AdRail set="content" />
       </div>
     </div>
   );

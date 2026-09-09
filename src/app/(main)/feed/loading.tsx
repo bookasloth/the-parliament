@@ -1,7 +1,6 @@
 import {
   ComposeTriggerSkeleton,
   FeedListSkeleton,
-  RailCardSkeleton,
 } from "@/components/shared/feed-skeletons"
 import { ProfileSidebarSkeleton } from "@/components/shared/ProfileSidebarView"
 
@@ -21,10 +20,10 @@ export default function FeedLoading() {
             <FeedListSkeleton count={6} />
           </div>
 
-          {/* Right rail */}
-          <aside className="hidden xl:block w-[300px] flex-shrink-0 space-y-3">
-            <RailCardSkeleton lines={4} />
-            <RailCardSkeleton lines={3} />
+          {/* Right rail — mirrors the ad rail's real breakpoint/width (was
+              xl:block w-[300px], which shifted the layout on load at lg). */}
+          <aside className="hidden lg:block w-[340px] flex-shrink-0">
+            <div className="aspect-[1080/1920] w-full animate-pulse rounded-[5px] bg-gray-200" />
           </aside>
         </div>
       </div>

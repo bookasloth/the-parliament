@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { Menu, X, Users, Network, Compass } from "lucide-react"
 import { NetworkSidebar } from "./components/NetworkSidebar"
@@ -28,6 +28,8 @@ export interface NetworkData {
   recentActivity: ActivityEntry[]
   suggestedEvents: NetworkEvent[]
   chapters: Chapter[]
+  /** Right-hand display-ad rail, rendered by the server wrapper. */
+  adRail?: ReactNode
 }
 
 /** Deterministic tab filter over the real suggestion pool. */
@@ -69,7 +71,7 @@ function CardSkeleton() {
 
 export function NetworkClient({
   me, meBatch, meCity, meCompany,
-  suggestedAlumni, recentActivity, suggestedEvents, chapters,
+  suggestedAlumni, recentActivity, suggestedEvents, chapters, adRail = null,
 }: NetworkData) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [tab, setTab] = useState<DiscoveryTab>("discover")
@@ -241,6 +243,8 @@ export function NetworkClient({
               )}
             </section>
           </main>
+
+          {adRail}
         </div>
       </div>
     </div>

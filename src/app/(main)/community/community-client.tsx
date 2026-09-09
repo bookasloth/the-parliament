@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
@@ -69,7 +69,7 @@ function toQuery(current: Params, extra: Params = {}): string {
 }
 
 export function CommunityClient({
-  rows, total, facets, current, meId, stats, followingIds = [], sidebarViewer = null,
+  rows, total, facets, current, meId, stats, followingIds = [], sidebarViewer = null, adRail = null,
 }: {
   rows: DirectoryRow[]
   total: number
@@ -80,6 +80,7 @@ export function CommunityClient({
   // ponytail: covers first page only; lazily-loaded rows default to not-following (self-corrects on click).
   followingIds?: string[]
   sidebarViewer?: SidebarViewer | null
+  adRail?: ReactNode
 }) {
   const followingSet = new Set(followingIds)
   const router = useRouter()
@@ -161,7 +162,7 @@ export function CommunityClient({
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4">
-      <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.community}>
+      <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.community} adRail={adRail}>
       <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

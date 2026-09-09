@@ -3,6 +3,7 @@ import { optionalUser } from "@/modules/auth/session"
 import { getDefaultSchoolId } from "@/lib/school"
 import { listGroupsShared, myGroupIds } from "@/modules/groups/service"
 import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
+import { AdRail } from "@/components/shared/AdRail"
 import GroupsClient from "./groups-client"
 
 export const dynamic = "force-dynamic"
@@ -29,5 +30,5 @@ export default async function GroupsPage() {
     groups = shared.map((g) => (joined.has(g.id) ? { ...g, isJoined: true } : g))
   }
 
-  return <GroupsClient groups={groups} sidebarViewer={sidebarViewer} />
+  return <GroupsClient groups={groups} sidebarViewer={sidebarViewer} adRail={<AdRail set="website" />} />
 }
