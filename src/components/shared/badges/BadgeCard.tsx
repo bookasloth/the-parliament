@@ -19,7 +19,7 @@ export interface BadgeView {
 
 const SIZE = {
   sm: { tile: "h-11 w-11", pad: "p-1.5", name: "text-[11px]", box: "p-2", dot: "h-1.5 w-1.5", rank: "text-[9px]" },
-  md: { tile: "h-16 w-16", pad: "p-2.5", name: "text-xs", box: "p-3", dot: "h-2 w-2", rank: "text-[10px]" },
+  md: { tile: "h-16 w-16", pad: "p-2.5", name: "text-[10px] sm:text-xs", box: "p-3", dot: "h-2 w-2", rank: "text-[10px]" },
 } as const;
 
 /**

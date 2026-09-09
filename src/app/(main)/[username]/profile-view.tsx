@@ -616,41 +616,46 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <h5 className="font-heading text-[15px] font-bold text-gray-900">About {data.name.split(" ")[0]}</h5>
             </div>
             <div className="px-7 pb-6 pt-2">
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
-                {data.dateOfBirth && (
-                  <li className="flex items-center gap-2">
-                    <Cake className="h-4 w-4 flex-shrink-0 text-blue-500" /> <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
-                  </li>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700 lg:grid-cols-2">
+                {/* DOB + Blood Group share one line on mobile; flow into the 2-col grid on desktop */}
+                {(data.dateOfBirth || data.bloodGroup) && (
+                  <div className="flex gap-4 lg:contents">
+                    {data.dateOfBirth && (
+                      <div className="flex items-center gap-2">
+                        <Cake className="h-4 w-4 flex-shrink-0 text-blue-500" /> <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
+                      </div>
+                    )}
+                    {data.bloodGroup && (
+                      <div className="flex items-center gap-2">
+                        <Droplet className="h-4 w-4 flex-shrink-0 text-rose-500" /> <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {data.bloodGroup && (
-                  <li className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4 flex-shrink-0 text-rose-500" /> <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
-                  </li>
-                )}
-                <li className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-amber-500" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
-                </li>
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 flex-shrink-0 text-amber-500" /> Membership: <span className="font-semibold text-gray-900">{data.membership.label}</span>
+                </div>
                 {data.house && (
-                  <li className="flex items-center gap-2">
-                    <Home className="h-4 w-4 text-brand" /> House: <span className="font-semibold text-gray-900">{data.house.name}</span>
-                  </li>
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 flex-shrink-0 text-brand" /> House: <span className="font-semibold text-gray-900">{data.house.name}</span>
+                  </div>
                 )}
                 {data.batchLabel && (
-                  <li className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-indigo-500" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
-                  </li>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 flex-shrink-0 text-indigo-500" /> Batch: <span className="font-semibold text-gray-900">{data.batchLabel}</span>
+                  </div>
                 )}
                 {data.currentStatus && (
-                  <li className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-emerald-500" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
-                  </li>
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 flex-shrink-0 text-emerald-500" /> <span className="font-semibold capitalize text-gray-900">{data.currentStatus}</span>
+                  </div>
                 )}
                 {data.homeTown && (
-                  <li className="flex items-center gap-2">
-                    <Home className="h-4 w-4 text-teal-500" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
-                  </li>
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 flex-shrink-0 text-teal-500" /> Hometown: <span className="font-semibold text-gray-900">{data.homeTown}</span>
+                  </div>
                 )}
-              </ul>
+              </div>
             </div>
           </Card>
           <AchievementsPanel
@@ -760,7 +765,7 @@ function BadgesTab({
           >
             {cat.label}
           </SectionTitle>
-          <div className="grid grid-cols-4 gap-4 px-7 pb-6 pt-2 sm:grid-cols-5 md:grid-cols-6">
+          <div className="grid grid-cols-3 gap-4 px-7 pb-6 pt-2 sm:grid-cols-5 md:grid-cols-6">
             {cat.badges.map((b) => (
               <BadgeCard key={b.key} badge={b} href={`/badges/${keyToSlug(b.key)}`} />
             ))}
