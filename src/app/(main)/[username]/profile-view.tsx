@@ -367,21 +367,16 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   aria-label={label}
                   className={`flex items-center border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${tab === key ? "border-brand text-brand" : "border-transparent text-gray-400 hover:text-gray-600"}`}
                 >
-                  {/* mobile: icon only; desktop: text label (count stays on both) */}
+                  {/* mobile: icon only; desktop: text label. Count: desktop always,
+                      mobile only on the active tab. */}
                   <Icon className="h-[18px] w-[18px] lg:hidden" />
                   <span className="hidden lg:inline">{label}</span>
-                  {key === "posts" && data.postsCount > 0 && (
-                    <span className="ml-1 rounded-[5px] bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">{data.postsCount}</span>
-                  )}
-                  {key === "tagged" && data.taggedCount > 0 && (
-                    <span className="ml-1 rounded-[5px] bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">{data.taggedCount}</span>
-                  )}
-                  {key === "followers" && data.followersCount > 0 && (
-                    <span className="ml-1 rounded-[5px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
-                  )}
-                  {key === "badges" && data.totalBadges > 0 && (
-                    <span className="ml-1 rounded-[5px] bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-600">{data.totalBadges}</span>
-                  )}
+                  {(() => {
+                    const cnt = key === "posts" ? data.postsCount : key === "tagged" ? data.taggedCount : key === "followers" ? data.followersCount : key === "badges" ? data.totalBadges : 0
+                    const tone = key === "tagged" ? "bg-blue-50 text-blue-600" : key === "followers" ? "bg-green-50 text-green-600" : key === "badges" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"
+                    if (cnt <= 0) return null
+                    return <span className={`ml-1 rounded-[5px] px-2 py-0.5 text-[11px] font-bold ${tone} ${tab === key ? "inline-block" : "hidden lg:inline-block"}`}>{cnt}</span>
+                  })()}
                 </button>
               ))}
             </div>
@@ -624,12 +619,12 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
               <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13.5px] text-gray-700">
                 {data.dateOfBirth && (
                   <li className="flex items-center gap-2">
-                    <Cake className="h-4 w-4 text-blue-500" /> DOB: <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
+                    <Cake className="h-4 w-4 flex-shrink-0 text-blue-500" /> <span className="font-semibold text-gray-900">{data.dateOfBirth}</span>
                   </li>
                 )}
                 {data.bloodGroup && (
                   <li className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4 text-rose-500" /> Blood Group: <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
+                    <Droplet className="h-4 w-4 flex-shrink-0 text-rose-500" /> <span className="font-semibold text-gray-900">{data.bloodGroup}</span>
                   </li>
                 )}
                 <li className="flex items-center gap-2">
