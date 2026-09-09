@@ -12,7 +12,11 @@
 // ponytail: static config, not a DB/admin surface. These are house ads for one
 // advertiser. Add an Ad model only when ads need targeting, scheduling,
 // impression counts, or self-serve buyers.
+// Timewheel art still lives on the asset CDN (it serves fine; we just can't
+// upload there any more). The audit sets are served from public/ads instead —
+// 15 creatives at ~30KB each, so self-hosting costs less than a CDN round trip.
 const CDN = "https://website-assets.shubhamdatarkar.com/nnawca/ad"
+const LOCAL = "/ads"
 
 export interface AdCreative {
   src: string
@@ -35,10 +39,12 @@ const COLORS = ["blue", "green", "orange", "pink", "yellow"] as const
 /** Build a 5-colour audit set from its export slug (e.g. "1-seo-ai"). */
 function auditSet(slug: string, alt: string, href: string): AdSet {
   return {
-    creatives: COLORS.map((color) => ({ src: `${CDN}/${color}-${slug}.png`, alt })),
+    creatives: COLORS.map((color) => ({ src: `${LOCAL}/${color}-${slug}.webp`, alt })),
     href,
-    width: 1080,
-    height: 1920,
+    // Exports are 1080x1920; served at 720x1280 (same 9:16) — still 2x the
+    // 340px rail, and WebP at that size is ~30KB against the PNG's ~950KB.
+    width: 720,
+    height: 1280,
   }
 }
 

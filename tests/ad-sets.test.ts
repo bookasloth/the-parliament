@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { describe, it, expect } from "vitest"
 import {
   AD_SETS,
@@ -20,11 +22,23 @@ describe("AD_SETS", () => {
     }
   })
 
-  it("every creative has an absolute src and non-empty alt text", () => {
+  it("every creative has a resolvable src and non-empty alt text", () => {
     for (const key of KEYS) {
       for (const ad of AD_SETS[key].creatives) {
-        expect(ad.src, `${key}:${ad.src}`).toMatch(/^https:\/\/.+\.png$/)
+        // Either a CDN URL or a root-relative path under public/.
+        expect(ad.src, `${key}:${ad.src}`).toMatch(/^(https:\/\/|\/).+\.(png|webp)$/)
         expect(ad.alt.trim(), `${key}:${ad.src}`).not.toBe("")
+      }
+    }
+  })
+
+  // The rails shipped once pointing at files that had never been uploaded, so
+  // every page rendered a broken image. Self-hosted art can be checked here.
+  it("ships every self-hosted creative in public/", () => {
+    for (const key of KEYS) {
+      for (const { src } of AD_SETS[key].creatives) {
+        if (src.startsWith("http")) continue
+        expect(existsSync(join(process.cwd(), "public", src)), `missing public${src}`).toBe(true)
       }
     }
   })

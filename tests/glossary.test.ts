@@ -3,6 +3,7 @@ import { GLOSSARY } from "@/config/glossary"
 import { HOUSE_CATALOG } from "@/config/houses"
 import { PLANS } from "@/config/membership"
 import { KARMA } from "@/config/karma"
+import { BADGE_CATALOG } from "@/config/badges"
 
 const section = (id: string) => GLOSSARY.find((s) => s.id === id)!
 const allTerms = () => GLOSSARY.flatMap((s) => s.terms)
@@ -46,6 +47,9 @@ describe("glossary stays in sync with config", () => {
     const unlocks = section("karma").terms.find((t) => t.term === "Unlocks")!
     expect(unlocks.def).toContain(String(KARMA.UNLOCKS.POLLS))
     expect(unlocks.def).toContain(String(KARMA.UNLOCKS.CREATE_GROUP))
-    expect(unlocks.def).toContain(String(KARMA.UNLOCKS.MENTOR_BADGE))
+    // Read off the badge catalogue, not a second copy in KARMA.UNLOCKS — the
+    // duplicate drifted once the badge target moved to 2000.
+    const mentor = BADGE_CATALOG.find((b) => b.key === "karma_mentor")!
+    expect(unlocks.def).toContain(String(mentor.criteria!.target))
   })
 })

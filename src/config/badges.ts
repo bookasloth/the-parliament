@@ -332,9 +332,9 @@ export const BADGE_CATALOG: BadgeDef[] = [
   })),
   ...[
     ["poster", "Poster", 50, "common", "karma-poster"],
-    ["poller", "Poller", 100, "uncommon", "karma-poller"],
-    ["group_leader", "Group Leader", 250, "rare", "karma-group-leader"],
-    ["mentor", "Mentor", 500, "epic", "karma-mentor"],
+    ["poller", "Poller", 200, "uncommon", "karma-poller"],
+    ["group_leader", "Group Leader", 500, "rare", "karma-group-leader"],
+    ["mentor", "Mentor", 2000, "epic", "karma-mentor"],
   ].map(([k, label, target, rarity, file], i): BadgeDef => ({
     key: `karma_${k}`,
     label: `Karma ${label as string}`,
