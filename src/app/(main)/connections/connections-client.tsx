@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import {
   Search, MessageSquare, Users, Menu, X, Filter,
@@ -52,12 +52,15 @@ interface ConnectionsClientProps {
   following?: AlumniUser[]
   followers?: AlumniUser[]
   suggestions?: AlumniUser[]
+  /** Right-hand display-ad rail, rendered by the server wrapper. */
+  adRail?: ReactNode
 }
 
 export default function ConnectionsClient({
   following = [],
   followers = [],
   suggestions = [],
+  adRail = null,
 }: ConnectionsClientProps) {
   const [tab, setTab] = useState<TabType>("following")
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -151,7 +154,8 @@ export default function ConnectionsClient({
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 space-y-4">
+      <div className="mx-auto flex max-w-[1400px] gap-8 px-4 py-5 sm:px-6">
+        <div className="min-w-0 flex-1 space-y-4">
         <div className="max-w-md">
           <InviteFriend />
         </div>
@@ -222,7 +226,7 @@ export default function ConnectionsClient({
 
         {/* List */}
         {currentList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {currentList.map((u, i) => (
               <motion.div
                 key={u.id}
@@ -244,6 +248,8 @@ export default function ConnectionsClient({
             </p>
           </div>
         )}
+        </div>
+        {adRail}
       </div>
 
     </div>

@@ -64,14 +64,15 @@ export default function BadgeCard({ badge, size = "md", href }: { badge: BadgeVi
       )}
 
       <div className={`flex ${s.tile} items-center justify-center`}>
+        {/* Earned → full colour. Locked → greyscale, colour on hover to preview. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={badge.iconUrl || BADGE_FALLBACK}
           alt=""
-          className="h-full w-full object-contain grayscale transition duration-200 group-hover:grayscale-0"
+          className={`h-full w-full object-contain transition duration-200 ${badge.earned ? "" : "grayscale group-hover:grayscale-0"}`}
         />
       </div>
-      <span className={`${s.name} font-semibold leading-tight text-gray-500 transition-colors group-hover:text-gray-800 line-clamp-2`}>
+      <span className={`${s.name} font-semibold leading-tight line-clamp-2 transition-colors ${badge.earned ? "text-gray-800" : "text-gray-500 group-hover:text-gray-800"}`}>
         {badge.label}
       </span>
     </div>

@@ -16,7 +16,7 @@ export default async function BadgesCatalogPage() {
   const cat = await getBadgeCatalog(session?.id);
 
   return (
-    <LeftRailShell nav={SIDEBAR_NAV.feed}>
+    <LeftRailShell nav={SIDEBAR_NAV.feed} adSet="website">
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>

@@ -4,6 +4,7 @@ import { getPostById } from "@/modules/feed/query"
 import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost } from "../map-row"
 import PostCard from "./post-card"
+import { AdRail } from "@/components/shared/AdRail"
 
 export const dynamic = "force-dynamic"
 
@@ -45,8 +46,16 @@ export default async function PostDetailPage({
   const feedPost = mapRowToFeedPost({ ...post, viewerReaction }, followingIds, viewer?.id)
 
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6">
-      <PostCard post={feedPost} isAuthor={isAuthor} initialSaved={feedPost.savedByViewer ?? false} />
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
+      {/* Reading column keeps its max-w-3xl measure; the ad rail sits beside it
+          and the pair stays centred, so the post doesn't shift for ad-free tiers
+          (where AdRail renders nothing). */}
+      <div className="flex justify-center gap-8">
+        <div className="w-full min-w-0 max-w-3xl">
+          <PostCard post={feedPost} isAuthor={isAuthor} initialSaved={feedPost.savedByViewer ?? false} />
+        </div>
+        <AdRail set="seoAi" />
+      </div>
     </div>
   )
 }

@@ -18,7 +18,7 @@ const EGG_ICON = "/achievements/rotten-egg.svg"
 const KARMA_ICON = "/achievements/karma.svg"
 const SHELL_ICON = "/achievements/shell.svg"
 
-const BADGES_SHOWN = 3
+const BADGES_SHOWN = 6
 
 export type AchievementBadge = { key: string; label: string; iconUrl: string | null; rarity: BadgeRarity }
 
@@ -56,13 +56,13 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
         {totalBadges === 0 ? (
           <p className="mb-2 text-xs text-gray-400">No badges yet — stay active to start earning.</p>
         ) : (
-          <div className="mb-2 flex gap-2.5">
+          <div className="mb-2 grid grid-cols-7 gap-1.5">
             {shown.map((b) => (
               <Link
                 key={b.key}
                 href={badgesHref}
                 title={b.label}
-                className="flex h-14 w-14 items-center justify-center rounded-[8px] border border-gray-200 bg-white p-2 hover:border-brand"
+                className="flex aspect-square items-center justify-center rounded-[6px] border border-gray-200 bg-white p-1 hover:border-brand"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="h-full w-full object-contain" />
@@ -71,7 +71,7 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
             {overflow > 0 && (
               <Link
                 href={badgesHref}
-                className="flex h-14 w-14 items-center justify-center rounded-[8px] border border-gray-200 bg-gray-50 text-sm font-bold text-brand hover:border-brand"
+                className="flex aspect-square items-center justify-center rounded-[6px] border border-gray-200 bg-gray-50 text-xs font-bold text-brand hover:border-brand"
               >
                 +{overflow}
               </Link>

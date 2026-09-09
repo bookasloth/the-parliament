@@ -4,6 +4,7 @@ import { listEventsShared, myInterestedEventIds } from "@/modules/events/service
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
+import { AdRail } from "@/components/shared/AdRail"
 import type { SidebarViewer } from "@/components/shared/ProfileSidebarView"
 
 export const dynamic = "force-dynamic"
@@ -39,5 +40,5 @@ export default async function EventsPage() {
     events = []
   }
 
-  return <EventsClient events={events} sidebarViewer={sidebarViewer} />
+  return <EventsClient events={events} sidebarViewer={sidebarViewer} adRail={<AdRail set="website" />} />
 }

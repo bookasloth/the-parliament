@@ -4,7 +4,7 @@ import { ArrowLeft, Crown, Trophy, Users } from "lucide-react";
 import { optionalUser } from "@/modules/auth/session";
 import { ProfileSidebar } from "@/components/shared/ProfileSidebar";
 import { SIDEBAR_NAV } from "@/config/sidebar-nav";
-import { TimewheelAdCard } from "@/components/shared/TimewheelAdCard";
+import { AdRail } from "@/components/shared/AdRail";
 import { getBadgeDetail, type BadgeEarner } from "@/modules/badges/badge-detail";
 import { RARITY_TONE, RARITY_LABEL, BADGE_FALLBACK } from "@/components/shared/badges/rarity";
 
@@ -24,9 +24,6 @@ export default async function BadgeDetailPage({ params }: { params: Promise<{ sl
 
   const tone = RARITY_TONE[d.rarity];
   const podium = [d.earners[1], d.earners[0], d.earners[2]].filter(Boolean) as BadgeEarner[];
-  // Ad-free perk: hide the display ad for premium/committee; everyone else sees it.
-  const tier = session?.membershipStatus;
-  const showAd = tier !== "premium" && tier !== "committee";
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
@@ -120,14 +117,8 @@ export default async function BadgeDetailPage({ params }: { params: Promise<{ sl
           )}
         </div>
 
-        {/* Right rail — feed ad */}
-        {showAd && (
-          <aside className="hidden w-[340px] flex-shrink-0 lg:block">
-            <div className="sticky top-20">
-              <TimewheelAdCard />
-            </div>
-          </aside>
-        )}
+        {/* Right rail — display ad (gated inside AdRail) */}
+        <AdRail set="website" />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { searchDirectory, getDirectoryFacets, type DirectoryFilters } from "@/mo
 import { getFollowingIds } from "@/modules/connections/service"
 import { CommunityClient } from "./community-client"
 import { getSidebarViewer } from "@/components/shared/ProfileSidebar"
+import { AdRail } from "@/components/shared/AdRail"
 import Loading from "./loading"
 
 export const dynamic = "force-dynamic"
@@ -72,6 +73,7 @@ async function CommunityData({ sp }: { sp: Record<string, string | undefined> })
       stats={{ totalActive, verifiedCount, batches: facets.batches.length, industries: facets.industries.length }}
       followingIds={followingIds}
       sidebarViewer={sidebarViewer}
+      adRail={<AdRail set="website" />}
     />
   )
 }

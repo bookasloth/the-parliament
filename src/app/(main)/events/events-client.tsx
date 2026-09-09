@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useTransition } from "react"
+import { useState, useRef, useEffect, useTransition, type ReactNode } from "react"
 import Image from "next/image"
 import {
   Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
@@ -116,9 +116,11 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
 export default function EventsClient({
   events: initialEvents = MOCK_EVENTS,
   sidebarViewer = null,
+  adRail = null,
 }: {
   events?: EventItem[]
   sidebarViewer?: SidebarViewer | null
+  adRail?: ReactNode
 }) {
   const [events, setEvents] = useState(initialEvents)
   const [tab, setTab] = useState<Tab>("upcoming")
@@ -200,7 +202,7 @@ export default function EventsClient({
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f3f2ef] pb-16 lg:pb-6">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 sm:py-6">
-        <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.events}>
+        <RailColumns sidebarViewer={sidebarViewer} nav={SIDEBAR_NAV.events} adRail={adRail}>
         <div className="space-y-4">
 
         {/* Upcoming event alert */}

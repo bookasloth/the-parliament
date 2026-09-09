@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronLeft, Upload, Trash, Flag, RotateCw, Images as ImagesIcon } from "lucide-react"
@@ -26,11 +26,13 @@ function measure(file: File): Promise<{ width: number; height: number } | null> 
   })
 }
 
-export default function AlbumClient({ album, initialImages, viewerId, isAdmin }: {
+export default function AlbumClient({ album, initialImages, viewerId, isAdmin, adRail = null }: {
   album: GalleryAlbumDTO
   initialImages: GalleryImageDTO[]
   viewerId: string
   isAdmin: boolean
+  /** Right-hand display-ad rail, rendered by the server wrapper. */
+  adRail?: ReactNode
 }) {
   const [images, setImages] = useState(initialImages)
   const [uploads, setUploads] = useState<Pending[]>([])
@@ -89,6 +91,8 @@ export default function AlbumClient({ album, initialImages, viewerId, isAdmin }:
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="min-w-0 flex-1">
       <Link href="/gallery" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800">
         <ChevronLeft className="h-4 w-4" /> All albums
       </Link>
@@ -123,7 +127,7 @@ export default function AlbumClient({ album, initialImages, viewerId, isAdmin }:
           <p className="mt-1 text-sm text-gray-500">Be the first to add photos to this album.</p>
         </div>
       ) : (
-        <div className="columns-2 gap-3 sm:columns-3 lg:columns-4 xl:columns-5 [&>*]:mb-3 [&>*]:break-inside-avoid" onContextMenu={(e) => e.preventDefault()}>
+        <div className="columns-2 gap-3 sm:columns-3 xl:columns-4 [&>*]:mb-3 [&>*]:break-inside-avoid" onContextMenu={(e) => e.preventDefault()}>
           {uploads.map((p) => (
             <div key={p.tempId} className="relative overflow-hidden rounded-lg bg-gray-200">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -169,6 +173,10 @@ export default function AlbumClient({ album, initialImages, viewerId, isAdmin }:
           ))}
         </div>
       )}
+
+        </div>
+        {adRail}
+      </div>
 
       <GalleryLightbox images={images} index={lightbox} onClose={() => setLightbox(null)} onIndexChange={setLightbox} />
 

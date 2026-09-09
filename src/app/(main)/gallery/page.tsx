@@ -6,6 +6,7 @@ import { optionalUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { getPublishedAlbums } from "@/modules/gallery/service"
 import { CreateAlbumButton } from "./create-album-button"
+import { AdRail } from "@/components/shared/AdRail"
 
 export const dynamic = "force-dynamic"
 export const metadata = { title: "Gallery — NNAWCA" }
@@ -21,6 +22,8 @@ export default async function GalleryPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="min-w-0 flex-1">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gallery</h1>
@@ -37,7 +40,7 @@ export default async function GalleryPage() {
           <div className="mt-4"><CreateAlbumButton events={events} /></div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {albums.map((a) => (
             <Link key={a.id} href={`/gallery/${a.slug}`} className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
               <div className="relative aspect-[4/3] bg-gray-100">
@@ -60,6 +63,9 @@ export default async function GalleryPage() {
           ))}
         </div>
       )}
+        </div>
+        <AdRail set="content" />
+      </div>
     </div>
   )
 }
