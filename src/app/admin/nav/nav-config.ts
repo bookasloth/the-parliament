@@ -99,6 +99,7 @@ export const NAV: NavSection[] = [
     color: "#f59e0b",
     items: [
       { label: "Karma", href: "/admin/karma", icon: "Sparkle", adminOnly: true },
+      { label: "Badges", href: "/admin/badges", icon: "Medal", adminOnly: true },
       { label: "Themes", href: "/admin/themes", icon: "Palette", adminOnly: true },
       { label: "Rewards", href: "/admin/rewards", icon: "Trophy", adminOnly: true },
       { label: "Games", href: "/admin/games", icon: "GameController", adminOnly: true },

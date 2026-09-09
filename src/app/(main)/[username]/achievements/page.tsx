@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Trophy } from "lucide-react";
+import { optionalUser } from "@/modules/auth/session";
 import { getUserAchievements } from "@/modules/badges/profile";
 import BadgeCard from "@/components/shared/badges/BadgeCard";
+import ShareButton from "@/components/shared/badges/ShareButton";
+import UnlockCelebration from "@/components/shared/badges/UnlockCelebration";
 import { RARITY_TONE, RARITY_LABEL, RARITY_ORDER } from "@/components/shared/badges/rarity";
 
 export default async function AchievementsPage({
@@ -17,6 +21,8 @@ export default async function AchievementsPage({
   });
   if (!user) notFound();
 
+  const session = await optionalUser();
+  const isOwner = session?.id === user.id;
   const firstName = (user.displayName || user.legalName || "").split(" ")[0] || "This alumnus";
   const a = await getUserAchievements(user.id);
 
@@ -27,11 +33,22 @@ export default async function AchievementsPage({
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
           <Trophy className="h-5 w-5" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">{firstName}&apos;s Achievements</h1>
           <p className="text-sm text-gray-500">Badges earned across the platform</p>
         </div>
+        <div className="flex items-center gap-2">
+          {isOwner && <ShareButton path={`/${username}/achievements`} />}
+          <Link
+            href="/leaderboard"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand"
+          >
+            Leaderboard
+          </Link>
+        </div>
       </div>
+
+      {isOwner && a.recentUnlocks.length > 0 && <UnlockCelebration unlocks={a.recentUnlocks} />}
 
       {/* Stat cards */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">

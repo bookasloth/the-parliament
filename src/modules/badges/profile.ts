@@ -8,14 +8,25 @@ import {
 } from "@/config/badges";
 import type { BadgeView } from "@/components/shared/badges/BadgeCard";
 
+export interface RecentUnlock {
+  key: string;
+  label: string;
+  iconUrl: string | null;
+  rarity: BadgeRarity;
+}
+
 export interface AchievementsSummary {
   score: number;
   earnedCount: number;
   totalCount: number;
   completionPct: number;
   latest: { label: string; iconUrl: string | null; awardedAt: Date } | null;
+  /** Badges earned in the last few minutes — for the owner's unlock celebration. */
+  recentUnlocks: RecentUnlock[];
   categories: { key: BadgeCategory; label: string; badges: BadgeView[] }[];
 }
+
+const RECENT_UNLOCK_MS = 5 * 60 * 1000;
 
 /**
  * Full achievements view for one user: every catalogue badge, grouped by
@@ -40,15 +51,18 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
     }),
     prisma.userBadge.findMany({
       where: { userId },
-      select: { badgeId: true, awardedAt: true },
+      select: { badgeId: true, awardedAt: true, source: true },
     }),
   ]);
 
   const earnedAt = new Map(earnedRows.map((r) => [r.badgeId, r.awardedAt]));
+  const earnedSource = new Map(earnedRows.map((r) => [r.badgeId, r.source]));
 
   let score = 0;
   let earnedCount = 0;
   let latest: AchievementsSummary["latest"] = null;
+  const recentUnlocks: RecentUnlock[] = [];
+  const recentCutoff = Date.now() - RECENT_UNLOCK_MS;
 
   const byCategory = new Map<BadgeCategory, BadgeView[]>();
   for (const b of badges) {
@@ -60,6 +74,11 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
       score += RARITY_WEIGHT[rarity];
       if (!latest || awardedAt! > latest.awardedAt) {
         latest = { label: b.label, iconUrl: b.iconUrl, awardedAt: awardedAt! };
+      }
+      // Celebrate genuine recent unlocks only — never the backfill wave (all
+      // stamped "now" with source "backfill").
+      if (awardedAt!.getTime() >= recentCutoff && earnedSource.get(b.id) !== "backfill") {
+        recentUnlocks.push({ key: b.key, label: b.label, iconUrl: b.iconUrl, rarity });
       }
     }
     const view: BadgeView = {
@@ -92,6 +111,7 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
     totalCount,
     completionPct: totalCount ? Math.round((earnedCount / totalCount) * 100) : 0,
     latest,
+    recentUnlocks,
     categories,
   };
 }
