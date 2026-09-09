@@ -32,32 +32,33 @@ export type AdSetKey = "seoAi" | "website" | "content" | "timewheel"
 // Colourways exported for every audit creative, in rotation order.
 const COLORS = ["blue", "green", "orange", "pink", "yellow"] as const
 
-// All three audit offers funnel to the same contact page — the only live
-// landing page today. Point this at a dedicated /free-audit page when one ships.
-const AUDIT_HREF = "https://shubhamdatarkar.com/contact"
-
 /** Build a 5-colour audit set from its export slug (e.g. "1-seo-ai"). */
-function auditSet(slug: string, alt: string): AdSet {
+function auditSet(slug: string, alt: string, href: string): AdSet {
   return {
     creatives: COLORS.map((color) => ({ src: `${CDN}/${color}-${slug}.png`, alt })),
-    href: AUDIT_HREF,
+    href,
     width: 1080,
     height: 1920,
   }
 }
 
+// Each set lands on the page that matches its offer, so the creative's CTA and
+// the destination agree ("Run My Free Audit" → the audit tool, not a contact form).
 export const AD_SETS: Record<AdSetKey, AdSet> = {
   seoAi: auditSet(
     "1-seo-ai",
     "Free AI search audit — see whether ChatGPT names your brand or your competitors",
+    "https://shubhamdatarkar.com/tools/seo-audit",
   ),
   website: auditSet(
     "2-website",
     "Free website conversion audit — turn your site from a bill into an asset",
+    "https://shubhamdatarkar.com/web-developer-nagpur",
   ),
   content: auditSet(
     "3-content",
     "Free content audit — one idea into thirty days of content",
+    "https://shubhamdatarkar.com/seo-expert-india/nagpur",
   ),
   // The original Timewheel rail art. Kept as live inventory but not mapped to
   // any page right now — point a page's AdRail at "timewheel" to bring it back.

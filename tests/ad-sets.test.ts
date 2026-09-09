@@ -34,6 +34,11 @@ describe("AD_SETS", () => {
     expect(new Set(all).size).toBe(all.length)
   })
 
+  it("sends each audit set to its own landing page", () => {
+    const hrefs = (["seoAi", "website", "content"] as const).map((k) => AD_SETS[k].href)
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+  })
+
   it("gives each audit set the five colourways", () => {
     for (const key of ["seoAi", "website", "content"] as const) {
       const srcs = AD_SETS[key].creatives.map((c) => c.src)
