@@ -1,6 +1,12 @@
 import { HOUSE_CATALOG } from "@/config/houses"
 import { PLANS, TIER_PRECEDENCE } from "@/config/membership"
 import { KARMA } from "@/config/karma"
+import { BADGE_CATALOG } from "@/config/badges"
+
+/** Karma a badge needs, read off the catalogue so the two can't drift apart. */
+function badgeTarget(key: string): number {
+  return BADGE_CATALOG.find((b) => b.key === key)?.criteria?.target ?? 0
+}
 
 // Platform glossary — every bit of vocabulary a member meets (houses, member &
 // membership types, karma, batches, posts/feed, social graph, groups/events,
@@ -59,7 +65,7 @@ const karmaTerms: GlossaryTerm[] = [
   },
   {
     term: "Unlocks",
-    def: `Abilities karma opens up: create polls at ${KARMA.UNLOCKS.POLLS}, create groups at ${KARMA.UNLOCKS.CREATE_GROUP}, the Mentor badge at ${KARMA.UNLOCKS.MENTOR_BADGE}. Spending an unlock keeps ${Math.round(KARMA.UNLOCK_KEEP_PCT * 100)}% of the karma.`,
+    def: `Abilities karma opens up: create polls at ${KARMA.UNLOCKS.POLLS}, create groups at ${KARMA.UNLOCKS.CREATE_GROUP}, the Mentor badge at ${badgeTarget("karma_mentor")}. Spending an unlock keeps ${Math.round(KARMA.UNLOCK_KEEP_PCT * 100)}% of the karma.`,
   },
   {
     term: "Daily caps",

@@ -50,7 +50,8 @@ export const KARMA = {
   UNLOCKS: {
     POLLS: 100,
     CREATE_GROUP: 250,
-    MENTOR_BADGE: 500,
+    // The Mentor badge's threshold lives in the badge catalogue
+    // (BADGE_CATALOG, key "karma_mentor") — it was duplicated here and drifted.
   },
   UNLOCK_KEEP_PCT: 0.8,
   DAILY_LIKE_CAP: 30,

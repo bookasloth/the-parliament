@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   BADGE_CATALOG,
@@ -43,6 +45,18 @@ describe("badge catalogue integrity", () => {
 
   it("all icon paths point under /achievements/", () => {
     for (const b of BADGE_CATALOG) expect(b.iconUrl.startsWith("/achievements/")).toBe(true);
+  });
+
+  // BadgeCard renders `iconUrl || BADGE_FALLBACK`, so a path that is set but
+  // 404s shows a broken image rather than the fallback — 7 milestone icons
+  // shipped that way. A path check alone never caught it.
+  it("every icon file exists in public/", () => {
+    for (const b of BADGE_CATALOG) {
+      expect(
+        existsSync(join(process.cwd(), "public", b.iconUrl)),
+        `${b.key}: missing public${b.iconUrl}`,
+      ).toBe(true);
+    }
   });
 
   it("series badges have strictly increasing targets in order", () => {
