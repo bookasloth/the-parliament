@@ -8,6 +8,7 @@ import {
 } from "@/config/badges";
 import type { BadgeView } from "@/components/shared/badges/BadgeCard";
 import { unlockRanksForUser } from "./ranks";
+import { badgeRarityMap, deriveRarity } from "./rarity-dynamic";
 
 export interface RecentUnlock {
   key: string;
@@ -59,6 +60,7 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
   const earnedAt = new Map(earnedRows.map((r) => [r.badgeId, r.awardedAt]));
   const earnedSource = new Map(earnedRows.map((r) => [r.badgeId, r.source]));
   const ranks = earnedRows.length ? await unlockRanksForUser(userId) : new Map<string, number>();
+  const rmap = await badgeRarityMap();
 
   let score = 0;
   let earnedCount = 0;
@@ -70,7 +72,7 @@ export async function getUserAchievements(userId: string): Promise<AchievementsS
   for (const b of badges) {
     const awardedAt = earnedAt.get(b.id) ?? null;
     const earned = awardedAt != null;
-    const rarity = b.rarity as BadgeRarity;
+    const rarity = rmap.get(b.id) ?? deriveRarity(0);
     if (earned) {
       earnedCount++;
       score += RARITY_WEIGHT[rarity];

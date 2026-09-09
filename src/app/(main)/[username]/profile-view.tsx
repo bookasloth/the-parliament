@@ -379,6 +379,9 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   {key === "followers" && data.followersCount > 0 && (
                     <span className="ml-1 rounded-[5px] bg-green-50 px-2 py-0.5 text-[11px] font-bold text-green-600">{data.followersCount}</span>
                   )}
+                  {key === "badges" && data.totalBadges > 0 && (
+                    <span className="ml-1 rounded-[5px] bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-600">{data.totalBadges}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -739,39 +742,16 @@ function BadgesTab({
     <div className="flex flex-col gap-[18px]">
       {isOwn && summary.recentUnlocks.length > 0 && <UnlockCelebration unlocks={summary.recentUnlocks} />}
 
-      {/* Summary card */}
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-7 pt-5 pb-1">
-          <h5 className="flex items-center gap-2 font-heading text-[15px] font-bold text-gray-900">
-            <span className="inline-block h-[17px] w-[6px] rounded-[3px] bg-brand" />
-            {firstName}&apos;s Badges
-          </h5>
-          <div className="flex items-center gap-2">
-            {isOwn && <ShareButton path={`/${username}/badges`} />}
-            <Link href="/badges" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-              All badges
-            </Link>
-            <Link href="/leaderboard" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-              Leaderboard
-            </Link>
-          </div>
-        </div>
-        <div className="px-7 pb-5 pt-3">
-          <div className="grid grid-cols-3 gap-3">
-            <MiniStat label="Score" value={summary.score.toLocaleString("en-IN")} />
-            <MiniStat label="Badges" value={`${summary.earnedCount} / ${summary.totalCount}`} />
-            <MiniStat label="Completion" value={`${summary.completionPct}%`} />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {RARITY_ORDER.map((r) => (
-              <span key={r} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${RARITY_TONE[r].bg} ${RARITY_TONE[r].text}`}>
-                <span className={`h-2 w-2 rounded-full ${RARITY_TONE[r].dot}`} />
-                {RARITY_LABEL[r]}
-              </span>
-            ))}
-          </div>
-        </div>
-      </Card>
+      {/* Quick actions (summary box hidden per design) */}
+      <div className="flex items-center justify-end gap-2">
+        {isOwn && <ShareButton path={`/${username}/badges`} />}
+        <Link href="/badges" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
+          All badges
+        </Link>
+        <Link href="/leaderboard" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
+          Leaderboard
+        </Link>
+      </div>
 
       {/* One card per category */}
       {summary.categories.map((cat) => (

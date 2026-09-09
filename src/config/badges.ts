@@ -86,6 +86,8 @@ export interface BadgeDef {
   isHidden?: boolean;
   seriesKey?: string;
   seriesOrder?: number;
+  /** Sort order within a category (lower = first). Series badges order by seriesOrder. */
+  displayPriority?: number;
   /** Only for awardMode "auto". */
   criteria?: BadgeCriteria;
 }
@@ -114,6 +116,7 @@ export const CATEGORY_LABEL: Record<BadgeCategory, string> = {
 
 /** Display order of categories in the UI. */
 export const CATEGORY_ORDER: BadgeCategory[] = [
+  "recognition",
   "getting_started",
   "contributor",
   "commentator",
@@ -123,7 +126,6 @@ export const CATEGORY_ORDER: BadgeCategory[] = [
   "consistency",
   "milestones",
   "special",
-  "recognition",
 ];
 
 const ICON = "/achievements/badges";
@@ -547,11 +549,11 @@ export const BADGE_CATALOG: BadgeDef[] = [
 
   // ── 🎖 Recognition (committee — manual invite-only) ─────────────────
   ...[
-    ["executive", "Executive Committee", "legendary"],
-    ["sports", "Sports Committee", "epic"],
-    ["cultural", "Cultural Committee", "epic"],
-    ["developer", "Developer Committee", "legendary"],
-  ].map(([k, label, rarity]): BadgeDef => ({
+    ["executive", "Executive Committee", "legendary", 1],
+    ["developer", "Developer Committee", "legendary", 2],
+    ["sports", "Sports Committee", "epic", 3],
+    ["cultural", "Cultural Committee", "epic", 4],
+  ].map(([k, label, rarity, order]): BadgeDef => ({
     key: `committee_${k}`,
     label: label as string,
     description: `Invite-only badge for ${label as string} members.`,
@@ -559,6 +561,7 @@ export const BADGE_CATALOG: BadgeDef[] = [
     rarity: rarity as BadgeRarity,
     iconUrl: `${ICON}/committee/${k}.png`,
     awardMode: "manual",
+    displayPriority: order as number,
   })),
 ];
 

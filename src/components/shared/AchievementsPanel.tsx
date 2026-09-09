@@ -38,6 +38,8 @@ const SUBHEAD = "mb-3 text-xs font-semibold uppercase tracking-wide text-gray-50
 
 export function AchievementsPanel({ data }: { data: AchievementsData }) {
   const { ownerFirstName, ownerUsername, userId, badges, totalBadges, eggs, shells, karma } = data
+  // Order is set upstream in loadProfile (Committee first, then each category
+  // top→lower). Just take the first 6.
   const shown = badges.slice(0, BADGES_SHOWN)
   const overflow = totalBadges - shown.length
   const badgesHref = `/${ownerUsername}/badges`
@@ -56,22 +58,21 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
         {totalBadges === 0 ? (
           <p className="mb-2 text-xs text-gray-400">No badges yet — stay active to start earning.</p>
         ) : (
-          <div className="mb-2 grid grid-cols-7 gap-1.5">
+          <div className="mb-2 flex flex-wrap gap-1.5">
             {shown.map((b) => (
               <Link
                 key={b.key}
                 href={badgesHref}
-                title={b.label}
-                className="flex aspect-square items-center justify-center rounded-[6px] border border-gray-200 bg-white p-1 hover:border-brand"
+                className="flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] p-1.5 hover:border-brand"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="h-full w-full object-contain" />
+                <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="max-h-[28px] max-w-[28px] object-contain" />
               </Link>
             ))}
             {overflow > 0 && (
               <Link
                 href={badgesHref}
-                className="flex aspect-square items-center justify-center rounded-[6px] border border-gray-200 bg-gray-50 text-xs font-bold text-brand hover:border-brand"
+                className="flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] text-xs font-bold text-brand hover:border-brand"
               >
                 +{overflow}
               </Link>

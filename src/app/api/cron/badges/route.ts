@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthorizedCron } from "@/lib/cron-auth"
-import { evaluateRecentlyActive } from "@/modules/badges/cron"
+import { evaluateRecentlyActive, recomputeAchievementScores } from "@/modules/badges/cron"
 
 // Daily badge sweep: evaluate cron/time-based badges (streaks, tenure, profile-view
 // legend) plus a backstop pass over event badges for recently-active users. Fails
@@ -13,7 +13,8 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const result = await evaluateRecentlyActive()
-  return NextResponse.json({ ok: true, ...result })
+  const rescored = await recomputeAchievementScores()
+  return NextResponse.json({ ok: true, ...result, rescored })
 }
 
 export const GET = handle

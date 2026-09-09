@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { BadgeRarity } from "@/config/badges";
-import { RARITY_TONE, RARITY_LABEL, BADGE_FALLBACK } from "./rarity";
+import { RARITY_TONE, BADGE_FALLBACK } from "./rarity";
 
 export interface BadgeView {
   key: string;
@@ -18,68 +18,47 @@ export interface BadgeView {
 }
 
 const SIZE = {
-  sm: { tile: "h-11 w-11", name: "text-[11px]", box: "p-2" },
-  md: { tile: "h-16 w-16", name: "text-xs", box: "p-3" },
+  sm: { tile: "h-11 w-11", pad: "p-1.5", name: "text-[11px]", box: "p-2", dot: "h-1.5 w-1.5", rank: "text-[9px]" },
+  md: { tile: "h-16 w-16", pad: "p-2.5", name: "text-xs", box: "p-3", dot: "h-2 w-2", rank: "text-[10px]" },
 } as const;
 
 /**
- * One badge tile — a white rounded box: art (greyscale, full colour on hover),
- * name below, and a rarity-coloured dot in the top-right corner. When the viewer
- * has earned it, that dot shows their unlock rank (#N = Nth person to earn it).
- * No lock, no mystery — everyone sees what there is to collect.
+ * One badge tile — a fixed-size white box: art (padded, greyscale when locked →
+ * full colour on hover; earned shows in colour), the name, then a rarity dot +
+ * the viewer's unlock rank underneath. No tooltip.
  */
 export default function BadgeCard({ badge, size = "md", href }: { badge: BadgeView; size?: "sm" | "md"; href?: string }) {
   const s = SIZE[size];
   const tone = RARITY_TONE[badge.rarity];
   const rank = badge.earned ? badge.unlockRank ?? null : null;
 
-  const dotTip = badge.earned
-    ? `${RARITY_LABEL[badge.rarity]}${rank ? ` · you unlocked this #${rank}` : ""}`
-    : RARITY_LABEL[badge.rarity];
-  const tip = `${badge.label} · ${RARITY_LABEL[badge.rarity]}${
-    badge.earned
-      ? badge.awardedAt
-        ? ` · earned ${badge.awardedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
-        : ""
-      : badge.requirement
-        ? ` · ${badge.requirement}`
-        : ""
-  }${badge.description ? `\n${badge.description}` : ""}`;
-
   const inner = (
-    <div
-      className={`group relative flex flex-col items-center gap-2 rounded-[10px] border border-gray-200 bg-white ${s.box} text-center transition hover:border-gray-300 hover:shadow-sm`}
-      title={tip}
-    >
-      {/* Corner dot — rarity colour; shows unlock rank when earned */}
-      {rank ? (
-        <span
-          className={`absolute right-1.5 top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${tone.dot}`}
-          title={dotTip}
-        >
-          #{rank}
-        </span>
-      ) : (
-        <span className={`absolute right-2 top-2 h-2.5 w-2.5 rounded-full ${tone.dot}`} title={dotTip} />
-      )}
-
+    <div className={`group flex h-full flex-col items-center gap-1.5 rounded-[10px] border border-gray-200 bg-white ${s.box} text-center transition hover:border-gray-300 hover:shadow-sm`}>
       <div className={`flex ${s.tile} items-center justify-center`}>
-        {/* Earned → full colour. Locked → greyscale, colour on hover to preview. */}
+        {/* Padded so the art reads ~25% smaller than the box. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={badge.iconUrl || BADGE_FALLBACK}
           alt=""
-          className={`h-full w-full object-contain transition duration-200 ${badge.earned ? "" : "grayscale group-hover:grayscale-0"}`}
+          className={`h-full w-full object-contain ${s.pad} transition duration-200 ${badge.earned ? "" : "grayscale group-hover:grayscale-0"}`}
         />
       </div>
-      <span className={`${s.name} font-semibold leading-tight line-clamp-2 transition-colors ${badge.earned ? "text-gray-800" : "text-gray-500 group-hover:text-gray-800"}`}>
+      <span className={`${s.name} flex min-h-[2.4em] items-center font-semibold leading-tight line-clamp-2 ${badge.earned ? "text-gray-800" : "text-gray-500 group-hover:text-gray-800"}`}>
         {badge.label}
       </span>
+      {/* Under the name: the rarity-coloured rank when earned, else a rarity dot. */}
+      <div className="flex h-3 items-center justify-center">
+        {rank ? (
+          <span className={`${s.rank} font-bold ${tone.text}`}>#{rank}</span>
+        ) : (
+          <span className={`${s.dot} rounded-full ${tone.dot}`} />
+        )}
+      </div>
     </div>
   );
 
   return href ? (
-    <Link href={href} className="block">
+    <Link href={href} className="block h-full">
       {inner}
     </Link>
   ) : (
