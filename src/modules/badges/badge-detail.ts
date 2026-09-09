@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { slugToKey } from "./slug";
 import { unlockRankFor } from "./ranks";
+import { deriveRarity } from "./rarity-dynamic";
 import { taglineFor } from "@/config/badge-taglines";
 import type { BadgeRarity } from "@/config/badges";
 
@@ -98,7 +99,7 @@ export async function getBadgeDetail(slug: string, viewerId?: string): Promise<B
     label: badge.label,
     description: badge.description,
     iconUrl: badge.iconUrl,
-    rarity: badge.rarity as BadgeRarity,
+    rarity: deriveRarity(total),
     category: badge.category,
     isHidden: badge.isHidden,
     awardMode: badge.awardMode,

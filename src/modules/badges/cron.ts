@@ -33,6 +33,35 @@ export async function evaluateRecentlyActive(): Promise<{ users: number }> {
  * with notifications suppressed (no wake-up wave). Re-runnable (insert-or-ignore).
  * Pages through all non-deleted users.
  */
+/**
+ * Recompute every user's achievement_score + badge_count from LIVE rarity
+ * (dynamic, by holder count). Set-based single statement. Rarity bands mirror
+ * `deriveRarity()` and weights mirror `RARITY_WEIGHT` — keep them in sync.
+ * Run nightly (grants bump an approximate score in between). Returns rows updated.
+ */
+export async function recomputeAchievementScores(): Promise<number> {
+  return prisma.$executeRaw`
+    WITH counts AS (
+      SELECT badge_id, COUNT(*)::int AS c FROM user_badges GROUP BY badge_id
+    ),
+    weights AS (
+      SELECT badge_id,
+        CASE WHEN c < 12 THEN 30 WHEN c < 30 THEN 15 WHEN c < 60 THEN 7 WHEN c <= 100 THEN 3 ELSE 1 END AS w
+      FROM counts
+    ),
+    scores AS (
+      SELECT ub.user_id, SUM(w.w)::int AS score, COUNT(*)::int AS cnt
+      FROM user_badges ub JOIN weights w ON w.badge_id = ub.badge_id
+      GROUP BY ub.user_id
+    )
+    UPDATE users u
+    SET achievement_score = s.score, badge_count = s.cnt
+    FROM scores s
+    WHERE u.id = s.user_id
+      AND (u.achievement_score <> s.score OR u.badge_count <> s.cnt)
+  `;
+}
+
 export async function backfillAllUsers(pageSize = 200): Promise<{ users: number; granted: number }> {
   let cursor: string | undefined;
   let users = 0;

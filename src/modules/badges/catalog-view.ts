@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { CATEGORY_ORDER, CATEGORY_LABEL, type BadgeCategory, type BadgeRarity } from "@/config/badges";
+import { CATEGORY_ORDER, CATEGORY_LABEL, type BadgeCategory } from "@/config/badges";
 import type { BadgeView } from "@/components/shared/badges/BadgeCard";
 import { unlockRanksForUser } from "./ranks";
+import { badgeRarityMap, deriveRarity } from "./rarity-dynamic";
 
 export interface CatalogData {
   totalCount: number;
@@ -27,6 +28,7 @@ export async function getBadgeCatalog(viewerId?: string): Promise<CatalogData> {
 
   const earned = new Set(earnedRows.map((r) => r.badgeId));
   const ranks = viewerId ? await unlockRanksForUser(viewerId) : new Map<string, number>();
+  const rmap = await badgeRarityMap();
   const byCategory = new Map<BadgeCategory, BadgeView[]>();
   let earnedCount = 0;
 
@@ -38,7 +40,7 @@ export async function getBadgeCatalog(viewerId?: string): Promise<CatalogData> {
       label: b.label,
       description: b.description,
       iconUrl: b.iconUrl,
-      rarity: b.rarity as BadgeRarity,
+      rarity: rmap.get(b.id) ?? deriveRarity(0),
       isHidden: b.isHidden,
       earned: isEarned,
       unlockRank: isEarned ? ranks.get(b.id) ?? null : null,

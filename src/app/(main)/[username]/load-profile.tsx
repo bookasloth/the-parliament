@@ -10,8 +10,9 @@ import { formatDuration } from "@/modules/profile/history"
 import { getFeed } from "@/modules/feed/query"
 import { mapRowToFeedPost, batchOrdinal, formatBatch, relativeTime } from "../feed/map-row"
 import type { FeedMembership, BorderType } from "@/components/shared/feed-card/types"
-import type { BadgeRarity } from "@/config/badges"
+import { CATEGORY_ORDER, RARITY_WEIGHT } from "@/config/badges"
 import { getUserAchievements } from "@/modules/badges/profile"
+import { badgeRarityMap, deriveRarity } from "@/modules/badges/rarity-dynamic"
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
@@ -111,7 +112,11 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       },
       userBadges: {
         orderBy: { awardedAt: "desc" },
-        select: { badge: { select: { key: true, label: true, iconUrl: true, rarity: true } } },
+        select: {
+          badge: {
+            select: { id: true, key: true, label: true, iconUrl: true, category: true, seriesOrder: true, displayPriority: true },
+          },
+        },
       },
     },
   })
@@ -386,6 +391,26 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       }
     : null
 
+  // Sidebar badge order: Committee (recognition) first, then each category
+  // top→lower (rarest first, higher series tier first). Rarity is dynamic
+  // (from live holder counts). Deterministic — no awardedAt tiebreak.
+  const rmap = await badgeRarityMap()
+  const catIndex = (c: string | null) => {
+    const i = CATEGORY_ORDER.indexOf((c ?? "") as (typeof CATEGORY_ORDER)[number])
+    return i < 0 ? 999 : i
+  }
+  const sortedBadges = user.userBadges
+    .map((ub) => ({ ...ub.badge, rarity: rmap.get(ub.badge.id) ?? deriveRarity(0) }))
+    .sort((a, b) => {
+      const c = catIndex(a.category) - catIndex(b.category)
+      if (c) return c
+      const r = RARITY_WEIGHT[b.rarity] - RARITY_WEIGHT[a.rarity]
+      if (r) return r
+      const so = (b.seriesOrder ?? -1) - (a.seriesOrder ?? -1) // higher tier first
+      if (so) return so
+      return (a.displayPriority ?? 0) - (b.displayPriority ?? 0)
+    })
+
   const data: ProfileViewData = {
     username: user.username ?? username,
     experiences: experienceItems,
@@ -432,7 +457,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     linkedinUrl: p?.linkedinUrl ?? null,
     socialLinks: social,
     owner,
-    badges: user.userBadges.map((ub) => ({ ...ub.badge, rarity: ub.badge.rarity as BadgeRarity })),
+    badges: sortedBadges.map((b) => ({ key: b.key, label: b.label, iconUrl: b.iconUrl, rarity: b.rarity })),
     totalBadges: user.userBadges.length,
     achievements: initialTab === "badges" ? await getUserAchievements(user.id) : null,
     karma: Math.round(karma.balance),

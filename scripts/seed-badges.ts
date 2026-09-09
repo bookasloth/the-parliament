@@ -33,6 +33,7 @@ async function main() {
       isHidden: def.isHidden ?? false,
       seriesKey: def.seriesKey ?? null,
       seriesOrder: def.seriesOrder ?? null,
+      displayPriority: def.displayPriority ?? 0,
       progressTarget: def.criteria?.target ?? null,
       autoCriteria: def.criteria ? (def.criteria as unknown as object) : undefined,
     };
