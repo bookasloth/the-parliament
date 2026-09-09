@@ -12,6 +12,7 @@
     { "path": "/api/cron/alfazy-champions", "schedule": "20 0 * * *" },
     { "path": "/api/cron/bot", "schedule": "30 1 * * *" },
     { "path": "/api/cron/vyapaar-rooms", "schedule": "40 0 * * *" },
-    { "path": "/api/cron/outbox", "schedule": "45 2 * * *" }
+    { "path": "/api/cron/outbox", "schedule": "45 2 * * *" },
+    { "path": "/api/cron/badges", "schedule": "0 5 * * *" }
   ]
 }

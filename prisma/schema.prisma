@@ -140,6 +140,8 @@ model User {
   vyapaarGamesPlayed   Int       @default(0) @map("vyapaar_games_played")
   vyapaarWins          Int       @default(0) @map("vyapaar_wins")
   vyapaarBestNetWorth  Int       @default(0) @map("vyapaar_best_net_worth")
+  achievementScore     Int       @default(0) @map("achievement_score")
+  badgeCount           Int       @default(0) @map("badge_count")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -1702,13 +1704,23 @@ model KarmaRedemption {
 }
 
 model Badge {
-  id           String  @id @default(uuid()) @db.Uuid
-  schoolId     String? @map("school_id") @db.Uuid
-  key          String  @db.VarChar(40)
-  label        String  @db.VarChar(80)
-  description  String?
-  iconUrl      String? @map("icon_url")
-  autoCriteria Json?   @map("auto_criteria")
+  id              String    @id @default(uuid()) @db.Uuid
+  schoolId        String?   @map("school_id") @db.Uuid
+  key             String    @db.VarChar(40)
+  label           String    @db.VarChar(80)
+  description     String?
+  iconUrl         String?   @map("icon_url")
+  autoCriteria    Json?     @map("auto_criteria")
+  category        String?   @db.VarChar(30)
+  rarity          String    @default("common") @db.VarChar(20)
+  awardMode       String    @default("auto") @map("award_mode") @db.VarChar(10)
+  isHidden        Boolean   @default(false) @map("is_hidden")
+  displayPriority Int       @default(0) @map("display_priority")
+  seriesKey       String?   @map("series_key") @db.VarChar(40)
+  seriesOrder     Int?      @map("series_order")
+  progressTarget  Int?      @map("progress_target")
+  activeFrom      DateTime? @map("active_from") @db.Timestamptz
+  activeTo        DateTime? @map("active_to") @db.Timestamptz
 
   school     School?     @relation(fields: [schoolId], references: [id])
   userBadges UserBadge[]
@@ -1721,6 +1733,7 @@ model UserBadge {
   userId    String   @map("user_id") @db.Uuid
   badgeId   String   @map("badge_id") @db.Uuid
   source    String   @default("auto") @db.VarChar(20)
+  progress  Int?
   awardedAt DateTime @default(now()) @map("awarded_at") @db.Timestamptz
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

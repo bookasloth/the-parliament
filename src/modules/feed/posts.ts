@@ -7,6 +7,7 @@ import { sendNotification, deleteNotificationsForEntity } from "@/modules/notifi
 import { notifyMentions } from "@/modules/feed/mentions"
 import { syncPostHashtags } from "@/modules/feed/hashtags"
 import { enqueueOutbox } from "@/modules/outbox/enqueue"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
@@ -312,6 +313,7 @@ export async function createPost(input: CreatePostInput) {
 
   await syncPostHashtags(post.id, input.body ?? null)
 
+  if (!input.asDraft) void enqueueBadgeEval(input.authorId)
   return post
 }
 
@@ -453,6 +455,7 @@ export async function publishDraft(input: { postId: string; authorId: string }) 
     })
   }
   await syncPostHashtags(post.id, post.body)
+  void enqueueBadgeEval(post.authorId)
   return { id: post.id }
 }
 
@@ -491,6 +494,7 @@ export async function votePoll(input: { userId: string; pollId: string; optionId
       await tx.poll.update({ where: { id: input.pollId }, data: { totalVotes: { increment: 1 } } })
     }
   })
+  void enqueueBadgeEval(input.userId)
   return { optionId: input.optionId }
 }
 
@@ -683,6 +687,8 @@ export async function toggleReaction(input: {
   // A vote changes this author's net reputation → propagate to their posts.
   // Deferred to the outbox (audit IP-5), coalesced per author.
   await enqueueOutbox({ type: "recompute_author_ranking", payload: { authorId: post.authorId }, dedupeKey: post.authorId })
+  void enqueueBadgeEval(input.userId) // reactor → First Upvote / Secret Admirer
+  if (input.userId !== post.authorId) void enqueueBadgeEval(post.authorId) // author → Well Received
   return { reacted: true }
 }
 
@@ -797,6 +803,7 @@ export async function toggleSavePost(input: { userId: string; postId: string }) 
   await prisma.savedPost.create({
     data: { userId: input.userId, postId: input.postId },
   })
+  void enqueueBadgeEval(input.userId)
   return { saved: true }
 }
 
@@ -857,6 +864,7 @@ export async function givePostAward(input: {
     entityId: post.id,
     sendEmail: false,
   }).catch(() => {})
+  void enqueueBadgeEval(post.authorId) // author's "Decorated" (awards received)
   return award
 }
 
@@ -887,6 +895,9 @@ export async function createComment(input: {
 
   // comment_count is maintained by a DB trigger (post_counter_triggers migration).
   await recomputeRankingScore(input.postId)
+
+  void enqueueBadgeEval(input.userId) // commenter → First Comment
+  if (input.userId !== post.authorId) void enqueueBadgeEval(post.authorId) // author → Gardener
 
   {
     const commenter = await prisma.user.findUnique({

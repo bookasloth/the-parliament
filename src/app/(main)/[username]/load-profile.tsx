@@ -10,6 +10,7 @@ import { formatDuration } from "@/modules/profile/history"
 import { getFeed } from "@/modules/feed/query"
 import { mapRowToFeedPost, batchOrdinal, formatBatch, relativeTime } from "../feed/map-row"
 import type { FeedMembership, BorderType } from "@/components/shared/feed-card/types"
+import type { BadgeRarity } from "@/config/badges"
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
@@ -109,7 +110,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       },
       userBadges: {
         orderBy: { awardedAt: "desc" },
-        select: { badge: { select: { key: true, label: true, iconUrl: true } } },
+        select: { badge: { select: { key: true, label: true, iconUrl: true, rarity: true } } },
       },
     },
   })
@@ -430,7 +431,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     linkedinUrl: p?.linkedinUrl ?? null,
     socialLinks: social,
     owner,
-    badges: user.userBadges.map((ub) => ub.badge),
+    badges: user.userBadges.map((ub) => ({ ...ub.badge, rarity: ub.badge.rarity as BadgeRarity })),
     totalBadges: user.userBadges.length,
     karma: Math.round(karma.balance),
     eggs: user.eggBalance,

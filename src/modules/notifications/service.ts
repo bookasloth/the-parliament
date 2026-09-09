@@ -42,6 +42,7 @@ export type NotificationKind =
   | "egg_thrown"
   | "egg_volunteer"
   | "moderation_warning"
+  | "achievement_unlocked"
 
 const EMAIL_FOR_KIND: { [K in NotificationKind]?: keyof EmailTemplates } = {
   verification_approved: "verification_approved",
