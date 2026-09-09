@@ -26,6 +26,12 @@ import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { VerifiedBadge } from "@/components/shared/VerifiedBadge"
 import { AchievementsPanel, type AchievementBadge } from "@/components/shared/AchievementsPanel"
 import { Card, SectionTitle, SocialLinks, R_EL } from "@/components/shared/profile-kit"
+import BadgeCard from "@/components/shared/badges/BadgeCard"
+import ShareButton from "@/components/shared/badges/ShareButton"
+import UnlockCelebration from "@/components/shared/badges/UnlockCelebration"
+import { RARITY_TONE, RARITY_LABEL, RARITY_ORDER } from "@/components/shared/badges/rarity"
+import type { AchievementsSummary } from "@/modules/badges/profile"
+import { keyToSlug } from "@/modules/badges/slug"
 
 // ─────────────────────────────────────────────
 // Props — real data assembled in load-profile.tsx
@@ -112,6 +118,7 @@ export interface ProfileViewData {
   } | null
   badges: AchievementBadge[]
   totalBadges: number
+  achievements: AchievementsSummary | null
   karma: number
   eggs: number
   shells: number
@@ -132,7 +139,7 @@ const DEFAULT_COVER = "https://images.unsplash.com/photo-1562774053-701939374585
 // ─────────────────────────────────────────────
 // Main view
 // ─────────────────────────────────────────────
-type Tab = "posts" | "tagged" | "about" | "followers"
+type Tab = "posts" | "tagged" | "about" | "followers" | "badges"
 
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
   const router = useRouter()
@@ -353,7 +360,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
 
             {/* tabs — centred on mobile, left on desktop */}
             <div className="mt-3 flex justify-center gap-1.5 border-t border-gray-100 px-1 pt-1.5 lg:justify-start">
-              {([["posts", "Posts", LayoutGrid], ["tagged", "Tagged", Tag], ["about", "About", Info], ["followers", "Followers", Users]] as const).map(([key, label, Icon]) => (
+              {([["posts", "Posts", LayoutGrid], ["tagged", "Tagged", Tag], ["followers", "Followers", Users], ["badges", "Badges", Award], ["about", "About", Info]] as const).map(([key, label, Icon]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
@@ -405,6 +412,10 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                   ))
                 )}
               </div>
+            )}
+
+            {tab === "badges" && data.achievements && (
+              <BadgesTab summary={data.achievements} username={data.username} isOwn={isOwn} firstName={data.name.split(" ")[0]} />
             )}
 
             {tab === "about" && (
@@ -706,6 +717,90 @@ function MoreMenu({ username }: { username: string }) {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Badges tab — full achievement collection, rendered inside the profile shell
+// ─────────────────────────────────────────────
+function BadgesTab({
+  summary,
+  username,
+  isOwn,
+  firstName,
+}: {
+  summary: AchievementsSummary
+  username: string
+  isOwn: boolean
+  firstName: string
+}) {
+  return (
+    <div className="flex flex-col gap-[18px]">
+      {isOwn && summary.recentUnlocks.length > 0 && <UnlockCelebration unlocks={summary.recentUnlocks} />}
+
+      {/* Summary card */}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-7 pt-5 pb-1">
+          <h5 className="flex items-center gap-2 font-heading text-[15px] font-bold text-gray-900">
+            <span className="inline-block h-[17px] w-[6px] rounded-[3px] bg-brand" />
+            {firstName}&apos;s Badges
+          </h5>
+          <div className="flex items-center gap-2">
+            {isOwn && <ShareButton path={`/${username}/badges`} />}
+            <Link href="/badges" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
+              All badges
+            </Link>
+            <Link href="/leaderboard" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
+              Leaderboard
+            </Link>
+          </div>
+        </div>
+        <div className="px-7 pb-5 pt-3">
+          <div className="grid grid-cols-3 gap-3">
+            <MiniStat label="Score" value={summary.score.toLocaleString("en-IN")} />
+            <MiniStat label="Badges" value={`${summary.earnedCount} / ${summary.totalCount}`} />
+            <MiniStat label="Completion" value={`${summary.completionPct}%`} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {RARITY_ORDER.map((r) => (
+              <span key={r} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${RARITY_TONE[r].bg} ${RARITY_TONE[r].text}`}>
+                <span className={`h-2 w-2 rounded-full ${RARITY_TONE[r].dot}`} />
+                {RARITY_LABEL[r]}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* One card per category */}
+      {summary.categories.map((cat) => (
+        <Card key={cat.key}>
+          <SectionTitle
+            action={
+              <span className="text-xs font-normal text-gray-400">
+                {cat.badges.filter((b) => b.earned).length}/{cat.badges.length}
+              </span>
+            }
+          >
+            {cat.label}
+          </SectionTitle>
+          <div className="grid grid-cols-4 gap-4 px-7 pb-6 pt-2 sm:grid-cols-5 md:grid-cols-6">
+            {cat.badges.map((b) => (
+              <BadgeCard key={b.key} badge={b} href={`/badges/${keyToSlug(b.key)}`} />
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[5px] border border-gray-200 bg-white px-3 py-2.5 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">{value}</p>
     </div>
   )
 }

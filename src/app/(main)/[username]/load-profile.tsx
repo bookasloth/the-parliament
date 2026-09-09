@@ -11,6 +11,7 @@ import { getFeed } from "@/modules/feed/query"
 import { mapRowToFeedPost, batchOrdinal, formatBatch, relativeTime } from "../feed/map-row"
 import type { FeedMembership, BorderType } from "@/components/shared/feed-card/types"
 import type { BadgeRarity } from "@/config/badges"
+import { getUserAchievements } from "@/modules/badges/profile"
 import { getFollowingIds } from "@/modules/connections/service"
 import { getBalance } from "@/modules/karma/ledger"
 import { resolveProfilePrivacy, type ProfileVisibility } from "@/modules/profile/privacy"
@@ -22,7 +23,7 @@ function fmt(d: Date | null | undefined): string {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export const VALID_TABS = ["posts", "tagged", "about", "followers"] as const
+export const VALID_TABS = ["posts", "tagged", "about", "followers", "badges"] as const
 export type TabKey = (typeof VALID_TABS)[number]
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -433,6 +434,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     owner,
     badges: user.userBadges.map((ub) => ({ ...ub.badge, rarity: ub.badge.rarity as BadgeRarity })),
     totalBadges: user.userBadges.length,
+    achievements: initialTab === "badges" ? await getUserAchievements(user.id) : null,
     karma: Math.round(karma.balance),
     eggs: user.eggBalance,
     shells: user.shellBalance,
