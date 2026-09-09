@@ -647,6 +647,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
           <AchievementsPanel
             data={{
               ownerFirstName: data.name.split(" ")[0],
+              ownerUsername: data.username,
               userId: data.userId,
               badges: data.badges,
               totalBadges: data.totalBadges,

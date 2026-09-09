@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { env } from "@/config/env"
 import { sendNotification } from "@/modules/notifications/service"
 import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
@@ -204,6 +205,8 @@ export async function followUser(followerId: string, followingId: string): Promi
   } catch {
     return // lost a race — already following
   }
+
+  void enqueueBadgeEval(followerId) // First Connection / The Explorer
 
   // Notify the followed user (notification + email). Never let this fail the follow.
   try {

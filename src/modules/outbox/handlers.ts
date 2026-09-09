@@ -1,5 +1,6 @@
 import { recomputeAuthorRanking } from "@/modules/feed/posts"
 import { sendEventInviteChunk } from "@/modules/events/invites"
+import { evaluateUserBadges } from "@/modules/badges/evaluate-user"
 
 // Outbox handler registry (audit IP-5). One entry per event `type`. A handler
 // must be idempotent — a group is retried on failure and the same intent may be
@@ -22,5 +23,13 @@ export const OUTBOX_HANDLERS: Record<string, OutboxHandler> = {
   fanout_event_invite: async (payload) => {
     const p = payload as { eventId?: string; tier?: string; cursor?: string | null; pageSize?: number }
     if (p?.eventId && p?.tier) await sendEventInviteChunk({ eventId: p.eventId, tier: p.tier, cursor: p.cursor, pageSize: p.pageSize })
+  },
+
+  // Re-evaluate a user's event-driven auto badges after they act. Coalesced per
+  // user (dedupeKey "badges:<userId>"); idempotent — a grant is insert-or-ignore,
+  // so at-least-once redelivery only ever awards + notifies once.
+  evaluate_badges: async (payload) => {
+    const userId = (payload as { userId?: string })?.userId
+    if (userId) await evaluateUserBadges(userId, { mode: "event", notify: true })
   },
 }

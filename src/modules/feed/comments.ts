@@ -3,6 +3,7 @@ import { ForbiddenError } from "@/modules/auth/session"
 import { awardKarma } from "@/modules/karma/ledger"
 import { sendNotification } from "@/modules/notifications/service"
 import { KARMA } from "@/config/karma"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 
 export type CommentReactionType = "upvote" | "downvote"
 
@@ -141,6 +142,10 @@ export async function toggleCommentReaction(input: {
     }
   }
 
+  if (reacted === "upvote") {
+    void enqueueBadgeEval(input.userId) // reactor → First Upvote
+    if (input.userId !== comment.authorId) void enqueueBadgeEval(comment.authorId) // Commentator ladder
+  }
   return { reacted }
 }
 

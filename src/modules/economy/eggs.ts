@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ForbiddenError } from "@/lib/errors"
 import { sendNotification } from "@/modules/notifications/service"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 
 const DAILY_THROW_CAP = 10
 const REPEAT_TARGET_COOLDOWN_MS = 24 * 60 * 60 * 1000 // 24h rolling window per target, from the last throw
@@ -55,6 +56,9 @@ export async function throwEgg(throwerId: string, targetId: string): Promise<voi
     entityType: "user",
     entityId: throwerId,
   }).catch(() => {})
+
+  void enqueueBadgeEval(throwerId) // The Welcoming
+  void enqueueBadgeEval(targetId) // Chickened
 }
 
 /** Resolve the monthly egg game: return user(s) with the most eggs. */
