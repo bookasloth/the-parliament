@@ -4,6 +4,8 @@ import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { audit } from "@/lib/audit"
 import type { EmailCategory } from "@/modules/email/templates"
+import { injectEmailSponsor, isSponsoredEmailCategory } from "./sponsor-footer"
+import { recordEmailSponsorImpression } from "@/modules/ads/service"
 
 export type SendArgs = {
   templateCode: string
@@ -336,18 +338,29 @@ export async function queueEmail(args: SendArgs): Promise<{ messageId: string | 
     return { messageId: null, reason: "template_inactive" }
   }
   const category = template.category as EmailCategory
-  return deliver({
+  // Sponsor footer on non-transactional mail only (receipts/auth stay ad-free).
+  const html = injectEmailSponsor(
+    fillVars(template.htmlBody, withUnsubscribe(args.variables, args.userId, category)),
+    category,
+  )
+  const result = await deliver({
     toAddress: args.toAddress,
     userId: args.userId,
     category,
     templateCode: template.code,
     subject: fillVars(template.subject, args.variables),
     text: fillVars(template.textBody, args.variables),
-    html: fillVars(template.htmlBody, withUnsubscribe(args.variables, args.userId, category)),
+    html,
     variables: args.variables,
     bypassQuietHours: args.bypassQuietHours,
     unsubscribeToken: args.variables.unsubscribeToken,
   })
+  // Count the inbox delivery once it's actually committed (messageId non-null →
+  // not opted-out/suppressed), keyed to the member so it dedupes daily.
+  if (result.messageId && args.userId && isSponsoredEmailCategory(category)) {
+    await recordEmailSponsorImpression(args.userId)
+  }
+  return result
 }
 
 export async function suppress(emailAddress: string, reason: "hard_bounce" | "complaint" | "unsubscribe_all" | "invalid"): Promise<void> {

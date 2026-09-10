@@ -27,9 +27,11 @@ function previewOf(body: string | undefined, media: unknown): string {
  */
 export function MessagesShell({
   conversations: initialConversations,
+  showAd = false,
   children,
 }: {
   conversations: ConversationSummary[]
+  showAd?: boolean
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -114,7 +116,7 @@ export function MessagesShell({
         <aside
           className={`${inConversation ? "hidden lg:flex" : "flex"} w-full flex-col border-r border-gray-200 bg-white lg:w-[340px] xl:w-[380px] flex-shrink-0`}
         >
-          <ChatSidebar conversations={conversations.filter((c) => !c.hidden)} />
+          <ChatSidebar conversations={conversations.filter((c) => !c.hidden)} showAd={showAd} />
         </aside>
 
         {/* Detail (conversation or empty state) */}
