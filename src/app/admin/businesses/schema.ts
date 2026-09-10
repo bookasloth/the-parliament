@@ -4,3 +4,6 @@ import { z } from "zod"
 // without loading "use server" deps (next-auth / prisma).
 export const businessStatusSchema = z.enum(["approved", "rejected", "suspended", "pending"])
 export const businessIdSchema = z.string().uuid()
+// Featured toggle payload — a plain on/off; the term (featuredUntil) is derived
+// server-side, never taken from the client.
+export const businessFeaturedSchema = z.boolean()

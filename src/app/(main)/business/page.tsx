@@ -1,11 +1,12 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Building2, MapPin, Star, BadgePercent, Plus } from "lucide-react"
+import { Building2, MapPin, Star, BadgePercent, Plus, Sparkles } from "lucide-react"
 import { unstable_cache } from "next/cache"
 import { getDefaultSchoolId } from "@/lib/school"
 import { optionalUser } from "@/modules/auth/session"
 import { getCurrent } from "@/modules/membership/service"
 import { listBusinesses } from "@/modules/business/service"
+import { isBusinessFeatured } from "@/modules/business/featured"
 
 export const dynamic = "force-dynamic"
 
@@ -45,8 +46,15 @@ export default async function BusinessDirectoryPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {businesses.map((b) => (
-            <Link key={b.id} href={`/business/${b.slug}`} className="rounded-[5px] border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md">
+          {businesses.map((b) => {
+            const featured = isBusinessFeatured(b)
+            return (
+            <Link key={b.id} href={`/business/${b.slug}`} className={`rounded-[5px] border bg-white p-5 transition-shadow hover:shadow-md ${featured ? "border-amber-300 ring-1 ring-amber-200" : "border-gray-200"}`}>
+              {featured && (
+                <p className="mb-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                  <Sparkles className="h-3 w-3" /> Featured
+                </p>
+              )}
               <div className="flex items-center gap-3">
                 {b.logoUrl ? (
                   <Image src={b.logoUrl} alt="" className="h-12 w-12 rounded-[4px] object-cover" width={48} height={48} />
@@ -66,7 +74,8 @@ export default async function BusinessDirectoryPage() {
               </div>
               <p className="mt-3 text-xs text-gray-400">by {b.owner.displayName || b.owner.legalName}</p>
             </Link>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

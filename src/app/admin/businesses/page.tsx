@@ -28,7 +28,7 @@ export default async function AdminBusinessesPage({
     ]
   }
 
-  const [businesses, filteredTotal, total, pending, approved, suspended, categories] =
+  const [businesses, filteredTotal, total, pending, approved, suspended, featured, categories] =
     await Promise.all([
       prisma.business.findMany({
         where,
@@ -46,6 +46,7 @@ export default async function AdminBusinessesPage({
       prisma.business.count({ where: { status: "pending" } }),
       prisma.business.count({ where: { status: "approved" } }),
       prisma.business.count({ where: { status: "suspended" } }),
+      prisma.business.count({ where: { featured: true } }),
       prisma.businessCategory.findMany({ orderBy: { label: "asc" }, select: { id: true, label: true } }),
     ])
 
@@ -56,6 +57,7 @@ export default async function AdminBusinessesPage({
     owner: b.owner.displayName || b.owner.legalName,
     category: b.category.label,
     status: b.status,
+    featured: b.featured,
     ratingAvg: Number(b.ratingAvg),
     ratingCount: b.ratingCount,
     reviewCount: b._count.reviews,
@@ -66,7 +68,7 @@ export default async function AdminBusinessesPage({
     <BusinessesClient
       rows={rows}
       categories={categories}
-      stats={{ total, pending, approved, suspended }}
+      stats={{ total, pending, approved, suspended, featured }}
       query={{ page, q: q ?? "", status: status ?? "", category: category ?? "" }}
       pageInfo={{ page, pageCount: pageCount(filteredTotal), filteredTotal, pageSize: PAGE_SIZE }}
     />
