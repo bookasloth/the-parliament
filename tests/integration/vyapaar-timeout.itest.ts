@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createRoom, joinRoom } from "@/modules/vyapaar/rooms"
 import { startMatch, autoResolveExpiredTurns, rebuildMatchState } from "@/modules/vyapaar/match"
 import type { GameState, Intent } from "@/modules/vyapaar/engine/state"
+import { zeroClock } from "./replay-helpers"
 
 async function mkUser() {
   const u = await prisma.user.create({ data: { email: `to_${crypto.randomUUID()}@test.local`, legalName: "T" }, select: { id: true } })
@@ -51,6 +52,8 @@ describe("autoResolveExpiredTurns", () => {
     const names = m!.players.map((p) => p.user.displayName || p.user.legalName)
     const openingCash = m!.players.map((p) => p.openingCash)
     const rebuilt = rebuildMatchState(Number(m!.seed), names, openingCash, m!.actionLog as { seat: number; intent: Intent }[])
-    expect(rebuilt).toEqual(m!.state as unknown as GameState)
+    // Ignore the server-stamped wall-clock expiry (see replay-helpers): auto-resolve
+    // may queue a payment, whose real `expiresAt` a clockless rebuild can't match.
+    expect(zeroClock(rebuilt)).toEqual(zeroClock(m!.state as unknown as GameState))
   })
 })
