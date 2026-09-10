@@ -1,5 +1,6 @@
 import { requireUser } from "@/modules/auth/session"
 import { listConversations } from "@/modules/messaging/service"
+import { showSidebarAd } from "@/config/ad-sets"
 import { MessagesShell } from "./MessagesShell"
 
 export const dynamic = "force-dynamic"
@@ -8,5 +9,9 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   const user = await requireUser()
   const conversations = await listConversations(user.id)
 
-  return <MessagesShell conversations={conversations}>{children}</MessagesShell>
+  return (
+    <MessagesShell conversations={conversations} showAd={showSidebarAd(user.membershipStatus)}>
+      {children}
+    </MessagesShell>
+  )
 }

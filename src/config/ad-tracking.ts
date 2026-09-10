@@ -8,6 +8,7 @@
 
 import { FEED_ADS } from "./feed-ads"
 import { AD_SETS } from "./ad-sets"
+import { SHUBHAM_DATARKAR_AD, sponsorHref } from "./sponsor-ads"
 
 /** Sellable placements. `feed` + `sidebar` render today; `email`/`alerts`/
  *  `directory` are the value-first build-outs and are accepted up-front so their
@@ -32,6 +33,7 @@ export function knownAdIds(): Set<string> {
   const ids = new Set<string>()
   for (const ad of FEED_ADS) ids.add(ad.id)
   for (const key of Object.keys(AD_SETS)) ids.add(key)
+  ids.add(SHUBHAM_DATARKAR_AD.id) // house sponsor for the email + alerts slots
   return ids
 }
 
@@ -74,5 +76,12 @@ export function adCatalog(): AdCatalogEntry[] {
     name: SIDEBAR_SET_LABELS[key] ?? key,
     href: AD_SETS[key as keyof typeof AD_SETS].href,
   }))
-  return [...feed, ...sidebar]
+  // House sponsor (Shubham Datarkar) fills the email footer + the pinned Alerts card.
+  const sponsor: AdCatalogEntry[] = (["email", "alerts"] as const).map((placement) => ({
+    adId: SHUBHAM_DATARKAR_AD.id,
+    placement,
+    name: SHUBHAM_DATARKAR_AD.advertiser,
+    href: sponsorHref(placement),
+  }))
+  return [...feed, ...sidebar, ...sponsor]
 }

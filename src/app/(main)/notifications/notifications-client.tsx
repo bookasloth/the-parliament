@@ -10,6 +10,7 @@ import {
   markNotificationReadAction,
 } from "./actions"
 import { othersSuffix } from "@/modules/notifications/aggregate"
+import { SponsoredCard } from "@/components/shared/SponsoredCard"
 
 // Filter tabs → the notification types each bucket covers (null = everything).
 const FILTERS: { key: string; label: string; types: string[] | null }[] = [
@@ -47,7 +48,7 @@ function relative(iso: string): string {
   return `${weeks}w`
 }
 
-export default function NotificationsClient({ initial }: { initial: NotifRow[] }) {
+export default function NotificationsClient({ initial, showAd = false }: { initial: NotifRow[]; showAd?: boolean }) {
   const [notifs, setNotifs] = useState(initial)
   const [pending, startTransition] = useTransition()
   const [filter, setFilter] = useState("all")
@@ -114,6 +115,11 @@ export default function NotificationsClient({ initial }: { initial: NotifRow[] }
           )}
 
           <div className="p-2">
+            {showAd && (
+              <div className="mb-1.5">
+                <SponsoredCard placement="alerts" />
+              </div>
+            )}
             {notifs.length === 0 ? (
               <div className="py-16 text-center">
                 <Bell className="h-9 w-9 text-gray-200 mx-auto mb-2" />

@@ -6,9 +6,16 @@ import { usePathname } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { Search, PenSquare } from "lucide-react"
 import { colorAvatar } from "@/lib/avatar"
+import { SponsoredCard } from "@/components/shared/SponsoredCard"
 import type { ConversationSummary } from "@/modules/messaging/types"
 
-export function ChatSidebar({ conversations }: { conversations: ConversationSummary[] }) {
+export function ChatSidebar({
+  conversations,
+  showAd = false,
+}: {
+  conversations: ConversationSummary[]
+  showAd?: boolean
+}) {
   const pathname = usePathname()
   const [search, setSearch] = useState("")
 
@@ -106,6 +113,13 @@ export function ChatSidebar({ conversations }: { conversations: ConversationSumm
           )}
         </ul>
       </nav>
+
+      {/* Pinned sponsor card (Alerts slot) — always visible below the list. */}
+      {showAd && (
+        <div className="flex-shrink-0 border-t border-gray-200 p-3">
+          <SponsoredCard placement="alerts" />
+        </div>
+      )}
     </div>
   )
 }

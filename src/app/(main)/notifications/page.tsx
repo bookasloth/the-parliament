@@ -1,6 +1,7 @@
 import { requireUser } from "@/modules/auth/session"
 import { listNotifications } from "@/modules/notifications/service"
 import { resolveNotifLinks } from "@/modules/notifications/links"
+import { showSidebarAd } from "@/config/ad-sets"
 import NotificationsClient from "./notifications-client"
 
 export const dynamic = "force-dynamic"
@@ -11,6 +12,7 @@ export default async function NotificationsPage() {
   const links = await resolveNotifLinks(rows)
   return (
     <NotificationsClient
+      showAd={showSidebarAd(user.membershipStatus)}
       initial={rows.map((n, i) => ({
         id: n.id,
         type: n.type,
