@@ -1,9 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { requireAdmin } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
-import { businessStatusSchema, businessIdSchema } from "./schema"
+import { featuredTermEnd } from "@/modules/business/featured"
+import { businessStatusSchema, businessIdSchema, businessFeaturedSchema } from "./schema"
 
 export async function setBusinessStatus(
   id: string,
@@ -14,5 +15,27 @@ export async function setBusinessStatus(
   const parsedStatus = businessStatusSchema.parse(status)
   await prisma.business.update({ where: { id: parsedId }, data: { status: parsedStatus } })
   revalidatePath("/admin/businesses")
+  updateTag("businesses") // reflect approval/suspension in the public directory now
+  return { ok: true }
+}
+
+/**
+ * Turn a listing's paid Featured slot on/off. Turning it on stamps a 1-year term
+ * (featuredUntil) so the promotion auto-expires; turning it off clears the term.
+ * Busts the directory cache tag so the change shows immediately.
+ */
+export async function setBusinessFeatured(id: string, featured: boolean) {
+  await requireAdmin()
+  const parsedId = businessIdSchema.parse(id)
+  const parsedFeatured = businessFeaturedSchema.parse(featured)
+  await prisma.business.update({
+    where: { id: parsedId },
+    data: {
+      featured: parsedFeatured,
+      featuredUntil: parsedFeatured ? featuredTermEnd() : null,
+    },
+  })
+  revalidatePath("/admin/businesses")
+  updateTag("businesses")
   return { ok: true }
 }

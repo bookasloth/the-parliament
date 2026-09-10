@@ -1354,6 +1354,13 @@ model Business {
   ratingAvg            Decimal  @default(0) @map("rating_avg") @db.Decimal(3, 2)
   ratingCount          Int      @default(0) @map("rating_count")
   status               BusinessStatus @default(pending)
+  // Paid "Featured" directory slot (value-first ads, ₹2,000/yr). Admin-toggled;
+  // auto-expires at featuredUntil (set to +1yr when featured is turned on).
+  // "Effectively featured" = featured && (featuredUntil == null || featuredUntil >
+  // now) — see modules/business/featured.ts. Lifts the listing to the top of the
+  // directory + its category with a Featured chip.
+  featured             Boolean  @default(false)
+  featuredUntil        DateTime? @map("featured_until") @db.Timestamptz
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   school    School?            @relation(fields: [schoolId], references: [id])
@@ -1364,6 +1371,7 @@ model Business {
   posts     BusinessPost[]
 
   @@index([categoryId])
+  @@index([schoolId, status, featured])
   @@map("businesses")
 }
 
@@ -2674,4 +2682,29 @@ model CommitteeRoster {
 
   @@index([groupType, isPublished, displayOrder])
   @@map("committee_roster")
+}
+
+// ─────────────────────────────────────────────
+// Ad delivery tracking (value-first: powers the ≥10k/yr floor + make-good + reports)
+// ─────────────────────────────────────────────
+// Append-only, daily-unique log of ad impressions/clicks. One row per
+// (adId, placement, kind, viewer, UTC-day): the unique key makes a viewer's
+// repeat views on the same day de-duplicate via `createMany({ skipDuplicates })`,
+// so delivery counts are honest daily-uniques (never inflated by refreshes) — the
+// number the make-good is measured against. `adId` is the static creative/set id
+// from src/config (e.g. "ad-bookasloth" or an ad-set key like "seoAi"); no FK, so
+// this stays a loose analytics log (viewerId is a plain uuid, like ContentReport).
+model AdImpression {
+  id        String   @id @default(uuid()) @db.Uuid
+  adId      String   @map("ad_id") @db.VarChar(80)
+  placement String   @db.VarChar(20) // feed | sidebar | email | alerts | directory
+  kind      String   @db.VarChar(12) // impression | click
+  viewerId  String?  @map("viewer_id") @db.Uuid
+  day       DateTime @db.Date // UTC date bucket for daily-unique de-dup
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([adId, placement, kind, viewerId, day], name: "ad_impressions_daily_unique")
+  @@index([adId, placement, day])
+  @@index([day])
+  @@map("ad_impressions")
 }

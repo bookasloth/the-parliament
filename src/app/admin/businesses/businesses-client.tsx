@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Storefront, MagnifyingGlass, CaretLeft, CaretRight, Star } from "@phosphor-icons/react"
+import { Storefront, MagnifyingGlass, CaretLeft, CaretRight, Star, Sparkle } from "@phosphor-icons/react"
 import { PageHeader, StatCard, StatusBadge, Button, Table, Thead, Tbody, Tr, Th, Td, EmptyState } from "../admin-ui"
-import { setBusinessStatus } from "./actions"
+import { setBusinessStatus, setBusinessFeatured } from "./actions"
 
 export interface BusinessRow {
   id: string
@@ -13,6 +13,7 @@ export interface BusinessRow {
   owner: string
   category: string
   status: string
+  featured: boolean
   ratingAvg: number
   ratingCount: number
   reviewCount: number
@@ -22,7 +23,7 @@ export interface BusinessRow {
 export interface CategoryOption { id: string; label: string }
 export interface BusinessQuery { page: number; q: string; status: string; category: string }
 export interface BusinessPageInfo { page: number; pageCount: number; filteredTotal: number; pageSize: number }
-export interface BusinessStats { total: number; pending: number; approved: number; suspended: number }
+export interface BusinessStats { total: number; pending: number; approved: number; suspended: number; featured: number }
 
 const STATUS_OPTIONS = ["pending", "approved", "rejected", "suspended"]
 
@@ -73,6 +74,15 @@ export default function BusinessesClient({
     })
   }
 
+  function actFeatured(id: string, featured: boolean) {
+    setBusyId(id)
+    startTransition(async () => {
+      await setBusinessFeatured(id, featured)
+      setBusyId(null)
+      router.refresh()
+    })
+  }
+
   const total = pageInfo?.filteredTotal ?? rows.length
   const size = pageInfo?.pageSize ?? rows.length
   const page = pageInfo?.page ?? 1
@@ -89,11 +99,12 @@ export default function BusinessesClient({
         description="Moderate alumni-owned business listings — approve, reject, or suspend"
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="Total" value={stats.total.toLocaleString()} icon={<Storefront className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
         <StatCard label="Pending" value={stats.pending.toLocaleString()} icon={<Storefront className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
         <StatCard label="Approved" value={stats.approved.toLocaleString()} icon={<Storefront className="h-4.5 w-4.5" weight="duotone" />} accent="emerald" />
         <StatCard label="Suspended" value={stats.suspended.toLocaleString()} icon={<Storefront className="h-4.5 w-4.5" weight="duotone" />} accent="rose" />
+        <StatCard label="Featured" value={stats.featured.toLocaleString()} icon={<Sparkle className="h-4.5 w-4.5" weight="duotone" />} accent="amber" />
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -153,7 +164,14 @@ export default function BusinessesClient({
                 return (
                   <Tr key={r.id}>
                     <Td>
-                      <div className="font-medium text-gray-800">{r.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-gray-800">{r.name}</span>
+                        {r.featured && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
+                            <Sparkle className="h-3 w-3" weight="fill" /> Featured
+                          </span>
+                        )}
+                      </div>
                       {r.city && <div className="text-[11px] text-gray-500">{r.city}</div>}
                     </Td>
                     <Td className="text-gray-600">{r.owner}</Td>
@@ -168,6 +186,11 @@ export default function BusinessesClient({
                     <Td><StatusBadge status={r.status} /></Td>
                     <Td>
                       <div className="flex items-center justify-end gap-1.5">
+                        {(r.status === "approved" || r.featured) && (
+                          <Button size="sm" variant={r.featured ? "primary" : "ghost"} disabled={disabled} onClick={() => actFeatured(r.id, !r.featured)}>
+                            {r.featured ? "Unfeature" : "Feature"}
+                          </Button>
+                        )}
                         {r.status === "pending" && (
                           <>
                             <Button size="sm" variant="primary" disabled={disabled} onClick={() => act(r.id, "approved")}>Approve</Button>

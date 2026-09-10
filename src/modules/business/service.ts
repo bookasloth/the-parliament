@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { sendNotification } from "@/modules/notifications/service"
 import { EMPLOYEE_SIZES } from "./constants"
+import { sortFeaturedFirst } from "./featured"
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 200) || "business"
@@ -19,16 +20,20 @@ async function uniqueSlug(base: string): Promise<string> {
 const listSelect = {
   id: true, slug: true, name: true, description: true, logoUrl: true, city: true,
   offersAlumniDiscount: true, ratingAvg: true, ratingCount: true, status: true,
+  featured: true, featuredUntil: true,
   category: { select: { id: true, key: true, label: true } },
   owner: { select: { username: true, legalName: true, displayName: true } },
 } as const
 
 export async function listBusinesses(schoolId: string) {
-  return prisma.business.findMany({
+  const rows = await prisma.business.findMany({
     where: { schoolId, status: "approved" },
     orderBy: { createdAt: "desc" },
     select: listSelect,
   })
+  // Lift paid-featured listings to the top (newest-first within each group). Done
+  // in JS so an expired term demotes correctly even if the flag wasn't cleared yet.
+  return sortFeaturedFirst(rows)
 }
 
 export async function getBusinessBySlug(slug: string) {

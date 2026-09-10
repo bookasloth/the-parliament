@@ -89,6 +89,7 @@ export const NAV: NavSection[] = [
       { label: "Membership", href: "/admin/membership", icon: "CreditCard", adminOnly: true },
       { label: "Contributions", href: "/admin/contributions", icon: "HandHeart", adminOnly: true },
       { label: "Businesses", href: "/admin/businesses", icon: "Storefront", adminOnly: true },
+      { label: "Ads", href: "/admin/ads", icon: "ChartLineUp", adminOnly: true },
       { label: "Jobs", href: "/admin/jobs", icon: "Briefcase", adminOnly: true },
     ],
   },
