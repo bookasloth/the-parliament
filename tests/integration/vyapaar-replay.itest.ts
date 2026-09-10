@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createRoom, joinRoom } from "@/modules/vyapaar/rooms"
 import { startMatch, applyMatchIntent, rebuildMatchState } from "@/modules/vyapaar/match"
 import type { GameState, Intent } from "@/modules/vyapaar/engine/state"
+import { zeroClock } from "./replay-helpers"
 
 async function mkUser() {
   const u = await prisma.user.create({ data: { email: `rp_${crypto.randomUUID()}@test.local`, legalName: "T" }, select: { id: true } })
@@ -40,6 +41,8 @@ describe("match replay determinism", () => {
     // DB-read state has different key insertion order than a freshly-built
     // object even when every value matches — toEqual does structural
     // (order-independent) deep equality, toBe(JSON.stringify(...)) does not.
-    expect(rebuilt).toEqual(final!.state)
+    // zeroClock() strips the server-stamped wall-clock expiry (see replay-helpers)
+    // so only the engine's deterministic output is compared.
+    expect(zeroClock(rebuilt)).toEqual(zeroClock(final!.state as unknown as GameState))
   })
 })
