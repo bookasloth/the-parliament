@@ -40,3 +40,39 @@ const KNOWN_AD_IDS = knownAdIds()
 export function isKnownAdId(id: string): boolean {
   return KNOWN_AD_IDS.has(id)
 }
+
+// ── Catalog: adId → human label, for the admin delivery dashboard ─────────────
+
+/** Friendly names for the sidebar ad-sets (whose keys are terse). */
+const SIDEBAR_SET_LABELS: Record<string, string> = {
+  seoAi: "SEO / AI Audit",
+  website: "Website Audit",
+  content: "Content Audit",
+  timewheel: "Timewheel Internet",
+}
+
+export interface AdCatalogEntry {
+  adId: string
+  placement: AdPlacement
+  name: string
+  href: string
+}
+
+/** Every live (adId, placement) with a readable advertiser name + destination.
+ *  The admin dashboard joins delivery counts against this so a slot with zero
+ *  impressions still shows up as a row (delivered nothing yet, not missing). */
+export function adCatalog(): AdCatalogEntry[] {
+  const feed: AdCatalogEntry[] = FEED_ADS.map((a) => ({
+    adId: a.id,
+    placement: "feed",
+    name: a.sponsorName ?? a.name ?? a.id,
+    href: a.sponsorUrl ?? "",
+  }))
+  const sidebar: AdCatalogEntry[] = Object.keys(AD_SETS).map((key) => ({
+    adId: key,
+    placement: "sidebar",
+    name: SIDEBAR_SET_LABELS[key] ?? key,
+    href: AD_SETS[key as keyof typeof AD_SETS].href,
+  }))
+  return [...feed, ...sidebar]
+}
