@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { MediaGallery } from "@/components/shared/MediaGallery"
+import { useAdImpression, trackAdClick } from "@/lib/ad-beacon"
 import {
   MoreHorizontal,
   Bookmark,
@@ -218,6 +219,11 @@ export function FeedCard({
     : "#!"
   const postHref = `/feed/${post.id}`
 
+  // Delivery tracking for in-feed sponsored posts: one impression when the card
+  // scrolls into view (ref attached only when sponsored), clicks on the links
+  // below. Hook is called unconditionally; it no-ops until a ref is attached.
+  const adRef = useAdImpression<HTMLDivElement>(post.id, "feed")
+
   type ActionItem = { icon: React.ReactNode; label: string; onClick?: () => void; danger?: boolean }
   // Sharing lives on the reaction bar's Share button — the 3-dot menu is only
   // utility/moderation actions (bookmark, hide, block, report, edit, delete).
@@ -269,6 +275,7 @@ export function FeedCard({
 
   return (
     <div
+      ref={post.isSponsored ? adRef : undefined}
       onClick={post.isSponsored || disableCardNav ? undefined : handleCardClick}
       className={`bg-white border border-[#E5E7EB] rounded-[5px] transition-shadow hover:shadow-card${
         post.isSponsored || disableCardNav ? "" : " cursor-pointer"
@@ -451,7 +458,7 @@ export function FeedCard({
             {post.image && (
               // External OG image — plain <img> avoids next/image remote-host config.
               // eslint-disable-next-line @next/next/no-img-element
-              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-t-[4px] border border-gray-100">
+              <a href={post.sponsorUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackAdClick(post.id, "feed")} className="mt-3 block overflow-hidden rounded-t-[4px] border border-gray-100">
                 <img src={post.image} alt={post.sponsorName ?? "Sponsored"} className="w-full object-cover" loading="lazy" />
               </a>
             )}
@@ -467,6 +474,7 @@ export function FeedCard({
                 href={post.sponsorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackAdClick(post.id, "feed")}
                 style={post.sponsorAccent ? { backgroundColor: post.sponsorAccent } : undefined}
                 className={`block w-full sm:w-auto shrink-0 whitespace-nowrap rounded-[3px] px-4 py-2 text-center text-xs font-bold text-white transition-opacity hover:opacity-90${post.sponsorAccent ? "" : " bg-orange-500 hover:bg-orange-600 hover:opacity-100"}`}
               >

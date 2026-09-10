@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import { AD_SETS, adIndex, type AdSetKey } from "@/config/ad-sets"
+import { useAdImpression, trackAdClick } from "@/lib/ad-beacon"
 
 /**
  * One rotating house-ad creative. The initial index is time-derived so the
@@ -22,11 +23,17 @@ export function AdCard({ set }: { set: AdSetKey }) {
 
   const ad = creatives[index]
 
+  // Delivery tracking: count one impression per set per page-load when the rail
+  // scrolls into view, and a click on tap. `set` is the advertiser id for sidebar.
+  const impressionRef = useAdImpression<HTMLAnchorElement>(set, "sidebar")
+
   return (
     <a
+      ref={impressionRef}
       href={href}
       target="_blank"
       rel="noopener noreferrer sponsored"
+      onClick={() => trackAdClick(set, "sidebar")}
       className="block overflow-hidden rounded-[5px]"
     >
       <Image
