@@ -31,11 +31,38 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # The app talks to Redis over Upstash's HTTP API (@upstash/redis), so a plain
+      # redis:// container isn't enough — SRH (Serverless Redis HTTP) fronts a real
+      # Redis with an Upstash-REST-compatible endpoint. Without this, every test that
+      # touches rate-limit / messaging / notifications hung on the Upstash client's
+      # retries and timed out. No secrets: the token below is a throwaway shared by
+      # the proxy and the app env. (SRH reaches `redis` by its service-label hostname.)
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      srh:
+        image: hiett/serverless-redis-http:latest
+        env:
+          SRH_MODE: env
+          SRH_TOKEN: ci_upstash_token
+          SRH_CONNECTION_STRING: "redis://redis:6379"
+        ports:
+          - 8079:80
+
     env:
       # Local throwaway DB for the integration suite (guard.ts requires localhost + _test).
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/the_parliament_test
       # Satisfies prisma.config.ts (DIRECT_URL ?? DATABASE_URL) at generate time.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # Upstash REST endpoint served by the SRH proxy above; token must match SRH_TOKEN.
+      UPSTASH_REDIS_REST_URL: http://localhost:8079
+      UPSTASH_REDIS_REST_TOKEN: ci_upstash_token
 
     steps:
       - uses: actions/checkout@v7
