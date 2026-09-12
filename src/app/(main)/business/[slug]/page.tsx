@@ -2,6 +2,7 @@ import { cache } from "react"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getBusinessBySlug } from "@/modules/business/service"
+import { serializeJsonLd } from "@/lib/json-ld"
 import { loadBusiness } from "./load-business"
 
 const BASE = "https://nnawca.org"
@@ -56,7 +57,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       {await loadBusiness(b)}
     </>
   )
