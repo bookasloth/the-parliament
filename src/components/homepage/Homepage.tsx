@@ -10,6 +10,7 @@ import {
   Video,
 } from "lucide-react"
 import { PrivateNavbar } from "@/components/shared/PrivateNavbar"
+import { WordCyclerHero } from "./WordCyclerHero"
 import { Footer } from "./Footer"
 import {
   Section,
@@ -75,50 +76,7 @@ export function Homepage({
 
       {/* ── Hero ── */}
       <Section width="7xl" className="pt-28 pb-12 lg:pt-32">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-          <div>
-            <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-[3px] border border-black/10 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                The JNV Nagpur alumni network
-              </span>
-            </Reveal>
-            <Reveal delay={0.05}>
-              <h1 className="mt-5 font-heading text-4xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-5xl lg:text-[3.5rem] lg:leading-[1.03]">
-                One platform for
-                <br className="hidden sm:block" /> our whole alumni family.
-              </h1>
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#5b5b5b]">
-                Reconnect. Collaborate. Contribute. Find your batchmates, grow your
-                network, discover opportunities, and give back — all in one place.
-              </p>
-            </Reveal>
-            <Reveal delay={0.15}>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/auth/signup"
-                  className="inline-flex items-center gap-2 rounded-[3px] bg-brand px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-600"
-                >
-                  Join the community <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="/community"
-                  className="rounded-[3px] border border-black/10 bg-white px-7 py-3.5 text-sm font-semibold text-[#1a1a1a] transition hover:border-black/20"
-                >
-                  Explore directory
-                </Link>
-              </div>
-            </Reveal>
-          </div>
-
-          {/* Product-preview panel (branded mock, not a grey box, not the canvas
-              animation) — a faux directory card the real app renders. */}
-          <Reveal delay={0.2} className="relative hidden lg:block">
-            <HeroPreview />
-          </Reveal>
-        </div>
+        <WordCyclerHero />
 
         {/* Stats row */}
         <div className="mt-16 grid gap-8 border-t border-black/5 pt-10 sm:grid-cols-4">
@@ -274,36 +232,5 @@ function ModeBadge({ mode }: { mode: EventItem["mode"] }) {
     <span className="inline-flex w-max items-center gap-1.5 rounded-[3px] bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand">
       <Icon className="h-3 w-3" /> {label}
     </span>
-  )
-}
-
-// Branded product preview — a faux directory card grid, pure CSS. Replaces the
-// grey wireframe rectangle and the old canvas network animation.
-function HeroPreview() {
-  const faces = [0, 1, 2, 3]
-  return (
-    <div className="relative">
-      <div className="rounded-[5px] border border-black/[0.06] bg-white p-5 shadow-[0_30px_80px_-30px_rgba(26,26,26,0.3)]">
-        {/* faux search bar */}
-        <div className="flex items-center gap-2 rounded-[5px] border border-black/10 bg-[#f7f6f4] px-3.5 py-2.5">
-          <Search className="h-4 w-4 text-[#a3a3a3]" />
-          <span className="text-sm text-[#a3a3a3]">Search alumni, batches, cities…</span>
-        </div>
-        {/* faux alumni cards */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {faces.map((i) => (
-            <div key={i} className="rounded-[5px] border border-black/5 bg-white p-4">
-              <div
-                className="h-10 w-10 rounded-[4px]"
-                style={{ backgroundColor: ACCENT_HEX[i % 4] }}
-              />
-              <div className="mt-3 h-2.5 w-3/4 rounded-[3px] bg-black/10" />
-              <div className="mt-2 h-2 w-1/2 rounded-[3px] bg-black/[0.06]" />
-              <div className="mt-3 h-6 w-16 rounded-[3px] bg-brand-50" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }
