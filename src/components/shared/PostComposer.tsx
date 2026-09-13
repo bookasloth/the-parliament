@@ -27,6 +27,8 @@ import { validateComposerMedia } from "@/modules/feed/media-limits"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 import { TEXT_BACKGROUNDS, STUDENT_BG_PICKER, DEFAULT_BG_PICKER } from "@/config/text-backgrounds"
+import { previewLinkAction } from "@/app/(main)/compose/actions"
+import type { LinkPreview } from "@/lib/og-preview"
 
 const R_CARD = "rounded-[5px]"
 const R_EL = "rounded-[4px]"
@@ -156,11 +158,31 @@ export default function PostComposer({
       : ["", ""],
   )
   const [linkUrl, setLinkUrl] = useState(initial?.linkUrl ?? "")
+  const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null)
+  const [linkLoading, setLinkLoading] = useState(false)
   const [quoteSource, setQuoteSource] = useState(initial?.quoteSource ?? "")
   const [media, setMedia] = useState<ComposerMedia[]>(initial?.media ?? [])
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Live OG preview: debounce a fetch whenever the link field holds a valid
+  // http(s) URL in link mode, so the poster sees the real card before posting.
+  useEffect(() => {
+    if (type !== "link") { setLinkPreview(null); setLinkLoading(false); return }
+    const url = linkUrl.trim()
+    if (!/^https?:\/\/\S+\.\S+/.test(url)) { setLinkPreview(null); setLinkLoading(false); return }
+    let live = true
+    setLinkLoading(true)
+    const t = setTimeout(async () => {
+      try {
+        const p = await previewLinkAction(url)
+        if (live) setLinkPreview(p)
+      } catch { if (live) setLinkPreview(null) }
+      finally { if (live) setLinkLoading(false) }
+    }, 500)
+    return () => { live = false; clearTimeout(t) }
+  }, [linkUrl, type])
 
   async function uploadFiles(files: FileList | null) {
     if (!files || files.length === 0) return
@@ -331,7 +353,9 @@ export default function PostComposer({
     `What's on your mind${anon ? "" : firstName ? `, ${firstName}` : ""}?`
 
   return (
-    <div className="min-h-screen bg-[#eef0f4] px-4 py-8 font-body">
+    // Embeddable: sits inside the host page's rail shell (inherits the page bg)
+    // rather than painting its own full-screen background.
+    <div className="w-full font-body">
       <div className="mx-auto max-w-[640px]">
 
         {/* Title */}
@@ -493,11 +517,28 @@ export default function PostComposer({
                     className="w-full bg-transparent py-2.5 text-sm text-gray-700 outline-none"
                   />
                 </div>
-                {linkUrl && (
-                  <div className={`mt-2 flex items-center gap-3 ${R_EL} border border-gray-200 bg-gray-50 p-3`}>
-                    <span className={`flex h-12 w-12 items-center justify-center ${R_EL} bg-brand-50 text-brand`}><Globe className="h-5 w-5" /></span>
-                    <div className="min-w-0"><div className="truncate text-[13px] font-semibold text-gray-800">Link preview</div><div className="truncate text-xs text-gray-500">{linkUrl}</div></div>
-                  </div>
+                {linkUrl.trim() && (
+                  linkPreview && (linkPreview.title || linkPreview.description || linkPreview.image) ? (
+                    <div className={`mt-2 overflow-hidden ${R_EL} border border-gray-200`}>
+                      {linkPreview.image && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={linkPreview.image} alt="" className="max-h-[220px] w-full object-cover" loading="lazy" />
+                      )}
+                      <div className="bg-gray-50 px-4 py-3">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{linkPreview.siteName || (() => { try { return new URL(linkPreview.url).hostname.replace(/^www\./, "") } catch { return linkPreview.url } })()}</div>
+                        {linkPreview.title && <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-gray-900">{linkPreview.title}</div>}
+                        {linkPreview.description && <div className="mt-1 line-clamp-2 text-xs text-gray-500">{linkPreview.description}</div>}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`mt-2 flex items-center gap-3 ${R_EL} border border-gray-200 bg-gray-50 p-3`}>
+                      <span className={`flex h-12 w-12 items-center justify-center ${R_EL} bg-brand-50 text-brand`}><Globe className="h-5 w-5" /></span>
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-semibold text-gray-800">{linkLoading ? "Fetching preview…" : "Link"}</div>
+                        <div className="truncate text-xs text-gray-500">{linkUrl}</div>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             )}

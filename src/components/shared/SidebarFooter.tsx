@@ -10,10 +10,10 @@ export function SidebarFooter() {
         <a href="/rules" className={link}>Rules</a>
       </div>
       <p className="mt-2 text-gray-400">
-        Powered by{" "}
-        <a href="/durga-laxne" className="font-medium text-gray-500 hover:text-brand">Durga</a>
+        Made by{" "}
+        <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-500 hover:text-brand">Durga</a>
         {" "}&amp;{" "}
-        <a href="/shubham" className="font-medium text-gray-500 hover:text-brand">Shubham</a>
+        <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-500 hover:text-brand">Shubham</a>
       </p>
     </div>
   )

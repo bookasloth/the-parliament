@@ -7,6 +7,7 @@ import {
   AlertTriangle, Plane, KeyRound, Briefcase, GraduationCap,
 } from "lucide-react"
 import type { GroupPageData } from "@/modules/groups/service"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { joinGroupAction, submitGroupRequestAction, type SubmitGroupRequestInput } from "../actions"
 
 type Category = SubmitGroupRequestInput["category"]
@@ -108,8 +109,9 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                 {joined ? "Joined" : "Join"}
               </button>
               <button
-                onClick={() => { setMsg(null); setModalOpen(true) }}
-                className="rounded-[4px] bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
+                disabled
+                title="Requests are coming soon"
+                className="cursor-not-allowed rounded-[4px] bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
               >
                 + Request
               </button>
@@ -201,7 +203,7 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                   <Avatar name={m.name} src={m.photoUrl} size={56} />
                   <div className="flex items-center gap-1 mt-2">
                     <p className="text-sm font-semibold text-gray-900 truncate">{m.name}</p>
-                    {m.isVerified && <BadgeCheck className="h-3.5 w-3.5 text-brand flex-shrink-0" />}
+                    {m.isVerified && <VerifiedTick size={14} membership={m.membership} />}
                   </div>
                   {m.yearsLabel && <p className="text-xs text-gray-400">{m.yearsLabel}</p>}
                   <a href={`/${m.id}`} className="mt-3 w-full rounded-[3px] border border-brand px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand hover:text-white transition-colors">

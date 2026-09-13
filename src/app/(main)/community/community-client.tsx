@@ -16,7 +16,6 @@ import type { AlumniCard, Membership } from "@/lib/homepage-data"
 import type { DirectoryRow } from "@/modules/directory/service"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 import { SIDEBAR_NAV } from "@/config/sidebar-nav"
-import { hasHighlightedProfile } from "@/config/membership"
 
 type Facets = {
   batches: { id: string; label: string }[]
@@ -266,15 +265,16 @@ export function CommunityClient({
                 verified={r.isVerified}
                 tierColoredVerified
                 hideMembership
-                highlighted={hasHighlightedProfile(r.membershipStatus)}
                 actions={
-                  <div className="flex w-full gap-2">
+                  <div className="flex w-full items-stretch gap-2">
                     {meId !== r.id && (
+                      // Follow/Following takes the flexible width (fits "Following"
+                      // in either state); Profile is a compact fixed button beside it.
                       <div className="flex-1 [&>button]:flex [&>button]:w-full [&>button]:justify-center [&>button]:py-2">
                         <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} />
                       </div>
                     )}
-                    <a href={`/${r.username}`} className="flex-1 rounded-[3px] border border-gray-200 px-4 py-2 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
+                    <a href={`/${r.username}`} className="w-[88px] flex-shrink-0 rounded-[3px] border border-gray-200 px-4 py-2 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
                   </div>
                 }
               />

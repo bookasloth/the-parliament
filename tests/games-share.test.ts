@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { buildShareText, gameShareUrl } from "@/lib/games/share";
+import { shareResults } from "@/modules/games/engines/types";
+
+describe("shareResults", () => {
+  it("renders count rows as 🎯 per hit then 💨 per blow (no numbers)", () => {
+    const out = shareResults([
+      { kind: "count", hits: 0, blows: 2, solved: false },
+      { kind: "count", hits: 1, blows: 3, solved: false },
+      { kind: "count", hits: 4, blows: 0, solved: true },
+    ]);
+    expect(out).toBe("💨💨\n🎯💨💨💨\n🎯🎯🎯🎯");
+  });
+  it("renders tile rows as squares", () => {
+    expect(shareResults([{ kind: "tiles", tiles: ["correct", "present", "absent"], solved: false }])).toBe("🟩🟨⬜");
+  });
+});
 
 describe("gameShareUrl", () => {
   it("builds /g/<code> and tolerates a trailing slash", () => {

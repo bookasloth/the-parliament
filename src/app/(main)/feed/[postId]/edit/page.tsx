@@ -3,6 +3,8 @@ import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
 import PostComposer, { type ComposerMedia } from "@/components/shared/PostComposer"
 import { updatePostAction } from "../../actions"
+import { LeftRailShell } from "@/components/shared/ProfileSidebar"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
 export const dynamic = "force-dynamic"
 
@@ -55,24 +57,26 @@ export default async function EditPostPage({
   }
 
   return (
-    <PostComposer
-      editing
-      title="Edit post"
-      submitLabel="Save changes"
-      submittingLabel="Saving…"
-      onSubmit={save}
-      initial={{
-        format: post.format,
-        body: post.body ?? "",
-        bg,
-        categoryKey: post.category?.key,
-        linkUrl: post.linkUrl ?? undefined,
-        quoteSource: post.quoteSource ?? undefined,
-        media: items,
-        poll: post.poll
-          ? { question: post.poll.question, options: post.poll.options.map((o) => o.label) }
-          : undefined,
-      }}
-    />
+    <LeftRailShell nav={SIDEBAR_NAV.feed} adSet="seoAi">
+      <PostComposer
+        editing
+        title="Edit post"
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        onSubmit={save}
+        initial={{
+          format: post.format,
+          body: post.body ?? "",
+          bg,
+          categoryKey: post.category?.key,
+          linkUrl: post.linkUrl ?? undefined,
+          quoteSource: post.quoteSource ?? undefined,
+          media: items,
+          poll: post.poll
+            ? { question: post.poll.question, options: post.poll.options.map((o) => o.label) }
+            : undefined,
+        }}
+      />
+    </LeftRailShell>
   )
 }

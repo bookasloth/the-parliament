@@ -2,11 +2,13 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { Search, PenSquare } from "lucide-react"
 import { colorAvatar } from "@/lib/avatar"
-import { SponsoredCard } from "@/components/shared/SponsoredCard"
+import { useAdImpression } from "@/lib/ad-beacon"
+import { SHUBHAM_DATARKAR_AD } from "@/config/sponsor-ads"
 import type { ConversationSummary } from "@/modules/messaging/types"
 
 export function ChatSidebar({
@@ -18,8 +20,10 @@ export function ChatSidebar({
 }) {
   const pathname = usePathname()
   const [search, setSearch] = useState("")
+  const adRef = useAdImpression<HTMLAnchorElement>(SHUBHAM_DATARKAR_AD.id, "alerts")
 
   const activeId = pathname.startsWith("/messages/") ? pathname.split("/")[2] : null
+  const adActive = pathname === "/messages/sponsored"
   const totalChats = conversations.length
 
   const filtered = conversations.filter(
@@ -61,6 +65,34 @@ export function ChatSidebar({
       {/* Chat list */}
       <nav className="flex-1 overflow-y-auto px-2 pb-3">
         <ul className="space-y-0.5">
+          {/* Sponsored message — styled as a chat row, opens the sponsor's
+              message in the pane. Green accent + "Sponsored" pill mark it. */}
+          {showAd && (
+            <li>
+              <Link
+                ref={adRef}
+                href="/messages/sponsored"
+                className={`flex items-center gap-3 rounded-[5px] border-l-[3px] px-2.5 py-2.5 transition-colors ${
+                  adActive ? "border-emerald-500 bg-emerald-50/60" : "border-emerald-400 hover:bg-gray-50"
+                }`}
+              >
+                <Image
+                  src={SHUBHAM_DATARKAR_AD.avatarUrl}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 flex-shrink-0 rounded-[4px] object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h6 className="truncate text-sm font-semibold text-gray-900">{SHUBHAM_DATARKAR_AD.advertiser}</h6>
+                    <span className="flex-shrink-0 rounded-[3px] bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Sponsored</span>
+                  </div>
+                  <p className="truncate text-xs text-gray-500">{SHUBHAM_DATARKAR_AD.preview}</p>
+                </div>
+              </Link>
+            </li>
+          )}
           {filtered.map((c) => {
             const active = c.id === activeId
             return (
@@ -113,13 +145,6 @@ export function ChatSidebar({
           )}
         </ul>
       </nav>
-
-      {/* Pinned sponsor card (Alerts slot) — always visible below the list. */}
-      {showAd && (
-        <div className="flex-shrink-0 border-t border-gray-200 p-3">
-          <SponsoredCard placement="alerts" />
-        </div>
-      )}
     </div>
   )
 }

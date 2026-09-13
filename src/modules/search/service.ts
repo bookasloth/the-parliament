@@ -8,10 +8,10 @@ import { visibleAuthorWhere } from "@/modules/feed/visibility"
 // unfiltered page. This backs all of them with one privacy- and block-aware
 // service over trigram-indexed ILIKE.
 
-export type SearchScope = "all" | "people" | "posts" | "groups" | "events" | "businesses" | "hashtags"
+export type SearchScope = "all" | "people" | "posts" | "events" | "businesses" | "hashtags"
 
 export const SEARCH_SCOPES: readonly SearchScope[] = [
-  "all", "people", "posts", "groups", "events", "businesses", "hashtags",
+  "all", "people", "posts", "events", "businesses", "hashtags",
 ] as const
 
 export function isSearchScope(v: string | null | undefined): v is SearchScope {
@@ -25,15 +25,23 @@ export interface PersonResult {
   headline: string | null
   photoUrl: string | null
   href: string
+  // Enriched so the results page can render the community AlumniProfileCard.
+  batch: string
+  house: string
+  membership: string
+  verified: boolean
+  city: string | null
+  company: string | null
 }
 export interface PostResult {
   id: string
   snippet: string
   authorName: string
+  authorUsername: string | null
+  authorAvatar: string | null
   createdAt: Date
   href: string
 }
-export interface GroupResult { id: string; name: string; description: string | null; memberCount: number; href: string }
 export interface EventResult { id: string; title: string; startsAt: Date; href: string }
 export interface BusinessResult { id: string; name: string; tagline: string | null; slug: string; href: string }
 export interface HashtagResult { tag: string; useCount: number; href: string }
@@ -43,14 +51,13 @@ export interface SearchResults {
   scope: SearchScope
   people: PersonResult[]
   posts: PostResult[]
-  groups: GroupResult[]
   events: EventResult[]
   businesses: BusinessResult[]
   hashtags: HashtagResult[]
 }
 
 const empty = (query: string, scope: SearchScope): SearchResults => ({
-  query, scope, people: [], posts: [], groups: [], events: [], businesses: [], hashtags: [],
+  query, scope, people: [], posts: [], events: [], businesses: [], hashtags: [],
 })
 
 /** How many rows per type: a wider list when a single scope is selected. */
@@ -69,6 +76,12 @@ async function searchPeople(q: string, schoolId: string | undefined, viewerId: s
     headline: r.headline ?? r.profession ?? null,
     photoUrl: r.photoUrl,
     href: r.username ? `/${r.username}` : `/${r.id}`,
+    batch: r.batch?.label ?? "",
+    house: r.house?.name ?? "",
+    membership: r.membershipStatus ?? "student",
+    verified: r.isVerified,
+    city: r.city ?? null,
+    company: r.company ?? null,
   }))
 }
 
@@ -92,33 +105,18 @@ async function searchPosts(q: string, schoolId: string, blocked: Set<string>, li
     take: limit,
     select: {
       id: true, body: true, createdAt: true,
-      author: { select: { displayName: true, legalName: true } },
+      author: { select: { displayName: true, legalName: true, username: true, profile: { select: { photoUrl: true } } } },
     },
   })
   return rows.map((p) => ({
     id: p.id,
-    snippet: (p.body ?? "").slice(0, 160),
+    snippet: (p.body ?? "").slice(0, 220),
     authorName: p.author.displayName || p.author.legalName,
+    authorUsername: p.author.username,
+    authorAvatar: p.author.profile?.photoUrl ?? null,
     createdAt: p.createdAt,
     href: `/feed/${p.id}`,
   }))
-}
-
-async function searchGroups(q: string, schoolId: string, limit: number): Promise<GroupResult[]> {
-  if (limit === 0) return []
-  const rows = await prisma.group.findMany({
-    where: {
-      schoolId,
-      visibility: "public", // private groups don't surface in global search
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-      ],
-    },
-    take: limit,
-    select: { id: true, name: true, description: true, _count: { select: { members: { where: { status: "active" } } } } },
-  })
-  return rows.map((g) => ({ id: g.id, name: g.name, description: g.description, memberCount: g._count.members, href: `/groups/${g.id}` }))
 }
 
 async function searchEvents(q: string, schoolId: string, limit: number): Promise<EventResult[]> {
@@ -184,19 +182,18 @@ export async function searchAll(opts: {
   const schoolId = opts.schoolId
   const blocked = await blockedIdsFor(opts.viewerId)
 
-  const [people, posts, groups, events, businesses, hashtags] = await Promise.all([
+  const [people, posts, events, businesses, hashtags] = await Promise.all([
     searchPeople(q, schoolId, opts.viewerId, limitFor(scope, "people")),
     schoolId ? searchPosts(q, schoolId, blocked, limitFor(scope, "posts")) : Promise.resolve([]),
-    schoolId ? searchGroups(q, schoolId, limitFor(scope, "groups")) : Promise.resolve([]),
     schoolId ? searchEvents(q, schoolId, limitFor(scope, "events")) : Promise.resolve([]),
     schoolId ? searchBusinesses(q, schoolId, limitFor(scope, "businesses")) : Promise.resolve([]),
     searchHashtags(q, limitFor(scope, "hashtags")),
   ])
 
-  return { query: q, scope, people, posts, groups, events, businesses, hashtags }
+  return { query: q, scope, people, posts, events, businesses, hashtags }
 }
 
 /** Total result count across all types (for the empty-state check). */
 export function totalResults(r: SearchResults): number {
-  return r.people.length + r.posts.length + r.groups.length + r.events.length + r.businesses.length + r.hashtags.length
+  return r.people.length + r.posts.length + r.events.length + r.businesses.length + r.hashtags.length
 }

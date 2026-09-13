@@ -7,6 +7,8 @@ import {
 import { requireUser } from "@/modules/auth/session"
 import { getPostById } from "@/modules/feed/query"
 import { prisma } from "@/lib/prisma"
+import { LeftRailShell } from "@/components/shared/ProfileSidebar"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
 export const dynamic = "force-dynamic"
 
@@ -61,7 +63,8 @@ export default async function PostAnalyticsPage({
   ]
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 space-y-5">
+    <LeftRailShell nav={SIDEBAR_NAV.feed} adSet="seoAi">
+    <div className="mx-auto max-w-4xl space-y-5">
       <Link
         href={`/feed/${post.id}`}
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600"
@@ -131,5 +134,6 @@ export default async function PostAnalyticsPage({
         )}
       </div>
     </div>
+    </LeftRailShell>
   )
 }

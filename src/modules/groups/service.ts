@@ -91,6 +91,7 @@ export interface GroupPageMember {
   yearsLabel: string | null
   role: string
   isVerified: boolean
+  membership: string
 }
 export interface GroupContributor {
   id: string
@@ -183,7 +184,7 @@ export async function getGroupPageData(
     ? await prisma.user.findMany({
         where: { id: { in: wantedIds } },
         select: {
-          id: true, displayName: true, legalName: true, username: true, isVerified: true,
+          id: true, displayName: true, legalName: true, username: true, isVerified: true, membershipStatus: true,
           profile: { select: { photoUrl: true, batch: { select: { startYear: true, endYear: true } } } },
         },
       })
@@ -203,6 +204,7 @@ export async function getGroupPageData(
       yearsLabel: yearsLabel(u?.profile?.batch ?? null),
       role: roleByUser.get(uid) ?? "member",
       isVerified: u?.isVerified ?? false,
+      membership: u?.membershipStatus ?? "student",
     }
   })
 

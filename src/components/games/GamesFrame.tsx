@@ -11,6 +11,9 @@ export function GamesFrame({ rail, guide, children }: { rail: React.ReactNode; g
   const path = usePathname() ?? ""
   // Full width (no rails) for a live match board AND the match-results/settlement page.
   const fullBleed = /\/games\/vyapaar\/matches\/|\/games\/vyapaar\/rooms\/[^/]+\/settlements/.test(path)
+  // Leaderboard pages hide the how-to-play guide rail (instructions are noise there)
+  // and carry their own controls/leaders in the page body.
+  const noGuide = /\/leaderboard\//.test(path)
 
   if (fullBleed) {
     return <div className="mx-auto max-w-[1700px] px-2 py-3 sm:px-4">{children}</div>
@@ -23,9 +26,11 @@ export function GamesFrame({ rail, guide, children }: { rail: React.ReactNode; g
           <div className="sticky top-20">{rail}</div>
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
-        <aside className="hidden w-[300px] flex-shrink-0 xl:block">
-          <div className="sticky top-20">{guide}</div>
-        </aside>
+        {!noGuide && (
+          <aside className="hidden w-[300px] flex-shrink-0 xl:block">
+            <div className="sticky top-20">{guide}</div>
+          </aside>
+        )}
       </div>
     </div>
   )

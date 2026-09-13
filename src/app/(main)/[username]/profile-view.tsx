@@ -27,9 +27,7 @@ import { VerifiedBadge } from "@/components/shared/VerifiedBadge"
 import { AchievementsPanel, type AchievementBadge } from "@/components/shared/AchievementsPanel"
 import { Card, SectionTitle, SocialLinks, R_EL } from "@/components/shared/profile-kit"
 import BadgeCard from "@/components/shared/badges/BadgeCard"
-import ShareButton from "@/components/shared/badges/ShareButton"
 import UnlockCelebration from "@/components/shared/badges/UnlockCelebration"
-import { RARITY_TONE, RARITY_LABEL, RARITY_ORDER } from "@/components/shared/badges/rarity"
 import type { AchievementsSummary } from "@/modules/badges/profile"
 import { keyToSlug } from "@/modules/badges/slug"
 
@@ -144,6 +142,15 @@ type Tab = "posts" | "tagged" | "about" | "followers" | "badges"
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
   const router = useRouter()
   const [tab, setTabState] = useState<Tab>(initialTab)
+  // Soft navigations (e.g. /user → /user/badges) reuse this mounted component,
+  // so useState(initialTab) keeps the old tab and the target tab never shows
+  // until a hard refresh. Sync during render when the route's initialTab changes
+  // (React's "adjust state on prop change" pattern — no effect needed).
+  const [prevInitialTab, setPrevInitialTab] = useState<Tab>(initialTab)
+  if (initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab)
+    setTabState(initialTab)
+  }
   const setTab = (t: Tab) => {
     setTabState(t)
     if (typeof window !== "undefined") {
@@ -413,7 +420,7 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
             )}
 
             {tab === "badges" && data.achievements && (
-              <BadgesTab summary={data.achievements} username={data.username} isOwn={isOwn} firstName={data.name.split(" ")[0]} />
+              <BadgesTab summary={data.achievements} isOwn={isOwn} firstName={data.name.split(" ")[0]} />
             )}
 
             {tab === "about" && (
@@ -729,49 +736,32 @@ function MoreMenu({ username }: { username: string }) {
 // ─────────────────────────────────────────────
 function BadgesTab({
   summary,
-  username,
   isOwn,
   firstName,
 }: {
   summary: AchievementsSummary
-  username: string
   isOwn: boolean
   firstName: string
 }) {
+  // One flat list, no category segmentation. Public sees only unlocked badges;
+  // the owner sees the whole catalogue (locked ones too).
+  const all = summary.categories.flatMap((c) => c.badges)
+  const shown = isOwn ? all : all.filter((b) => b.earned)
   return (
     <div className="flex flex-col gap-[18px]">
       {isOwn && summary.recentUnlocks.length > 0 && <UnlockCelebration unlocks={summary.recentUnlocks} />}
 
-      {/* Quick actions (summary box hidden per design) */}
-      <div className="flex items-center justify-end gap-2">
-        {isOwn && <ShareButton path={`/${username}/badges`} />}
-        <Link href="/badges" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-          All badges
-        </Link>
-        <Link href="/leaderboard" className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-          Leaderboard
-        </Link>
-      </div>
-
-      {/* One card per category */}
-      {summary.categories.map((cat) => (
-        <Card key={cat.key}>
-          <SectionTitle
-            action={
-              <span className="text-xs font-normal text-gray-400">
-                {cat.badges.filter((b) => b.earned).length}/{cat.badges.length}
-              </span>
-            }
-          >
-            {cat.label}
-          </SectionTitle>
-          <div className="grid grid-cols-3 gap-4 px-7 pb-6 pt-2 sm:grid-cols-5 md:grid-cols-6">
-            {cat.badges.map((b) => (
-              <BadgeCard key={b.key} badge={b} href={`/badges/${keyToSlug(b.key)}`} />
-            ))}
-          </div>
-        </Card>
-      ))}
+      <Card>
+        <div className="grid grid-cols-3 gap-4 px-7 py-6 sm:grid-cols-5 md:grid-cols-6">
+          {shown.length === 0 ? (
+            <p className="col-span-full py-8 text-center text-sm text-gray-400">
+              {isOwn ? "No badges yet — stay active to start earning." : `${firstName} hasn't unlocked any badges yet.`}
+            </p>
+          ) : (
+            shown.map((b) => <BadgeCard key={b.key} badge={b} href={`/badges/${keyToSlug(b.key)}`} />)
+          )}
+        </div>
+      </Card>
     </div>
   )
 }

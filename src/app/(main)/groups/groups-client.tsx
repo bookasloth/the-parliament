@@ -165,7 +165,7 @@ export default function GroupsClient({
 
         {/* Groups Grid */}
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filtered.map(g => (
               <div key={g.id} className="bg-white border border-gray-200 rounded-[5px] overflow-hidden group hover:shadow-md transition-shadow">
                 {/* Cover */}
