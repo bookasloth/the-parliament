@@ -15,9 +15,8 @@ const BADGE_FALLBACK = "/achievements/badge.svg"
  * icons come from the DB (`badge.iconUrl`); trophies come from TrophyCase.
  */
 
-const EGG_ICON = "/achievements/rotten-egg.svg"
-const KARMA_ICON = "/achievements/karma.svg"
-const SHELL_ICON = "/achievements/shell.svg"
+const EGG_ICON = "/achievements/egg.png"
+const KARMA_ICON = "/achievements/tithonia.png"
 
 const BADGES_SHOWN = 9
 
@@ -38,7 +37,7 @@ const fmt = (n: number) => n.toLocaleString("en-US")
 const SUBHEAD = "mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500"
 
 export function AchievementsPanel({ data }: { data: AchievementsData }) {
-  const { ownerFirstName, ownerUsername, badges, totalBadges, eggs, shells, karma } = data
+  const { ownerFirstName, ownerUsername, badges, totalBadges, eggs, karma } = data
   // Order is set upstream in loadProfile (Committee first, then each category
   // top→lower). Just take the first 6.
   const shown = badges.slice(0, BADGES_SHOWN)
@@ -96,12 +95,11 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
           View Your Badges
         </Link>
 
-        {/* Collectables — stacked so the full numbers are always visible */}
+        {/* Collectables — stacked on mobile, side by side on desktop */}
         <h4 className={SUBHEAD}>Collectables</h4>
-        <div className="grid grid-cols-1 gap-2">
-          <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Eggs" />
-          <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma" />
-          <Collectable icon={SHELL_ICON} value={fmt(shells)} label="Shells" />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Collectable icon={EGG_ICON} value={fmt(eggs)} label="Rotten Eggs" />
+          <Collectable icon={KARMA_ICON} value={fmt(karma)} label="Karma Points" />
         </div>
       </div>
     </div>
@@ -110,13 +108,13 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
 
 function Collectable({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
-    <div className="flex items-center justify-between rounded-[5px] border border-gray-200 bg-white px-3 py-2">
-      <div className="flex items-center gap-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={icon} alt="" className="h-5 w-5 flex-shrink-0 object-contain" />
-        <p className="text-xs font-semibold text-gray-500">{label}</p>
+    <div className="flex items-center gap-2.5 rounded-[8px] border border-gray-200 bg-gray-50/60 px-3 py-2.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={icon} alt="" className="h-8 w-8 flex-shrink-0 object-contain" />
+      <div className="leading-tight">
+        <p className="text-base font-bold tabular-nums text-gray-900">{value}</p>
+        <p className="text-xs font-medium text-gray-500">{label}</p>
       </div>
-      <p className="text-sm font-bold tabular-nums text-gray-900">{value}</p>
     </div>
   )
 }
