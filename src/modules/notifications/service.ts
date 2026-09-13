@@ -38,6 +38,7 @@ export type NotificationKind =
   | "endorsement_request"
   | "endorsement_received"
   | "new_message"
+  | "incoming_call"
   | "game_nudge"
   | "egg_thrown"
   | "egg_volunteer"

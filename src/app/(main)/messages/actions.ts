@@ -2,6 +2,7 @@
 
 import { requireUser } from "@/modules/auth/session"
 import * as svc from "@/modules/messaging/service"
+import { ringDmCall, endDmRing } from "@/modules/calls/service"
 import { signRealtimeToken } from "@/lib/supabase-realtime"
 import { enforceRateLimit } from "@/lib/rate-limit"
 import type { ConversationSummary, MessageView } from "@/modules/messaging/types"
@@ -12,6 +13,27 @@ export async function realtimeTokenAction(): Promise<{ token: string; userId: st
     return { token: signRealtimeToken(u.id), userId: u.id }
   } catch {
     return null
+  }
+}
+
+/** Ring the other participant that the caller just opened a huddle. Best-effort
+ *  (the call is live regardless) — fire-and-forget from the client on call start. */
+export async function startCallRingAction(conversationId: string) {
+  try {
+    const u = await requireUser()
+    await ringDmCall(u.id, conversationId)
+  } catch {
+    /* best-effort ring */
+  }
+}
+
+/** Tell the other participant the caller hung up / cancelled the ring. */
+export async function endCallRingAction(conversationId: string) {
+  try {
+    const u = await requireUser()
+    await endDmRing(u.id, conversationId)
+  } catch {
+    /* best-effort */
   }
 }
 

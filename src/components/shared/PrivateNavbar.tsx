@@ -11,7 +11,7 @@ import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
   FileText, Building2, ChevronRight,
-  ArrowUpRight, ShoppingBag,
+  ArrowUpRight, ShoppingBag, Video, PhoneOff,
 } from "lucide-react"
 import { LogoMark } from "@/components/shared/Logo"
 
@@ -244,6 +244,9 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
   const [msgCount, setMsgCount] = useState(0)
+  // Incoming video call ring (global — fires wherever the callee is on the app).
+  // Uses the existing pathnameRef (declared below) to suppress the modal in-thread.
+  const [ringCall, setRingCall] = useState<{ conversationId: string; callerName: string; callerAvatar: string | null } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -307,6 +310,17 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
       await supabase.realtime.setAuth(auth.token)
       channel = supabase.channel(`user:${auth.userId}`, { config: { private: true } })
       channel.on("broadcast", { event: "notification" }, () => { load(); loadMsg() })
+      channel.on("broadcast", { event: "incoming_call" }, ({ payload }) => {
+        const p = payload as { conversationId: string; callerName: string; callerAvatar: string | null }
+        // Already sitting in that thread? Its own in-view join banner covers it —
+        // don't double up with the global modal.
+        if (pathnameRef.current === `/messages/${p.conversationId}`) return
+        setRingCall({ conversationId: p.conversationId, callerName: p.callerName, callerAvatar: p.callerAvatar })
+      })
+      channel.on("broadcast", { event: "call_ended" }, ({ payload }) => {
+        const p = payload as { conversationId: string }
+        setRingCall((r) => (r && r.conversationId === p.conversationId ? null : r))
+      })
       channel.subscribe()
     })()
     return () => {
@@ -314,6 +328,20 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
       if (channel) supabase.removeChannel(channel)
     }
   }, [load, loadMsg])
+
+  // Auto-dismiss an unanswered ring after 45s (a genuine missed call).
+  useEffect(() => {
+    if (!ringCall) return
+    const t = setTimeout(() => setRingCall(null), 45_000)
+    return () => clearTimeout(t)
+  }, [ringCall])
+
+  function acceptCall() {
+    if (!ringCall) return
+    const id = ringCall.conversationId
+    setRingCall(null)
+    router.push(`/messages/${id}?join=1`)
+  }
 
   function markOne(id: string, wasRead: boolean) {
     if (wasRead) return
@@ -350,6 +378,39 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {/* Global incoming-call ring — shows anywhere on the app (callee needn't be
+          in the chat). Accept deep-links into the thread and auto-joins. */}
+      {ringCall && (
+        <div className="fixed inset-x-0 top-4 z-[60] flex justify-center px-4">
+          <div className="flex w-full max-w-sm items-center gap-3 rounded-[5px] border border-gray-200 bg-white p-3 shadow-2xl ring-1 ring-black/5">
+            {ringCall.callerAvatar ? (
+              <Image src={ringCall.callerAvatar} alt="" width={44} height={44} className="h-11 w-11 rounded-[5px] object-cover" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
+                <Video className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-900">{ringCall.callerName}</p>
+              <p className="text-xs text-gray-500">Incoming video call…</p>
+            </div>
+            <button
+              onClick={() => setRingCall(null)}
+              title="Decline"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+            >
+              <PhoneOff className="h-4 w-4" />
+            </button>
+            <button
+              onClick={acceptCall}
+              title="Join call"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-700 animate-pulse"
+            >
+              <Video className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
 
         {/* Logo */}

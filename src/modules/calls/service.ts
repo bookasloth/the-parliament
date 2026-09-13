@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { getCurrent } from "@/modules/membership/service"
+import { broadcastToUser } from "@/lib/supabase-realtime"
+import { sendNotification } from "@/modules/notifications/service"
 import {
   evaluateQuota,
   tierHasCalling,
@@ -254,6 +256,75 @@ export async function recordParticipantLeft(opts: {
       data: { status: "consumed", consumedAt: new Date() },
     })
   }
+}
+
+/** True when this conversation has a live DM huddle room right now. Drives the
+ *  "Join call in progress" banner so someone who wasn't watching the live ring
+ *  broadcast can still join an in-flight call from a cold page load. */
+export async function isDmCallLive(conversationId: string): Promise<boolean> {
+  const s = await prisma.callSession.findUnique({
+    where: { roomName: roomForDm(conversationId) },
+    select: { status: true },
+  })
+  return s?.status === "live"
+}
+
+/** The other participant of a 1:1 conversation, or null. */
+async function otherParticipant(userId: string, conversationId: string): Promise<string | null> {
+  const row = await prisma.conversationParticipant.findFirst({
+    where: { conversationId, userId: { not: userId } },
+    select: { userId: true },
+  })
+  return row?.userId ?? null
+}
+
+/**
+ * Ring the OTHER participant when `callerId` starts a DM huddle. Reaches them
+ * wherever they are — NOT just if they happen to have this exact thread open:
+ *   - a broadcast to their per-user channel pops the global incoming-call modal;
+ *   - a Notification gives the bell row + web-push, so a backgrounded or closed
+ *     tab still rings.
+ * Best-effort: the call is already live regardless of whether this lands.
+ */
+export async function ringDmCall(callerId: string, conversationId: string): Promise<void> {
+  const otherId = await otherParticipant(callerId, conversationId)
+  if (!otherId) return
+  const caller = await prisma.user.findUnique({
+    where: { id: callerId },
+    select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
+  })
+  const callerName = caller?.displayName || caller?.legalName || "A member"
+  const callerAvatar = caller?.profile?.photoUrl ?? null
+  await broadcastToUser(otherId, "incoming_call", {
+    conversationId,
+    roomName: roomForDm(conversationId),
+    callerId,
+    callerName,
+    callerAvatar,
+  })
+  await sendNotification({
+    userId: otherId,
+    kind: "incoming_call",
+    title: `${callerName} is calling you`,
+    body: "Tap to join the video call",
+    entityType: "conversation",
+    entityId: conversationId,
+    actorId: callerId,
+  })
+}
+
+/** Tell the other participant the caller ended/cancelled the ring, and clear the
+ *  unread "incoming call" bell row so a missed-then-ended ring doesn't linger. */
+export async function endDmRing(callerId: string, conversationId: string): Promise<void> {
+  const otherId = await otherParticipant(callerId, conversationId)
+  if (!otherId) return
+  await broadcastToUser(otherId, "call_ended", { conversationId })
+  await prisma.notification
+    .updateMany({
+      where: { userId: otherId, type: "incoming_call", entityType: "conversation", entityId: conversationId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    })
+    .catch(() => {})
 }
 
 /** Mark a room finished. */
