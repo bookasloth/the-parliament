@@ -10,7 +10,7 @@ import { realtimeTokenAction } from "@/app/(main)/messages/actions"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
-  FileText, UsersRound, Building2, Clock, TrendingUp, ChevronRight,
+  FileText, UsersRound, Building2, ChevronRight,
   ArrowUpRight, ShoppingBag,
 } from "lucide-react"
 import { LogoMark } from "@/components/shared/Logo"
@@ -65,12 +65,18 @@ const SEARCH_SCOPES = [
   { key: "businesses", label: "Businesses", icon: Building2, href: "/search?scope=businesses" },
 ]
 
-const SUGGESTED_SEARCHES = [
-  { text: "Alumni Reunion 2026", trending: true },
-  { text: "Batch 2010 memories", trending: false },
-  { text: "Mentorship program", trending: true },
-  { text: "JNV Nagpur campus", trending: false },
-  { text: "Karma leaderboard", trending: false },
+const SUGGESTED_SEARCHES: {
+  label: string
+  href: string
+  sub?: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: "Trending" | "Ad"
+  external?: boolean
+}[] = [
+  { label: "NNAWCA Website", href: "/search?q=NNAWCA+Website", icon: Search },
+  { label: "Best Appointment Booking Software", sub: "bookasloth.com", href: "https://bookasloth.com", icon: ShoppingBag, badge: "Ad", external: true },
+  { label: "Play Game", href: "/games", icon: Zap },
+  { label: "How to Become NNAWCA Member", href: "/membership", icon: Star },
 ]
 
 function notifTime(iso: string): string {
@@ -131,20 +137,29 @@ function SearchPanel({ query }: { query: string }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Suggested searches</p>
           </div>
           <ul className="pb-2">
-            {SUGGESTED_SEARCHES.map((s, i) => (
-              <li key={i}>
-                <a
-                  href={`/search?q=${encodeURIComponent(s.text)}`}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                >
-                  {s.trending
-                    ? <TrendingUp className="h-3.5 w-3.5 text-brand flex-shrink-0" />
-                    : <Clock className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />}
-                  <span className="text-sm text-gray-700">{s.text}</span>
-                  {s.trending && <span className="ml-auto rounded-[3px] bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">Trending</span>}
-                </a>
-              </li>
-            ))}
+            {SUGGESTED_SEARCHES.map((s, i) => {
+              const Icon = s.icon
+              return (
+                <li key={i}>
+                  <a
+                    href={s.href}
+                    {...(s.external ? { target: "_blank", rel: "sponsored noopener noreferrer" } : {})}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0 text-brand" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-gray-700">{s.label}</span>
+                      {s.sub && <span className="block truncate text-[11px] text-gray-400">{s.sub}</span>}
+                    </span>
+                    {s.badge && (
+                      <span className={`ml-auto flex-shrink-0 rounded-[3px] px-2 py-0.5 text-[10px] font-semibold ${s.badge === "Ad" ? "bg-amber-100 text-amber-700" : "bg-brand/10 text-brand"}`}>
+                        {s.badge}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              )
+            })}
           </ul>
         </>
       )}
