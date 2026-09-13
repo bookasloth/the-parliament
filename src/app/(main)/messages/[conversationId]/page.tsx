@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { requireUser } from "@/modules/auth/session"
 import { prisma } from "@/lib/prisma"
 import { getMessages, getConversationMeta } from "@/modules/messaging/service"
+import { isDmCallLive } from "@/modules/calls/service"
 import { isBirthdayNear, ageYears } from "@/config/chat-themes"
 import { ForbiddenError } from "@/lib/errors"
 import ConversationView from "./ConversationView"
@@ -13,9 +14,10 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
   const user = await requireUser()
 
   try {
-    const [messages, meta] = await Promise.all([
+    const [messages, meta, callLive] = await Promise.all([
       getMessages(user.id, conversationId),
       getConversationMeta(user.id, conversationId),
+      isDmCallLive(conversationId),
     ])
 
     // Theme context: birthday of either participant + under-18 (minor) gate for
@@ -38,6 +40,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
         initialOtherLastReadAt={meta.otherLastReadAt}
         initialMuted={meta.muted}
         initialBlocked={meta.blocked}
+        initialCallLive={callLive}
         birthday={birthday}
         suppressValentine={suppressValentine}
       />

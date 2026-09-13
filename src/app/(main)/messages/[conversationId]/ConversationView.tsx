@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import {
   ArrowLeft, MoreVertical, Send, UserCheck, Trash2,
@@ -25,6 +25,7 @@ import {
   editMessageAction, deleteMessageAction, refreshMessagesAction,
   toggleReactionAction, setMutedAction, clearConversationAction,
   blockUserAction, reportUserAction,
+  startCallRingAction, endCallRingAction,
 } from "../actions"
 
 const EMOJIS = [
@@ -57,6 +58,7 @@ interface Props {
   initialOtherLastReadAt: string | null
   initialMuted: boolean
   initialBlocked: boolean
+  initialCallLive: boolean
   birthday: boolean
   suppressValentine: boolean
 }
@@ -68,9 +70,10 @@ function myReaction(msg: MessageView, viewerId: string): string | null {
 
 export default function ConversationView({
   conversationId, viewerId, otherUser, initialMessages, initialOtherLastReadAt,
-  initialMuted, initialBlocked, birthday, suppressValentine,
+  initialMuted, initialBlocked, initialCallLive, birthday, suppressValentine,
 }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<MessageView[]>(initialMessages)
   const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(initialOtherLastReadAt)
   const [input, setInput] = useState("")
@@ -90,7 +93,9 @@ export default function ConversationView({
   // Video calling (LiveKit huddle). callSession = joined; incomingCall = peer
   // started one and we haven't joined yet (Slack-style join banner).
   const [callSession, setCallSession] = useState<{ token: string; url: string } | null>(null)
-  const [incomingCall, setIncomingCall] = useState(false)
+  // Seed the join banner from server truth: if a huddle is already live in this
+  // room, a cold page load still offers "Join" (not just a live ring broadcast).
+  const [incomingCall, setIncomingCall] = useState(initialCallLive)
   const [callConnecting, setCallConnecting] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState(false)
   // In-chat notice when a call is blocked (inactive/quota) instead of a browser alert.
@@ -183,6 +188,9 @@ export default function ConversationView({
           typingClearRef.current = setTimeout(() => setOtherTyping(false), 3000)
         })
         .on("broadcast", { event: "call" }, ({ payload }) => {
+          // Live ring while BOTH sit in this thread. The cross-page ring (peer
+          // elsewhere) is handled globally by PrivateNavbar's user-channel modal;
+          // this only keeps the in-thread banner in sync (start shows / end hides).
           const p = payload as { userId: string; action: "start" | "end" }
           if (p.userId === viewerId) return
           setIncomingCall(p.action === "start")
@@ -376,7 +384,10 @@ export default function ConversationView({
         return
       }
       if (announce) {
+        // In-thread peer: instant banner via the conversation channel.
         channelRef.current?.send({ type: "broadcast", event: "call", payload: { userId: viewerId, action: "start" } })
+        // Peer anywhere else (or tab closed): server-side ring → global modal + web-push + bell.
+        void startCallRingAction(conversationId)
       }
       setIncomingCall(false)
       setCallSession({ token: data.token, url: data.url })
@@ -391,6 +402,7 @@ export default function ConversationView({
     setCallSession(null)
     callStartedAtRef.current = null
     channelRef.current?.send({ type: "broadcast", event: "call", payload: { userId: viewerId, action: "end" } })
+    void endCallRingAction(conversationId)
     if (startedAt) {
       const sec = Math.round((Date.now() - startedAt) / 1000)
       const dur = sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`
@@ -399,6 +411,25 @@ export default function ConversationView({
       })
     }
   }
+
+  // Deep-link auto-join: the global incoming-call modal (PrivateNavbar) sends the
+  // callee here with ?join=1. Join once, then strip the flag so a remount/back
+  // doesn't re-trigger it.
+  const autoJoinRef = useRef(false)
+  useEffect(() => {
+    if (autoJoinRef.current || callSession) return
+    if (searchParams.get("join") === "1") {
+      autoJoinRef.current = true
+      // Defer past the effect body so the join's setState doesn't cascade-render.
+      const t = setTimeout(() => {
+        void connectCall(false)
+        router.replace(`/messages/${conversationId}`)
+      }, 0)
+      return () => clearTimeout(t)
+    }
+    // connectCall is stable enough for this one-shot; deps kept minimal on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, callSession, conversationId, router])
 
   async function toggleMute() {
     setMenuOpen(false)
@@ -577,7 +608,15 @@ export default function ConversationView({
       )}
 
       {callSession && (
-        <CallHuddle token={callSession.token} serverUrl={callSession.url} onLeave={leaveCall} />
+        <CallHuddle
+          token={callSession.token}
+          serverUrl={callSession.url}
+          onLeave={leaveCall}
+          onError={(msg) => {
+            leaveCall()
+            setCallBlock(msg)
+          }}
+        />
       )}
 
       {paywallOpen && (

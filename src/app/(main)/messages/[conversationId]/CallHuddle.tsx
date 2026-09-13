@@ -13,10 +13,14 @@ export default function CallHuddle({
   token,
   serverUrl,
   onLeave,
+  onError,
 }: {
   token: string
   serverUrl: string
   onLeave: () => void
+  /** Connection failed (bad LIVEKIT_URL, network, denied media). Surface it
+   *  instead of stranding the user on a silent black overlay. */
+  onError?: (message: string) => void
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black" data-lk-theme="default">
@@ -27,6 +31,13 @@ export default function CallHuddle({
         audio
         video
         onDisconnected={onLeave}
+        onError={(e) =>
+          onError?.(
+            e?.message
+              ? `Couldn't connect the call: ${e.message}`
+              : "Couldn't connect the call. Check your camera/mic permissions and try again.",
+          )
+        }
         style={{ height: "100dvh" }}
       >
         <VideoConference />
