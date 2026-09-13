@@ -67,6 +67,10 @@ const nextConfig: NextConfig = {
   // is not in the default list, so its full icon set was being pulled in.
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react"],
+    // Gallery/post uploads go through Server Actions and allow 5MB images.
+    // Default Server Action body limit is 1MB — anything larger is rejected at
+    // the framework boundary before the action runs, so raise it past our cap.
+    serverActions: { bodySizeLimit: "6mb" },
   },
   // Friendly aliases → canonical auth routes.
   async redirects() {

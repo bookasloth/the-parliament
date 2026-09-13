@@ -65,14 +65,21 @@ export default function AlbumClient({ album, initialImages, viewerId, isAdmin, a
     fd.append("albumId", album.id)
     fd.append("width", String(p.width))
     fd.append("height", String(p.height))
-    const res = await uploadMemberPhotoAction(fd)
-    if ("error" in res) {
+    try {
+      const res = await uploadMemberPhotoAction(fd)
+      if ("error" in res) {
+        setUploads((u) => u.map((x) => (x.tempId === p.tempId ? { ...x, status: "error" } : x)))
+        flash(res.error, "err")
+      } else {
+        URL.revokeObjectURL(p.previewUrl)
+        setUploads((u) => u.filter((x) => x.tempId !== p.tempId))
+        setImages((imgs) => [...imgs, res.image])
+      }
+    } catch {
+      // Network / body-limit rejection thrown at the framework boundary — never
+      // leave the tile stuck on "Uploading…"; show a retryable error.
       setUploads((u) => u.map((x) => (x.tempId === p.tempId ? { ...x, status: "error" } : x)))
-      flash(res.error, "err")
-    } else {
-      URL.revokeObjectURL(p.previewUrl)
-      setUploads((u) => u.filter((x) => x.tempId !== p.tempId))
-      setImages((imgs) => [...imgs, res.image])
+      flash(`${p.name}: upload failed — try again`, "err")
     }
   }
 
