@@ -108,8 +108,9 @@ export default function GroupDetailClient({ data, loggedIn }: { data: GroupPageD
                 {joined ? "Joined" : "Join"}
               </button>
               <button
-                onClick={() => { setMsg(null); setModalOpen(true) }}
-                className="rounded-[4px] bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
+                disabled
+                title="Requests are coming soon"
+                className="cursor-not-allowed rounded-[4px] bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
               >
                 + Request
               </button>
