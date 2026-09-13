@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { Plus } from "lucide-react"
 import type { BadgeRarity } from "@/config/badges"
+import { keyToSlug } from "@/modules/badges/slug"
 
 const BADGE_FALLBACK = "/achievements/badge.svg"
 
@@ -57,25 +59,37 @@ export function AchievementsPanel({ data }: { data: AchievementsData }) {
         {totalBadges === 0 ? (
           <p className="mb-2 text-xs text-gray-400">No badges yet — stay active to start earning.</p>
         ) : (
+          // Mobile: up to 9 badges + a "+N" overflow tile (the current 5×2 grid).
+          // Desktop: exactly 6 badges + a "+" tile → all badges. Each badge opens
+          // its own detail page; only the "+" goes to the full badges list.
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {shown.map((b) => (
+            {shown.map((b, i) => (
               <Link
                 key={b.key}
-                href={badgesHref}
-                className="flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] p-1.5 hover:border-brand"
+                href={`/badges/${keyToSlug(b.key)}`}
+                className={`flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] p-1.5 hover:border-brand ${i >= 6 ? "lg:hidden" : ""}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={b.iconUrl || BADGE_FALLBACK} alt={b.label} className="max-h-[28px] max-w-[28px] object-contain" />
               </Link>
             ))}
+            {/* Mobile-only overflow count */}
             {overflow > 0 && (
               <Link
                 href={badgesHref}
-                className="flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] text-xs font-bold text-brand hover:border-brand"
+                className="flex h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] text-xs font-bold text-brand hover:border-brand lg:hidden"
               >
                 +{overflow}
               </Link>
             )}
+            {/* Desktop-only "+" — the 7th slot, links to all badges */}
+            <Link
+              href={badgesHref}
+              aria-label="View all badges"
+              className="hidden h-[46px] w-[46px] items-center justify-center rounded-[8px] border border-[#ddd] bg-[#f7f7f7] text-brand hover:border-brand lg:flex"
+            >
+              <Plus className="h-5 w-5" />
+            </Link>
           </div>
         )}
         <Link href={badgesHref} className="mb-5 inline-block text-xs font-semibold text-brand hover:underline">
