@@ -57,10 +57,10 @@ const PILLARS = [
 ]
 
 const STATS = [
-  { icon: Users, to: 1200, suffix: "+", label: "Alumni connected", accent: 0 as const },
-  { icon: CalendarHeart, to: 48, suffix: "", label: "Events & reunions", accent: 1 as const },
-  { icon: GraduationCap, to: 60, suffix: "+", label: "Students supported", accent: 2 as const },
-  { icon: Heart, to: 15, suffix: "+", label: "Years of the bond", accent: 3 as const },
+  { icon: Users, to: 500, suffix: "+", label: "Alumni connected", accent: 0 as const },
+  { icon: CalendarHeart, to: 20, suffix: "", label: "Events & reunions", accent: 1 as const },
+  { icon: GraduationCap, to: 10, suffix: "+", label: "Students supported", accent: 2 as const },
+  { icon: Heart, to: 40, suffix: "+", label: "Years of the bond", accent: 3 as const },
 ]
 
 const VALUES = [
