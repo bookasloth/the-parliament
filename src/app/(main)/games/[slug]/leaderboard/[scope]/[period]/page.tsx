@@ -79,8 +79,6 @@ export default async function LeaderboardPage({
         </Link>
       </header>
 
-      <LeaderboardTabs slug={cfg.slug} scope={scope} period={period} anchor={anchorParam} />
-
       <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-5">
           {podium.length > 0 ? (
@@ -167,30 +165,41 @@ export default async function LeaderboardPage({
           )}
         </div>
 
-        <aside className="space-y-3">
-          <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-gray-900">
-            <Trophy className="h-5 w-5 text-amber-500" /> Leaders · {PERIOD_LABEL[period]}
-          </h2>
-          {rail.map(({ scope: s, top, movement: m }) => (
-            <Link
-              key={s}
-              href={scopeLink(s)}
-              prefetch
-              className={`block rounded-[5px] border p-4 transition-colors hover:border-brand ${s === scope ? "border-brand bg-brand-50/40" : "border-gray-200 bg-white"}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-bold text-gray-900">{SCOPE_LABEL[s]} League</span>
-                <MovementBadge m={m} />
-              </div>
-              {top ? (
-                <p className="mt-1 text-[13.5px] text-gray-600">
-                  <span className="font-semibold text-gray-900">{top.label}</span> leads · {top.total} pts
-                </p>
-              ) : (
-                <p className="mt-1 text-[13px] text-gray-400">No plays yet</p>
-              )}
-            </Link>
-          ))}
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          {/* View controls — scope + period selectors live here now, not above the board */}
+          <div className="rounded-[5px] border border-gray-200 bg-white p-3">
+            <LeaderboardTabs slug={cfg.slug} scope={scope} period={period} anchor={anchorParam} />
+          </div>
+
+          {/* Compact league leaders — one tap-through row per league */}
+          <div>
+            <h2 className="mb-2 flex items-center gap-1.5 px-1 text-[13px] font-bold uppercase tracking-wide text-gray-500">
+              <Trophy className="h-4 w-4 text-amber-500" /> Leaders · {PERIOD_LABEL[period]}
+            </h2>
+            <div className="overflow-hidden rounded-[5px] border border-gray-200 bg-white divide-y divide-gray-100">
+              {rail.map(({ scope: s, top, movement: m }) => (
+                <Link
+                  key={s}
+                  href={scopeLink(s)}
+                  prefetch
+                  className={`flex items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-gray-50 ${s === scope ? "bg-brand-50/50" : ""}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">{SCOPE_LABEL[s]}</span>
+                    {top ? (
+                      <span className="block truncate text-[13px] font-semibold text-gray-900">{top.label}</span>
+                    ) : (
+                      <span className="block text-[12.5px] text-gray-400">No plays yet</span>
+                    )}
+                  </span>
+                  <span className="flex flex-shrink-0 items-center gap-1.5">
+                    {top && <span className="text-[13px] font-extrabold text-brand">{top.total}</span>}
+                    <MovementBadge m={m} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </aside>
       </div>
 
