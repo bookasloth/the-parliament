@@ -8,6 +8,7 @@ import { createPost, publishDraft, deletePost, updateDraft, type PostFormat } fr
 import { draftSaveMode } from "@/modules/feed/draft-autosave"
 import { publicUrlFor, validatePostMedia } from "@/lib/r2"
 import { enforceRateLimit } from "@/lib/rate-limit"
+import { fetchLinkPreview, type LinkPreview } from "@/lib/og-preview"
 
 const VALID_FORMATS: PostFormat[] = ["text", "image", "link", "quote", "question", "poll"]
 
@@ -146,6 +147,14 @@ export async function autosaveDraftAction(
   })
   revalidatePath("/compose/drafts")
   return { id: post.id }
+}
+
+/** Live OG preview for the composer's link field. SSRF-guarded inside
+ *  fetchLinkPreview; rate-limited since it fetches arbitrary user URLs. */
+export async function previewLinkAction(url: string): Promise<LinkPreview | null> {
+  const user = await requireUser()
+  await enforceRateLimit({ bucket: "compose.linkpreview", identifier: user.id, limit: 60, windowSec: 3600 })
+  return fetchLinkPreview(url.trim())
 }
 
 /** Publish a saved draft. */
