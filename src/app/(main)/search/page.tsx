@@ -91,9 +91,14 @@ function SearchFooter() {
         <Link href="/community" className="hover:text-brand">Community</Link>
         <Link href="/events" className="hover:text-brand">Events</Link>
       </div>
-      <div className="flex gap-5">
+      <div className="flex items-center gap-5">
         <Link href="/membership" className="hover:text-brand">Membership</Link>
-        <Link href="/business" className="hover:text-brand">Businesses</Link>
+        <span>
+          Made by{" "}
+          <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-600 hover:text-brand">Durga</a>
+          {" "}&amp;{" "}
+          <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="font-medium text-gray-600 hover:text-brand">Shubham</a>
+        </span>
       </div>
     </footer>
   )

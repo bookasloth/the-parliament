@@ -56,7 +56,10 @@ export function Footer({
         {socialLinks.length > 0 && (
           <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-white/40">
-              &copy; {new Date().getFullYear()} NNAWCA. All rights reserved.
+              &copy; {new Date().getFullYear()} NNAWCA. All rights reserved. · Made by{" "}
+              <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white">Durga</a>
+              {" "}&amp;{" "}
+              <a href="https://shubhamdatarkar.com/projects/nnawca" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white">Shubham</a>
             </p>
             <div className="flex items-center gap-4">
               {socialLinks.map((link) => (
