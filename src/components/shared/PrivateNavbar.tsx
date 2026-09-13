@@ -24,6 +24,8 @@ import { LogoMark } from "@/components/shared/Logo"
 type MembershipTier = "student" | "associate" | "premium" | "life" | "inactive" | "committee"
 
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
+import { AlertAds } from "@/components/shared/AlertAds"
+import { showSidebarAd } from "@/config/ad-sets"
 
 const MEMBERSHIP_META: Record<MembershipTier, {
   label: string
@@ -460,6 +462,11 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                   )}
                 </div>
                 <ul className="max-h-[320px] overflow-y-auto p-2">
+                  {showSidebarAd(currentUser.membership) && (
+                    <li className="mb-1 border-b border-gray-100 pb-1">
+                      <AlertAds placement="alerts" compact />
+                    </li>
+                  )}
                   {notifItems.length === 0 ? (
                     <li className="px-3 py-8 text-center text-xs text-gray-400">You&apos;re all caught up.</li>
                   ) : (

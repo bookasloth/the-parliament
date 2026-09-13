@@ -10,7 +10,7 @@ import {
   markNotificationReadAction,
 } from "./actions"
 import { othersSuffix } from "@/modules/notifications/aggregate"
-import { SponsoredCard } from "@/components/shared/SponsoredCard"
+import { AlertAds } from "@/components/shared/AlertAds"
 
 // Filter tabs → the notification types each bucket covers (null = everything).
 const FILTERS: { key: string; label: string; types: string[] | null }[] = [
@@ -116,8 +116,8 @@ export default function NotificationsClient({ initial, showAd = false }: { initi
 
           <div className="p-2">
             {showAd && (
-              <div className="mb-1.5">
-                <SponsoredCard placement="alerts" />
+              <div className="mb-1">
+                <AlertAds placement="alerts" />
               </div>
             )}
             {notifs.length === 0 ? (
@@ -159,16 +159,18 @@ export default function NotificationsClient({ initial, showAd = false }: { initi
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pr-6">
-                          <p className="text-sm font-medium text-gray-900">
-                            {n.title}
-                            {othersSuffix(n.actorCount) && (
-                              <span className="font-normal text-gray-500"> {othersSuffix(n.actorCount)}</span>
-                            )}
-                          </p>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-900 min-w-0">
+                              {n.title}
+                              {othersSuffix(n.actorCount) && (
+                                <span className="font-normal text-gray-500"> {othersSuffix(n.actorCount)}</span>
+                              )}
+                            </p>
+                            <span className="flex-shrink-0 text-[11px] text-gray-400">{relative(n.createdAt)}</span>
+                          </div>
                           {n.body && (
                             <p className="text-sm text-gray-600 leading-snug mt-0.5">{n.body}</p>
                           )}
-                          <p className="text-[11px] text-gray-400 mt-1">{relative(n.createdAt)}</p>
                         </div>
                       </Link>
                       {n.ctas.length > 0 && (
