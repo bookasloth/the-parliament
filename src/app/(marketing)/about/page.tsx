@@ -108,14 +108,14 @@ export default async function AboutPage() {
     <>
       {/* ── Hero (compact) ── */}
       <Section width="7xl" className="pt-24 pb-10 lg:pt-28">
-        <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+        <div className="grid items-center gap-8 lg:grid-cols-[3fr_2fr] lg:gap-12">
           <div>
             <Reveal>
               <Eyebrow>About NNAWCA</Eyebrow>
             </Reveal>
             <Reveal delay={0.05}>
               <h1 className="mt-4 font-heading text-3xl font-semibold tracking-[-0.035em] text-[#1a1a1a] text-balance sm:text-4xl lg:text-5xl lg:leading-[1.05]">
-                Built by alumni who'd rather{" "}
+                Built by alumni who'd<br className="hidden sm:block" /> rather{" "}
                 <Typewriter words={["give back", "stay close", "lift others", "build together"]} />
                 <br className="hidden sm:block" /> than lose touch.
               </h1>
@@ -147,22 +147,18 @@ export default async function AboutPage() {
 
           {/* Alumni collage — the family, in faces */}
           <Reveal delay={0.2} className="relative hidden lg:block">
+            {/* Three faces, kept short: one taller portrait + two compact frames. */}
             <div className="grid grid-cols-2 gap-4">
+              <div
+                className="w-full overflow-hidden rounded-[5px] bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
+                style={{ backgroundImage: `url(${ALUMNI_COLLAGE[0]})`, aspectRatio: "4/5" }}
+              />
               <div className="space-y-4">
-                {ALUMNI_COLLAGE.slice(0, 3).map((url, i) => (
+                {[ALUMNI_COLLAGE[1], ALUMNI_COLLAGE[3]].map((url, i) => (
                   <div
                     key={i}
                     className="w-full overflow-hidden rounded-[5px] bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
-                    style={{ backgroundImage: `url(${url})`, aspectRatio: i === 1 ? "3/4" : "1/1" }}
-                  />
-                ))}
-              </div>
-              <div className="space-y-4 pt-10">
-                {ALUMNI_COLLAGE.slice(3).map((url, i) => (
-                  <div
-                    key={i}
-                    className="w-full overflow-hidden rounded-[5px] bg-cover bg-center shadow-[0_12px_40px_-16px_rgba(26,26,26,0.35)]"
-                    style={{ backgroundImage: `url(${url})`, aspectRatio: i === 0 ? "3/4" : "1/1" }}
+                    style={{ backgroundImage: `url(${url})`, aspectRatio: "4/3" }}
                   />
                 ))}
               </div>
@@ -172,7 +168,7 @@ export default async function AboutPage() {
               <div className="flex items-center gap-2.5">
                 <Users className="h-4 w-4 text-brand" />
                 <p className="text-sm font-semibold text-[#1a1a1a]">
-                  1,200+ Navodayans, one family
+                  500+ Navodayans, one family
                 </p>
               </div>
             </GlassCard>

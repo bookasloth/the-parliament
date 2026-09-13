@@ -26,10 +26,10 @@ import type { GroupListItem } from "@/modules/groups/service"
 // Honest, real numbers for a single-school Nagpur alumni body — not inflated
 // "25K+/120 countries" template figures. Small-but-true reads as credible.
 const STATS = [
-  { to: 1200, suffix: "+", label: "Alumni connected" },
-  { to: 48, suffix: "", label: "Events & reunions" },
-  { to: 60, suffix: "+", label: "Students supported" },
-  { to: 15, suffix: "+", label: "Years of the bond" },
+  { to: 500, suffix: "+", label: "Alumni connected" },
+  { to: 20, suffix: "", label: "Events & reunions" },
+  { to: 10, suffix: "+", label: "Students supported" },
+  { to: 40, suffix: "+", label: "Years of the bond" },
 ]
 
 const FEATURES = [
