@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { mapRowToFeedPost } from "../map-row"
 import PostCard from "./post-card"
 import { AdRail } from "@/components/shared/AdRail"
+import { ProfileSidebar } from "@/components/shared/ProfileSidebar"
+import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
 export const dynamic = "force-dynamic"
 
@@ -47,12 +49,19 @@ export default async function PostDetailPage({
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
-      {/* Reading column keeps its max-w-3xl measure; the ad rail sits beside it
-          and the pair stays centred, so the post doesn't shift for ad-free tiers
-          (where AdRail renders nothing). */}
-      <div className="flex justify-center gap-8">
-        <div className="w-full min-w-0 max-w-3xl">
-          <PostCard post={feedPost} isAuthor={isAuthor} initialSaved={feedPost.savedByViewer ?? false} />
+      {/* Same 3-column shell as the main feed: sticky profile rail on the left,
+          reading column (max-w-3xl measure) in the middle, display-ad rail on
+          the right (renders nothing for ad-free tiers). */}
+      <div className="flex flex-col lg:flex-row gap-8">
+        <aside className="hidden lg:block w-full lg:w-[280px] flex-shrink-0">
+          <div className="sticky top-20">
+            <ProfileSidebar nav={SIDEBAR_NAV.feed} />
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0">
+          <div className="max-w-3xl">
+            <PostCard post={feedPost} isAuthor={isAuthor} initialSaved={feedPost.savedByViewer ?? false} />
+          </div>
         </div>
         <AdRail set="seoAi" />
       </div>
