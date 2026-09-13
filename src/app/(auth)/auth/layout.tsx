@@ -18,11 +18,28 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </>
         }
         stats={[
-          { value: "18,542+", label: "Verified Alumni", icon: <Users className="h-5 w-5 text-brand" /> },
-          { value: "42", label: "Countries", icon: <Globe className="h-5 w-5 text-[#3ddc84]" /> },
-          { value: "7", label: "Houses", icon: <Home className="h-5 w-5 text-[#ff6ba8]" /> },
+          { value: "500+", label: "Verified Alumni", icon: <Users className="h-5 w-5 text-brand" /> },
+          { value: "18", label: "Countries", icon: <Globe className="h-5 w-5 text-[#3ddc84]" /> },
+          { value: "10", label: "Houses", icon: <Home className="h-5 w-5 text-[#ff6ba8]" /> },
         ]}
-        credit={<>Built with ❤️ by Navodayans</>}
+        quote={{
+          text: "NNAWCA turned a scattered batch into a living network — the platform where every Navodian finds their way home.",
+          name: "Pranav Kadoo",
+          role: "Batch 2006–13, Shiwalik House",
+        }}
+        credit={
+          <>
+            Made with ❤️ by{" "}
+            <a
+              href="https://shubhamdatarkar.com/projects/nnawca"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white transition-colors hover:text-[#5cc6ff]"
+            >
+              Durga and Shubham Datarkar
+            </a>
+          </>
+        }
         className="lg:min-h-[100dvh] lg:w-[44%]"
       />
     </div>
