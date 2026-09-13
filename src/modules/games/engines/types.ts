@@ -55,7 +55,7 @@ export function emojiGrid(rows: Tile[][]): string {
 /** Shareable text for a completed play — emoji rows for tiles, 🎯/💨 lines for counts. */
 export function shareResults(results: GuessResult[]): string {
   return results
-    .map((r) => (r.kind === "tiles" ? r.tiles.map((t) => ({ correct: "🟩", present: "🟨", absent: "⬜" })[t]).join("") : `🎯${r.hits} 💨${r.blows}`))
+    .map((r) => (r.kind === "tiles" ? r.tiles.map((t) => ({ correct: "🟩", present: "🟨", absent: "⬜" })[t]).join("") : "🎯".repeat(r.hits) + "💨".repeat(r.blows)))
     .join("\n");
 }
 

@@ -247,7 +247,7 @@ export default function HitAndBlowBoard({
                     maxGuesses,
                     score: result.score,
                     url: shortUrl,
-                    grid: rows.map((r) => `🎯${r.hits} 💨${r.blows}`).join("\n"),
+                    grid: rows.map((r) => "🎯".repeat(r.hits) + "💨".repeat(r.blows)).join("\n"),
                   })}
                   url={shortUrl}
                   className="bg-brand text-white hover:bg-brand-700"
