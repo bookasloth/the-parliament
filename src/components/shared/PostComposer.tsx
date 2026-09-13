@@ -353,7 +353,9 @@ export default function PostComposer({
     `What's on your mind${anon ? "" : firstName ? `, ${firstName}` : ""}?`
 
   return (
-    <div className="min-h-screen bg-[#eef0f4] px-4 py-8 font-body">
+    // Embeddable: sits inside the host page's rail shell (inherits the page bg)
+    // rather than painting its own full-screen background.
+    <div className="w-full font-body">
       <div className="mx-auto max-w-[640px]">
 
         {/* Title */}
