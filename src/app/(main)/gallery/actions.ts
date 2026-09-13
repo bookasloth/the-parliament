@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { enforceRateLimit, RateLimitedError } from "@/lib/rate-limit"
 import { isAllowedImage } from "@/lib/supabase-storage"
 import {
-  assertVerifiedMember, createMemberAlbum, createGalleryImage, deleteImageAsMember,
+  assertVerifiedMember, createMemberAlbum, createGalleryImage, deleteImageAsMember, setMemberAlbumCover,
 } from "@/modules/gallery/service"
 import type { GalleryAlbumDTO, GalleryImageDTO } from "@/modules/gallery/types"
 import { galleryQuotaBytes } from "@/config/membership"
@@ -97,6 +97,21 @@ export async function uploadMemberPhotoAction(formData: FormData): Promise<Resul
     })
     revalidateGallery()
     return { ok: true, image }
+  } catch (e) {
+    return fail(e)
+  }
+}
+
+const coverSchema = z.object({ albumId: z.string().min(1), imageId: z.string().min(1) })
+
+export async function setAlbumCoverAction(input: unknown): Promise<Result> {
+  try {
+    const user = await requireUser()
+    await assertVerifiedMember(user.id)
+    const { albumId, imageId } = coverSchema.parse(input)
+    const { slug } = await setMemberAlbumCover(albumId, imageId, user.id, Boolean(user.isAdmin))
+    revalidateGallery(slug)
+    return { ok: true }
   } catch (e) {
     return fail(e)
   }

@@ -43,6 +43,16 @@ export function canDeleteImage(
   return isAdmin || (image.uploadedById !== null && image.uploadedById === userId)
 }
 
+/** Who may manage an album (set cover, etc.): its creator, or any admin. Pure
+ *  so it's unit-testable and reused by both the action and the UI. */
+export function canManageAlbum(
+  album: { createdById: string | null },
+  userId: string,
+  isAdmin: boolean,
+): boolean {
+  return isAdmin || (album.createdById !== null && album.createdById === userId)
+}
+
 export function mapGalleryAlbum(row: DbGalleryAlbum): GalleryAlbumDTO {
   return {
     id: row.id,

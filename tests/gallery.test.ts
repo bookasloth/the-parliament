@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { mapGalleryImage, mapGalleryAlbum, canDeleteImage } from "@/modules/gallery/mappers"
+import { mapGalleryImage, mapGalleryAlbum, canDeleteImage, canManageAlbum } from "@/modules/gallery/mappers"
 import { uniqueSlug } from "@/modules/gallery/slug"
 import type { DbGalleryAlbum, DbGalleryImage } from "@/modules/gallery/types"
 
@@ -50,6 +50,23 @@ describe("canDeleteImage", () => {
   it("blocks a non-admin on an orphaned (null uploader) photo", () => {
     expect(canDeleteImage({ uploadedById: null }, "user-9", false)).toBe(false)
     expect(canDeleteImage({ uploadedById: null }, "user-9", true)).toBe(true)
+  })
+})
+
+describe("canManageAlbum", () => {
+  const album = { createdById: "user-1" }
+  it("lets the album creator manage it", () => {
+    expect(canManageAlbum(album, "user-1", false)).toBe(true)
+  })
+  it("blocks a different member", () => {
+    expect(canManageAlbum(album, "user-2", false)).toBe(false)
+  })
+  it("lets any admin manage", () => {
+    expect(canManageAlbum(album, "user-2", true)).toBe(true)
+  })
+  it("blocks a non-admin on an ownerless album", () => {
+    expect(canManageAlbum({ createdById: null }, "user-1", false)).toBe(false)
+    expect(canManageAlbum({ createdById: null }, "user-1", true)).toBe(true)
   })
 })
 

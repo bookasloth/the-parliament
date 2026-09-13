@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { uploadGalleryImage, deleteStorageObject } from "@/lib/supabase-storage"
-import { mapGalleryAlbum, mapGalleryImage } from "./mappers"
+import { canManageAlbum, mapGalleryAlbum, mapGalleryImage } from "./mappers"
 import { uniqueSlug } from "./slug"
 import type { GalleryAlbumDTO, GalleryImageDTO } from "./types"
 
@@ -293,6 +293,21 @@ export async function getMemberAlbumBySlug(
   const base = await getPublishedAlbumBySlug(slug)
   if (!base) return null
   return { album: base.album, images: await enrichUploaders(base.images) }
+}
+
+/** Set an album's cover photo as a member: allowed for the album creator or an
+ *  admin. The image must belong to the album. Returns the album slug so the
+ *  caller can revalidate the album page. */
+export async function setMemberAlbumCover(
+  albumId: string, imageId: string, userId: string, isAdmin: boolean,
+): Promise<{ slug: string }> {
+  const album = await prisma.galleryAlbum.findUnique({ where: { id: albumId }, select: { createdById: true, slug: true } })
+  if (!album) throw new Error("Album not found")
+  if (!canManageAlbum(album, userId, isAdmin)) throw new Error("Only the album creator can set the cover photo")
+  const img = await prisma.galleryImage.findUnique({ where: { id: imageId }, select: { albumId: true } })
+  if (!img || img.albumId !== albumId) throw new Error("Photo is not in this album")
+  await prisma.galleryAlbum.update({ where: { id: albumId }, data: { coverImageId: imageId } })
+  return { slug: album.slug }
 }
 
 /** Delete a photo as a member: allowed for the uploader or an admin. */
