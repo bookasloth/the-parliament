@@ -9,7 +9,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { realtimeTokenAction } from "@/app/(main)/messages/actions"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
-  Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
+  Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
   FileText, Building2, ChevronRight,
   ArrowUpRight, ShoppingBag,
 } from "lucide-react"
@@ -565,9 +565,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                       href: currentUser.businessSlug ? `/business/${currentUser.businessSlug}` : "/business/new",
                     },
                     { icon: FileText, label: "Drafts", href: "/compose/drafts" },
-                    { icon: Award, label: "Achievements", href: "/achievements" },
                     { icon: Star, label: "Karma Points", href: currentUser.username ? `/${currentUser.username}/karma` : "/settings" },
-                    { icon: ShoppingBag, label: "Shell Store", href: "/store" },
                     { icon: UserPlus, label: "Refer an Alumni", href: "/refer" },
                     { icon: Zap, label: "Try NNAWCA Pro", href: "/membership" },
                     { icon: Settings, label: "Settings & Privacy", href: "/settings" },
