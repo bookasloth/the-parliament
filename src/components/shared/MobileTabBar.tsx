@@ -16,6 +16,7 @@ const TABS = [
 
 export function MobileTabBar() {
   const pathname = usePathname()
+  if (pathname === "/search") return null
   return (
     <nav
       aria-label="Primary"

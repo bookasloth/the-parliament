@@ -10,7 +10,7 @@ import { realtimeTokenAction } from "@/app/(main)/messages/actions"
 import {
   Search, Users, Calendar, Bell, MessageSquareText, Settings,
   Award, Star, UserPlus, Zap, HelpCircle, Power, CreditCard,
-  FileText, UsersRound, Building2, ChevronRight,
+  FileText, Building2, ChevronRight,
   ArrowUpRight, ShoppingBag,
 } from "lucide-react"
 import { LogoMark } from "@/components/shared/Logo"
@@ -62,7 +62,6 @@ export type NavbarViewer = {
 const SEARCH_SCOPES = [
   { key: "people", label: "Profiles", icon: Users, href: "/search?scope=people" },
   { key: "posts", label: "Posts", icon: FileText, href: "/search?scope=posts" },
-  { key: "groups", label: "Groups", icon: UsersRound, href: "/search?scope=groups" },
   { key: "events", label: "Events", icon: Calendar, href: "/search?scope=events" },
   { key: "businesses", label: "Businesses", icon: Building2, href: "/search?scope=businesses" },
 ]
@@ -205,6 +204,9 @@ function MembershipButton({ tier }: { tier: MembershipTier }) {
 // Split so the authed hooks (notification polling, realtime) never run for
 // logged-out visitors on the public pages (/[username], /events).
 export function PrivateNavbar({ viewer }: { viewer?: NavbarViewer | null } = {}) {
+  const pathname = usePathname()
+  // /search is a full-bleed experience with its own chrome — no app navbar.
+  if (pathname === "/search") return null
   return viewer ? <MemberNavbar viewer={viewer} /> : <GuestNavbar />
 }
 

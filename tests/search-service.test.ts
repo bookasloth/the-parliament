@@ -12,16 +12,16 @@ describe("search helpers", () => {
   it("counts results across every type", () => {
     const r: SearchResults = {
       query: "x", scope: "all",
-      people: [{ id: "1", username: null, name: "A", headline: null, photoUrl: null, href: "/1" }],
-      posts: [{ id: "p", snippet: "s", authorName: "A", createdAt: new Date(), href: "/feed/p" }],
-      groups: [], events: [], businesses: [],
+      people: [{ id: "1", username: null, name: "A", headline: null, photoUrl: null, href: "/1", batch: "", house: "", membership: "student", verified: false, city: null, company: null }],
+      posts: [{ id: "p", snippet: "s", authorName: "A", authorUsername: null, authorAvatar: null, createdAt: new Date(), href: "/feed/p" }],
+      events: [], businesses: [],
       hashtags: [{ tag: "t", useCount: 3, href: "/feed?tag=t" }],
     }
     expect(totalResults(r)).toBe(3)
   })
 
   it("is zero for an all-empty result", () => {
-    const r: SearchResults = { query: "", scope: "all", people: [], posts: [], groups: [], events: [], businesses: [], hashtags: [] }
+    const r: SearchResults = { query: "", scope: "all", people: [], posts: [], events: [], businesses: [], hashtags: [] }
     expect(totalResults(r)).toBe(0)
   })
 })
