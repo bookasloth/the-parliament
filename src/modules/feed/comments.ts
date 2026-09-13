@@ -155,6 +155,7 @@ export interface MentionTarget {
   displayName: string
   avatarUrl: string
   headline: string | null
+  batchLabel: string | null
   isVerified: boolean
 }
 
@@ -164,8 +165,7 @@ const mentionUserSelect = {
   displayName: true,
   legalName: true,
   isVerified: true,
-  profile: { select: { photoUrl: true, headline: true } },
-  _count: { select: { followers: true } },
+  profile: { select: { photoUrl: true, headline: true, batch: { select: { label: true, startYear: true } } } },
 } as const
 
 function toMentionTarget(u: {
@@ -174,9 +174,11 @@ function toMentionTarget(u: {
   displayName: string | null
   legalName: string
   isVerified: boolean
-  profile: { photoUrl: string | null; headline: string | null } | null
+  profile: { photoUrl: string | null; headline: string | null; batch: { label: string | null; startYear: number | null } | null } | null
 }): MentionTarget {
   const name = u.displayName || u.legalName
+  const b = u.profile?.batch
+  const batchLabel = b ? (b.label || (b.startYear ? `${b.startYear} Batch` : null)) : null
   return {
     id: u.id,
     username: u.username,
@@ -184,18 +186,19 @@ function toMentionTarget(u: {
     avatarUrl:
       u.profile?.photoUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
     headline: u.profile?.headline ?? null,
+    batchLabel,
     isVerified: u.isVerified,
   }
 }
 
 /**
  * Ranked @mention suggestions. Tiers, in order:
- *   1. People the viewer follows  — proxy for "most tagged by them".
- *      // ponytail: no @-mention history is stored yet; follow-graph is the
- *      // honest proxy. Swap to a real tag tally once mentions are tracked on write.
- *   2. Popular platform-wide      — highest follower count.
- *   3. Alphabetical               — remaining name matches, A–Z.
- * Deduped, viewer excluded, capped at `limit`, always ≥4 rows when enough users exist.
+ *   1. Recently tagged   — people the viewer @mentioned before, newest first.
+ *   2. Batchmates        — same batch as the viewer, A–Z.
+ *   3. Housemates        — same house as the viewer, A–Z.
+ *   4. Alphabetical      — everyone else, A–Z.
+ * Deduped, viewer excluded, capped at `limit`. Empty query returns the same
+ * ranking (so typing just "@" surfaces sensible people immediately).
  */
 export async function searchMentionTargets(
   viewerId: string,
@@ -220,34 +223,54 @@ export async function searchMentionTargets(
     ...nameFilter,
   }
 
-  // Tier 1 — followed users (most-recently followed first — proxy for "tags most").
-  const followed = await prisma.follow.findMany({
-    where: { followerId: viewerId, following: baseWhere },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: { following: { select: mentionUserSelect } },
+  const picked = new Set<string>()
+  const results: MentionTarget[] = []
+  const add = (u: Parameters<typeof toMentionTarget>[0]) => {
+    if (picked.has(u.id)) return
+    picked.add(u.id)
+    results.push(toMentionTarget(u))
+  }
+
+  // Tier 1 — recently tagged (people the viewer @mentioned, newest post first).
+  const tagged = await prisma.postMention.findMany({
+    where: { post: { authorId: viewerId, deletedAt: null }, userId: { not: null }, user: baseWhere },
+    orderBy: { post: { createdAt: "desc" } },
+    take: limit * 3, // over-fetch: one person may be tagged in many posts
+    select: { user: { select: mentionUserSelect } },
   })
-  const tier1 = followed.map((f) => toMentionTarget(f.following))
+  for (const m of tagged) {
+    if (results.length >= limit) break
+    if (m.user) add(m.user)
+  }
 
-  const picked = new Set(tier1.map((t) => t.id))
-  const results: MentionTarget[] = [...tier1]
+  // Viewer's batch + house drive the next two tiers.
+  const me = results.length < limit
+    ? await prisma.user.findUnique({ where: { id: viewerId }, select: { profile: { select: { batchId: true, houseId: true } } } })
+    : null
 
-  // Tier 2 — popular platform-wide (by follower count).
-  if (results.length < limit) {
-    const popular = await prisma.user.findMany({
-      where: { ...baseWhere, id: { notIn: [viewerId, ...picked] } },
-      orderBy: { followers: { _count: "desc" } },
+  // Tier 2 — batchmates.
+  if (me?.profile?.batchId && results.length < limit) {
+    const mates = await prisma.user.findMany({
+      where: { ...baseWhere, id: { notIn: [viewerId, ...picked] }, profile: { batchId: me.profile.batchId } },
+      orderBy: { displayName: "asc" },
       take: limit - results.length,
       select: mentionUserSelect,
     })
-    for (const u of popular) {
-      if (picked.has(u.id)) continue
-      picked.add(u.id)
-      results.push(toMentionTarget(u))
-    }
+    mates.forEach(add)
   }
 
-  // Tier 3 — alphabetical fill.
+  // Tier 3 — housemates.
+  if (me?.profile?.houseId && results.length < limit) {
+    const mates = await prisma.user.findMany({
+      where: { ...baseWhere, id: { notIn: [viewerId, ...picked] }, profile: { houseId: me.profile.houseId } },
+      orderBy: { displayName: "asc" },
+      take: limit - results.length,
+      select: mentionUserSelect,
+    })
+    mates.forEach(add)
+  }
+
+  // Tier 4 — alphabetical fill.
   if (results.length < limit) {
     const rest = await prisma.user.findMany({
       where: { ...baseWhere, id: { notIn: [viewerId, ...picked] } },
@@ -255,11 +278,7 @@ export async function searchMentionTargets(
       take: limit - results.length,
       select: mentionUserSelect,
     })
-    for (const u of rest) {
-      if (picked.has(u.id)) continue
-      picked.add(u.id)
-      results.push(toMentionTarget(u))
-    }
+    rest.forEach(add)
   }
 
   return results.slice(0, limit)

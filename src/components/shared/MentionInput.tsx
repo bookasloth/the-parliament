@@ -198,8 +198,8 @@ export default function MentionInput({
                       <ShieldCheck className="h-3 w-3 shrink-0 text-blue-500 fill-blue-100" />
                     )}
                   </span>
-                  {t.headline && (
-                    <span className="block truncate text-xs text-gray-500">{t.headline}</span>
+                  {(t.batchLabel || t.headline) && (
+                    <span className="block truncate text-xs text-gray-500">{t.batchLabel ?? t.headline}</span>
                   )}
                 </span>
               </button>
