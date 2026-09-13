@@ -69,7 +69,10 @@ export default function GameBoard({
   const [rows, setRows] = useState<GradedRow[]>([]);
   const [current, setCurrent] = useState("");
   const [keyState, setKeyState] = useState<Record<string, Tile>>({});
-  const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost" | "done">("loading");
+  // Start playable on first paint — no skeleton, no waiting on a server round-trip
+  // to enter the game. The "already played today" check runs in the background and
+  // only downgrades an untouched board to "done".
+  const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost" | "done">("playing");
   const [result, setResult] = useState<{ score: number; guessesUsed: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,8 +87,9 @@ export default function GameBoard({
   useEffect(() => {
     if (!archive) startGameAction(gameKey).catch(() => {}); // DAU is the live puzzle only
     hasPlayedTodayAction(gameKey, puzzleNo)
-      .then((played) => setStatus(played ? "done" : "playing"))
-      .catch(() => setStatus("playing"));
+      // Only downgrade an untouched board — never yank a game already in progress.
+      .then((played) => { if (played) setStatus((s) => (s === "playing" ? "done" : s)); })
+      .catch(() => {});
   }, [gameKey, puzzleNo, archive]);
 
   const tileClass = (t: Tile | "empty" | "filled"): string => {

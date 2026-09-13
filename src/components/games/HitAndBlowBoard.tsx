@@ -45,7 +45,8 @@ export default function HitAndBlowBoard({
   const shortUrl = typeof window !== "undefined" ? gameShareUrl(window.location.origin, code) : "";
   const [rows, setRows] = useState<Row[]>([]);
   const [current, setCurrent] = useState("");
-  const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost" | "done">("loading");
+  // Start playable on first paint — see GameBoard for the rationale.
+  const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost" | "done">("playing");
   const [result, setResult] = useState<{ score: number; guessesUsed: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,8 +57,8 @@ export default function HitAndBlowBoard({
   useEffect(() => {
     if (!archive) startGameAction(gameKey).catch(() => {});
     hasPlayedTodayAction(gameKey, puzzleNo)
-      .then((played) => setStatus(played ? "done" : "playing"))
-      .catch(() => setStatus("playing"));
+      .then((played) => { if (played) setStatus((s) => (s === "playing" ? "done" : s)); })
+      .catch(() => {});
   }, [gameKey, puzzleNo, archive]);
 
   const finish = useCallback(
