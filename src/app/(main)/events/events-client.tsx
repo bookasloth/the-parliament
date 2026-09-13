@@ -254,7 +254,7 @@ export default function EventsClient({
           {/* Grid */}
           <div className="px-4 sm:px-5 pb-5">
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {filtered.map(e => <EventCard key={e.id} event={e} onToggle={toggleInterested} />)}
               </div>
             ) : (
