@@ -11,11 +11,9 @@ import type { AdPlacement } from "@/config/ad-tracking"
 // · body · CTA) so they sit inline in the notifications list + dropdown instead
 // of a separate banner. Two ads: an internal membership upsell and the house
 // sponsor (Shubham Datarkar). Render only for ad-eligible tiers (caller gates).
-const SPONSOR_AVATAR =
-  "https://ui-avatars.com/api/?name=Shubham+Datarkar&background=009ae4&color=fff&bold=true"
-
 export function AlertAds({ placement, compact = false }: { placement: AdPlacement; compact?: boolean }) {
   const ad = SHUBHAM_DATARKAR_AD
+  const SPONSOR_AVATAR = ad.avatarUrl
   const ref = useAdImpression<HTMLAnchorElement>(ad.id, placement)
 
   const pad = compact ? "p-2.5" : "p-3"
