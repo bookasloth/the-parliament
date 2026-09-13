@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -70,10 +70,13 @@ function Field({ label, hint, children, full }: { label: string; hint?: string; 
     </div>
   )
 }
-function Card({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
+function Card({ title, desc, action, children }: { title: string; desc?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-[4px] border border-gray-200 bg-white">
-      <div className="px-4 pt-4 sm:px-5"><h2 className="text-base font-bold text-gray-900">{title}</h2>{desc && <p className="mt-0.5 text-xs text-gray-500">{desc}</p>}</div>
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 sm:px-5">
+        <div><h2 className="text-base font-bold text-gray-900">{title}</h2>{desc && <p className="mt-0.5 text-xs text-gray-500">{desc}</p>}</div>
+        {action && <div className="flex-shrink-0">{action}</div>}
+      </div>
       <div className="px-4 py-4 sm:px-5">{children}</div>
     </div>
   )
@@ -841,28 +844,8 @@ function ExperienceEditor({ rows, onChanged }: { rows: ExpRow[]; onChanged: () =
     try { await deleteExperience(id); onChanged() } finally { setBusy(false) }
   }
 
-  return (
-    <Card title="Work Experience" desc="Add every role you've held — as many as you like.">
-      <div className="space-y-3">
-        {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No work experience added yet.</p>}
-        {rows.map((e) => (
-          <div key={e.id} className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
-            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><Briefcase className="h-4 w-4" /></span>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold text-gray-900">{e.title}</div>
-              <div className="text-[13px] text-gray-600">{e.company}{e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}</div>
-              <div className="text-xs text-gray-400">{expDates(e)}</div>
-            </div>
-            <div className="flex flex-shrink-0 gap-1">
-              <button onClick={() => setEditing(e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
-              <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {editing ? (
-        <div className="mt-4 rounded-[4px] border border-gray-200 p-4">
+  const formBox = editing && (
+        <div className="mt-3 rounded-[4px] border border-gray-200 p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Job title *"><input className={input} placeholder="Senior Product Manager" value={editing.title} onChange={(e) => upd({ title: e.target.value })} /></Field>
             <Field label="Organization *"><input className={input} placeholder="Microsoft" value={editing.company} onChange={(e) => upd({ company: e.target.value })} /></Field>
@@ -924,11 +907,39 @@ function ExperienceEditor({ rows, onChanged }: { rows: ExpRow[]; onChanged: () =
             <button onClick={save} disabled={busy} className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
           </div>
         </div>
-      ) : (
-        <button onClick={() => setEditing(EmptyExp())} className="mt-4 flex items-center gap-2 rounded-[4px] border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
-          <Plus className="h-4 w-4" /> Add experience
+  )
+
+  return (
+    <Card
+      title="Work Experience"
+      desc="Add every role you've held — as many as you like."
+      action={
+        <button onClick={() => setEditing(EmptyExp())} disabled={!!editing} className="flex items-center gap-1.5 rounded-[4px] bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+          <Plus className="h-3.5 w-3.5" /> Add
         </button>
-      )}
+      }
+    >
+      <div className="space-y-3">
+        {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No work experience added yet.</p>}
+        {rows.map((e) => (
+          <Fragment key={e.id}>
+            <div className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
+              <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><Briefcase className="h-4 w-4" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-gray-900">{e.title}</div>
+                <div className="text-[13px] text-gray-600">{e.company}{e.employmentType && <span className="text-gray-400"> · {e.employmentType}</span>}</div>
+                <div className="text-xs text-gray-400">{expDates(e)}</div>
+              </div>
+              <div className="flex flex-shrink-0 gap-1">
+                <button onClick={() => setEditing(editing?.id === e.id ? null : e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+                <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+            {editing?.id === e.id && formBox}
+          </Fragment>
+        ))}
+      </div>
+      {editing && !editing.id && formBox}
     </Card>
   )
 }
@@ -951,56 +962,64 @@ function EducationEditor({ rows, onChanged }: { rows: EduRow[]; onChanged: () =>
     try { await deleteEducation(id); onChanged() } finally { setBusy(false) }
   }
 
+  const formBox = editing && (
+    <div className="mt-3 rounded-[4px] border border-gray-200 p-4">
+      <Field label="School *"><input className={input} placeholder="VNIT Nagpur" value={editing.school} onChange={(e) => upd({ school: e.target.value })} /></Field>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Degree"><input className={input} placeholder="Bachelor of Technology" value={editing.degree} onChange={(e) => upd({ degree: e.target.value })} /></Field>
+        <Field label="Field of study"><input className={input} placeholder="Computer Science" value={editing.fieldOfStudy} onChange={(e) => upd({ fieldOfStudy: e.target.value })} /></Field>
+        <Field label="Start year">
+          <select className={input} value={editing.startYear ?? ""} onChange={(e) => upd({ startYear: e.target.value ? Number(e.target.value) : undefined })}>
+            <option value="">Year</option>
+            {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </Field>
+        <Field label="End year (or expected)">
+          <select className={input} value={editing.endYear ?? ""} onChange={(e) => upd({ endYear: e.target.value ? Number(e.target.value) : undefined })}>
+            <option value="">Year</option>
+            {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-3">
+        {err && <span className="text-xs text-red-600">{err}</span>}
+        <button onClick={() => { setEditing(null); setErr("") }} className="rounded-[4px] px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
+        <button onClick={save} disabled={busy} className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
+      </div>
+    </div>
+  )
+
   return (
-    <Card title="Education" desc="Add every school or college — as many as you like.">
+    <Card
+      title="Education"
+      desc="Add every school or college — as many as you like."
+      action={
+        <button onClick={() => setEditing(EmptyEdu())} disabled={!!editing} className="flex items-center gap-1.5 rounded-[4px] bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
+      }
+    >
       <div className="space-y-3">
         {rows.length === 0 && !editing && <p className="text-[13px] text-gray-500">No education added yet.</p>}
         {rows.map((e) => (
-          <div key={e.id} className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
-            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><School className="h-4 w-4" /></span>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold text-gray-900">{e.school}</div>
-              {(e.degree || e.fieldOfStudy) && <div className="text-[13px] text-gray-600">{[e.degree, e.fieldOfStudy].filter(Boolean).join(", ")}</div>}
-              {(e.startYear || e.endYear) && <div className="text-xs text-gray-400">{[e.startYear, e.endYear].filter(Boolean).join(" — ")}</div>}
+          <Fragment key={e.id}>
+            <div className="flex items-start gap-3 rounded-[4px] border border-gray-100 bg-gray-50/60 p-3">
+              <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[3px] bg-white text-gray-400 ring-1 ring-gray-200"><School className="h-4 w-4" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-gray-900">{e.school}</div>
+                {(e.degree || e.fieldOfStudy) && <div className="text-[13px] text-gray-600">{[e.degree, e.fieldOfStudy].filter(Boolean).join(", ")}</div>}
+                {(e.startYear || e.endYear) && <div className="text-xs text-gray-400">{[e.startYear, e.endYear].filter(Boolean).join(" — ")}</div>}
+              </div>
+              <div className="flex flex-shrink-0 gap-1">
+                <button onClick={() => setEditing(editing?.id === e.id ? null : e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
+                <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+              </div>
             </div>
-            <div className="flex flex-shrink-0 gap-1">
-              <button onClick={() => setEditing(e)} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand"><Pencil className="h-4 w-4" /></button>
-              <button onClick={() => remove(e.id)} disabled={busy} className="rounded-[3px] p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          </div>
+            {editing?.id === e.id && formBox}
+          </Fragment>
         ))}
       </div>
-
-      {editing ? (
-        <div className="mt-4 rounded-[4px] border border-gray-200 p-4">
-          <Field label="School *"><input className={input} placeholder="VNIT Nagpur" value={editing.school} onChange={(e) => upd({ school: e.target.value })} /></Field>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Degree"><input className={input} placeholder="Bachelor of Technology" value={editing.degree} onChange={(e) => upd({ degree: e.target.value })} /></Field>
-            <Field label="Field of study"><input className={input} placeholder="Computer Science" value={editing.fieldOfStudy} onChange={(e) => upd({ fieldOfStudy: e.target.value })} /></Field>
-            <Field label="Start year">
-              <select className={input} value={editing.startYear ?? ""} onChange={(e) => upd({ startYear: e.target.value ? Number(e.target.value) : undefined })}>
-                <option value="">Year</option>
-                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </Field>
-            <Field label="End year (or expected)">
-              <select className={input} value={editing.endYear ?? ""} onChange={(e) => upd({ endYear: e.target.value ? Number(e.target.value) : undefined })}>
-                <option value="">Year</option>
-                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div className="mt-4 flex items-center justify-end gap-3">
-            {err && <span className="text-xs text-red-600">{err}</span>}
-            <button onClick={() => { setEditing(null); setErr("") }} className="rounded-[4px] px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>
-            <button onClick={save} disabled={busy} className="rounded-[4px] bg-brand px-4 py-2 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setEditing(EmptyEdu())} className="mt-4 flex items-center gap-2 rounded-[4px] border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-brand hover:text-brand transition-colors">
-          <Plus className="h-4 w-4" /> Add education
-        </button>
-      )}
+      {editing && !editing.id && formBox}
     </Card>
   )
 }
