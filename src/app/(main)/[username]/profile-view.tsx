@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import { AvatarUploader } from "@/components/shared/AvatarUploader"
 import { FollowButton } from "@/components/shared/FollowButton"
@@ -144,6 +144,10 @@ type Tab = "posts" | "tagged" | "about" | "followers" | "badges"
 export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewData; initialTab?: Tab }) {
   const router = useRouter()
   const [tab, setTabState] = useState<Tab>(initialTab)
+  // Soft navigations (e.g. /user → /user/badges) reuse this mounted component,
+  // so useState(initialTab) keeps the old tab and the target tab never shows
+  // until a hard refresh. Follow the route's initialTab when it changes.
+  useEffect(() => { setTabState(initialTab) }, [initialTab])
   const setTab = (t: Tab) => {
     setTabState(t)
     if (typeof window !== "undefined") {
