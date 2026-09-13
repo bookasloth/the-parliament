@@ -68,6 +68,13 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react"],
   },
+  // Friendly aliases → canonical auth routes.
+  async redirects() {
+    return [
+      { source: "/login", destination: "/auth/signin", permanent: true },
+      { source: "/register", destination: "/auth/signup", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },

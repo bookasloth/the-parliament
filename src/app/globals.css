@@ -269,6 +269,14 @@ h1, h2 {
   animation: alfazy-confetti-fall cubic-bezier(0.45, 0, 0.55, 1) forwards;
 }
 
+/* Auth/brand panel ambient aurora — slow drifting blurred orbs (replaces the
+   old dot-network graphic). */
+@keyframes aurora-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(7%, -9%, 0) scale(1.15); }
+  66%      { transform: translate3d(-6%, 6%, 0) scale(0.9); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
