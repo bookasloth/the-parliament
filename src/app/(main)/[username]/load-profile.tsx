@@ -459,7 +459,13 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     owner,
     badges: sortedBadges.map((b) => ({ key: b.key, label: b.label, iconUrl: b.iconUrl, rarity: b.rarity })),
     totalBadges: user.userBadges.length,
-    achievements: initialTab === "badges" ? await getUserAchievements(user.id) : null,
+    // Always load — the profile tabs are local-state buttons (no navigation), so
+    // the Badges tab must have its data regardless of which tab the page was
+    // server-rendered with. Loading it only for initialTab==="badges" meant
+    // clicking Badges from any other entry showed nothing until a hard refresh.
+    // ponytail: a few extra queries per profile view; if profile latency matters,
+    // lazy-fetch it client-side on first Badges click instead.
+    achievements: await getUserAchievements(user.id),
     karma: Math.round(karma.balance),
     eggs: user.eggBalance,
     shells: user.shellBalance,
