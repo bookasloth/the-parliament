@@ -269,6 +269,54 @@ export async function isDmCallLive(conversationId: string): Promise<boolean> {
   return s?.status === "live"
 }
 
+export interface IncomingCall {
+  conversationId: string
+  roomName: string
+  callerId: string
+  callerName: string
+  callerAvatar: string | null
+}
+
+/**
+ * Most recent live DM call ringing THIS user — started by the OTHER participant
+ * within the last 60s. This is the POLL fallback for the global ring: realtime
+ * (private `user:<id>` channel) needs a manually-applied RLS policy and web-push
+ * needs VAPID + a subscription, so neither is guaranteed to land. A cheap 8s
+ * poll makes the ring actually fire regardless — matching the poll-fallback every
+ * other realtime surface here already has.
+ */
+export async function getIncomingCall(userId: string): Promise<IncomingCall | null> {
+  const since = new Date(Date.now() - 60_000)
+  const parts = await prisma.conversationParticipant.findMany({
+    where: { userId },
+    select: { conversationId: true },
+  })
+  if (parts.length === 0) return null
+  const session = await prisma.callSession.findFirst({
+    where: {
+      kind: "dm",
+      status: "live",
+      startedById: { not: userId },
+      startedAt: { gte: since },
+      conversationId: { in: parts.map((p) => p.conversationId) },
+    },
+    orderBy: { startedAt: "desc" },
+    select: { conversationId: true, roomName: true, startedById: true },
+  })
+  if (!session?.conversationId) return null
+  const caller = await prisma.user.findUnique({
+    where: { id: session.startedById },
+    select: { displayName: true, legalName: true, profile: { select: { photoUrl: true } } },
+  })
+  return {
+    conversationId: session.conversationId,
+    roomName: session.roomName,
+    callerId: session.startedById,
+    callerName: caller?.displayName || caller?.legalName || "A member",
+    callerAvatar: caller?.profile?.photoUrl ?? null,
+  }
+}
+
 /** The other participant of a 1:1 conversation, or null. */
 async function otherParticipant(userId: string, conversationId: string): Promise<string | null> {
   const row = await prisma.conversationParticipant.findFirst({

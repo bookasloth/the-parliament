@@ -246,7 +246,10 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
   const [msgCount, setMsgCount] = useState(0)
   // Incoming video call ring (global — fires wherever the callee is on the app).
   // Uses the existing pathnameRef (declared below) to suppress the modal in-thread.
-  const [ringCall, setRingCall] = useState<{ conversationId: string; callerName: string; callerAvatar: string | null } | null>(null)
+  const [ringCall, setRingCall] = useState<{ conversationId: string; roomName: string; callerName: string; callerAvatar: string | null } | null>(null)
+  // Calls already declined/auto-dismissed this session (by roomName) — so the 8s
+  // poll doesn't immediately re-ring a call the user dismissed.
+  const dismissedCallsRef = useRef<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     try {
@@ -311,11 +314,12 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
       channel = supabase.channel(`user:${auth.userId}`, { config: { private: true } })
       channel.on("broadcast", { event: "notification" }, () => { load(); loadMsg() })
       channel.on("broadcast", { event: "incoming_call" }, ({ payload }) => {
-        const p = payload as { conversationId: string; callerName: string; callerAvatar: string | null }
+        const p = payload as { conversationId: string; roomName: string; callerName: string; callerAvatar: string | null }
         // Already sitting in that thread? Its own in-view join banner covers it —
         // don't double up with the global modal.
         if (pathnameRef.current === `/messages/${p.conversationId}`) return
-        setRingCall({ conversationId: p.conversationId, callerName: p.callerName, callerAvatar: p.callerAvatar })
+        if (dismissedCallsRef.current.has(p.roomName)) return
+        setRingCall({ conversationId: p.conversationId, roomName: p.roomName, callerName: p.callerName, callerAvatar: p.callerAvatar })
       })
       channel.on("broadcast", { event: "call_ended" }, ({ payload }) => {
         const p = payload as { conversationId: string }
@@ -329,16 +333,53 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
     }
   }, [load, loadMsg])
 
+  // Poll fallback for the ring: realtime (private user channel) needs a manually
+  // applied RLS policy and web-push needs VAPID + a subscription — neither is
+  // guaranteed. An 8s poll makes the ring fire regardless.
+  useEffect(() => {
+    let stopped = false
+    async function poll() {
+      if (stopped) return
+      try {
+        const r = await fetch("/api/calls/incoming")
+        if (!r.ok) return
+        const { call } = (await r.json()) as { call: { conversationId: string; roomName: string; callerName: string; callerAvatar: string | null } | null }
+        if (
+          call &&
+          !dismissedCallsRef.current.has(call.roomName) &&
+          pathnameRef.current !== `/messages/${call.conversationId}`
+        ) {
+          setRingCall((cur) => (cur?.roomName === call.roomName ? cur : call))
+        }
+      } catch {
+        /* ignore — retried next tick */
+      }
+    }
+    poll()
+    const id = setInterval(poll, 8000)
+    return () => { stopped = true; clearInterval(id) }
+  }, [])
+
+  function dismissRing() {
+    if (ringCall) dismissedCallsRef.current.add(ringCall.roomName)
+    setRingCall(null)
+  }
+
   // Auto-dismiss an unanswered ring after 45s (a genuine missed call).
   useEffect(() => {
     if (!ringCall) return
-    const t = setTimeout(() => setRingCall(null), 45_000)
+    const room = ringCall.roomName
+    const t = setTimeout(() => {
+      dismissedCallsRef.current.add(room)
+      setRingCall(null)
+    }, 45_000)
     return () => clearTimeout(t)
   }, [ringCall])
 
   function acceptCall() {
     if (!ringCall) return
     const id = ringCall.conversationId
+    dismissedCallsRef.current.add(ringCall.roomName)
     setRingCall(null)
     router.push(`/messages/${id}?join=1`)
   }
@@ -378,39 +419,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      {/* Global incoming-call ring — shows anywhere on the app (callee needn't be
-          in the chat). Accept deep-links into the thread and auto-joins. */}
-      {ringCall && (
-        <div className="fixed inset-x-0 top-4 z-[60] flex justify-center px-4">
-          <div className="flex w-full max-w-sm items-center gap-3 rounded-[5px] border border-gray-200 bg-white p-3 shadow-2xl ring-1 ring-black/5">
-            {ringCall.callerAvatar ? (
-              <Image src={ringCall.callerAvatar} alt="" width={44} height={44} className="h-11 w-11 rounded-[5px] object-cover" />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-brand/10 text-brand">
-                <Video className="h-5 w-5" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-gray-900">{ringCall.callerName}</p>
-              <p className="text-xs text-gray-500">Incoming video call…</p>
-            </div>
-            <button
-              onClick={() => setRingCall(null)}
-              title="Decline"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200"
-            >
-              <PhoneOff className="h-4 w-4" />
-            </button>
-            <button
-              onClick={acceptCall}
-              title="Join call"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-700 animate-pulse"
-            >
-              <Video className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      {ringCall && <IncomingCallScreen call={ringCall} onAccept={acceptCall} onDecline={dismissRing} />}
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
 
         {/* Logo */}
@@ -719,5 +728,71 @@ function GuestNavbar() {
         </div>
       </nav>
     </header>
+  )
+}
+
+/**
+ * Full-screen Instagram-style incoming video-call screen. Dark gradient takeover,
+ * pulsing caller avatar, big Decline / Accept controls. Best-effort haptic buzz on
+ * mount (where the browser allows it without a gesture).
+ */
+function IncomingCallScreen({
+  call,
+  onAccept,
+  onDecline,
+}: {
+  call: { callerName: string; callerAvatar: string | null }
+  onAccept: () => void
+  onDecline: () => void
+}) {
+  useEffect(() => {
+    try { navigator.vibrate?.([400, 200, 400, 200, 400]) } catch { /* unsupported */ }
+    return () => { try { navigator.vibrate?.(0) } catch { /* noop */ } }
+  }, [])
+
+  const firstName = call.callerName.split(" ")[0]
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-between bg-gradient-to-b from-slate-900 via-slate-950 to-black px-6 py-16 text-white">
+      <div className="mt-6 flex flex-col items-center gap-6">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/50">Incoming video call</p>
+        <div className="relative flex items-center justify-center">
+          <span className="absolute inline-flex h-40 w-40 rounded-full bg-brand/30 animate-ping" />
+          <span className="absolute inline-flex h-32 w-32 rounded-full bg-brand/40 animate-ping [animation-delay:200ms]" />
+          {call.callerAvatar ? (
+            <Image
+              src={call.callerAvatar}
+              alt=""
+              width={128}
+              height={128}
+              className="relative h-32 w-32 rounded-full object-cover ring-4 ring-white/20"
+            />
+          ) : (
+            <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-brand/20 ring-4 ring-white/20">
+              <Video className="h-12 w-12 text-white" />
+            </div>
+          )}
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{call.callerName}</p>
+          <p className="mt-1 text-sm text-white/60">{firstName} is calling…</p>
+        </div>
+      </div>
+
+      <div className="flex w-full max-w-xs items-center justify-around">
+        <button onClick={onDecline} className="flex flex-col items-center gap-2" aria-label="Decline call">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform hover:scale-105 active:scale-95">
+            <PhoneOff className="h-7 w-7" />
+          </span>
+          <span className="text-xs text-white/70">Decline</span>
+        </button>
+        <button onClick={onAccept} className="flex flex-col items-center gap-2" aria-label="Accept call">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 shadow-lg animate-bounce transition-transform hover:scale-105 active:scale-95">
+            <Video className="h-7 w-7" />
+          </span>
+          <span className="text-xs text-white/70">Join</span>
+        </button>
+      </div>
+    </div>
   )
 }
