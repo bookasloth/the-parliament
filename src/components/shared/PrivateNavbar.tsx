@@ -23,6 +23,10 @@ import { LogoMark } from "@/components/shared/Logo"
  */
 type MembershipTier = "student" | "associate" | "premium" | "life" | "inactive" | "committee"
 
+// ponytail: calling UI is temporarily hidden (see ConversationView's CALLS_UI_ENABLED).
+// Gates the global incoming-call ring modal + its 8s poll. Backend stays wired.
+const CALLS_UI_ENABLED = false
+
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
 import { AlertAds } from "@/components/shared/AlertAds"
 import { showSidebarAd } from "@/config/ad-sets"
@@ -337,6 +341,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
   // applied RLS policy and web-push needs VAPID + a subscription — neither is
   // guaranteed. An 8s poll makes the ring fire regardless.
   useEffect(() => {
+    if (!CALLS_UI_ENABLED) return
     let stopped = false
     async function poll() {
       if (stopped) return
@@ -419,7 +424,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      {ringCall && <IncomingCallScreen call={ringCall} onAccept={acceptCall} onDecline={dismissRing} />}
+      {CALLS_UI_ENABLED && ringCall && <IncomingCallScreen call={ringCall} onAccept={acceptCall} onDecline={dismissRing} />}
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-2 px-4 sm:px-6">
 
         {/* Logo */}

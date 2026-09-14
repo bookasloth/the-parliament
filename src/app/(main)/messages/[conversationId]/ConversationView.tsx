@@ -40,6 +40,12 @@ const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"]
 
 const PAGE_SIZE = 50
 
+// ponytail: calling is temporarily HIDDEN (button + in-thread ring/join banner)
+// while web-push and the leaked-key rotation land. All call code stays wired —
+// flip this to true to bring the UI back. The global ring modal + 8s poll live in
+// PrivateNavbar (gated by the same const there).
+const CALLS_UI_ENABLED = false
+
 interface OtherUser {
   id: string
   name: string
@@ -417,7 +423,7 @@ export default function ConversationView({
   // doesn't re-trigger it.
   const autoJoinRef = useRef(false)
   useEffect(() => {
-    if (autoJoinRef.current || callSession) return
+    if (!CALLS_UI_ENABLED || autoJoinRef.current || callSession) return
     if (searchParams.get("join") === "1") {
       autoJoinRef.current = true
       // Defer past the effect body so the join's setState doesn't cascade-render.
@@ -511,7 +517,7 @@ export default function ConversationView({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {!blocked && (
+          {CALLS_UI_ENABLED && !blocked && (
             <button
               onClick={() => connectCall(true)}
               disabled={callConnecting || !!callSession}
@@ -559,7 +565,7 @@ export default function ConversationView({
       )}
 
       {/* Incoming-call join banner (Slack-style huddle) */}
-      {incomingCall && !callSession && (
+      {CALLS_UI_ENABLED && incomingCall && !callSession && (
         <div className="flex items-center justify-between gap-2 bg-brand/10 px-4 py-2 text-sm">
           <span className="flex items-center gap-2 font-medium text-brand">
             <PhoneCall className="h-4 w-4 animate-pulse" />
