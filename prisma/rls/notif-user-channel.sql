@@ -1,32 +1,36 @@
--- Realtime notification bell — authorize each authenticated user to SUBSCRIBE to
--- their OWN private channel, topic `user:<their uid>`. Apply MANUALLY on Supabase
--- (the realtime.messages topic policies live in the DB, not in Prisma migrations).
+-- Realtime Authorization for the per-user private channel `user:<uuid>`.
+-- Run once in the Supabase SQL editor of the Parliament project (ref plyoesxuiltefxgojbeh).
 --
--- How Supabase Realtime private channels work: a subscribe is gated by RLS on
--- `realtime.messages`. This SELECT policy lets the `authenticated` role read
--- broadcasts whose topic equals `user:` + their own auth.uid(). The SERVER
--- broadcasts with the service-role key (bypasses RLS), so only the subscribe
--- side needs a policy — no helper table/subquery (the topic encodes the uid).
+-- This channel carries: the notification-bell live nudge, AND the incoming
+-- video-call ring (events `incoming_call` / `call_ended`). Without this policy a
+-- client's subscribe to `user:<their id>` is REJECTED ("You do not have
+-- permissions to read from this Channel topic"), so the bell silently falls back
+-- to its 5-min poll and the call ring never fires instantly (the 8s /api/calls/
+-- incoming poll is the only thing that saves it).
 --
--- Mirrors the existing conversation-channel authorization. If your conversation
--- policy on realtime.messages is shaped differently (e.g. checks `extension`),
--- mirror THAT shape here so both channels authorize consistently.
+-- Shape mirrors the WORKING conversation policy (messaging-realtime-rls.sql):
+-- bare `topic` column + `auth.uid()`. The channel is broadcast-only from the
+-- server (service-role key, bypasses RLS), so the client only needs SELECT to
+-- RECEIVE — no INSERT policy (the client never sends on this channel).
 --
--- Guarded so local dev/test Postgres (no `auth` schema / `authenticated` role)
--- skips it cleanly.
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth')
-     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    DROP POLICY IF EXISTS "own user notification channel" ON realtime.messages;
-    EXECUTE $p$
-      CREATE POLICY "own user notification channel" ON realtime.messages
-        FOR SELECT TO authenticated
-        USING ( realtime.topic() = 'user:' || (SELECT auth.uid())::text )
-    $p$;
-  END IF;
-END $$;
+-- auth.uid() = the `sub` of the JWT minted by signRealtimeToken (= the app user
+-- id). Topic is `user:<that id>`, so split_part(topic,':',2) must equal it.
+--
+-- RLS is already enabled on realtime.messages by default (you don't own that
+-- table, so `alter table ... enable rls` errors with "must be owner"). Just
+-- create the policy.
+
+drop policy if exists "own user channel can receive" on realtime.messages;
+
+create policy "own user channel can receive"
+on realtime.messages
+for select
+to authenticated
+using (
+  topic like 'user:%'
+  and split_part(topic, ':', 2) = auth.uid()::text
+);
 
 -- Verify after applying:
---   SELECT policyname FROM pg_policies
---   WHERE schemaname = 'realtime' AND tablename = 'messages';
+--   select policyname from pg_policies
+--   where schemaname = 'realtime' and tablename = 'messages';
