@@ -32,6 +32,39 @@ interface Props {
 
 const TOKEN_RE = /(^|\s)@(\w{0,20})$/
 
+// Pixel position of a character index inside a textarea/input, relative to the
+// field's own top-left (padding box). Uses the classic hidden-mirror technique:
+// a div styled identically to the field, holding the text up to `pos`, with a
+// marker span whose offset IS the caret position. Lets us anchor the mention
+// dropdown right under the "@" instead of at the bottom of the box.
+const MIRROR_PROPS = [
+  "boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+  "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+  "fontStyle", "fontVariant", "fontWeight", "fontStretch", "fontSize", "fontFamily",
+  "lineHeight", "letterSpacing", "textTransform", "wordSpacing", "textIndent",
+] as const
+
+function caretCoords(el: HTMLTextAreaElement | HTMLInputElement, pos: number): { left: number; top: number } {
+  const s = getComputedStyle(el)
+  const div = document.createElement("div")
+  div.style.position = "absolute"
+  div.style.visibility = "hidden"
+  div.style.whiteSpace = "pre-wrap"
+  div.style.overflowWrap = "break-word"
+  for (const p of MIRROR_PROPS) div.style[p as never] = s[p as never]
+  // <input> is single-line: don't wrap.
+  if (el.tagName === "INPUT") div.style.whiteSpace = "pre"
+  div.textContent = el.value.slice(0, pos)
+  const span = document.createElement("span")
+  span.textContent = el.value.slice(pos) || "."
+  div.appendChild(span)
+  document.body.appendChild(div)
+  const left = span.offsetLeft - el.scrollLeft
+  const top = span.offsetTop - el.scrollTop
+  document.body.removeChild(div)
+  return { left, top }
+}
+
 export default function MentionInput({
   value,
   onChange,
@@ -55,6 +88,8 @@ export default function MentionInput({
   const [caret, setCaret] = useState(0)
   const [items, setItems] = useState<MentionTarget[]>([])
   const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null)
   const [active, setActive] = useState(0)
   const tokenStart = useRef(0)
   // Per-session cache of query → results, so backspacing/retyping a handle is
@@ -62,23 +97,43 @@ export default function MentionInput({
   const cacheRef = useRef<Map<string, MentionTarget[]>>(new Map())
 
   useEffect(() => {
+    // This effect derives the dropdown's open/loading/position state from the
+    // current value+caret (plus a debounced fetch); the synchronous setState is
+    // the intended synchronization, not a cascading-render bug.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const before = value.slice(0, caret)
     const m = before.match(TOKEN_RE)
     if (!m) {
       setOpen(false)
+      setLoading(false)
       return
     }
     tokenStart.current = m.index! + m[1].length
     const q = m[2]
     const key = q.toLowerCase()
 
-    // Cache hit → show immediately, no fetch.
+    // Anchor the dropdown right under the "@" glyph (not the bottom of the box).
+    if (ref.current) {
+      const c = caretCoords(ref.current, tokenStart.current)
+      const lh = parseFloat(getComputedStyle(ref.current).lineHeight) || 20
+      setMenuPos({ left: c.left, top: c.top + lh })
+    }
+
+    // Cache hit → show immediately, no fetch, no skeleton.
     const cached = cacheRef.current.get(key)
     if (cached) {
       setItems(cached)
       setActive(0)
-      setOpen(cached.length > 0)
+      setLoading(false)
+      setOpen(cached.length > 0 || q.length >= 2)
       return
+    }
+
+    // Skeleton the instant a real query (2+ chars) starts — before the debounce
+    // and network — so it feels responsive while results load.
+    if (q.length >= 2) {
+      setLoading(true)
+      setOpen(true)
     }
 
     let live = true
@@ -89,10 +144,14 @@ export default function MentionInput({
         if (!live) return
         setItems(res)
         setActive(0)
-        setOpen(res.length > 0)
+        setLoading(false)
+        setOpen(res.length > 0 || q.length >= 2)
       } catch (err) {
         console.error("[MentionInput] search failed", err)
-        if (live) setOpen(false)
+        if (live) {
+          setLoading(false)
+          setOpen(false)
+        }
       }
     }, 150)
     return () => {
@@ -100,6 +159,7 @@ export default function MentionInput({
       clearTimeout(t)
     }
   }, [value, caret])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function pick(t: MentionTarget) {
     const handle = t.username ?? t.displayName.replace(/\s+/g, "")
@@ -190,8 +250,35 @@ export default function MentionInput({
       )}
 
       {open && (
-        <ul className={`absolute left-0 z-20 w-72 max-h-72 overflow-auto rounded-[5px] border border-gray-200 bg-white py-1 shadow-lg ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
-          {items.map((t, i) => (
+        <ul
+          className={`absolute z-20 w-72 max-h-72 overflow-auto rounded-[5px] border border-gray-200 bg-white py-1 shadow-lg ${
+            menuPos ? "" : dropUp ? "left-0 bottom-full mb-1" : "left-0 top-full mt-1"
+          }`}
+          style={
+            menuPos
+              ? dropUp
+                ? { left: menuPos.left, bottom: `calc(100% - ${menuPos.top}px)` }
+                : { left: menuPos.left, top: menuPos.top }
+              : undefined
+          }
+        >
+          {loading &&
+            Array.from({ length: 4 }).map((_, i) => (
+              <li key={`sk-${i}`} className="flex items-center gap-2.5 px-3 py-2">
+                <span className="h-8 w-8 shrink-0 animate-pulse rounded-[4px] bg-gray-200" />
+                <span className="min-w-0 flex-1">
+                  <span className="block h-3 w-28 animate-pulse rounded bg-gray-200" />
+                  <span className="mt-1.5 block h-2.5 w-20 animate-pulse rounded bg-gray-100" />
+                </span>
+              </li>
+            ))}
+
+          {!loading && items.length === 0 && (
+            <li className="px-3 py-2 text-sm text-gray-400">No people found</li>
+          )}
+
+          {!loading &&
+            items.map((t, i) => (
             <li key={t.id}>
               <button
                 type="button"
