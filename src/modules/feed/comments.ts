@@ -157,6 +157,7 @@ export interface MentionTarget {
   headline: string | null
   batchLabel: string | null
   isVerified: boolean
+  membership: string
 }
 
 const mentionUserSelect = {
@@ -165,6 +166,7 @@ const mentionUserSelect = {
   displayName: true,
   legalName: true,
   isVerified: true,
+  membershipStatus: true,
   profile: { select: { photoUrl: true, headline: true, batch: { select: { label: true, startYear: true } } } },
 } as const
 
@@ -174,6 +176,7 @@ function toMentionTarget(u: {
   displayName: string | null
   legalName: string
   isVerified: boolean
+  membershipStatus: string
   profile: { photoUrl: string | null; headline: string | null; batch: { label: string | null; startYear: number | null } | null } | null
 }): MentionTarget {
   const name = u.displayName || u.legalName
@@ -188,6 +191,7 @@ function toMentionTarget(u: {
     headline: u.profile?.headline ?? null,
     batchLabel,
     isVerified: u.isVerified,
+    membership: u.membershipStatus,
   }
 }
 
