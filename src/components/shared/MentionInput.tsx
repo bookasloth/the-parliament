@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { ShieldCheck } from "lucide-react"
+import { VerifiedTick } from "@/components/shared/VerifiedTick"
 import { searchMentionsAction } from "@/app/(main)/feed/actions"
 import EmojiPicker from "@/components/shared/EmojiPicker"
 import type { MentionTarget } from "@/modules/feed/comments"
@@ -209,9 +209,7 @@ export default function MentionInput({
                     <span className="truncate text-sm font-medium text-gray-900">
                       {t.displayName}
                     </span>
-                    {t.isVerified && (
-                      <ShieldCheck className="h-3 w-3 shrink-0 text-blue-500 fill-blue-100" />
-                    )}
+                    {t.isVerified && <VerifiedTick size={13} membership={t.membership} />}
                   </span>
                   {(t.batchLabel || t.headline) && (
                     <span className="block truncate text-xs text-gray-500">{t.batchLabel ?? t.headline}</span>
