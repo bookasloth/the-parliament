@@ -57,6 +57,9 @@ export default function MentionInput({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const tokenStart = useRef(0)
+  // Per-session cache of query → results, so backspacing/retyping a handle is
+  // instant instead of another server round-trip.
+  const cacheRef = useRef<Map<string, MentionTarget[]>>(new Map())
 
   useEffect(() => {
     const before = value.slice(0, caret)
@@ -67,10 +70,22 @@ export default function MentionInput({
     }
     tokenStart.current = m.index! + m[1].length
     const q = m[2]
+    const key = q.toLowerCase()
+
+    // Cache hit → show immediately, no fetch.
+    const cached = cacheRef.current.get(key)
+    if (cached) {
+      setItems(cached)
+      setActive(0)
+      setOpen(cached.length > 0)
+      return
+    }
+
     let live = true
     const t = setTimeout(async () => {
       try {
         const res = await searchMentionsAction(q)
+        cacheRef.current.set(key, res)
         if (!live) return
         setItems(res)
         setActive(0)

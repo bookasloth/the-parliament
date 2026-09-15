@@ -223,6 +223,22 @@ export async function searchMentionTargets(
     ...nameFilter,
   }
 
+  // Active search string → ONE indexed name lookup, not the 4-tier discovery
+  // walk. The tiers (recently-tagged / batch / house) exist to surface sensible
+  // people for the empty "@" case; while the user is typing a name they just want
+  // matches, and running 4 sequential queries per keystroke is what made the
+  // autocomplete feel slow. (For fast substring match at scale, add a pg_trgm GIN
+  // index on users(display_name/username) — see prisma/rls/mention-trgm.sql.)
+  if (q) {
+    const rows = await prisma.user.findMany({
+      where: baseWhere,
+      orderBy: { displayName: "asc" },
+      take: limit,
+      select: mentionUserSelect,
+    })
+    return rows.map(toMentionTarget)
+  }
+
   const picked = new Set<string>()
   const results: MentionTarget[] = []
   const add = (u: Parameters<typeof toMentionTarget>[0]) => {
