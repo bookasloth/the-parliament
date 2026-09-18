@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { KARMA } from "@/config/karma"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 
 export type KarmaAction =
   | "profile_complete"
@@ -164,7 +165,7 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
   const self = !!input.counterpartyId && input.counterpartyId === input.userId
   const day = istDay()
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Idempotency: never award twice for the same source event (payment webhook
     // retry, double-submit). Return the current balance untouched.
     if (input.oncePerEntity && input.entityId) {
@@ -354,6 +355,11 @@ export async function awardKarma(input: AwardKarmaInput): Promise<KarmaBalance> 
       lifetimeEarned: updated.lifetimeEarned.toNumber(),
     }
   })
+
+  // Karma changed → re-evaluate karma-triggered badges (New Sailor, Profile
+  // Complete, Karma milestones, lifetime-karma). Fire-and-forget, deduped.
+  void enqueueBadgeEval(input.userId)
+  return result
 }
 
 /**

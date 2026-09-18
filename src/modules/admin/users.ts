@@ -8,6 +8,7 @@ import { createResetToken, resetUrl } from "@/lib/password-reset"
 import { sendEmail } from "@/lib/email"
 import { colorAvatar } from "@/lib/avatar"
 import { adminSetTier } from "@/modules/membership/admin"
+import { enqueueReferrerBadge } from "@/modules/badges/enqueue"
 import type { AdminRole } from "@/generated/prisma/enums"
 import type { Permission } from "@/modules/admin/permissions"
 
@@ -83,6 +84,7 @@ export async function actOnUser(
         where: { id: targetId },
         data: { isVerified: true, verificationStatus: "approved" },
       })
+      void enqueueReferrerBadge(targetId) // referrer's Influencer badge
       break
     case "unverify":
       await prisma.user.update({

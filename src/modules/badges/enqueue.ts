@@ -15,3 +15,21 @@ export function enqueueBadgeEval(userId: string): Promise<void> {
     console.error("[badges] enqueue failed", e);
   });
 }
+
+/**
+ * A user just became verified → re-evaluate their REFERRER's referral badge
+ * (Influencer). Only the inviter's `referrals_verified` count changed, so we
+ * enqueue the inviter, not the verified user. No-op when there's no inviter.
+ */
+export async function enqueueReferrerBadge(verifiedUserId: string): Promise<void> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const u = await prisma.user.findUnique({
+      where: { id: verifiedUserId },
+      select: { invitedById: true },
+    });
+    if (u?.invitedById) await enqueueBadgeEval(u.invitedById);
+  } catch (e) {
+    console.error("[badges] referrer enqueue failed", e);
+  }
+}

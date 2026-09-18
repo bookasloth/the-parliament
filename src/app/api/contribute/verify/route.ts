@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { handleError, ok, badRequest } from "@/lib/api"
 import { verifyPaymentSignature, getRazorpay } from "@/lib/razorpay"
 import { sendCertificateEmail } from "@/modules/contributions/certificate-email"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 import type { SponsorTier } from "@/config/sponsor"
 
 const schema = z.object({
@@ -45,6 +46,10 @@ export async function POST(req: NextRequest) {
       data: { status: "paid", razorpayPaymentId: body.razorpayPaymentId, paidAt: new Date() },
     })
     if (claimed.count === 0) return ok({ alreadyPaid: true, showOnWall: c.showOnWall, needsApproval: !c.approved })
+
+    // Paid → re-evaluate donor-ladder / Open Wallet badges (only for logged-in
+    // contributors; anonymous gifts have no user_id). Fire-and-forget.
+    if (c.userId) void enqueueBadgeEval(c.userId)
 
     // Email the certificate (link + PDF + IG-story PNG). Best-effort — never
     // block the response, and the certificate is always available at its URL.
