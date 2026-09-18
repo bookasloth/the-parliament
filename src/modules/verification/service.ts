@@ -4,6 +4,7 @@ import { sendNotification } from "@/modules/notifications/service"
 import { notifyCommittee } from "@/modules/committees/service"
 import { audit } from "@/lib/audit"
 import { scoreCandidate } from "./ranking"
+import { enqueueReferrerBadge } from "@/modules/badges/enqueue"
 
 export type VerificationMethod = "id_upload" | "alumni_vouch" | "institute_email"
 
@@ -199,6 +200,7 @@ export async function verifyUserDirectly(opts: { userId: string; adminId: string
     where: { id: opts.userId },
     data: { isVerified: true, verifiedAt: new Date(), verificationStatus: "approved" },
   })
+  void enqueueReferrerBadge(opts.userId) // referrer's Influencer badge
 
   await sendNotification({
     userId: opts.userId,
@@ -241,6 +243,7 @@ export async function approveVerification(opts: {
       data: { isVerified: true, verifiedAt: new Date(), verificationStatus: "approved" },
     }),
   ])
+  void enqueueReferrerBadge(v.userId) // referrer's Influencer badge
 
   await sendNotification({
     userId: v.userId,

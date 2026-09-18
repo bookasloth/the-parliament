@@ -4,6 +4,7 @@ import { notifyCommittee } from "@/modules/committees/service"
 import { sendNotification } from "@/modules/notifications/service"
 import { audit } from "@/lib/audit"
 import { buildWarnPayload } from "./warn-copy"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 
 export type ReportableEntity = "post" | "comment" | "profile" | "business" | "message" | "vyapaar_bug"
 
@@ -435,7 +436,7 @@ export async function resolveCluster(opts: {
 }) {
   const open = await prisma.contentReport.findMany({
     where: { entityType: opts.entityType, entityId: opts.entityId, status: "open" },
-    select: { id: true },
+    select: { id: true, reporterId: true },
   })
   if (open.length === 0) throw new ForbiddenError("No open reports on this entity")
 
@@ -473,6 +474,13 @@ export async function resolveCluster(opts: {
       .catch((e) => console.error("warn notify (cluster) failed", e))
   }
 
+  // Reports that led to action → re-evaluate each reporter's NNAWCA Police badge.
+  if (["warned", "hidden", "removed"].includes(opts.resolution)) {
+    for (const rid of new Set(open.map((o) => o.reporterId).filter(Boolean))) {
+      void enqueueBadgeEval(rid as string)
+    }
+  }
+
   return { resolved: open.length }
 }
 
@@ -500,6 +508,11 @@ export async function resolveReport(opts: {
     await notifyContentRemoved(r.entityType as ReportableEntity, r.entityId, opts.resolution === "hidden")
   } else if (opts.resolution === "dismissed" && r.entityType === "post") {
     await releasePostPenalty(r.entityId, 1)
+  }
+
+  // Report led to action → re-evaluate the reporter's NNAWCA Police badge.
+  if (r.reporterId && ["warned", "hidden", "removed"].includes(opts.resolution)) {
+    void enqueueBadgeEval(r.reporterId)
   }
 
   await audit({

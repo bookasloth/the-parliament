@@ -100,7 +100,12 @@ export const METRICS: Record<string, MetricFn> = {
   eggs_received: async (userId) => prisma.eggThrow.count({ where: { targetId: userId } }),
 
   reports_actioned: async (userId) =>
-    prisma.contentReport.count({ where: { reporterId: userId, status: "actioned" } }),
+    // A report "led to action" when it was resolved as warned/hidden/removed
+    // (the resolution values the moderation flow actually writes — there is no
+    // "actioned" status). Dismissed reports don't count.
+    prisma.contentReport.count({
+      where: { reporterId: userId, status: { in: ["warned", "hidden", "removed"] } },
+    }),
 
   first_post_delay_days: async (userId, _c, ctx) => {
     const first = await prisma.post.findFirst({

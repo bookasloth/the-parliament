@@ -7,6 +7,7 @@ import { nextRenewalDate } from "@/lib/membership-cycle"
 import { queueEmail } from "@/modules/email/service"
 import { sendEmail } from "@/lib/email"
 import { notifyCommittee } from "@/modules/committees/service"
+import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 
 export interface ActivateInput {
   userId: string
@@ -125,6 +126,8 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
       await notifyExecutiveOfActivation(input, result).catch((e) =>
         console.error("committee notify (activation) failed", e),
       )
+      // Paid membership active → re-evaluate the Paid Member badge.
+      void enqueueBadgeEval(input.userId)
       return result
     })
 }
