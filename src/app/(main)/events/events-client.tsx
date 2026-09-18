@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useTransition, type ReactNode } from "reac
 import Image from "next/image"
 import {
   Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
-  X, Search, Video, MapPin, Globe,
+  X, Search, Video, MapPin, Globe, Tag, ArrowRight,
 } from "lucide-react"
+import { Expandable, ExpandableContent } from "@/components/ui/expandable"
 import type { EventItem } from "@/modules/events/service"
 import { rsvpAction, createEventAction } from "./actions"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
@@ -29,6 +30,7 @@ type Tab = "upcoming" | "mine" | "past"
 
 function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: string) => void }) {
   const [shareOpen, setShareOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const ModeIcon = MODE_ICON[event.mode]
 
@@ -39,26 +41,35 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
   }, [])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden flex flex-col hover:shadow-card transition-shadow">
-      {/* Image + badge */}
-      <div className="relative">
+    <Expandable
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => { setExpanded(false); setShareOpen(false) }}
+      transitionDuration={0.25}
+      className="bg-white border border-gray-200 rounded-[5px] overflow-hidden flex flex-col hover:shadow-card hover:border-brand/30 transition-shadow"
+    >
+      {/* Cover — hidden while collapsed, slides open on hover/expand */}
+      <ExpandableContent preset="fade" keepMounted>
         <a href={`/events/${event.slug}`} className="relative block h-36">
           <Image src={event.cover} alt={event.title} fill sizes="(max-width: 768px) 100vw, 400px" className="w-full h-36 object-cover" />
         </a>
-        <span className={`absolute top-2 right-2 rounded-[3px] px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
-          {event.isFree ? "Free" : `₹${event.price}`}
-        </span>
-      </div>
+      </ExpandableContent>
 
-      {/* Body */}
-      <div className="relative px-4 pb-4 flex flex-col flex-1">
-        {/* Mode tag overlapping the image */}
-        <a
-          href={`/events/${event.slug}`}
-          className="inline-flex items-center gap-1 self-start -mt-3 mb-2 rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
-        >
-          <ModeIcon className="h-3 w-3" /> {MODE_LABEL[event.mode]}
-        </a>
+      {/* Body — always visible */}
+      <div className="relative px-4 py-3 flex flex-col flex-1">
+        {/* Meta row: mode + price (price lives here since the cover badge is gone) */}
+        <div className="flex items-center justify-between mb-2">
+          <a
+            href={`/events/${event.slug}`}
+            className="inline-flex items-center gap-1 rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-semibold text-white"
+          >
+            <ModeIcon className="h-3 w-3" /> {MODE_LABEL[event.mode]}
+          </a>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold text-white ${event.isFree ? "bg-green-500" : "bg-brand"}`}>
+            {event.isFree ? "Free" : `₹${event.price}`}
+          </span>
+        </div>
 
         <h6 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">
           <a href={`/events/${event.slug}`} className="hover:text-brand transition-colors">{event.title}</a>
@@ -67,49 +78,67 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
         <p className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar className="h-3.5 w-3.5" /> {event.date}</p>
         <p className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5"><Clock className="h-3.5 w-3.5" /> {event.time}</p>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-3">
-          <button
-            onClick={() => onToggle(event.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-[4px] border py-1.5 text-xs font-semibold transition-colors ${
-              event.interested
-                ? "border-green-500 bg-green-500 text-white"
-                : "border-green-500 bg-white text-green-600 hover:bg-green-50"
-            }`}
-          >
-            <ThumbsUp className={`h-3.5 w-3.5 ${event.interested ? "fill-white" : ""}`} />
-            {event.interested ? "Interested" : "Interested"}
-          </button>
-
-          <div className="relative" ref={ref}>
-            <button
-              onClick={() => setShareOpen(!shareOpen)}
-              className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-            </button>
-            {shareOpen && (
-              <div className="absolute right-0 bottom-full mb-1 z-20 w-44 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
-                {[
-                  { icon: <Share2 className="h-3.5 w-3.5" />, label: "Share on Facebook" },
-                  { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "Share on WhatsApp" },
-                  { divider: true, icon: null, label: "" },
-                  { icon: <Link2 className="h-3.5 w-3.5" />, label: "Copy Link" },
-                ].map((item, i) =>
-                  item.divider ? (
-                    <hr key={i} className="my-1 border-gray-100" />
-                  ) : (
-                    <button key={i} onClick={() => setShareOpen(false)} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">
-                      {item.icon} {item.label}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
+        {/* Revealed on hover/expand: category + Register / Interested.
+            Spacing uses padding (not margin) so useMeasure's border-box
+            height includes it — margins would be dropped and clip the row. */}
+        <ExpandableContent preset="slide-up" keepMounted>
+          <div className="pt-3 pb-1">
+          <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
+              <Tag className="h-3 w-3" /> {event.category}
+            </span>
+            <div className="relative" ref={ref}>
+              <button
+                onClick={() => setShareOpen(!shareOpen)}
+                className="flex h-6 w-6 items-center justify-center rounded-[4px] bg-brand/10 text-brand hover:bg-brand hover:text-white transition-colors"
+                aria-label="Share event"
+              >
+                <Share2 className="h-3 w-3" />
+              </button>
+              {shareOpen && (
+                <div className="absolute right-0 bottom-full mb-1 z-20 w-44 rounded-[4px] border border-gray-200 bg-white py-1 shadow-lg">
+                  {[
+                    { icon: <Share2 className="h-3.5 w-3.5" />, label: "Share on Facebook" },
+                    { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "Share on WhatsApp" },
+                    { divider: true, icon: null, label: "" },
+                    { icon: <Link2 className="h-3.5 w-3.5" />, label: "Copy Link" },
+                  ].map((item, i) =>
+                    item.divider ? (
+                      <hr key={i} className="my-1 border-gray-100" />
+                    ) : (
+                      <button key={i} onClick={() => setShareOpen(false)} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">
+                        {item.icon} {item.label}
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+          <div className="flex items-center gap-2 mt-3">
+            <a
+              href={`/events/${event.slug}`}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-[4px] bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
+            >
+              <Calendar className="h-3.5 w-3.5" /> Register
+            </a>
+            <button
+              onClick={() => onToggle(event.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-[4px] border py-1.5 text-xs font-semibold transition-colors ${
+                event.interested
+                  ? "border-green-500 bg-green-500 text-white"
+                  : "border-green-500 bg-white text-green-600 hover:bg-green-50"
+              }`}
+            >
+              <ThumbsUp className={`h-3.5 w-3.5 ${event.interested ? "fill-white" : ""}`} />
+              Interested
+            </button>
+          </div>
+          </div>
+        </ExpandableContent>
       </div>
-    </div>
+    </Expandable>
   )
 }
 
