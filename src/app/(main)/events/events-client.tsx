@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useTransition, type ReactNode } from "reac
 import Image from "next/image"
 import {
   Plus, Calendar, Clock, ThumbsUp, Share2, Link2, MessageCircle,
-  X, Search, Video, MapPin, Globe,
+  X, Search, Video, MapPin, Globe, Tag, ArrowRight,
 } from "lucide-react"
+import { Expandable, ExpandableContent } from "@/components/ui/expandable"
 import type { EventItem } from "@/modules/events/service"
 import { rsvpAction, createEventAction } from "./actions"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
@@ -29,6 +30,7 @@ type Tab = "upcoming" | "mine" | "past"
 
 function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: string) => void }) {
   const [shareOpen, setShareOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const ModeIcon = MODE_ICON[event.mode]
 
@@ -39,7 +41,14 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
   }, [])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-[5px] overflow-hidden flex flex-col hover:shadow-card transition-shadow">
+    <Expandable
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => { setExpanded(false); setShareOpen(false) }}
+      transitionDuration={0.25}
+      className="bg-white border border-gray-200 rounded-[5px] overflow-hidden flex flex-col hover:shadow-card hover:border-brand/30 transition-shadow"
+    >
       {/* Image + badge */}
       <div className="relative">
         <a href={`/events/${event.slug}`} className="relative block h-36">
@@ -66,6 +75,18 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
 
         <p className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar className="h-3.5 w-3.5" /> {event.date}</p>
         <p className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5"><Clock className="h-3.5 w-3.5" /> {event.time}</p>
+
+        {/* Details revealed on hover/expand (additive — never hides essentials) */}
+        <ExpandableContent preset="slide-up" keepMounted>
+          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
+              <Tag className="h-3 w-3" /> {event.category}
+            </span>
+            <a href={`/events/${event.slug}`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline">
+              View details <ArrowRight className="h-3 w-3" />
+            </a>
+          </div>
+        </ExpandableContent>
 
         {/* Actions */}
         <div className="flex items-center gap-2 mt-3">
@@ -109,7 +130,7 @@ function EventCard({ event, onToggle }: { event: EventItem; onToggle: (id: strin
           </div>
         </div>
       </div>
-    </div>
+    </Expandable>
   )
 }
 
