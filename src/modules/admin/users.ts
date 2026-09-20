@@ -296,6 +296,19 @@ export async function reactivateAccount(userId: string): Promise<boolean> {
   return res.count > 0
 }
 
+/**
+ * Self-deactivate an ACTIVE account (audit P0-9): `active` → `inactive` + set
+ * `deletedAt`. A no-op for any other status (never touches suspended/banned — a
+ * moderated user can't self-clear their state). Returns whether it flipped.
+ */
+export async function deactivateAccount(userId: string): Promise<boolean> {
+  const res = await prisma.user.updateMany({
+    where: { id: userId, status: "active" },
+    data: { status: "inactive", deletedAt: new Date() },
+  })
+  return res.count > 0
+}
+
 export const MEMBERSHIP_TIERS = [
   "free", "student", "associate", "premium", "life", "committee", "inactive",
 ] as const

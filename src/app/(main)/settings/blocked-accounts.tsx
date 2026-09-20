@@ -22,7 +22,7 @@ export function BlockedAccounts({ initial }: { initial: BlockedUserRow[] }) {
   }
 
   return (
-    <section className="bg-white border border-gray-200 rounded-xl p-6">
+    <section className="rounded-[5px] border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900 mb-1">Blocked accounts</h2>
       <p className="text-sm text-gray-500 mb-4">
         Blocked members can’t see your profile, posts, or comments, and can’t message or follow you.
