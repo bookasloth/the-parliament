@@ -541,6 +541,9 @@ export async function deletePost(input: { postId: string; userId: string }) {
   )
   // Drop notifications pointing at the gone post so their deep links don't 404 (P1-4).
   await deleteNotificationsForEntity("post", post.id).catch(() => {})
+  // Decrement hashtag useCounts + drop join rows so trending stops counting a
+  // deleted post (audit §5 #6).
+  await syncPostHashtags(post.id, null)
 
   await audit({
     actorId: input.userId,
@@ -596,14 +599,31 @@ export async function toggleReaction(input: {
   if (existing) {
     await prisma.reaction.update({ where: { id: existing.id }, data: { type: input.type } })
   } else {
-    await prisma.reaction.create({
-      data: {
-        userId: input.userId,
-        entityType: "post",
-        entityId: input.postId,
-        type: input.type,
-      },
-    })
+    try {
+      await prisma.reaction.create({
+        data: {
+          userId: input.userId,
+          entityType: "post",
+          entityId: input.postId,
+          type: input.type,
+        },
+      })
+    } catch (e) {
+      // Concurrent identical react: check-then-insert races on the unique
+      // (userId,entityType,entityId) constraint. P2002 means the row now exists —
+      // idempotent, so set the intended type instead of 500ing (audit §10).
+      if ((e as { code?: string }).code !== "P2002") throw e
+      await prisma.reaction.update({
+        where: {
+          userId_entityType_entityId: {
+            userId: input.userId,
+            entityType: "post",
+            entityId: input.postId,
+          },
+        },
+        data: { type: input.type },
+      })
+    }
   }
 
   if (input.userId !== post.authorId) {

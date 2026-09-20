@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { extractHashtags } from "@/modules/feed/hashtags"
+import { extractHashtags, diffHashtags } from "@/modules/feed/hashtags"
 
 describe("extractHashtags", () => {
   it("extracts simple hashtags", () => {
@@ -39,5 +39,28 @@ describe("extractHashtags", () => {
 
   it("ignores mid-word hash", () => {
     expect(extractHashtags("foo#bar")).toEqual([])
+  })
+})
+
+describe("diffHashtags (useCount drift fix, audit §5 #6)", () => {
+  it("first save: all tags added, none removed", () => {
+    expect(diffHashtags([], ["a", "b"])).toEqual({ added: ["a", "b"], removed: [] })
+  })
+
+  it("re-save of identical tags: no increment, no decrement (was the drift bug)", () => {
+    expect(diffHashtags(["a", "b"], ["a", "b"])).toEqual({ added: [], removed: [] })
+  })
+
+  it("edit swaps a tag: one added, one removed", () => {
+    expect(diffHashtags(["a", "b"], ["a", "c"])).toEqual({ added: ["c"], removed: ["b"] })
+  })
+
+  it("delete (empty next): all removed, none added", () => {
+    expect(diffHashtags(["a", "b"], [])).toEqual({ added: [], removed: ["a", "b"] })
+  })
+
+  it("accepts a Map's keys iterator as prev", () => {
+    const prev = new Map([["a", "id1"], ["b", "id2"]])
+    expect(diffHashtags(prev.keys(), ["b", "c"])).toEqual({ added: ["c"], removed: ["a"] })
   })
 })
