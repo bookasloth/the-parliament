@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import Anthropic from "@anthropic-ai/sdk"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 const AUTHOR_EMAIL = "sndatarkar@gmail.com"
 
@@ -70,8 +71,9 @@ export async function POST(req: NextRequest) {
   const secret = process.env.WEBHOOK_SECRET
   if (!secret) return NextResponse.json({ error: "not configured" }, { status: 500 })
 
-  const auth = req.headers.get("authorization")
-  if (auth !== `Bearer ${secret}`) {
+  // Constant-time bearer compare (audit CP §7) — a plain `!==` leaked the secret
+  // via response timing. Reuses the cron authorizer (same "Bearer <secret>" shape).
+  if (!isAuthorizedCron(req.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
