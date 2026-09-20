@@ -3,9 +3,11 @@ import { handleError, ok } from "@/lib/api"
 import { requireUser } from "@/modules/auth/session"
 import { unreadCount, listNotifications, markAllRead, markRead } from "@/modules/notifications/service"
 import { resolveNotifLinks } from "@/modules/notifications/links"
-import { othersSuffix } from "@/modules/notifications/aggregate"
 
-// GET → unread count + recent notifications for the navbar bell.
+// GET → unread count + recent notifications for the navbar bell. Returns the same
+// normalized shape the /notifications page uses (NotifView), so the shared
+// NotificationRow renders both — the "and N others" aggregate is applied by the
+// row, not baked into the title here.
 export async function GET() {
   try {
     const user = await requireUser()
@@ -15,10 +17,12 @@ export async function GET() {
       count,
       items: rows.map((n, i) => ({
         id: n.id,
-        // Bake the "and N others" aggregate into the bell title (audit N-1).
-        title: othersSuffix(n.actorCount) ? `${n.title} ${othersSuffix(n.actorCount)}` : n.title,
+        type: n.type,
+        title: n.title,
         body: n.body,
         imageUrl: n.imageUrl,
+        actorAvatars: n.actorAvatars,
+        actorCount: n.actorCount,
         isRead: n.isRead,
         createdAt: n.createdAt.toISOString(),
         href: links[i].href,

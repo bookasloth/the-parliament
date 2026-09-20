@@ -296,13 +296,15 @@ export interface NotificationRow {
   createdAt: Date
   /** Distinct actors folded into this (coalesced) row — drives "and N others". */
   actorCount: number
+  /** Live avatars of those actors (up to 3), for stacked-avatar rendering. */
+  actorAvatars: string[]
 }
 
 export async function listNotifications(
   userId: string,
   limit = 50,
 ): Promise<NotificationRow[]> {
-  return prisma.notification.findMany({
+  const rows = await prisma.notification.findMany({
     // DMs live in the messages inbox, never the notification bell/list.
     where: { userId, type: { not: "new_message" } },
     orderBy: { createdAt: "desc" },
@@ -318,8 +320,26 @@ export async function listNotifications(
       isRead: true,
       createdAt: true,
       actorCount: true,
+      actorIds: true,
     },
   })
+
+  // Resolve LIVE avatars for the aggregated actors (the stored imageUrl can go
+  // stale). One batched query across every row's actorIds.
+  const ids = [...new Set(rows.flatMap((r) => r.actorIds))]
+  const avatarById = new Map<string, string>()
+  if (ids.length) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, profile: { select: { photoUrl: true } } },
+    })
+    for (const u of users) if (u.profile?.photoUrl) avatarById.set(u.id, u.profile.photoUrl)
+  }
+
+  return rows.map(({ actorIds, ...r }) => ({
+    ...r,
+    actorAvatars: actorIds.map((id) => avatarById.get(id)).filter((x): x is string => !!x).slice(0, 3),
+  }))
 }
 
 export async function markAllRead(userId: string): Promise<void> {
