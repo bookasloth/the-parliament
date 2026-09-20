@@ -19,6 +19,7 @@ export default async function NotificationsPage() {
         title: n.title,
         body: n.body,
         imageUrl: n.imageUrl,
+        actorAvatars: n.actorAvatars,
         isRead: n.isRead,
         createdAt: n.createdAt.toISOString(),
         actorCount: n.actorCount,

@@ -30,6 +30,7 @@ const CALLS_UI_ENABLED = false
 import { MEMBERSHIP_TIERS } from "@/config/membership-colors"
 import { AlertAds } from "@/components/shared/AlertAds"
 import { showSidebarAd } from "@/config/ad-sets"
+import { NotificationRow, type NotifView } from "@/components/shared/NotificationRow"
 
 const MEMBERSHIP_META: Record<MembershipTier, {
   label: string
@@ -83,15 +84,6 @@ const SUGGESTED_SEARCHES: {
   { label: "Play Game", href: "/games", icon: Zap },
   { label: "How to Become NNAWCA Member", href: "/membership", icon: Star },
 ]
-
-function notifTime(iso: string): string {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (m < 1) return "now"
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.floor(h / 24)}d`
-}
 
 /* ---------------- Hooks ---------------- */
 function useClickOutside<T extends HTMLElement>(onClose: () => void) {
@@ -235,16 +227,8 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
 
-  type NotifItem = {
-    id: string
-    title: string
-    body: string | null
-    imageUrl: string | null
-    isRead: boolean
-    createdAt: string
-    href: string
-    ctas?: { label: string; href: string; primary?: boolean }[]
-  }
+  // Same normalized shape as the /notifications page (see NotificationRow).
+  type NotifItem = NotifView
   const [notifCount, setNotifCount] = useState(0)
   const [notifItems, setNotifItems] = useState<NotifItem[]>([])
   const [msgCount, setMsgCount] = useState(0)
@@ -549,38 +533,7 @@ function MemberNavbar({ viewer }: { viewer: NavbarViewer }) {
                   ) : (
                     notifItems.map(n => (
                       <li key={n.id}>
-                        <div className={`rounded-[4px] p-2.5 transition-colors ${n.isRead ? "" : "bg-brand-50/40"}`}>
-                          <a href={n.href} onClick={() => markOne(n.id, n.isRead)} className="flex items-start gap-3 rounded-[3px] hover:opacity-90">
-                            {n.imageUrl ? (
-                              <Image src={n.imageUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-[4px] object-cover flex-shrink-0" />
-                            ) : (
-                              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[4px] bg-brand/10 text-brand"><Bell className="h-4 w-4" /></span>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-800 leading-snug">{n.title}</p>
-                              {n.body && <p className="text-[11px] text-gray-500 leading-snug line-clamp-2">{n.body}</p>}
-                            </div>
-                            <span className="text-[10px] text-gray-400 flex-shrink-0">{notifTime(n.createdAt)}</span>
-                          </a>
-                          {n.ctas && n.ctas.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1.5 pl-12">
-                              {n.ctas.map((c) => (
-                                <a
-                                  key={c.label + c.href}
-                                  href={c.href}
-                                  onClick={() => markOne(n.id, n.isRead)}
-                                  className={
-                                    c.primary
-                                      ? "rounded-[3px] bg-brand px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-600"
-                                      : "rounded-[3px] border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
-                                  }
-                                >
-                                  {c.label}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <NotificationRow item={n} variant="compact" onOpen={() => markOne(n.id, n.isRead)} />
                       </li>
                     ))
                   )}
