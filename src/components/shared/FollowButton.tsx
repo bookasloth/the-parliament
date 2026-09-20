@@ -7,13 +7,19 @@ export function FollowButton({
   userId,
   initialFollowing = false,
   iconOnly = false,
+  fullWidth = false,
 }: {
   userId: string
   initialFollowing?: boolean
   /** Square icon-only button (mobile/compact). */
   iconOnly?: boolean
+  /** Fill the parent's width instead of the fixed 106px (e.g. a flex-1 slot).
+   *  Deterministic — avoids a `w-full` override fighting the fixed width. */
+  fullWidth?: boolean
 }) {
   const { following, toggle, busy } = useFollow(userId, initialFollowing)
+  // Same width in EVERY state so the row never reflows on toggle.
+  const widthClass = fullWidth ? "w-full" : "w-[106px]"
 
   if (iconOnly) {
     const label = following ? "Following — click to unfollow" : "Follow"
@@ -46,7 +52,7 @@ export function FollowButton({
       <button
         onClick={toggle}
         disabled={busy}
-        className="group flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-gray-200 bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-600 transition-all duration-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+        className={`group flex ${widthClass} items-center justify-center gap-1.5 rounded-[3px] border border-gray-200 bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-600 transition-all duration-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60`}
       >
         <Check className="h-3.5 w-3.5 group-hover:hidden" />
         <span className="hidden group-hover:inline">Unfollow</span>
@@ -59,7 +65,7 @@ export function FollowButton({
     <button
       onClick={toggle}
       disabled={busy}
-      className="group flex w-[106px] items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60"
+      className={`group flex ${widthClass} items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-brand px-4 py-1.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-brand disabled:opacity-60`}
     >
       <UserPlus className="h-3.5 w-3.5" /> {busy ? "…" : "Follow"}
     </button>
