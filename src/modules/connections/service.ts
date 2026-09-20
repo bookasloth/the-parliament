@@ -3,6 +3,7 @@ import { env } from "@/config/env"
 import { sendNotification } from "@/modules/notifications/service"
 import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
 import { enqueueBadgeEval } from "@/modules/badges/enqueue"
+import { assertActive } from "@/modules/auth/acting"
 import type { Membership } from "@/lib/homepage-data"
 
 export interface AlumniUser {
@@ -189,6 +190,7 @@ export async function getFollowingIds(userId: string): Promise<Set<string>> {
 
 export async function followUser(followerId: string, followingId: string): Promise<void> {
   if (followerId === followingId) return
+  await assertActive(followerId)
 
   // A block severs the graph both ways — neither party can (re)follow the other.
   if (await isBlockedBetween(followerId, followingId)) return
