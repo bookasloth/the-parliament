@@ -270,11 +270,11 @@ export function CommunityClient({
                     {meId !== r.id && (
                       // Follow/Following takes the flexible width (fits "Following"
                       // in either state); Profile is a compact fixed button beside it.
-                      <div className="flex-1 [&>button]:flex [&>button]:w-full [&>button]:justify-center [&>button]:py-2">
-                        <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} />
+                      <div className="flex-1">
+                        <FollowButton userId={r.id} initialFollowing={followingSet.has(r.id)} fullWidth />
                       </div>
                     )}
-                    <a href={`/${r.username}`} className="w-[88px] flex-shrink-0 rounded-[3px] border border-gray-200 px-4 py-2 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
+                    <a href={`/${r.username}`} className="w-[88px] flex-shrink-0 rounded-[3px] border border-gray-200 px-4 py-1.5 text-center text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">Profile</a>
                   </div>
                 }
               />
