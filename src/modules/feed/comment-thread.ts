@@ -52,3 +52,32 @@ export function organizeCommentThread<T extends ThreadNode>(
 
   return { roots, repliesByRoot }
 }
+
+/**
+ * Decide which comments to keep when soft-deleted ones may sit mid-thread.
+ * Returns the ids to render: every non-deleted comment, PLUS every deleted
+ * comment that still has at least one non-deleted descendant (rendered as a
+ * `[deleted]` tombstone so its live replies don't orphan — audit §5 #7). Deleted
+ * comments with no live descendant are dropped entirely. Pure / DB-free.
+ */
+export function keepableCommentIds<T extends ThreadNode>(
+  comments: T[],
+  isDeleted: (c: T) => boolean,
+): Set<string> {
+  const byId = new Map(comments.map((c) => [c.id, c]))
+  const keep = new Set<string>()
+  // Every live comment is kept, and marks its whole ancestor chain as needed
+  // (so a deleted ancestor survives as a bridging tombstone).
+  for (const c of comments) {
+    if (isDeleted(c)) continue
+    keep.add(c.id)
+    let cur: T | undefined = byId.get(c.parentId ?? "")
+    let guard = 0
+    while (cur && guard++ < 10_000) {
+      if (keep.has(cur.id)) break // chain already marked
+      keep.add(cur.id)
+      cur = byId.get(cur.parentId ?? "")
+    }
+  }
+  return keep
+}

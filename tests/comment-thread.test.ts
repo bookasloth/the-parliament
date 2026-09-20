@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { organizeCommentThread, type ThreadNode } from "@/modules/feed/comment-thread"
+import { organizeCommentThread, keepableCommentIds, type ThreadNode } from "@/modules/feed/comment-thread"
 
 type C = ThreadNode & { handle: string }
 const handleOf = (c: C) => c.handle
@@ -71,5 +71,56 @@ describe("organizeCommentThread", () => {
     const { repliesByRoot } = organizeCommentThread(comments, handleOf)
     // Cycle never resolves to a root → both dropped, no infinite loop.
     expect(repliesByRoot.get("top")).toEqual([])
+  })
+})
+
+describe("keepableCommentIds (deleted-parent tombstone, audit §5 #7)", () => {
+  type N = ThreadNode & { del?: boolean }
+  const isDel = (c: N) => !!c.del
+
+  it("keeps a deleted parent that has a live child (tombstone bridge)", () => {
+    const nodes: N[] = [
+      { id: "p", parentId: null, del: true }, // deleted top-level
+      { id: "c", parentId: "p" }, // live reply
+    ]
+    const keep = keepableCommentIds(nodes, isDel)
+    expect(keep.has("p")).toBe(true)
+    expect(keep.has("c")).toBe(true)
+  })
+
+  it("drops a deleted leaf (no live descendant)", () => {
+    const nodes: N[] = [
+      { id: "r", parentId: null },
+      { id: "d", parentId: "r", del: true }, // deleted reply, no children
+    ]
+    const keep = keepableCommentIds(nodes, isDel)
+    expect(keep.has("r")).toBe(true)
+    expect(keep.has("d")).toBe(false)
+  })
+
+  it("bridges a deleted middle reply between live ancestor and live descendant", () => {
+    const nodes: N[] = [
+      { id: "root", parentId: null },
+      { id: "mid", parentId: "root", del: true }, // deleted middle
+      { id: "leaf", parentId: "mid" }, // live grandchild
+    ]
+    const keep = keepableCommentIds(nodes, isDel)
+    expect([...keep].sort()).toEqual(["leaf", "mid", "root"])
+  })
+
+  it("drops a deleted subtree with no live node anywhere", () => {
+    const nodes: N[] = [
+      { id: "a", parentId: null, del: true },
+      { id: "b", parentId: "a", del: true },
+    ]
+    expect(keepableCommentIds(nodes, isDel).size).toBe(0)
+  })
+
+  it("keeps all when nothing is deleted", () => {
+    const nodes: N[] = [
+      { id: "a", parentId: null },
+      { id: "b", parentId: "a" },
+    ]
+    expect(keepableCommentIds(nodes, isDel).size).toBe(2)
   })
 })
