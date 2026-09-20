@@ -15,6 +15,7 @@ import { fetchLinkPreview } from "@/lib/og-preview"
 import { getDefaultSchoolId } from "@/lib/school"
 import { getCurrent } from "@/modules/membership/service"
 import { isBlockedBetween } from "@/modules/connections/blocks"
+import { assertActive } from "@/modules/auth/acting"
 
 /**
  * Gate any interaction (react, comment, share, award, vote) with the SAME
@@ -27,6 +28,9 @@ export async function assertCanInteract(
   viewerId: string,
   postId: string,
 ): Promise<{ id: string; authorId: string }> {
+  // Suspended/banned/inactive accounts can't engage (audit P0-9). This is the
+  // funnel for react/comment/share/vote/award, so one guard covers them all.
+  await assertActive(viewerId)
   const post = await prisma.post.findUnique({
     where: { id: postId },
     select: { id: true, authorId: true, deletedAt: true, status: true, visibilityScope: true, groupId: true },
@@ -188,6 +192,7 @@ export interface CreatePostInput {
 }
 
 export async function createPost(input: CreatePostInput) {
+  await assertActive(input.authorId)
   const category = await prisma.postCategory.findUnique({
     where: { schoolId_key: { schoolId: input.schoolId, key: input.categoryKey } },
   })
@@ -412,6 +417,7 @@ export async function updateDraft(input: {
 
 /** Publish a draft: flip it to visible, reseed its ranking, fire @mention pings. */
 export async function publishDraft(input: { postId: string; authorId: string }) {
+  await assertActive(input.authorId)
   const post = await prisma.post.findUnique({ where: { id: input.postId } })
   if (!post || post.deletedAt || post.status !== "draft") throw new ForbiddenError("Draft not found")
   if (post.authorId !== input.authorId) throw new ForbiddenError("Not the author")

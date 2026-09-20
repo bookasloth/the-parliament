@@ -6,6 +6,7 @@ import { broadcast } from "@/lib/supabase-realtime"
 import { sendEmail } from "@/lib/email"
 import { nextReaction } from "./reactions"
 import { isBlockedBetween, blockUser as blockUserCanonical } from "@/modules/connections/blocks"
+import { assertActive } from "@/modules/auth/acting"
 import type { ConversationSummary, MessageView, ReplyStub } from "./types"
 
 export { unblockUser } from "@/modules/connections/blocks"
@@ -249,6 +250,7 @@ export async function sendMessage(
   conversationId: string,
   input: { body: string; media?: string[]; replyToId?: string; clientMsgId?: string },
 ): Promise<MessageView> {
+  await assertActive(viewerId)
   const body = input.body.trim()
   // Idempotency (audit P1-16): a double-tap on a flaky connection used to insert
   // two messages. A client-supplied key dedupes — if we already stored one for
