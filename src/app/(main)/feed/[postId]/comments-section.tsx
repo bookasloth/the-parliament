@@ -61,6 +61,8 @@ export interface CommentView {
   /** For a reply-to-a-reply: the @handle of the comment it actually replied to
    *  (null for top-level comments and replies straight to the top-level). */
   replyingTo?: string | null
+  /** Soft-deleted comment kept only as a tombstone to hold its live replies. */
+  deleted?: boolean
   /** Stable client-side key that survives the optimistic→committed id swap, so
    *  the replayed optimistic overlay doesn't double-add the comment. */
   clientKey?: string
@@ -244,6 +246,15 @@ function CommentBubble({ c, viewer, onEdit }: { c: CommentView; viewer: Viewer |
     } finally {
       setSaving(false)
     }
+  }
+  // Tombstone: a deleted comment kept only to hold its live replies (audit §5 #7).
+  // No author, body, or actions — just a marker so the thread stays intact.
+  if (c.deleted) {
+    return (
+      <div className="flex-1 min-w-0 py-1 text-[13px] italic text-gray-400">
+        This comment was deleted
+      </div>
+    )
   }
   return (
     <>

@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { planExclusions, shouldServeCaughtUp, planCaughtUpOrder, CAUGHT_UP_POOL, SEEN_EXCLUSION_WINDOW } from "./impressions"
 import { recencyCursorWhere, rankedCursorWhere, isRankedCursor, type FeedCursor } from "./cursor"
-import { organizeCommentThread } from "./comment-thread"
+import { organizeCommentThread, keepableCommentIds } from "./comment-thread"
 import { trendingWindowStart } from "./trending"
 import { postHashtagWhere } from "@/lib/rich-text"
 import { isBlockedBetween, blockedIdsFor } from "@/modules/connections/blocks"
@@ -426,6 +426,7 @@ const commentSelect = {
   likeCount: true,
   createdAt: true,
   editedAt: true,
+  deletedAt: true,
   parentId: true,
   author: {
     select: {
@@ -447,10 +448,14 @@ const commentSelect = {
 } satisfies Prisma.CommentSelect
 
 type CommentBase = Prisma.CommentGetPayload<{ select: typeof commentSelect }>
-type CommentEnriched = CommentBase & { myReaction: "upvote" | "downvote" | null }
+type CommentEnriched = CommentBase & { myReaction: "upvote" | "downvote" | null; deleted: boolean }
 /** A reply carries the true target's @handle when it replied to another reply. */
 type ReplyEnriched = CommentEnriched & { replyingTo: string | null }
 export type PostCommentRow = CommentEnriched & { replies: ReplyEnriched[] }
+
+/** Upper bound on replies fetched per post in one pass — stops a pathological
+ *  thread from loading unboundedly (audit §5 #7). Normal threads are far under. */
+const MAX_REPLIES = 500
 
 // Top-level comments (oldest first) each with their replies, flattened to one
 // visual level. Replies store their TRUE parentId, so a reply-to-a-reply is
@@ -466,10 +471,12 @@ export async function listPostComments(
   afterCreatedAt?: string,
 ): Promise<PostCommentRow[]> {
   // author-status gate hides comments by suspended/banned authors (audit CP0-2).
+  // NOTE: `deletedAt` is NOT filtered out here — a soft-deleted comment that still
+  // has live replies must survive as a `[deleted]` tombstone so its children don't
+  // orphan (audit §5 #7). Pure-deleted subtrees are pruned below via keepableCommentIds.
   const top0 = await prisma.comment.findMany({
     where: {
       postId,
-      deletedAt: null,
       parentId: null,
       author: { is: visibleAuthorWhere() },
       ...(afterCreatedAt ? { createdAt: { gt: new Date(afterCreatedAt) } } : {}),
@@ -479,11 +486,14 @@ export async function listPostComments(
     select: commentSelect,
   })
   // All replies on the post (not just direct children of top) so reply-to-reply
-  // chains resolve to their ancestor instead of vanishing.
+  // chains resolve to their ancestor instead of vanishing. Bounded by MAX_REPLIES
+  // so a pathological thread can't load unboundedly (audit §5 #7 / IP-11); full
+  // keyset reply pagination is a follow-up.
   const replies0 = top0.length
     ? await prisma.comment.findMany({
-        where: { postId, deletedAt: null, parentId: { not: null }, author: { is: visibleAuthorWhere() } },
+        where: { postId, parentId: { not: null }, author: { is: visibleAuthorWhere() } },
         orderBy: { createdAt: "asc" },
+        take: MAX_REPLIES,
         select: commentSelect,
       })
     : []
@@ -491,8 +501,14 @@ export async function listPostComments(
   // Symmetric block (audit P0-7): drop comments authored by anyone the viewer has
   // blocked or been blocked by, before threading.
   const blocked = await blockedIdsFor(viewerId)
-  const top = blocked.size ? top0.filter((c) => !blocked.has(c.author.id)) : top0
-  const replies = blocked.size ? replies0.filter((c) => !blocked.has(c.author.id)) : replies0
+  const topVisible = blocked.size ? top0.filter((c) => !blocked.has(c.author.id)) : top0
+  const repliesVisible = blocked.size ? replies0.filter((c) => !blocked.has(c.author.id)) : replies0
+
+  // Prune deleted comments that have no live descendant; keep the rest (live +
+  // bridging tombstones).
+  const keep = keepableCommentIds([...topVisible, ...repliesVisible], (c) => c.deletedAt != null)
+  const top = topVisible.filter((c) => keep.has(c.id))
+  const replies = repliesVisible.filter((c) => keep.has(c.id))
 
   const handleOf = (c: CommentBase): string | null =>
     c.author.username ?? c.author.displayName ?? c.author.legalName ?? null
@@ -508,10 +524,18 @@ export async function listPostComments(
     })
     for (const r of rx) myVotes.set(r.entityId, r.type as "upvote" | "downvote")
   }
-  const enrich = (c: CommentBase): CommentEnriched => ({
-    ...c,
-    myReaction: myVotes.get(c.id) ?? null,
-  })
+  const enrich = (c: CommentBase): CommentEnriched => {
+    const deleted = c.deletedAt != null
+    return {
+      ...c,
+      // A tombstone leaks no content: blank the body/image of a deleted comment
+      // that only survives to hold its live replies (audit §5 #7).
+      body: deleted ? "" : c.body,
+      imageUrl: deleted ? null : c.imageUrl,
+      myReaction: deleted ? null : myVotes.get(c.id) ?? null,
+      deleted,
+    }
+  }
 
   return top.map((t) => ({
     ...enrich(t),

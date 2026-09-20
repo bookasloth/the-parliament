@@ -695,6 +695,10 @@ model Comment {
   children Comment[] @relation("comment_parent")
 
   @@index([postId])
+  // Threaded reads walk (post → top-level → replies) ordered by time; the
+  // moderation / "all comments by user" path filters on authorId (audit §7).
+  @@index([postId, parentId, createdAt])
+  @@index([authorId])
   @@map("comments")
 }
 

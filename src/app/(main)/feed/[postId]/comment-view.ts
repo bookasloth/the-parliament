@@ -21,6 +21,7 @@ function toView(
     score: r.likeCount,
     myReaction: r.myReaction,
     isAuthor: r.author.id === postAuthorId,
+    deleted: r.deleted,
     author: {
       id: r.author.id,
       username: r.author.username,
