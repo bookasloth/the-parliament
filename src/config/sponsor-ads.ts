@@ -11,8 +11,9 @@ export const SHUBHAM_DATARKAR_AD = {
   tagline: "Websites that turn visitors into customers — plus SEO & ads to get your business found.",
   cta: "Get a free consultation",
   baseUrl: "https://shubhamdatarkar.com",
-  /** Avatar for the notification/message-style ad rows. */
-  avatarUrl: "https://ui-avatars.com/api/?name=Shubham+Datarkar&background=009ae4&color=fff&bold=true",
+  /** Avatar for the notification/message-style ad rows — his real brand icon
+   *  (the square "Sd" mark) served from his site. */
+  avatarUrl: "https://shubhamdatarkar.com/icon.png",
   /** One-line preview shown in the chat list row. */
   preview: "Websites that turn visitors into customers — plus SEO & ads.",
 } as const
