@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { enforceRateLimit, RateLimitedError } from "@/lib/rate-limit"
 import { sanitizeEmailPrefs, validateNewPassword } from "./prefs"
 import { isProfileVisibility } from "@/modules/profile/privacy"
-import { reactivateAccount } from "@/modules/admin/users"
+import { reactivateAccount, deactivateAccount } from "@/modules/admin/users"
 import { invalidateSession } from "@/lib/redis"
 import { audit } from "@/lib/audit"
 import { setNotificationPrefs } from "@/modules/notifications/service"
@@ -35,6 +35,19 @@ export async function reactivateAccountAction() {
   if (ok) {
     await invalidateSession(user.id)
     await audit({ actorId: user.id, action: "account.reactivate", entityType: "user", entityId: user.id })
+    revalidatePath("/settings")
+  }
+  return { ok }
+}
+
+/** Self-serve deactivation (Danger Zone). Blocks posting/commenting/messaging via
+ *  the acting guard; content stays and the account can be reactivated. */
+export async function deactivateAccountAction() {
+  const user = await requireUser()
+  const ok = await deactivateAccount(user.id)
+  if (ok) {
+    await invalidateSession(user.id)
+    await audit({ actorId: user.id, action: "account.deactivate", entityType: "user", entityId: user.id })
     revalidatePath("/settings")
   }
   return { ok }
