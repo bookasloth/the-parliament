@@ -98,6 +98,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "website-assets.shubhamdatarkar.com" },
+      { protocol: "https", hostname: "shubhamdatarkar.com" }, // sponsor brand icon (chat avatar)
       { protocol: "https", hostname: "ui-avatars.com" },
       // User uploads (post media, avatars, covers) — Supabase storage host.
       ...(host ? [{ protocol: "https" as const, hostname: host }] : []),
