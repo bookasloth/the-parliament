@@ -189,6 +189,7 @@ model User {
   matchParticipants        MatchParticipant[]
   tournamentEntries        TournamentEntry[]
   membershipOrders         MembershipOrder[]
+  idCardOrders             IdCardOrder[]
   membershipInvoices       MembershipInvoice[]
   membershipRefunds        MembershipRefund[]        @relation("refund_initiator")
   membershipEvents         MembershipEvent[]         @relation("event_subject")
@@ -1481,6 +1482,39 @@ model MembershipOrder {
   @@map("membership_orders")
 }
 
+model IdCardOrder {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  qty               Int               @default(1)
+  cardPricePaise    Int               @map("card_price_paise")
+  deliveryPaise     Int               @map("delivery_paise")
+  amountPaise       Int               @map("amount_paise")
+  currency          String            @default("INR") @db.VarChar(3)
+  status            IdCardOrderStatus @default(created)
+  // Shipping address snapshot (immutable once the order is placed).
+  recipientName     String            @map("recipient_name") @db.VarChar(120)
+  phone             String            @db.VarChar(20)
+  addressLine       String            @map("address_line") @db.VarChar(300)
+  city              String            @db.VarChar(80)
+  state             String            @db.VarChar(80)
+  pincode           String            @db.VarChar(10)
+  razorpayOrderId   String?           @unique @map("razorpay_order_id") @db.VarChar(64)
+  razorpayPaymentId String?           @map("razorpay_payment_id") @db.VarChar(64)
+  razorpaySignature String?           @map("razorpay_signature")
+  capturedAt        DateTime?         @map("captured_at") @db.Timestamptz
+  trackingId        String?           @map("tracking_id") @db.VarChar(120)
+  shippedAt         DateTime?         @map("shipped_at") @db.Timestamptz
+  metadata          Json              @default("{}")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("id_card_orders")
+}
+
 model MembershipInvoice {
   id             String   @id @default(uuid()) @db.Uuid
   orderId        String   @unique @map("order_id") @db.Uuid
@@ -2251,6 +2285,18 @@ enum MembershipOrderStatus {
   failed
   refunded
   superseded
+}
+
+enum IdCardOrderStatus {
+  created
+  attempted
+  paid
+  printing
+  shipped
+  delivered
+  failed
+  cancelled
+  refunded
 }
 
 enum MembershipRefundStatus {

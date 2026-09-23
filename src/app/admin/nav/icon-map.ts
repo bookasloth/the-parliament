@@ -5,6 +5,7 @@ import {
   VideoCamera, Bank, Flag, Warning, Megaphone, FileText, CreditCard,
   HandHeart, Storefront, Briefcase, Sparkle, Palette, Trophy, Medal,
   GameController, ChatsCircle, WhatsappLogo, Gear, Scroll, Question, Images, UserCircle,
+  IdentificationCard,
   type Icon,
 } from "@phosphor-icons/react"
 
@@ -14,4 +15,5 @@ export const ICONS: Record<string, Icon> = {
   VideoCamera, Bank, Flag, Warning, Megaphone, FileText, CreditCard,
   HandHeart, Storefront, Briefcase, Sparkle, Palette, Trophy, Medal,
   GameController, ChatsCircle, WhatsappLogo, Gear, Scroll, Question, Images, UserCircle,
+  IdentificationCard,
 }
