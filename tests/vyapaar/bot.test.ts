@@ -8,7 +8,7 @@ describe("botIntent — the policy", () => {
   it("rolls in the roll phase and sits out jail", () => {
     const s = createGame(1, ["a", "b"], 25000);
     expect(botIntent(s, 0)).toEqual({ type: "roll" });
-    s.phase = "jail"; s.players[0].halted = 3;
+    s.phase = "jail"; s.players[0].halted = 3; s.round = 25; // late game → sit it out (early-game would bribe)
     expect(botIntent(s, 0)).toEqual({ type: "serve_jail" });
   });
 
@@ -26,10 +26,37 @@ describe("botIntent — the policy", () => {
     expect(botIntent(s, 0)).toEqual({ type: "decline" });
   });
 
-  it("does not sprawl: declines a new zone once it already holds a full set elsewhere", () => {
+  it("opens a new zone when flush, but declines it when cash is tight", () => {
+    // Owning a set elsewhere no longer blocks a buy — a rich bot grabs affordable property
+    // (the old 'never sprawl' rule is why loaded bots used to walk past deeds they could afford).
+    const flush = createGame(1, ["a", "b"], 25000);
+    for (const id of [0, 1, 2]) flush.cities[id] = { owner: 0, level: 0, mortgaged: false }; // North set
+    flush.phase = "buy"; flush.pendingCity = 10; // East city (Kolkata, 7200) — a brand-new zone
+    expect(botIntent(flush, 0)).toEqual({ type: "buy" });
+
+    const tight = createGame(1, ["a", "b"], 25000);
+    for (const id of [0, 1, 2]) tight.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    tight.players[0].cash = 12000; // 12000 − 7200 = 4800 < normal ample buffer (2000×3) → hold cash
+    tight.phase = "buy"; tight.pendingCity = 10;
+    expect(botIntent(tight, 0)).toEqual({ type: "decline" });
+  });
+
+  it("completes a set even when it spends below the normal reserve", () => {
     const s = createGame(1, ["a", "b"], 25000);
-    for (const id of [0, 1, 2]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // North set
-    s.phase = "buy"; s.pendingCity = 10; // an East city — a brand-new zone
+    for (const id of [0, 1]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // 2/3 of North
+    s.players[0].cash = 6400; // Jaipur (id2) costs 5800 → leaves 600: over the 500 floor, under the 2000 reserve
+    s.phase = "buy"; s.pendingCity = 2; // the completer
+    expect(botIntent(s, 0)).toEqual({ type: "buy" }); // a set is worth spending deep for
+  });
+
+  it("targets the company PAIR: buys the partner to double fees, not a third loose company", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    s.companies[0] = 0; // owns Udta Firta (Travel pair with company 1)
+    s.phase = "buy"; s.pendingCompany = 1; // its partner → completes the 5× pair
+    expect(botIntent(s, 0)).toEqual({ type: "buy" });
+    // already holds a full pair (0+1); a loose third company from another pair is declined
+    s.companies[1] = 0;
+    s.pendingCompany = 4; // Fox & Bew (a different pair) — not worth it as a single
     expect(botIntent(s, 0)).toEqual({ type: "decline" });
   });
 
@@ -211,5 +238,110 @@ describe("businessman bot traits", () => {
     s.players[0].cash = minCost + 500; // enough to build, but below the normal 2000 reserve after
     expect(botIntent(s, 0, "aggressive").type).toBe("develop");
     expect(botIntent(s, 0, "normal")).toEqual({ type: "end_turn" });
+  });
+});
+
+describe("rebuilt bot — value buying, auctions, cash management", () => {
+  it("bids OVER sticker for a set-completer (so a human can't just outbid at base+1)", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    for (const id of [0, 1]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // 2/3 of North
+    s.phase = "auction";
+    s.auction = { kind: "city", index: 2, bids: [null, null] } as unknown as typeof s.auction; // Jaipur completes North
+    const bid = botIntent(s, 0, "aggressive") as { type: "bid"; amount: number };
+    expect(bid.type).toBe("bid");
+    expect(bid.amount).toBeGreaterThan(CITIES[2].price); // worth 1.3× price × 1.25 cap → above face
+  });
+
+  it("bribes out of jail early-game when flush; a cautious bot still sits it out", () => {
+    const s = createGame(1, ["a", "b"], 50000);
+    s.phase = "jail"; s.players[0].halted = 3; s.round = 2;
+    expect(botIntent(s, 0, "normal")).toEqual({ type: "bribe_jail" });
+    expect(botIntent(s, 0, "cautious")).toEqual({ type: "serve_jail" });
+  });
+
+  it("sits out jail late-game even if flush (property is already claimed)", () => {
+    const s = createGame(1, ["a", "b"], 50000);
+    s.phase = "jail"; s.players[0].halted = 3; s.round = 25; // past EARLY_ROUNDS
+    expect(botIntent(s, 0, "normal")).toEqual({ type: "serve_jail" });
+  });
+
+  it("takes the underdog restructure advance before rolling", () => {
+    const s = createGame(1, ["a", "b"], 1000);
+    // seat1 is far ahead (cash + a city) → seat0 is the trailing underdog.
+    s.players[1].cash = 60000;
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false };
+    s.phase = "roll";
+    expect(botIntent(s, 0, "normal")).toEqual({ type: "restructure" });
+  });
+
+  it("proposes a 2-for-1 when a single card wouldn't be accepted", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    // seat0: 2/3 North (0,1) + two spare East cards (11,12). seat1: holds North completer (2) + East 10.
+    for (const id of [0, 1, 11, 12]) s.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    s.cities[2] = { owner: 1, level: 0, mortgaged: false };
+    s.cities[10] = { owner: 1, level: 0, mortgaged: false };
+    // A cautious recipient only accepts a trade that COMPLETES its set: one East card (10,11)=2 isn't
+    // enough, but BOTH (10,11,12) is. So the only accepted offer is the 2-for-1.
+    const swap = findBestBotTrade(s, 0, (to, offer) => botAcceptsTrade(s, offer, "cautious"));
+    expect(swap).toBeTruthy();
+    expect(swap!.to).toBe(1);
+    expect([...(swap!.give.cities ?? [])].sort((a, b) => a - b)).toEqual([11, 12]);
+    expect(swap!.get.cities).toEqual([2]);
+  });
+});
+
+describe("archetypes — distinct personalities", () => {
+  it("The Turtle never trades — refuses every offer and proposes nothing", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    for (const id of [0, 1]) s.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    s.cities[2] = { owner: 1, level: 0, mortgaged: false }; // a set-completer on offer
+    const offer = { id: 1, from: 1, to: 0, give: { cash: 0, cities: [2] }, get: { cash: 0, cities: [1] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "turtle")).toBe(false);            // even a free set — refuses
+    expect(findBestBotTrade(s, 0, () => true, "turtle")).toBeNull();    // never initiates
+  });
+
+  it("The Landlord hoards one zone — won't open a brand-new colour even when flush", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    s.cities[0] = { owner: 0, level: 0, mortgaged: false }; // started North
+    s.phase = "buy"; s.pendingCity = 10; // East — a new zone
+    expect(botIntent(s, 0, "landlord")).toEqual({ type: "decline" }); // focus: stay in North
+    expect(botIntent(s, 0, "normal")).toEqual({ type: "buy" });       // a normal bot opens it when flush
+  });
+
+  it("The Trader proposes a mutual set-completing swap", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    for (const id of [0, 1]) s.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    s.cities[2] = { owner: 1, level: 0, mortgaged: false };
+    for (const id of [15, 16]) s.cities[id] = { owner: 1, level: 0, mortgaged: false };
+    s.cities[17] = { owner: 0, level: 0, mortgaged: false };
+    const swap = findBestBotTrade(s, 0, (to, offer) => botAcceptsTrade(s, offer, "trader"), "trader");
+    expect(swap?.to).toBe(1);
+  });
+});
+
+describe("hidden coalition — bots gang the human", () => {
+  it("a bot never initiates a trade with a human, even a mutually-completing one", () => {
+    const s = createGame(1, ["human", "bot"], 200000);
+    for (const id of [0, 1]) s.cities[id] = { owner: 1, level: 0, mortgaged: false }; // bot: 2/3 North
+    s.cities[2] = { owner: 0, level: 0, mortgaged: false }; // human holds the North completer
+    for (const id of [15, 16]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // human: 2/3 West
+    s.cities[17] = { owner: 1, level: 0, mortgaged: false }; // bot holds the West completer
+    const humans = new Set([0]);
+    // Without the coalition the bot would gladly propose (both complete a set)…
+    expect(findBestBotTrade(s, 1, (to, offer) => botAcceptsTrade(s, offer, "normal"), "normal")).toBeTruthy();
+    // …but with the human flagged, it won't deal with them at all.
+    expect(findBestBotTrade(s, 1, (to, offer) => botAcceptsTrade(s, offer, "normal", -1, humans), "normal", -1, humans)).toBeNull();
+  });
+
+  it("a bot refuses to hand a human the card that completes the human's set", () => {
+    const s = createGame(1, ["human", "bot"], 200000);
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false };  // bot: North id0
+    s.cities[17] = { owner: 1, level: 0, mortgaged: false }; // bot holds the human's West completer
+    s.cities[1] = { owner: 0, level: 0, mortgaged: false };  // human: North id1 (to offer the bot)
+    for (const id of [15, 16]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // human: 2/3 West
+    // Human offers the bot id1 (advances bot's North) for the bot's id17 (completes human's West).
+    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [1] }, get: { cash: 0, cities: [17] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "normal")).toBe(true);                       // no coalition → fair swap, accepts
+    expect(botAcceptsTrade(s, offer, "normal", -1, new Set([0]))).toBe(false);    // coalition → won't feed the human
   });
 });
