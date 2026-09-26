@@ -91,8 +91,11 @@ export async function addBotToRoom(userId: string, roomId: string): Promise<{ se
         const seat = resolveSeat(room.members.map((m) => m.seat))
         if (seat === null) throw new ForbiddenError("Room is full")
         const taken = new Set(room.members.map((m) => m.userId))
-        const bot = BOT_USERS.find((b) => !taken.has(b.id))
-        if (!bot) throw new ForbiddenError("No more bots available")
+        // Pick a RANDOM free bot (not always the first in the list) so every persona gets played,
+        // not just A Buddhi → V Flash → … in fixed order. Seating isn't replayed, so randomness is safe.
+        const available = BOT_USERS.filter((b) => !taken.has(b.id))
+        if (!available.length) throw new ForbiddenError("No more bots available")
+        const bot = available[Math.floor(Math.random() * available.length)]
         await tx.vyapaarRoomMember.create({ data: { roomId: room.id, userId: bot.id, seat } })
         await tx.vyapaarRoom.update({ where: { id: room.id }, data: { lastActiveAt: new Date() } })
         return { seat, roomId: room.id }
