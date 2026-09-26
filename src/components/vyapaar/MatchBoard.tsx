@@ -39,13 +39,13 @@ const ERR_MSG: Record<string, string> = {
   nothing_to_buy: "There's nothing to buy here.",
   nothing_to_decline: "There's nothing to decline.",
   insufficient_funds: "You don't have enough cash.",
-  cannot_manage_now: "You can only build right after you land on your own property.",
+  cannot_manage_now: "You can't build right now.",
   cannot_end_now: "You can't end your turn right now.",
   not_owner: "You don't own this property.",
-  no_set_control: "You need all three cities of this colour set before you can build a house.",
-  uneven_build: "Build evenly — raise the lowest cities in the set first.",
+  no_set_control: "You need all three cities of this colour set before you can build.",
+  set_built_this_turn: "One build per set each turn — you've already built this set.",
   max_level: "This property is already fully developed.",
-  must_be_on_city: "Land on this city to build a hotel here.",
+  trade_on_cooldown: "That offer was just turned down — change it or wait a round.",
   no_payment: "That payment was already resolved.",
   not_your_payment: "That payment isn't yours to confirm.",
   mortgaged: "This property is mortgaged — clear it first.",
@@ -64,7 +64,7 @@ const ERR_MSG: Record<string, string> = {
 // gentle hint) rather than shown as a red error. Build-RULE violations (no set control,
 // uneven build) are deliberately NOT soft: they surface the precise ERR_MSG so a player who
 // tries to build without the whole set is told exactly why.
-const SOFT_ERRORS = new Set(["cannot_manage_now", "max_level", "mortgaged"])
+const SOFT_ERRORS = new Set(["cannot_manage_now", "max_level", "mortgaged", "set_built_this_turn"])
 
 // Wide 13×9 ring cell → [col,row]. Corners: 0 Start, 12 Monsoon, 20 Mandi, 32 Tax Raid.
 function cellPos(i: number): [number, number] {
@@ -1247,9 +1247,9 @@ function Deed({ pos, view, you, busy, canManage, myTurn, onClose, onAction }: {
           {isPendingBuy && <><button className="buy" disabled={busy || view.players[view.you].cash < city.price} onClick={() => onAction({ type: "buy" }, true)}>Buy · {inr(city.price)}</button><button className="pass" disabled={busy} onClick={() => onAction({ type: "decline" }, true)}>Decline</button></>}
           {!isPendingBuy && iOwn && canManage && <>
             {!cs.mortgaged && cs.level < 6 && (() => {
-              const hotel = cs.level >= 3 // building to level 4+ = hotel (needs you on the tile)
-              const blocked = hotel && view.players[view.you]?.pos !== CITY_POS[id]
-              return <button className="buy" disabled={busy || blocked} title={blocked ? "Land on this city to build a hotel here" : undefined} onClick={() => onAction({ type: "develop", cityId: id }, true)}>{hotel ? "Build hotel" : "Build house"}</button>
+              const hotel = cs.level >= 3 // building to level 4+ = a hotel (buildable anywhere on the set now)
+              const builtThisTurn = (view.builtZones ?? []).includes(city.zone) // one build per set per turn
+              return <button className="buy" disabled={busy || builtThisTurn} title={builtThisTurn ? "Already built this set this turn — one per set" : undefined} onClick={() => onAction({ type: "develop", cityId: id }, true)}>{hotel ? "Build hotel" : "Build house"}</button>
             })()}
             {cs.mortgaged
               ? <button className="pass" disabled={busy} onClick={() => onAction({ type: "unmortgage", cityId: id })}>Unmortgage</button>

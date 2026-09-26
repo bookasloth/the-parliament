@@ -20,6 +20,7 @@ export interface PublicView {
   round: number;
   pendingCity: number | null;
   pendingCompany: number | null;
+  builtZones: number[]; // zones you've already built on this turn (one build per set per turn)
   auction: { kind: "city" | "company"; index: number; bidded: boolean[] } | null;
   trades: { id: number; from: number; to: number; give: TradeSide; get: TradeSide; expiresAt: number }[];
   payments: { id: number; dir: "pay" | "collect"; amount: number; party: number | "bank"; reason: string; expiresAt: number }[];
@@ -50,6 +51,7 @@ export function publicView(s: GameState, seat: number): PublicView {
     round: s.round,
     pendingCity: s.pendingCity,
     pendingCompany: s.pendingCompany,
+    builtZones: [...(s.builtZones ?? [])],
     auction: s.auction
       ? { kind: s.auction.kind, index: s.auction.index, bidded: s.auction.bids.map((b) => b !== null) }
       : null,

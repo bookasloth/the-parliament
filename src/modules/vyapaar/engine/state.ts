@@ -89,9 +89,11 @@ export interface GameState {
   pendingCity: number | null; // city just landed on, awaiting buy/decline
   pendingCompany: number | null; // company just landed on, awaiting buy/decline
   pendingDouble: boolean; // last roll was a double → roll again after resolution
+  builtZones: number[]; // zones already developed THIS turn — one level per set per turn; reset on turn advance
   auction: AuctionState | null;
   trades: TradeOffer[]; // active proposals; at most one outgoing per player
   nextTradeId: number; // monotonic id source for trades
+  tradeCooldowns?: { key: string; until: number }[]; // declined/expired offers barred from re-proposal until `until` (round)
   payments?: Payment[]; // auto-payments awaiting allow/claim (see Payment)
   nextPaymentId?: number; // monotonic id source for payments
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
@@ -138,9 +140,11 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     pendingCity: null,
     pendingCompany: null,
     pendingDouble: false,
+    builtZones: [],
     auction: null,
     trades: [],
     nextTradeId: 1,
+    tradeCooldowns: [],
     payments: [],
     nextPaymentId: 1,
     endRequested: false,

@@ -1,5 +1,4 @@
 import { CITIES, COMPANIES, MAX_LEVEL, HOTEL_LEVEL, SET_OWN_NEEDED, BRIBE_BANK, BRIBE_EACH, MAX_ROUNDS, upgradeCost } from "./engine/data";
-import { CITY_POS } from "./engine/board";
 import { citiesOwned, controlsSet, companiesOwned, netWorth } from "./engine/helpers";
 import { applyIntent, setHasDevelopment, canRestructure } from "./engine/engine";
 import type { GameState, Intent, TradeOffer, EngineEvent } from "./engine/state";
@@ -39,6 +38,7 @@ interface PersonaCfg {
 const RESERVE_FLOOR = 500; // a set-completing buy/bid may spend down to this, below the normal reserve
 const EARLY_ROUNDS = 10;   // bribing out of jail is worth it while property is still unclaimed
 const ENDGAME_ROUND = MAX_ROUNDS - 8; // late game: stop opening new zones, pour cash into owned sets
+const HOTEL_ROUND = 15;    // houses first: a plain bot only starts hotels once the game has matured
 
 const PERSONA: Record<BotPersona, PersonaCfg> = {
   // base tempers
@@ -56,7 +56,7 @@ const PERSONA: Record<BotPersona, PersonaCfg> = {
   turtle:     { reserve: 6000, ampleMult: 5, auctionCap: 0.5,  sprawl: false, focus: false, bribeJail: false, trades: false, denyBid: false, valueUpTrade: false, premiumTrades: false, overLeverage: false, gangLeader: false, holdMonopoly: true },
 };
 
-// The seat currently ahead (highest net worth), or -1 if none — the target `gangLeader` schemes against.
+// The seat currently ahead (highest net worth), or -1 if none.
 export function leaderSeat(s: GameState): number {
   let best = -1, bestNW = -Infinity;
   for (let i = 0; i < s.players.length; i++) {
@@ -65,6 +65,14 @@ export function leaderSeat(s: GameState): number {
     if (nw > bestNW) { bestNW = nw; best = i; }
   }
   return best;
+}
+
+const HALF_GAME = MAX_ROUNDS / 2; // the coalition only forms in the second half of the game
+// The seat the coalition softly gangs up on: NOBODY before half-time (early trading is wide open,
+// so a big opening stack doesn't paint a target), then the CURRENT net-worth leader — decided live
+// each pass from the board, with no opening-cash or historical bias, and it moves if the lead does.
+export function coalitionLeader(s: GameState): number {
+  return s.round > HALF_GAME ? leaderSeat(s) : -1;
 }
 
 export const BOT_USERS = [
@@ -154,24 +162,40 @@ function auctionWorth(s: GameState, seat: number, kind: "city" | "company", inde
   return base * (pair ? 1.3 : companiesOwned(s, seat) === 0 ? 0.6 : 0.2);
 }
 
-// Cheapest even-build target in a set the bot controls that it can afford right now, or null.
-// Mirrors the engine's develop rules so the chosen intent is never rejected.
-function developTarget(s: GameState, seat: number, reserve: number): number | null {
+// Should the bot pour money into HOTELS (levels 4-6) yet, or keep laying houses first? Houses are
+// the best rent-per-rupee; hotels are a heavy late-game press. So a plain bot builds houses across
+// its set and only starts hotels once the game has matured — a hotel-rusher (Landlord/aggressive)
+// presses them as soon as the set is fully housed. Stops bots dumping their stack into hotels the
+// instant they complete a set.
+function wantsHotels(s: GameState, cfg: PersonaCfg): boolean {
+  return cfg.focus || cfg.overLeverage || s.round >= HOTEL_ROUND;
+}
+
+// The best city to develop this turn under the new build rules: raise ANY city in a set you
+// control (no even-build, no on-tile), but only ONE level per set per turn (skips zones already in
+// builtZones). Houses build down to `houseReserve`; hotels are gated by wantsHotels() and kept
+// behind a deeper `hotelReserve`. Picks the most valuable city (best rent) among the legal builds,
+// so the chosen intent is always accepted by the engine. Null if there's nothing worth building.
+function developTarget(s: GameState, seat: number, cfg: PersonaCfg): number | null {
   const p = s.players[seat];
+  const allowHotels = wantsHotels(s, cfg);
+  const houseReserve = cfg.overLeverage ? 0 : cfg.reserve;
+  const hotelReserve = cfg.overLeverage ? cfg.reserve : cfg.reserve * 2;
+  const built = s.builtZones ?? [];
   let best: number | null = null;
-  let bestCost = Infinity;
+  let bestScore = -1;
   for (let z = 0; z < 5; z++) {
     if (!controlsSet(s, seat, z)) continue;
-    const setCities = citiesOwned(s, seat).filter((id) => CITIES[id].zone === z && !s.cities[id].mortgaged);
-    if (!setCities.length) continue;
-    const minLvl = Math.min(...setCities.map((id) => s.cities[id].level));
-    for (const id of setCities) {
-      if (s.cities[id].level >= MAX_LEVEL) continue;
-      if (s.cities[id].level !== minLvl) continue; // even-build: raise the lowest first
-      if (s.cities[id].level + 1 >= HOTEL_LEVEL && p.pos !== CITY_POS[id]) continue; // hotels need you here
+    if (built.includes(z)) continue; // one level per set per turn
+    for (const id of citiesOwned(s, seat)) {
+      if (CITIES[id].zone !== z) continue;
+      const c = s.cities[id];
+      if (c.mortgaged || c.level >= MAX_LEVEL) continue;
+      const isHotel = c.level + 1 >= HOTEL_LEVEL; // building into 4-6 = a hotel
+      if (isHotel && !allowHotels) continue;      // houses-first: don't rush hotels
       const cost = upgradeCost(id);
-      if (p.cash - cost < reserve) continue;
-      if (cost < bestCost) { best = id; bestCost = cost; }
+      if (p.cash - cost < (isHotel ? hotelReserve : houseReserve)) continue;
+      if (CITIES[id].price > bestScore) { best = id; bestScore = CITIES[id].price; } // richest = best rent
     }
   }
   return best;
@@ -206,8 +230,17 @@ export function botIntent(s: GameState, seat: number, persona: BotPersona = "nor
   }
 
   switch (s.phase) {
-    case "roll":
+    case "roll": {
+      // Build INSTEAD of rolling when it's worth forgoing the move: we control a developable set,
+      // we're flush, and we've either built a base of property or the game has matured. Otherwise
+      // roll to keep expanding, buying, and collecting salary.
+      const buildCity = developTarget(s, seat, cfg);
+      const expanded = citiesOwned(s, seat).length >= 4 || s.round >= HOTEL_ROUND;
+      if (buildCity !== null && expanded && p.cash >= cfg.reserve * 2) {
+        return { type: "develop", cityId: buildCity };
+      }
       return { type: "roll" };
+    }
 
     case "jail": {
       const others = s.players.map((_, i) => i).filter((i) => i !== seat && !s.players[i].left);
@@ -251,9 +284,12 @@ export function botIntent(s: GameState, seat: number, persona: BotPersona = "nor
     }
 
     case "manage": {
+      // Already building this turn (came here from a develop): redeem a mortgage if flush, then
+      // build one level on each OTHER set we control (developTarget skips zones already built),
+      // then end the turn.
       const redeem = unmortgageTarget(s, seat, cfg.reserve);
       if (redeem !== null) return { type: "unmortgage", cityId: redeem };
-      const target = developTarget(s, seat, cfg.overLeverage ? 0 : cfg.reserve);
+      const target = developTarget(s, seat, cfg);
       return target !== null ? { type: "develop", cityId: target } : { type: "end_turn" };
     }
 
@@ -295,25 +331,26 @@ function givingCompletesSet(s: GameState, to: number, giveIds: number[]): boolea
   return controlledSetCount(s, to, EMPTY, new Set(giveIds)) > controlledSetCount(s, to, EMPTY, EMPTY);
 }
 
-// Whether a recipient bot accepts a trade. Cash trades always refused. Then, in order:
+// Whether a recipient bot accepts a trade — the SAME fair test for every counterparty (bot or
+// human). Cash trades refused. Then, in order:
 //  - the Turtle (no `trades`) refuses everything;
-//  - COALITION: never hand a HUMAN the card that completes their set (bots gang the human) —
-//    unless the bot completes a set of its own in the same swap;
-//  - completes a NEW set for the bot → yes (unless a schemer being asked by the leader);
-//  - breaks one of its OWN sets → no;
-//  - otherwise set-neutral: normal-ish take a fair set-advancing swap; a land-grabber takes a
+//  - NO-GIFT (universal): never hand the proposer the card that completes THEIR set unless the bot
+//    completes one of its own in the same swap — symmetric, so it's fair;
+//  - SOFT-GANG-LEADER: a schemer won't do the current leader a FAVOUR — it deals with the leader
+//    only when the swap completes the bot's own set (leader is the mid-game net-worth leader,
+//    whoever that is — bot or human);
+//  - completes a NEW set for the bot → yes; breaks one of its OWN sets → no;
+//  - otherwise set-neutral: normal-ish takes a fair set-advancing swap; a land-grabber takes a
 //    fair more-in-than-out swap. Cautious/base only ever completes a set.
 export function botAcceptsTrade(
   s: GameState,
   t: TradeOffer,
   persona: BotPersona = "normal",
   leader = -1,
-  humans: Set<number> = EMPTY,
 ): boolean {
   if ((t.give.cash || 0) !== 0 || (t.get.cash || 0) !== 0) return false;
   const cfg = PERSONA[persona];
   if (!cfg.trades) return false; // the Turtle never trades
-  if (cfg.gangLeader && t.from === leader && t.from !== t.to) return false; // scheme against the leader
 
   const receive = new Set(t.give.cities ?? []); // bot (t.to) RECEIVES give.cities
   const giveAway = t.get.cities ?? [];          // bot GIVES get.cities (→ proposer t.from)
@@ -321,12 +358,12 @@ export function botAcceptsTrade(
   const before = controlledSetCount(s, t.to, EMPTY, EMPTY);
   const after = controlledSetCount(s, t.to, giveSet, receive);
 
-  // Coalition + no-gift guard: refuse if handing the proposer their set-completer, unless the bot
-  // completes its own set too. Enforced hard against humans; also the general holdMonopoly rule.
-  const feedsProposer = givingCompletesSet(s, t.from, giveAway);
-  if (feedsProposer && after <= before && (humans.has(t.from) || cfg.holdMonopoly)) return false;
+  // No-gift (everyone): don't hand the proposer their set-completer unless the bot completes too.
+  if (givingCompletesSet(s, t.from, giveAway) && after <= before) return false;
+  // Soft gang the leader: no favours to whoever's ahead — deal only if it completes the bot's set.
+  if (cfg.gangLeader && t.from === leader && after <= before) return false;
 
-  if (after > before) return true;   // completes a set for the bot
+  if (after > before) return true;   // completes a set for the bot — take it, even from the leader
   if (after < before) return false;  // never break your own set
   if (persona === "cautious") return false;
 
@@ -361,25 +398,27 @@ function tradeGain(s: GameState, seat: number, giveIds: number[], getId: number,
 
 // The best trade a bot can PROPOSE now: search every 1-card or 2-card give for a card someone holds,
 // keep those that improve its board AND that a rational recipient (`wouldAccept`) would take, and
-// return the best by the bot's own gain. COALITION: bots never initiate a trade with a human
-// (`humans`) — they cooperate only with each other. Null if nothing beats standing pat.
+// return the best by the bot's own gain. Bots propose to EVERYONE — bot or human — on fair terms;
+// the no-gift + soft-gang-leader guards keep it fair. Null if nothing beats standing pat.
 export function findBestBotTrade(
   s: GameState,
   seat: number,
   wouldAccept: (to: number, offer: TradeOffer) => boolean,
   persona: BotPersona = "normal",
   leader = -1,
-  humans: Set<number> = EMPTY,
 ): { to: number; give: TradeOffer["give"]; get: TradeOffer["get"] } | null {
   const cfg = PERSONA[persona];
   if (!cfg.trades) return null; // the Turtle never proposes
   const mine = tradeableCities(s, seat);
+  const myBefore = controlledSetCount(s, seat, EMPTY, EMPTY);
   let best: { to: number; give: TradeOffer["give"]; get: TradeOffer["get"] } | null = null;
   let bestScore = 0; // strictly-positive gain required, so bots don't trade for no reason
   const consider = (to: number, giveIds: number[], getId: number): void => {
-    // Don't hand a rival a set-completer unless I complete one too.
-    if ((cfg.holdMonopoly || humans.has(to)) && givingCompletesSet(s, to, giveIds)
-      && controlledSetCount(s, seat, new Set(giveIds), new Set([getId])) <= controlledSetCount(s, seat, EMPTY, EMPTY)) return;
+    const myAfter = controlledSetCount(s, seat, new Set(giveIds), new Set([getId]));
+    // No-gift (everyone): don't hand the recipient their set-completer unless I complete one too.
+    if (givingCompletesSet(s, to, giveIds) && myAfter <= myBefore) return;
+    // Soft gang the leader: don't PROPOSE the leader a swap unless it completes MY own set.
+    if (cfg.gangLeader && to === leader && myAfter <= myBefore) return;
     const gain = tradeGain(s, seat, giveIds, getId, cfg.premiumTrades);
     if (gain <= 0 || gain <= bestScore) return;
     const offer: TradeOffer = { id: 0, from: seat, to, give: { cash: 0, cities: giveIds }, get: { cash: 0, cities: [getId] }, expiresAt: 0 };
@@ -389,8 +428,6 @@ export function findBestBotTrade(
   };
   for (let to = 0; to < s.players.length; to++) {
     if (to === seat || s.players[to].left) continue;
-    if (humans.has(to)) continue;                  // coalition: bots don't initiate with the human
-    if (cfg.gangLeader && to === leader) continue; // scheme against the leader
     for (const getId of tradeableCities(s, to)) {
       for (let i = 0; i < mine.length; i++) {
         consider(to, [mine[i]], getId);                                       // 1-for-1
@@ -415,8 +452,6 @@ export function driveBots(
   eventSink?: EngineEvent[],
 ): { seat: number; intent: Intent }[] {
   const steps: { seat: number; intent: Intent }[] = [];
-  const humans = new Set<number>();
-  for (let i = 0; i < s.players.length; i++) if (!botSeats.has(i) && !s.players[i].left) humans.add(i);
 
   const apply = (seat: number, intent: Intent): void => {
     const r = applyIntent(s, seat, intent);
@@ -425,14 +460,14 @@ export function driveBots(
   const offTurn = (): void => {
     for (const pay of [...(s.payments ?? [])]) if (botSeats.has(pay.actor)) apply(pay.actor, { type: "confirm_payment", paymentId: pay.id });
     if (s.ended) return;
-    const leader = leaderSeat(s);
+    const leader = coalitionLeader(s); // no target before half-time; then the live net-worth leader
     for (const b of botSeats) {
       if (b === s.active) continue; // a bot only proposes on its off-turn
       if ((s.trades ?? []).some((t) => t.from === b)) continue; // one outgoing offer at a time
-      const swap = findBestBotTrade(s, b, (to, offer) => botAcceptsTrade(s, offer, personaOf(to), leader, humans), personaOf(b), leader, humans);
+      const swap = findBestBotTrade(s, b, (to, offer) => botAcceptsTrade(s, offer, personaOf(to), leader), personaOf(b), leader);
       if (swap) apply(b, { type: "propose_trade", to: swap.to, give: swap.give, get: swap.get });
     }
-    for (const t of [...(s.trades ?? [])]) if (botSeats.has(t.to)) apply(t.to, { type: "respond_trade", tradeId: t.id, accept: botAcceptsTrade(s, t, personaOf(t.to), leader, humans) });
+    for (const t of [...(s.trades ?? [])]) if (botSeats.has(t.to)) apply(t.to, { type: "respond_trade", tradeId: t.id, accept: botAcceptsTrade(s, t, personaOf(t.to), leader) });
   };
 
   let guard = 0;
