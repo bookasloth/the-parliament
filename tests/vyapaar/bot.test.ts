@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { botIntent, driveBots, isBotUserId, BOT_USERS, findBotSwap, botAcceptsTrade } from "@/modules/vyapaar/bot";
+import { CITIES } from "@/modules/vyapaar/engine/data";
 
 describe("botIntent — the policy", () => {
   it("rolls in the roll phase and sits out jail", () => {
@@ -112,5 +113,41 @@ describe("bot identity", () => {
   it("recognises seeded bot user ids and rejects others", () => {
     expect(isBotUserId(BOT_USERS[0].id)).toBe(true);
     expect(isBotUserId("11111111-1111-4111-8111-111111111111")).toBe(false);
+  });
+});
+
+describe("bot personas", () => {
+  it("aggressive bids harder than cautious at auction", () => {
+    const mk = () => {
+      const s = createGame(1, ["a", "b"], 200000);
+      s.phase = "auction";
+      s.auction = { kind: "city", index: 0, bids: [null, null] } as unknown as typeof s.auction;
+      return s;
+    };
+    const agg = botIntent(mk(), 0, "aggressive") as { type: "bid"; amount: number };
+    const cau = botIntent(mk(), 0, "cautious") as { type: "bid"; amount: number };
+    expect(agg.type).toBe("bid");
+    expect(agg.amount).toBeGreaterThan(cau.amount);
+  });
+
+  it("reserve gates a marginal buy: aggressive buys, cautious declines", () => {
+    const mk = () => {
+      const s = createGame(1, ["a", "b"], CITIES[0].price + 1000); // only ₹1,000 over the price
+      s.phase = "buy";
+      s.pendingCity = 0;
+      return s;
+    };
+    expect(botIntent(mk(), 0, "aggressive")).toEqual({ type: "buy" });   // reserve 500 ≤ 1000
+    expect(botIntent(mk(), 0, "cautious")).toEqual({ type: "decline" }); // reserve 4000 > 1000
+    expect(botIntent(mk(), 0, "normal")).toEqual({ type: "decline" });   // reserve 2000 > 1000
+  });
+
+  it("only aggressive takes a set-neutral land-grab (more cities in than out)", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    // seat 1 receives two cities in different zones, gives one — no set completes either way.
+    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0, 6] }, get: { cash: 0, cities: [12] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "aggressive")).toBe(true);
+    expect(botAcceptsTrade(s, offer, "normal")).toBe(false);
+    expect(botAcceptsTrade(s, offer, "cautious")).toBe(false);
   });
 });

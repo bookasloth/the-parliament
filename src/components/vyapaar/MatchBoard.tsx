@@ -9,7 +9,8 @@ import { BOARD, CITY_POS } from "@/modules/vyapaar/engine/board"
 import { coachTips, type Tip } from "@/modules/vyapaar/coach"
 import { MatchResults } from "./MatchResults"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
-import type { Intent, TradeSide } from "@/modules/vyapaar/engine/state"
+import type { Intent, TradeSide, EngineEvent } from "@/modules/vyapaar/engine/state"
+import type { SeatStat } from "@/modules/vyapaar/analyze"
 
 const MATCH_TOPIC = (id: string) => `vyapaar-match:${id}`
 
@@ -272,7 +273,7 @@ const optimisticBribe = (you: number, cost: number) => (v: PublicView): PublicVi
   players: v.players.map((pl, i) => (i === you ? { ...pl, cash: pl.cash - cost, halted: 0 } : pl)),
 })
 
-export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initialGameEndsAt = null, playerImages = [], playerTokens = [], roomCode = null }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; initialGameEndsAt?: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null }) {
+export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initialGameEndsAt = null, playerImages = [], playerTokens = [], roomCode = null, recap }: { matchId: string; initialView: PublicView; initialTurnExpiresAt: string | null; initialGameEndsAt?: string | null; playerImages?: (string | null)[]; playerTokens?: (string | null)[]; roomCode?: string | null; recap?: SeatStat[] }) {
   const [view, setView] = useState<PublicView>(initialView)
   const [turnExpiresAt, setTurnExpiresAt] = useState<string | null>(initialTurnExpiresAt)
   const [gameEndsAt, setGameEndsAt] = useState<string | null>(initialGameEndsAt)
@@ -283,6 +284,13 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
   const [showReport, setShowReport] = useState(false)
   const [copied, setCopied] = useState(false)
   const [eventFx, setEventFx] = useState<{ id: string; pos: number; seat: number; round: number; key: number } | null>(null)
+  // Play-by-play of the bots' just-completed burst: the full list of narrated lines plus how
+  // many are revealed so far. Revealed one at a time so the human can follow what happened
+  // instead of the board silently teleporting between their turns.
+  const [ticker, setTicker] = useState<{ lines: string[]; shown: number } | null>(null)
+  // A coach-suggested trade the player one-tapped — seeds the propose panel. `seq` bumps on each
+  // click so the panel remounts (via key) and re-seeds even for the same tip.
+  const [tradePreset, setTradePreset] = useState<{ seq: number; to: number; give: number[]; get: number[] } | null>(null)
   const reduce = useReducedMotion()
   const you = view.you
   // Timestamp of our last successful own action. The server broadcasts a "state"
@@ -377,6 +385,17 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
     return () => clearTimeout(t)
   }, [eventFx])
 
+  // Reveal the bot play-by-play one line at a time (~750ms), then clear after a short hold.
+  useEffect(() => {
+    if (!ticker) return
+    if (ticker.shown >= ticker.lines.length) {
+      const t = setTimeout(() => setTicker(null), 2600)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => setTicker((tk) => (tk ? { ...tk, shown: tk.shown + 1 } : tk)), 750)
+    return () => clearTimeout(t)
+  }, [ticker])
+
   // `optimistic` (when given) mutates the local view the instant you click — the card/button
   // vanishes and your cash updates with no wait — then the server's authoritative view replaces
   // it on success, or a refetch restores the truth on error. Used for the confirmation-style
@@ -400,9 +419,15 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
           const msg = ERR_MSG[code] ?? code
           setErr(action ? `${action}: ${msg}` : msg)
         }
-      } else { lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null) }
+      } else {
+        lastActRef.current = Date.now(); setView(data.view); setTurnExpiresAt(data.turnExpiresAt ?? null); if (closeDeed) setOpenTile(null)
+        // Narrate what the bots did on their burst (skip under reduced-motion).
+        const lines = reduce ? [] : ((data.botEvents ?? []) as EngineEvent[])
+          .map((e) => logLine(e as Record<string, unknown>, data.view.players)).filter((l): l is string => !!l)
+        setTicker(lines.length ? { lines, shown: 1 } : null)
+      }
     } finally { setBusy(false) }
-  }, [matchId, refetch])
+  }, [matchId, refetch, reduce])
 
   const myTurn = view.active === you && !view.ended
   const canManage = myTurn && (view.phase === "roll" || view.phase === "manage")
@@ -459,6 +484,15 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
   return (
     <div className="vb">
       <style>{VB_CSS}</style>
+
+      {ticker && ticker.lines.length > 0 && (
+        <div className="vb-ticker" onClick={() => setTicker(null)} title="Tap to skip">
+          <div className="vb-ticker-head">While you waited…</div>
+          {ticker.lines.slice(0, ticker.shown).map((l, i) => (
+            <div key={i} className="vb-ticker-line" style={{ opacity: i === ticker.shown - 1 ? 1 : 0.6 }}>{l}</div>
+          ))}
+        </div>
+      )}
 
       <header className="vb-top">
         <button type="button" onClick={leaveGame} disabled={busy} className="vb-exit">{iLeft || view.ended ? "← Exit" : "← Leave"}</button>
@@ -633,7 +667,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
               <div className="vb-panel-head vb-coach-h">Your coach</div>
               <div className="vb-coach-list">
                 {tips.map((t, i) => (
-                  <CoachTip key={i} tip={t} onOpen={(pos) => setOpenTile(pos)} />
+                  <CoachTip key={i} tip={t} onOpen={(pos) => setOpenTile(pos)} onTrade={(tr) => setTradePreset({ seq: Date.now(), ...tr })} />
                 ))}
               </div>
             </section>
@@ -698,7 +732,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
                 {(view.trades ?? []).map((t) => (
                   <TradeCard key={t.id} trade={t} view={view} you={you} busy={busy} onAction={send} />
                 ))}
-                <TradePropose view={view} you={you} myTurn={myTurn} busy={busy} onPropose={(i) => send(i)} />
+                <TradePropose key={tradePreset?.seq ?? "tp"} view={view} you={you} busy={busy} onPropose={(i) => send(i)} preset={tradePreset} />
                 {notifLines.length
                   ? notifLines.map((x) => <div key={x.i} className="vb-notif-line">{x.line}</div>)
                   : (!err && !(view.payments ?? []).length && <div className="vb-log-empty">No actions yet</div>)}
@@ -727,7 +761,7 @@ export function MatchBoard({ matchId, initialView, initialTurnExpiresAt, initial
       {view.ended && (
         <div className="vb-scrim vb-scrim-results">
           <div className="vb-results-wrap">
-            <MatchResults view={view} playerImages={playerImages} />
+            <MatchResults view={view} playerImages={playerImages} recap={recap} />
             <div className="vb-results-actions">
               <button className="vb-act primary" onClick={() => { window.location.href = settlementHref }}>View settlement</button>
               <button className="vb-act" onClick={() => { window.location.href = "/games/vyapaar" }}>Back to lobby</button>
@@ -957,20 +991,25 @@ function PropChip({ letter, bg, dark, title, onOpen }: {
 const TIP_ICON: Record<Tip["kind"], string> = {
   build: "🏗️", swap: "🤝", complete: "🎯", unmortgage: "🔓", company: "🏢", "trade-away": "🔁", idle: "🎲",
 }
-function CoachTip({ tip, onOpen }: { tip: Tip; onOpen: (pos: number) => void }) {
+function CoachTip({ tip, onOpen, onTrade }: { tip: Tip; onOpen: (pos: number) => void; onTrade: (t: { to: number; give: number[]; get: number[] }) => void }) {
   const clickable = tip.pos != null
   const accent = tip.zone != null ? ZONE_BG[tip.zone] : "#8a8f98"
   return (
-    <button
-      type="button"
-      className={`vb-coach-tip ${clickable ? "" : "static"}`}
-      style={{ borderLeftColor: accent }}
-      disabled={!clickable}
-      onClick={clickable ? () => onOpen(tip.pos!) : undefined}
-    >
-      <span className="vb-coach-ic">{TIP_ICON[tip.kind]}</span>
-      <span className="vb-coach-tx">{tip.text}</span>
-    </button>
+    <div className="vb-coach-tip-wrap">
+      <button
+        type="button"
+        className={`vb-coach-tip ${clickable ? "" : "static"}`}
+        style={{ borderLeftColor: accent }}
+        disabled={!clickable}
+        onClick={clickable ? () => onOpen(tip.pos!) : undefined}
+      >
+        <span className="vb-coach-ic">{TIP_ICON[tip.kind]}</span>
+        <span className="vb-coach-tx">{tip.text}</span>
+      </button>
+      {tip.trade && (
+        <button type="button" className="vb-act vb-coach-trade" onClick={() => onTrade(tip.trade!)}>Set up this trade ⇄</button>
+      )}
+    </div>
   )
 }
 
@@ -1311,14 +1350,21 @@ function BidControl({ busy, max, onBid }: { busy: boolean; max: number; onBid: (
 
 // Property-only trade builder. Cash is never part of a player trade. You can only
 // propose on someone else's turn, and only one outgoing offer at a time.
-function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView; you: number; myTurn: boolean; busy: boolean; onPropose: (i: Intent) => void }) {
-  const [to, setTo] = useState<number | "">("")
-  const [give, setGive] = useState<number[]>([])
-  const [get, setGet] = useState<number[]>([])
+function TradePropose({ view, you, busy, onPropose, preset }: { view: PublicView; you: number; busy: boolean; onPropose: (i: Intent) => void; preset?: { to: number; give: number[]; get: number[] } | null }) {
+  // Seeded from a coach one-tap trade at mount (the parent bumps a `key` so a new preset
+  // remounts this component). Lazy initialisers avoid a setState-in-effect re-seed.
+  const [to, setTo] = useState<number | "">(() => preset?.to ?? "")
+  const [give, setGive] = useState<number[]>(() => preset?.give ?? [])
+  const [get, setGet] = useState<number[]>(() => preset?.get ?? [])
   const [giveCo, setGiveCo] = useState<number[]>([])
   const [getCo, setGetCo] = useState<number[]>([])
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  // Open the panel when seeded — DOM-ref only (no setState), so no cascading render.
+  useEffect(() => {
+    if (preset && detailsRef.current) detailsRef.current.open = true
+  }, [preset])
   const hasOutgoing = (view.trades ?? []).some((t) => t.from === you)
-  if (view.ended || myTurn || hasOutgoing) return null
+  if (view.ended || hasOutgoing) return null
   const mine = view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, you))
   const theirs = to === "" ? [] : view.cities.map((c, id) => ({ ...c, id })).filter(tradeable(view, to))
   const mineCo = view.companies.map((o, ci) => ({ o, ci })).filter((x) => x.o === you).map((x) => x.ci)
@@ -1332,7 +1378,7 @@ function TradePropose({ view, you, myTurn, busy, onPropose }: { view: PublicView
   const getCoValid = getCo.filter((ci) => theirsCo.includes(ci))
   const ready = to !== "" && (giveValid.length + giveCoValid.length) > 0 && (getValid.length + getCoValid.length) > 0
   return (
-    <details className="vb-tp">
+    <details className="vb-tp" ref={detailsRef}>
       <summary>Propose a trade</summary>
       <div className="vb-tp-body">
         <label>To:{" "}
@@ -1531,7 +1577,13 @@ const VB_CSS = `
 .vb-coach-tip.static{cursor:default;}
 .vb-coach-ic{font-size:.9rem;line-height:1.2;flex:none;}
 .vb-coach-tx{font-size:.72rem;line-height:1.3;color:var(--cream);}
-@media(max-width:720px){.vb-hub{grid-template-columns:1fr;}.vb-hub-side{display:none;}}
+.vb-coach-tip-wrap{display:flex;flex-direction:column;gap:4px;}
+.vb-coach-trade{align-self:flex-start;font-size:.68rem;padding:3px 9px;}
+.vb-ticker{position:absolute;top:56px;right:12px;z-index:40;max-width:280px;display:flex;flex-direction:column;gap:3px;background:rgba(10,12,16,.92);border:1px solid var(--line);border-radius:8px;padding:9px 11px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:vb-ticker-in .2s ease;}
+.vb-ticker-head{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);margin-bottom:1px;}
+.vb-ticker-line{font-size:.72rem;line-height:1.35;color:var(--cream);transition:opacity .2s;}
+@keyframes vb-ticker-in{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+@media(max-width:720px){.vb-hub{grid-template-columns:1fr;}.vb-hub-side{display:none;}.vb-ticker{right:8px;left:8px;max-width:none;}}
 .vb-hub-name{font-weight:800;font-size:clamp(1.1rem,3.2vw,2.2rem);letter-spacing:-.02em;color:var(--cream);line-height:1;}
 .vb-dice{display:flex;gap:16px;perspective:560px;perspective-origin:50% 42%;}
 .vb-die3d{--ds:clamp(30px,4.6vw,48px);position:relative;width:var(--ds);height:var(--ds);transform-style:preserve-3d;}

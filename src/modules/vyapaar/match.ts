@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client"
 import { ForbiddenError } from "@/lib/errors"
 import { ensureVyapaarEnrollment } from "./wallet"
 import { createGame } from "./engine/state"
-import type { GameState, Intent } from "./engine/state"
+import type { GameState, Intent, EngineEvent } from "./engine/state"
 import { applyIntent, nextAutoIntent, rankSeats, forceEndGame } from "./engine/engine"
 import { publicView, type PublicView } from "./engine/view"
 import { netWorth } from "./engine/helpers"
@@ -12,7 +12,14 @@ import { broadcastToTopic, matchTopic, roomTopic } from "@/lib/supabase-realtime
 import { TURN_SECONDS, AUCTION_SECONDS } from "@/config/vyapaar-match"
 import { stampNewTrades, sweepExpiredTrades } from "./engine/trade-expiry"
 import { stampNewPayments, sweepExpiredPayments } from "./engine/payment-expiry"
-import { driveBots, isBotUserId, botOpeningCash } from "./bot"
+import { driveBots, isBotUserId, botOpeningCash, personaFor, type BotPersona } from "./bot"
+
+// A seat→persona resolver for driveBots, built from the match's player rows (seat + userId).
+// Non-bot seats resolve to "normal" and are never driven, so their value is inert.
+function personaResolver(players: { seat: number; userId: string }[]): (seat: number) => BotPersona {
+  const bySeat = new Map(players.map((p) => [p.seat, personaFor(p.userId)]))
+  return (seat) => bySeat.get(seat) ?? "normal"
+}
 import crypto from "node:crypto"
 
 // Hard wall-clock cap: a game force-ends 60 minutes after it was created, whichever of
@@ -132,7 +139,7 @@ export async function startMatch(userId: string, roomId: string): Promise<{ matc
     const seed = crypto.randomInt(2 ** 31)
     const state = createGame(seed, names, openingCash)
     // If the opening seat(s) are bots, play them out immediately so a human never waits on a bot.
-    const botSteps = driveBots(state, botSeats)
+    const botSteps = driveBots(state, botSeats, personaResolver(seated.map((m, i) => ({ seat: i, userId: m.userId }))))
     const match = await tx.vyapaarMatch.create({
       data: {
         roomId: room.id, seed: BigInt(seed), state: state as unknown as object, actionLog: botSteps as unknown as object,
@@ -296,8 +303,8 @@ export async function applyMatchIntent(
   userId: string,
   matchId: string,
   intent: Intent,
-): Promise<{ view: PublicView; turnExpiresAt: string | null } | { error: string }> {
-  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView; turnExpiresAt: Date | null } | { error: string }> => {
+): Promise<{ view: PublicView; turnExpiresAt: string | null; botEvents?: EngineEvent[] } | { error: string }> {
+  const result = await prisma.$transaction(async (tx): Promise<{ view: PublicView; turnExpiresAt: Date | null; botEvents?: EngineEvent[] } | { error: string }> => {
     // Serialize concurrent intents on this match (prevents lost-update + double-settle
     // when two calls — double-click, retry, or legal concurrent bid/trade-response from
     // a non-active seat — race the same snapshot).
@@ -330,7 +337,8 @@ export async function applyMatchIntent(
     if ("error" in r) return { error: r.error } // no writes done; the row lock releases on commit
     // Play out any bot seats the move handed the turn to, so humans never wait on a bot.
     const botSeats = new Set(match.players.filter((p) => isBotUserId(p.userId)).map((p) => p.seat))
-    const botSteps = driveBots(r.state, botSeats)
+    const botEvents: EngineEvent[] = []
+    const botSteps = driveBots(r.state, botSeats, personaResolver(match.players), botEvents)
     stampNewTrades(r.state, now) // give any just-proposed/countered trade its 60s clock
     stampNewPayments(r.state, now) // and any just-queued auto-payment its 10s clock
 
@@ -338,11 +346,13 @@ export async function applyMatchIntent(
     // trade/bid (non-active seat, same active player) must not reset the clock.
     const resetTimer = me.seat === activeBefore || r.state.active !== activeBefore
     const expiresAt = await commitMatchState(tx, match, r.state, [...expired, { seat: me.seat, intent }, ...botSteps], resetTimer)
-    return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt }
+    // Cap the play-by-play payload — a 6-bot burst can emit ~100 events; the client only needs
+    // enough to narrate, not every internal event.
+    return { view: publicView(r.state, me.seat), turnExpiresAt: expiresAt, botEvents: botEvents.slice(-80) }
   }, { timeout: 15000 }) // settlement is ~24 sequential queries for a 6-player game; default 5s risks a prod rollback
   if ("view" in result) {
     await broadcastToTopic(matchTopic(matchId), "state", { activeSeat: result.view.active, ended: result.view.ended })
-    return { view: result.view, turnExpiresAt: result.turnExpiresAt?.toISOString() ?? null }
+    return { view: result.view, turnExpiresAt: result.turnExpiresAt?.toISOString() ?? null, botEvents: result.botEvents ?? [] }
   }
   return result
 }
@@ -386,7 +396,7 @@ export async function autoResolveExpiredTurns(now: Date): Promise<number> {
         appended.push(step)
       }
       // Once the timed-out turn is unstuck, play out any bot seats that now hold the turn.
-      appended.push(...driveBots(state, botSeats))
+      appended.push(...driveBots(state, botSeats, personaResolver(match.players)))
       if (appended.length === 0) return null
       stampNewPayments(state, now.getTime()) // an auto-played landing may have queued payments
       // Auto-resolve always plays a full turn (loops until active changes or ended), so the
