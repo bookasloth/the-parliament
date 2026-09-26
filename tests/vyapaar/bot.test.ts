@@ -3,6 +3,7 @@ import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { botIntent, driveBots, isBotUserId, BOT_USERS, findBestBotTrade, botAcceptsTrade } from "@/modules/vyapaar/bot";
 import { CITIES, upgradeCost } from "@/modules/vyapaar/engine/data";
+import { CITY_POS } from "@/modules/vyapaar/engine/board";
 
 describe("botIntent — the policy", () => {
   it("rolls in the roll phase and sits out jail", () => {
@@ -316,6 +317,40 @@ describe("archetypes — distinct personalities", () => {
     s.cities[17] = { owner: 0, level: 0, mortgaged: false };
     const swap = findBestBotTrade(s, 0, (to, offer) => botAcceptsTrade(s, offer, "trader"), "trader");
     expect(swap?.to).toBe(1);
+  });
+});
+
+describe("phased building — houses first, no hotel rush", () => {
+  // seat0 controls North (0,1,2), all houses maxed at level 3, standing on city 0.
+  function housedSet(round: number) {
+    const s = createGame(1, ["a", "b"], 200000);
+    for (const id of [0, 1, 2]) s.cities[id] = { owner: 0, level: 3, mortgaged: false };
+    s.players[0].pos = CITY_POS[0]; // on Delhi, so a hotel there would be legal
+    s.phase = "manage";
+    s.round = round;
+    return s;
+  }
+
+  it("early game: a housed set does NOT jump to hotels — it ends the turn", () => {
+    expect(botIntent(housedSet(5), 0, "normal")).toEqual({ type: "end_turn" });
+  });
+
+  it("late game: the same housed set finally builds the hotel", () => {
+    const intent = botIntent(housedSet(20), 0, "normal");
+    expect(intent).toEqual({ type: "develop", cityId: 0 }); // level 3 → 4 on the tile it's standing on
+  });
+
+  it("the Landlord presses hotels early (its whole identity), a Turtle never does", () => {
+    expect(botIntent(housedSet(3), 0, "landlord")).toEqual({ type: "develop", cityId: 0 });
+    expect(botIntent(housedSet(3), 0, "turtle")).toEqual({ type: "end_turn" }); // patient + cash-hoarding
+  });
+
+  it("still lays HOUSES on a fresh set in the early game (breadth before depth)", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    for (const id of [0, 1, 2]) s.cities[id] = { owner: 0, level: 0, mortgaged: false };
+    s.phase = "manage"; s.round = 3;
+    const intent = botIntent(s, 0, "normal");
+    expect(intent.type).toBe("develop"); // houses are always allowed — only hotels are gated
   });
 });
 

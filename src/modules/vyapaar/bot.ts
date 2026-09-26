@@ -39,6 +39,7 @@ interface PersonaCfg {
 const RESERVE_FLOOR = 500; // a set-completing buy/bid may spend down to this, below the normal reserve
 const EARLY_ROUNDS = 10;   // bribing out of jail is worth it while property is still unclaimed
 const ENDGAME_ROUND = MAX_ROUNDS - 8; // late game: stop opening new zones, pour cash into owned sets
+const HOTEL_ROUND = 15;    // houses first: a plain bot only starts hotels once the game has matured
 
 const PERSONA: Record<BotPersona, PersonaCfg> = {
   // base tempers
@@ -154,9 +155,20 @@ function auctionWorth(s: GameState, seat: number, kind: "city" | "company", inde
   return base * (pair ? 1.3 : companiesOwned(s, seat) === 0 ? 0.6 : 0.2);
 }
 
+// Should the bot pour money into HOTELS (levels 4-6) yet, or keep laying houses first? Houses are
+// the best rent-per-rupee; hotels are a heavy late-game press. So a plain bot builds houses across
+// its set and only starts hotels once the game has matured — a hotel-rusher (Landlord/aggressive)
+// presses them as soon as the set is fully housed. Stops bots dumping their stack into hotels the
+// instant they complete a set.
+function wantsHotels(s: GameState, cfg: PersonaCfg): boolean {
+  return cfg.focus || cfg.overLeverage || s.round >= HOTEL_ROUND;
+}
+
 // Cheapest even-build target in a set the bot controls that it can afford right now, or null.
-// Mirrors the engine's develop rules so the chosen intent is never rejected.
-function developTarget(s: GameState, seat: number, reserve: number): number | null {
+// Mirrors the engine's develop rules (even-build, hotels need you on the tile) so the chosen intent
+// is never rejected. Houses use `houseReserve`; hotels are gated by `allowHotels` and kept behind a
+// larger `hotelReserve` so they never bankrupt the bot.
+function developTarget(s: GameState, seat: number, houseReserve: number, hotelReserve: number, allowHotels: boolean): number | null {
   const p = s.players[seat];
   let best: number | null = null;
   let bestCost = Infinity;
@@ -168,9 +180,11 @@ function developTarget(s: GameState, seat: number, reserve: number): number | nu
     for (const id of setCities) {
       if (s.cities[id].level >= MAX_LEVEL) continue;
       if (s.cities[id].level !== minLvl) continue; // even-build: raise the lowest first
-      if (s.cities[id].level + 1 >= HOTEL_LEVEL && p.pos !== CITY_POS[id]) continue; // hotels need you here
+      const isHotel = s.cities[id].level + 1 >= HOTEL_LEVEL; // building into 4-6 = a hotel
+      if (isHotel && !allowHotels) continue;                 // houses-first: don't rush hotels
+      if (isHotel && p.pos !== CITY_POS[id]) continue;        // hotels need you on the tile
       const cost = upgradeCost(id);
-      if (p.cash - cost < reserve) continue;
+      if (p.cash - cost < (isHotel ? hotelReserve : houseReserve)) continue;
       if (cost < bestCost) { best = id; bestCost = cost; }
     }
   }
@@ -253,7 +267,11 @@ export function botIntent(s: GameState, seat: number, persona: BotPersona = "nor
     case "manage": {
       const redeem = unmortgageTarget(s, seat, cfg.reserve);
       if (redeem !== null) return { type: "unmortgage", cityId: redeem };
-      const target = developTarget(s, seat, cfg.overLeverage ? 0 : cfg.reserve);
+      // Houses build down to the normal reserve (0 for an over-leverager); hotels are gated by
+      // wantsHotels() and kept behind a deeper buffer so bots stop rushing hotels off one set.
+      const houseReserve = cfg.overLeverage ? 0 : cfg.reserve;
+      const hotelReserve = cfg.overLeverage ? cfg.reserve : cfg.reserve * 2;
+      const target = developTarget(s, seat, houseReserve, hotelReserve, wantsHotels(s, cfg));
       return target !== null ? { type: "develop", cityId: target } : { type: "end_turn" };
     }
 
