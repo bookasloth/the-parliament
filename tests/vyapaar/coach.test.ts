@@ -16,7 +16,7 @@ function view(over: Partial<PublicView> = {}, cash = 25000): PublicView {
     ],
     cities: Array.from({ length: 25 }, () => ({ owner: null as number | null, level: 0, mortgaged: false })),
     companies: [null, null, null, null, null, null],
-    active: 0, phase: "roll", round: 1, pendingCity: null, pendingCompany: null,
+    active: 0, phase: "roll", round: 1, pendingCity: null, pendingCompany: null, builtZones: [],
     auction: null, trades: [], payments: [], ended: false, winner: null, lastRoll: null,
     log: [], you: 0, youCanRestructure: false, restructure: { advance: 0, laps: 0 },
     ...over,
