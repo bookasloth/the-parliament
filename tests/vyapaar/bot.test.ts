@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { botIntent, driveBots, isBotUserId, BOT_USERS, findBotSwap, botAcceptsTrade } from "@/modules/vyapaar/bot";
-import { CITIES } from "@/modules/vyapaar/engine/data";
+import { botIntent, driveBots, isBotUserId, BOT_USERS, findBestBotTrade, botAcceptsTrade } from "@/modules/vyapaar/bot";
+import { CITIES, upgradeCost } from "@/modules/vyapaar/engine/data";
 
 describe("botIntent — the policy", () => {
   it("rolls in the roll phase and sits out jail", () => {
@@ -79,9 +79,9 @@ describe("bot trading — mutual set-completing swaps", () => {
     return s;
   }
 
-  it("finds the mutual swap and the recipient accepts it (both complete a set)", () => {
+  it("finds the best proposable trade and the recipient accepts it (both complete a set)", () => {
     const s = crossHolding();
-    const swap = findBotSwap(s, 0, new Set([0, 1]));
+    const swap = findBestBotTrade(s, 0, (to, offer) => botAcceptsTrade(s, offer, "normal"));
     expect(swap).toBeTruthy();
     expect(swap!.to).toBe(1);
     expect(swap!.give.cities).toEqual([17]); // seat0 gives its West piece
@@ -91,6 +91,18 @@ describe("bot trading — mutual set-completing swaps", () => {
     expect(botAcceptsTrade(s, offer)).toBe(true);
   });
 
+  it("proposes to a HUMAN holder too (not bot-only), when both benefit", () => {
+    const s = crossHolding(); // seat 1 is treated as a plain player here — no botSeats filter exists now
+    const swap = findBestBotTrade(s, 0, (to, offer) => botAcceptsTrade(s, offer, "normal"));
+    expect(swap?.to).toBe(1);
+  });
+
+  it("proposes nothing when no swap improves the bot's board", () => {
+    const s = createGame(1, ["a", "b"], 200000); // fresh board, nobody owns anything
+    const swap = findBestBotTrade(s, 0, () => true);
+    expect(swap).toBeNull();
+  });
+
   it("refuses a trade that doesn't win a set", () => {
     const s = crossHolding();
     // offer seat1 a useless North piece for its West piece → seat1 would LOSE progress
@@ -98,14 +110,16 @@ describe("bot trading — mutual set-completing swaps", () => {
     expect(botAcceptsTrade(s, offer)).toBe(false);
   });
 
-  it("bots actually trade during all-bot games", () => {
-    let trades = 0;
-    for (let seed = 1; seed <= 12; seed++) {
+  it("bots actively propose and answer trades during all-bot games", () => {
+    let proposed = 0, answered = 0;
+    for (let seed = 1; seed <= 5; seed++) {
       const s = createGame(seed, ["a", "b", "c", "d"], 200000);
       const steps = driveBots(s, new Set([0, 1, 2, 3]));
-      trades += steps.filter((x) => x.intent.type === "trade_accepted" as string || x.intent.type === "propose_trade").length;
+      proposed += steps.filter((x) => x.intent.type === "propose_trade").length;
+      answered += steps.filter((x) => x.intent.type === "respond_trade").length;
     }
-    expect(trades).toBeGreaterThan(0);
+    expect(proposed).toBeGreaterThan(0);
+    expect(answered).toBeGreaterThan(0);
   });
 });
 
@@ -142,12 +156,60 @@ describe("bot personas", () => {
     expect(botIntent(mk(), 0, "normal")).toEqual({ type: "decline" });   // reserve 2000 > 1000
   });
 
-  it("only aggressive takes a set-neutral land-grab (more cities in than out)", () => {
+  it("normal accepts a fair swap that advances toward a set; cautious refuses", () => {
     const s = createGame(1, ["a", "b"], 200000);
-    // seat 1 receives two cities in different zones, gives one — no set completes either way.
-    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0, 6] }, get: { cash: 0, cities: [12] }, expiresAt: 0 };
+    s.cities[1] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id1 (6500)
+    s.cities[5] = { owner: 1, level: 0, mortgaged: false }; // seat1: South id5 (8800)
+    // seat1 RECEIVES id0 (North 9000) → North goes 1→2 (advances), GIVES id5 (8800): receive ≥ give.
+    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [5] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "normal")).toBe(true);
+    expect(botAcceptsTrade(s, offer, "aggressive")).toBe(true);
+    expect(botAcceptsTrade(s, offer, "cautious")).toBe(false);
+  });
+
+  it("only aggressive takes a fair land-grab that does NOT advance a set", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id0
+    s.cities[1] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id1 (best progress = 2)
+    // seat1 RECEIVES id10+id11 (East, 12200) for id0 (9000): 2-in-1-out, fair, but East only reaches
+    // 2 → best progress stays 2, so it does NOT advance. Only the land-grab persona takes it.
+    const offer = { id: 2, from: 0, to: 1, give: { cash: 0, cities: [10, 11] }, get: { cash: 0, cities: [0] }, expiresAt: 0 };
     expect(botAcceptsTrade(s, offer, "aggressive")).toBe(true);
     expect(botAcceptsTrade(s, offer, "normal")).toBe(false);
     expect(botAcceptsTrade(s, offer, "cautious")).toBe(false);
+  });
+});
+
+describe("businessman bot traits", () => {
+  it("coalition: an aggressive bot refuses to trade with the leader even for a set", () => {
+    const s = createGame(1, ["a", "b"], 25000);
+    s.cities[1] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id1, id2 (2/3)
+    s.cities[2] = { owner: 1, level: 0, mortgaged: false };
+    s.cities[10] = { owner: 1, level: 0, mortgaged: false }; // a throwaway East card to give
+    s.cities[0] = { owner: 0, level: 0, mortgaged: false }; // seat0 (the leader) holds the 3rd North
+    // seat1 receives id0 → completes North; gives id10. A pure win for seat1.
+    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [10] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "normal", 0)).toBe(true);      // normal takes the free set
+    expect(botAcceptsTrade(s, offer, "aggressive", 0)).toBe(false); // schemer won't feed the leader
+  });
+
+  it("risk: an aggressive bot overpays (unfair value) to advance a set; normal won't", () => {
+    const s = createGame(1, ["a", "b"], 200000);
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id0
+    s.cities[5] = { owner: 1, level: 0, mortgaged: false }; // seat1: South id5 (8800)
+    // receive id1 (North 6500) advances North 1→2, give id5 (8800) → receive < give (unfair).
+    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [1] }, get: { cash: 0, cities: [5] }, expiresAt: 0 };
+    expect(botAcceptsTrade(s, offer, "aggressive")).toBe(true);
+    expect(botAcceptsTrade(s, offer, "normal")).toBe(false);
+  });
+
+  it("over-leverage: aggressive builds past a prudent reserve where normal holds cash", () => {
+    const s = createGame(1, ["a", "b"], 0);
+    for (const id of [0, 1, 2]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // seat0 controls North
+    s.phase = "manage";
+    const minCost = Math.min(upgradeCost(0), upgradeCost(1), upgradeCost(2));
+    s.players[0].cash = minCost + 500; // enough to build, but below the normal 2000 reserve after
+    expect(botIntent(s, 0, "aggressive").type).toBe("develop");
+    expect(botIntent(s, 0, "normal")).toEqual({ type: "end_turn" });
   });
 });
