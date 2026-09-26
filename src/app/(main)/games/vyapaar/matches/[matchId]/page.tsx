@@ -45,7 +45,7 @@ export default async function MatchPage({ params }: { params: Promise<{ matchId:
       const names = view.players.map((p) => p.name)
       const openingCash: number[] = []
       for (const p of full.players) openingCash[p.seat] = p.openingCash
-      recap = analyzeLog(seed, names, openingCash, (full.actionLog as LogStep[]) ?? []).seats
+      recap = analyzeLog(seed, names, openingCash, (full.actionLog as unknown as LogStep[]) ?? []).seats
     }
   }
   // Bots keep their own signature token; humans draw from the shared piece pool.
