@@ -18,6 +18,7 @@ import {
   BRIBE_EACH,
   TRADE_UNION_BANK,
   TRADE_UNION_POOL,
+  TRADE_COOLDOWN_ROUNDS,
   MONSOON_POS,
 } from "./data";
 import type { GameState, Intent, EngineEvent, TradeOffer } from "./state";
@@ -41,6 +42,21 @@ import {
 import { applyEvent } from "./cards";
 
 type Result = { state: GameState; events: EngineEvent[] } | { error: string };
+
+/** Identity of a trade offer (direction + exact give/get) for the re-proposal cooldown. */
+function tradeSig(from: number, to: number, give: TradeSide, get: TradeSide): string {
+  const side = (x: TradeSide) =>
+    [...(x.cities ?? [])].sort((a, b) => a - b).join(".") + "/" + [...(x.companies ?? [])].sort((a, b) => a - b).join(".");
+  return `${from}>${to}:${side(give)}=${side(get)}`;
+}
+function onTradeCooldown(s: GameState, from: number, to: number, give: TradeSide, get: TradeSide): boolean {
+  const key = tradeSig(from, to, give, get);
+  return (s.tradeCooldowns ?? []).some((c) => c.key === key && c.until >= s.round);
+}
+function recordTradeCooldown(s: GameState, from: number, to: number, give: TradeSide, get: TradeSide): void {
+  if (!s.tradeCooldowns) s.tradeCooldowns = [];
+  s.tradeCooldowns.push({ key: tradeSig(from, to, give, get), until: s.round + TRADE_COOLDOWN_ROUNDS });
+}
 
 const ACTIVE_ONLY = new Set<Intent["type"]>([
   "roll",
@@ -105,6 +121,7 @@ function advanceTurn(s: GameState, events: EngineEvent[]): void {
   s.players[s.active].doubles = 0;
   s.pendingDouble = false;
   s.builtZones = []; // fresh turn → each controlled set may build one level again
+  if (s.tradeCooldowns?.length) s.tradeCooldowns = s.tradeCooldowns.filter((c) => c.until >= s.round); // drop expired cooldowns
   // A jailed player can't roll — their turn opens in the `jail` phase (bribe out or sit it out).
   s.phase = s.players[s.active].halted > 0 ? "jail" : "roll";
   events.push({ type: "end_turn", seat });
@@ -580,6 +597,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       }
       if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
       if (!validTradeSide(s, to, intent.get)) return { error: "bad_get" };
+      if (onTradeCooldown(s, seat, to, intent.give, intent.get)) return { error: "trade_on_cooldown" };
       const id = s.nextTradeId ?? 1;
       s.nextTradeId = id + 1;
       // expiresAt is stamped by the server on commit (engine has no clock).
@@ -595,6 +613,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (seat !== t.to) return { error: "not_recipient" };
       s.trades = list.filter((x) => x.id !== t.id);
       if (!intent.accept) {
+        recordTradeCooldown(s, t.from, t.to, t.give, t.get); // no re-spamming a just-declined offer
         events.push({ type: "trade_declined", seat, tradeId: t.id });
         return { state: s, events };
       }
@@ -627,6 +646,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       const rest = list.filter((x) => x.id !== incoming.id && x.from !== seat);
       if (!validTradeSide(s, seat, intent.give)) return { error: "bad_give" };
       if (!validTradeSide(s, other, intent.get)) return { error: "bad_get" };
+      if (onTradeCooldown(s, seat, other, intent.give, intent.get)) return { error: "trade_on_cooldown" };
       const id = s.nextTradeId ?? 1;
       s.nextTradeId = id + 1;
       rest.push({ id, from: seat, to: other, give: intent.give, get: intent.get, expiresAt: 0 });
@@ -651,6 +671,7 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       const t = list.find((x) => x.id === intent.tradeId);
       if (!t) return { error: "no_trade" };
       s.trades = list.filter((x) => x.id !== t.id);
+      recordTradeCooldown(s, t.from, t.to, t.give, t.get); // an offer that timed out can't be re-spammed at once
       events.push({ type: "trade_expired", tradeId: t.id, from: t.from, to: t.to });
       return { state: s, events };
     }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
-import { botIntent, driveBots, isBotUserId, BOT_USERS, findBestBotTrade, botAcceptsTrade } from "@/modules/vyapaar/bot";
+import { botIntent, driveBots, isBotUserId, BOT_USERS, findBestBotTrade, botAcceptsTrade, coalitionLeader, leaderSeat } from "@/modules/vyapaar/bot";
 import { CITIES, upgradeCost } from "@/modules/vyapaar/engine/data";
 import { CITY_POS } from "@/modules/vyapaar/engine/board";
 
@@ -209,16 +209,26 @@ describe("bot personas", () => {
 });
 
 describe("businessman bot traits", () => {
-  it("coalition: an aggressive bot refuses to trade with the leader even for a set", () => {
+  it("soft-gang: a schemer TAKES a set-completing deal from the leader, but refuses a mere favour", () => {
     const s = createGame(1, ["a", "b"], 25000);
-    s.cities[1] = { owner: 1, level: 0, mortgaged: false }; // seat1: North id1, id2 (2/3)
+    s.cities[1] = { owner: 1, level: 0, mortgaged: false }; // seat1: 2/3 North
     s.cities[2] = { owner: 1, level: 0, mortgaged: false };
-    s.cities[10] = { owner: 1, level: 0, mortgaged: false }; // a throwaway East card to give
-    s.cities[0] = { owner: 0, level: 0, mortgaged: false }; // seat0 (the leader) holds the 3rd North
-    // seat1 receives id0 → completes North; gives id10. A pure win for seat1.
-    const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [10] }, expiresAt: 0 };
-    expect(botAcceptsTrade(s, offer, "normal", 0)).toBe(true);      // normal takes the free set
-    expect(botAcceptsTrade(s, offer, "aggressive", 0)).toBe(false); // schemer won't feed the leader
+    s.cities[10] = { owner: 1, level: 0, mortgaged: false }; // spare to give
+    s.cities[0] = { owner: 0, level: 0, mortgaged: false }; // seat0 (leader) holds the North completer
+    const complete = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [0] }, get: { cash: 0, cities: [10] }, expiresAt: 0 };
+    // completing your OWN set beats the coalition — take it even from the leader
+    expect(botAcceptsTrade(s, complete, "aggressive", 0)).toBe(true);
+    expect(botAcceptsTrade(s, complete, "normal", 0)).toBe(true);
+
+    // a non-completing FAVOUR that merely advances the bot: the schemer refuses to help the leader…
+    const f = createGame(1, ["a", "b"], 25000);
+    f.cities[1] = { owner: 1, level: 0, mortgaged: false };  // seat1: 1/3 North
+    f.cities[5] = { owner: 1, level: 0, mortgaged: false };  // seat1: 1/3 South
+    f.cities[10] = { owner: 1, level: 0, mortgaged: false }; // spare to give
+    f.cities[6] = { owner: 0, level: 0, mortgaged: false };  // seat0 (leader) offers a South card
+    const favour = { id: 2, from: 0, to: 1, give: { cash: 0, cities: [6] }, get: { cash: 0, cities: [10] }, expiresAt: 0 };
+    expect(botAcceptsTrade(f, favour, "aggressive", 0)).toBe(false); // won't do the leader a favour
+    expect(botAcceptsTrade(f, favour, "normal", 0)).toBe(true);      // a non-schemer takes the fair swap
   });
 
   it("risk: an aggressive bot overpays (unfair value) to advance a set; normal won't", () => {
@@ -354,29 +364,35 @@ describe("phased building — houses first, no hotel rush", () => {
   });
 });
 
-describe("hidden coalition — bots gang the human", () => {
-  it("a bot never initiates a trade with a human, even a mutually-completing one", () => {
+describe("fair trading with the human + universal no-gift", () => {
+  it("a bot proposes a mutual set-completing swap to a human (bots trade with humans now)", () => {
     const s = createGame(1, ["human", "bot"], 200000);
     for (const id of [0, 1]) s.cities[id] = { owner: 1, level: 0, mortgaged: false }; // bot: 2/3 North
     s.cities[2] = { owner: 0, level: 0, mortgaged: false }; // human holds the North completer
     for (const id of [15, 16]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // human: 2/3 West
     s.cities[17] = { owner: 1, level: 0, mortgaged: false }; // bot holds the West completer
-    const humans = new Set([0]);
-    // Without the coalition the bot would gladly propose (both complete a set)…
-    expect(findBestBotTrade(s, 1, (to, offer) => botAcceptsTrade(s, offer, "normal"), "normal")).toBeTruthy();
-    // …but with the human flagged, it won't deal with them at all.
-    expect(findBestBotTrade(s, 1, (to, offer) => botAcceptsTrade(s, offer, "normal", -1, humans), "normal", -1, humans)).toBeNull();
+    const swap = findBestBotTrade(s, 1, (to, offer) => botAcceptsTrade(s, offer, "normal", -1), "normal", -1);
+    expect(swap?.to).toBe(0); // proposes to the human — each side completes a set
   });
 
-  it("a bot refuses to hand a human the card that completes the human's set", () => {
+  it("no-gift is universal: a bot won't hand ANYONE the card completing their set for nothing", () => {
     const s = createGame(1, ["human", "bot"], 200000);
-    s.cities[0] = { owner: 1, level: 0, mortgaged: false };  // bot: North id0
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false };  // bot: North id0 (won't complete)
     s.cities[17] = { owner: 1, level: 0, mortgaged: false }; // bot holds the human's West completer
-    s.cities[1] = { owner: 0, level: 0, mortgaged: false };  // human: North id1 (to offer the bot)
+    s.cities[1] = { owner: 0, level: 0, mortgaged: false };  // human offers North id1
     for (const id of [15, 16]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // human: 2/3 West
-    // Human offers the bot id1 (advances bot's North) for the bot's id17 (completes human's West).
+    // Human offers id1 (only advances bot's North) for id17 (completes the human's West) → refused.
     const offer = { id: 1, from: 0, to: 1, give: { cash: 0, cities: [1] }, get: { cash: 0, cities: [17] }, expiresAt: 0 };
-    expect(botAcceptsTrade(s, offer, "normal")).toBe(true);                       // no coalition → fair swap, accepts
-    expect(botAcceptsTrade(s, offer, "normal", -1, new Set([0]))).toBe(false);    // coalition → won't feed the human
+    expect(botAcceptsTrade(s, offer, "normal", -1)).toBe(false);
+  });
+
+  it("no coalition before half-time; the current net-worth leader is the target after", () => {
+    const s = createGame(1, ["a", "b", "c"], 25000);
+    s.cities[0] = { owner: 1, level: 0, mortgaged: false };
+    for (const id of [5, 6, 7]) s.cities[id] = { owner: 1, level: 0, mortgaged: false }; // seat1 rich (a set)
+    s.round = 5;
+    expect(coalitionLeader(s)).toBe(-1);     // first half → nobody is ganged
+    s.round = 25;
+    expect(coalitionLeader(s)).toBe(leaderSeat(s)); // second half → the live leader
   });
 });

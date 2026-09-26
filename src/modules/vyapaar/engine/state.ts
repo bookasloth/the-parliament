@@ -93,6 +93,7 @@ export interface GameState {
   auction: AuctionState | null;
   trades: TradeOffer[]; // active proposals; at most one outgoing per player
   nextTradeId: number; // monotonic id source for trades
+  tradeCooldowns?: { key: string; until: number }[]; // declined/expired offers barred from re-proposal until `until` (round)
   payments?: Payment[]; // auto-payments awaiting allow/claim (see Payment)
   nextPaymentId?: number; // monotonic id source for payments
   endRequested: boolean; // someone hit SETS_TO_END → end when the round completes
@@ -143,6 +144,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     auction: null,
     trades: [],
     nextTradeId: 1,
+    tradeCooldowns: [],
     payments: [],
     nextPaymentId: 1,
     endRequested: false,

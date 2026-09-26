@@ -103,6 +103,9 @@ export const BRIBE_EACH = 250; // …plus this to every other player to walk out
 // only the bank charge applies.
 export const TRADE_UNION_BANK = 500;
 export const TRADE_UNION_POOL = 500;
+// A trade that was declined or left to expire can't be re-proposed (identical give/get, same
+// direction) until this many rounds pass — stops "propose → decline → propose" spam.
+export const TRADE_COOLDOWN_ROUNDS = 3;
 export const MAX_ROUNDS = 40;
 export const SETS_TO_END = 3;
 export const SET_OWN_NEEDED = 3;
