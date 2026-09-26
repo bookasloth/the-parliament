@@ -89,6 +89,7 @@ export interface GameState {
   pendingCity: number | null; // city just landed on, awaiting buy/decline
   pendingCompany: number | null; // company just landed on, awaiting buy/decline
   pendingDouble: boolean; // last roll was a double → roll again after resolution
+  builtZones: number[]; // zones already developed THIS turn — one level per set per turn; reset on turn advance
   auction: AuctionState | null;
   trades: TradeOffer[]; // active proposals; at most one outgoing per player
   nextTradeId: number; // monotonic id source for trades
@@ -138,6 +139,7 @@ export function createGame(seed: number, names: string[], openingCash: number | 
     pendingCity: null,
     pendingCompany: null,
     pendingDouble: false,
+    builtZones: [],
     auction: null,
     trades: [],
     nextTradeId: 1,

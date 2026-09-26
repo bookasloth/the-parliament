@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { CITIES, UNMORTGAGE_RATE, upgradeCost } from "@/modules/vyapaar/engine/data";
-import { CITY_POS } from "@/modules/vyapaar/engine/board";
 
 function ownNorthSet(s: ReturnType<typeof createGame>) {
   s.cities[0].owner = 0;
@@ -12,7 +11,7 @@ function ownNorthSet(s: ReturnType<typeof createGame>) {
 }
 
 describe("develop / mortgage", () => {
-  it("develops only on a controlled set, enforcing even-building", () => {
+  it("develops any city on a controlled set (no even-build), one level per set per turn", () => {
     const s = createGame(1, ["a", "b"]);
     ownNorthSet(s);
     const cost = upgradeCost(0);
@@ -20,35 +19,27 @@ describe("develop / mortgage", () => {
     expect("state" in r).toBe(true);
     expect(s.cities[0].level).toBe(1);
     expect(s.players[0].cash).toBe(7500 - cost);
-    expect(s.active).toBe(0); // build stays in `manage` — keep building this visit
+    expect(s.active).toBe(0); // build stays in `manage` — build your other sets, then end
     expect(s.phase).toBe("manage");
-    // even-building: can't take city 0 to level 2 while 1 and 2 are still level 0
+    // no even-build rule any more, but only ONE level per set per turn: North is now locked
     const r2 = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("error" in r2 && r2.error).toBe("uneven_build");
+    expect("error" in r2 && r2.error).toBe("set_built_this_turn");
     expect(s.cities[0].level).toBe(1);
   });
 
-  it("build deep in one visit; a house can be built off-tile but a hotel needs you on the city", () => {
+  it("builds a hotel anywhere on the set — no on-tile rule", () => {
     const s = createGame(1, ["a", "b"]);
     ownNorthSet(s);
     s.players[0].pos = 0; // on Start, not on any North city
-    // House (level 0→1) is allowed off-tile and stays your turn
-    const h = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("state" in h).toBe(true);
-    expect(s.cities[0].level).toBe(1);
-    expect(s.active).toBe(0);
-    // Bring the whole set to level 3 (all houses)
-    s.cities[0].level = 3; s.cities[1].level = 3; s.cities[2].level = 3;
-    // Hotel (3→4) off-tile is refused...
-    const off = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("error" in off && off.error).toBe("must_be_on_city");
-    expect(s.cities[0].level).toBe(3);
-    // ...but allowed while standing on that city
-    s.players[0].pos = CITY_POS[0];
-    const on = applyIntent(s, 0, { type: "develop", cityId: 0 });
-    expect("state" in on).toBe(true);
+    s.cities[0].level = 3; s.cities[1].level = 3; s.cities[2].level = 3; // all housed
+    // Hotel (3→4) is allowed OFF-tile now — build anywhere on a set you control
+    const r = applyIntent(s, 0, { type: "develop", cityId: 0 });
+    expect("state" in r).toBe(true);
     expect(s.cities[0].level).toBe(4);
-    expect(s.active).toBe(0); // still your turn — end it yourself when done
+    expect(s.active).toBe(0); // still your turn
+    // North already built this turn → no second North build
+    const r2 = applyIntent(s, 0, { type: "develop", cityId: 1 });
+    expect("error" in r2 && r2.error).toBe("set_built_this_turn");
   });
 
   it("refuses development without set control", () => {

@@ -3,10 +3,10 @@ import { createGame } from "@/modules/vyapaar/engine/state";
 import { applyIntent } from "@/modules/vyapaar/engine/engine";
 import { BOARD } from "@/modules/vyapaar/engine/board";
 
-// New turn model: strictly one roll per turn (doubles give no bonus roll), and
-// landing on your OWN developable city pauses in `manage` so you can build before
-// ending the turn (smart pause — nothing to build → auto-advance).
-describe("turn model — one roll per turn + smart develop pause", () => {
+// Turn model: strictly one roll per turn (doubles give no bonus roll). Building is a turn
+// action taken INSTEAD of rolling (see the develop intent) — a roll never pauses to build, so
+// landing on your own city just auto-advances.
+describe("turn model — one roll per turn + build-instead-of-rolling", () => {
   it("doubles grant no bonus roll (the turn never stays with the same seat to reroll)", () => {
     let sawDouble = false;
     for (let seed = 0; seed < 500; seed++) {
@@ -25,25 +25,34 @@ describe("turn model — one roll per turn + smart develop pause", () => {
     expect(sawDouble).toBe(true); // sanity: the search range actually hit a double
   });
 
-  it("landing on your own developable city pauses in manage; end_turn then advances", () => {
-    let sawManage = false;
-    for (let seed = 0; seed < 200 && !sawManage; seed++) {
+  it("landing on your own city no longer pauses — the turn auto-advances (build is instead of rolling)", () => {
+    let sawOwnCity = false;
+    for (let seed = 0; seed < 200 && !sawOwnCity; seed++) {
       const s = createGame(seed, ["a", "b"]);
-      for (const c of s.cities) c.owner = 0; // seat 0 owns every city → every zone set controlled
+      for (const c of s.cities) c.owner = 0; // seat 0 owns every city
       applyIntent(s, 0, { type: "roll" });
       const tile = BOARD[s.players[0].pos];
       if (tile.kind === "city") {
-        sawManage = true;
-        expect(s.phase).toBe("manage"); // paused to let seat 0 build
-        expect(s.active).toBe(0);
-        applyIntent(s, 0, { type: "end_turn" });
-        expect(s.active).toBe(1);
-        expect(s.phase).toBe("roll");
-      } else {
-        expect(s.phase).not.toBe("manage"); // non-city landings never park
+        sawOwnCity = true;
+        expect(s.phase).not.toBe("manage"); // a roll never stops to build
+        expect(s.active).toBe(1);            // auto-advanced to the other seat
       }
     }
-    expect(sawManage).toBe(true);
+    expect(sawOwnCity).toBe(true);
+  });
+
+  it("build instead of rolling: develop from the roll phase without moving, one per set, then end", () => {
+    const s = createGame(1, ["a", "b"], 50000);
+    for (const id of [0, 1, 2]) s.cities[id] = { owner: 0, level: 0, mortgaged: false }; // North
+    s.active = 0; s.phase = "roll";
+    const r = applyIntent(s, 0, { type: "develop", cityId: 1 }); // build, no roll
+    expect("state" in r).toBe(true);
+    expect(s.cities[1].level).toBe(1);
+    expect(s.phase).toBe("manage");
+    expect(s.players[0].pos).toBe(0); // never moved
+    applyIntent(s, 0, { type: "end_turn" });
+    expect(s.active).toBe(1);
+    expect(s.builtZones).toEqual([]); // reset for the next turn
   });
 
 });

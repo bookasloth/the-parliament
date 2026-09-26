@@ -1,5 +1,4 @@
 import { CITIES, COMPANIES, MAX_LEVEL, HOTEL_LEVEL, SET_OWN_NEEDED, BRIBE_BANK, BRIBE_EACH, MAX_ROUNDS, upgradeCost } from "./engine/data";
-import { CITY_POS } from "./engine/board";
 import { citiesOwned, controlsSet, companiesOwned, netWorth } from "./engine/helpers";
 import { applyIntent, setHasDevelopment, canRestructure } from "./engine/engine";
 import type { GameState, Intent, TradeOffer, EngineEvent } from "./engine/state";
@@ -164,28 +163,31 @@ function wantsHotels(s: GameState, cfg: PersonaCfg): boolean {
   return cfg.focus || cfg.overLeverage || s.round >= HOTEL_ROUND;
 }
 
-// Cheapest even-build target in a set the bot controls that it can afford right now, or null.
-// Mirrors the engine's develop rules (even-build, hotels need you on the tile) so the chosen intent
-// is never rejected. Houses use `houseReserve`; hotels are gated by `allowHotels` and kept behind a
-// larger `hotelReserve` so they never bankrupt the bot.
-function developTarget(s: GameState, seat: number, houseReserve: number, hotelReserve: number, allowHotels: boolean): number | null {
+// The best city to develop this turn under the new build rules: raise ANY city in a set you
+// control (no even-build, no on-tile), but only ONE level per set per turn (skips zones already in
+// builtZones). Houses build down to `houseReserve`; hotels are gated by wantsHotels() and kept
+// behind a deeper `hotelReserve`. Picks the most valuable city (best rent) among the legal builds,
+// so the chosen intent is always accepted by the engine. Null if there's nothing worth building.
+function developTarget(s: GameState, seat: number, cfg: PersonaCfg): number | null {
   const p = s.players[seat];
+  const allowHotels = wantsHotels(s, cfg);
+  const houseReserve = cfg.overLeverage ? 0 : cfg.reserve;
+  const hotelReserve = cfg.overLeverage ? cfg.reserve : cfg.reserve * 2;
+  const built = s.builtZones ?? [];
   let best: number | null = null;
-  let bestCost = Infinity;
+  let bestScore = -1;
   for (let z = 0; z < 5; z++) {
     if (!controlsSet(s, seat, z)) continue;
-    const setCities = citiesOwned(s, seat).filter((id) => CITIES[id].zone === z && !s.cities[id].mortgaged);
-    if (!setCities.length) continue;
-    const minLvl = Math.min(...setCities.map((id) => s.cities[id].level));
-    for (const id of setCities) {
-      if (s.cities[id].level >= MAX_LEVEL) continue;
-      if (s.cities[id].level !== minLvl) continue; // even-build: raise the lowest first
-      const isHotel = s.cities[id].level + 1 >= HOTEL_LEVEL; // building into 4-6 = a hotel
-      if (isHotel && !allowHotels) continue;                 // houses-first: don't rush hotels
-      if (isHotel && p.pos !== CITY_POS[id]) continue;        // hotels need you on the tile
+    if (built.includes(z)) continue; // one level per set per turn
+    for (const id of citiesOwned(s, seat)) {
+      if (CITIES[id].zone !== z) continue;
+      const c = s.cities[id];
+      if (c.mortgaged || c.level >= MAX_LEVEL) continue;
+      const isHotel = c.level + 1 >= HOTEL_LEVEL; // building into 4-6 = a hotel
+      if (isHotel && !allowHotels) continue;      // houses-first: don't rush hotels
       const cost = upgradeCost(id);
       if (p.cash - cost < (isHotel ? hotelReserve : houseReserve)) continue;
-      if (cost < bestCost) { best = id; bestCost = cost; }
+      if (CITIES[id].price > bestScore) { best = id; bestScore = CITIES[id].price; } // richest = best rent
     }
   }
   return best;
@@ -220,8 +222,17 @@ export function botIntent(s: GameState, seat: number, persona: BotPersona = "nor
   }
 
   switch (s.phase) {
-    case "roll":
+    case "roll": {
+      // Build INSTEAD of rolling when it's worth forgoing the move: we control a developable set,
+      // we're flush, and we've either built a base of property or the game has matured. Otherwise
+      // roll to keep expanding, buying, and collecting salary.
+      const buildCity = developTarget(s, seat, cfg);
+      const expanded = citiesOwned(s, seat).length >= 4 || s.round >= HOTEL_ROUND;
+      if (buildCity !== null && expanded && p.cash >= cfg.reserve * 2) {
+        return { type: "develop", cityId: buildCity };
+      }
       return { type: "roll" };
+    }
 
     case "jail": {
       const others = s.players.map((_, i) => i).filter((i) => i !== seat && !s.players[i].left);
@@ -265,13 +276,12 @@ export function botIntent(s: GameState, seat: number, persona: BotPersona = "nor
     }
 
     case "manage": {
+      // Already building this turn (came here from a develop): redeem a mortgage if flush, then
+      // build one level on each OTHER set we control (developTarget skips zones already built),
+      // then end the turn.
       const redeem = unmortgageTarget(s, seat, cfg.reserve);
       if (redeem !== null) return { type: "unmortgage", cityId: redeem };
-      // Houses build down to the normal reserve (0 for an over-leverager); hotels are gated by
-      // wantsHotels() and kept behind a deeper buffer so bots stop rushing hotels off one set.
-      const houseReserve = cfg.overLeverage ? 0 : cfg.reserve;
-      const hotelReserve = cfg.overLeverage ? cfg.reserve : cfg.reserve * 2;
-      const target = developTarget(s, seat, houseReserve, hotelReserve, wantsHotels(s, cfg));
+      const target = developTarget(s, seat, cfg);
       return target !== null ? { type: "develop", cityId: target } : { type: "end_turn" };
     }
 

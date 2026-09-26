@@ -5,7 +5,6 @@ import {
   CITIES,
   COMPANIES,
   MAX_LEVEL,
-  HOTEL_LEVEL,
   UNMORTGAGE_RATE,
   upgradeCost,
   UPGRADE_SELL_RATIO,
@@ -23,7 +22,7 @@ import {
 } from "./data";
 import type { GameState, Intent, EngineEvent, TradeOffer } from "./state";
 import type { TradeSide } from "./state";
-import { BOARD, CITY_POS } from "./board";
+import { BOARD } from "./board";
 import { rollDie } from "./rng";
 import {
   rentFor,
@@ -105,6 +104,7 @@ function advanceTurn(s: GameState, events: EngineEvent[]): void {
   if (wrapped) s.round++;
   s.players[s.active].doubles = 0;
   s.pendingDouble = false;
+  s.builtZones = []; // fresh turn → each controlled set may build one level again
   // A jailed player can't roll — their turn opens in the `jail` phase (bribe out or sit it out).
   s.phase = s.players[s.active].halted > 0 ? "jail" : "roll";
   events.push({ type: "end_turn", seat });
@@ -240,14 +240,9 @@ function resolveTile(s: GameState, events: EngineEvent[]): void {
         }
         finishSegment(s, events);
       } else {
-        // Landed on your own city. Smart pause: if it's part of a set you control
-        // and not yet maxed, hold in `manage` so you can develop it this turn
-        // before ending (see end_turn). Nothing to build → just auto-advance.
-        if (controlsSet(s, seat, CITIES[id].zone) && s.cities[id].level < MAX_LEVEL) {
-          s.phase = "manage";
-        } else {
-          finishSegment(s, events);
-        }
+        // Landed on your own city. Building is now a turn action taken INSTEAD of rolling
+        // (see the develop intent), so a roll never pauses to build — just auto-advance.
+        finishSegment(s, events);
       }
       break;
     }
@@ -277,13 +272,6 @@ function resolveAuction(s: GameState, events: EngineEvent[]): void {
   s.pendingCity = null;
   s.pendingCompany = null;
   finishSegment(s, events);
-}
-
-function minSetLevel(s: GameState, seat: number, zone: number): number {
-  const ids = citiesOwned(s, seat).filter(
-    (id) => CITIES[id].zone === zone && !s.cities[id].mortgaged,
-  );
-  return ids.length ? Math.min(...ids.map((id) => s.cities[id].level)) : 0;
 }
 
 function canManage(s: GameState): boolean {
@@ -504,10 +492,12 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
     }
 
     case "develop": {
-      // Building is only legal in `manage` — i.e. right after you ROLL and land on your own
-      // set city. No building from the `roll` phase, so you can't farm a house every turn
-      // without moving (you must roll the dice between builds).
-      if (s.phase !== "manage") return { error: "cannot_manage_now" };
+      // Building is a TURN ACTION taken instead of rolling: on your turn (roll phase) you either
+      // roll and move, or develop. Rules: you may raise ANY city in a set you control — no
+      // even-build, no need to stand on the tile, houses or hotels alike — but only ONE level per
+      // set per turn (tracked in builtZones). The first develop moves you into `manage` so you can
+      // build your OTHER sets (one each) and then end the turn.
+      if (s.phase !== "roll" && s.phase !== "manage") return { error: "cannot_manage_now" };
       const id = intent.cityId;
       if (!Number.isInteger(id) || id < 0 || id >= CITIES.length) return { error: "bad_city" };
       const c = s.cities[id];
@@ -516,20 +506,14 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
       if (c.mortgaged) return { error: "mortgaged" };
       if (!controlsSet(s, seat, z)) return { error: "no_set_control" };
       if (c.level >= MAX_LEVEL) return { error: "max_level" };
-      if (c.level > minSetLevel(s, seat, z)) return { error: "uneven_build" };
-      // Houses (building to level ≤3) can be raised from anywhere on your turn; hotels
-      // (building to level ≥4) require you to be standing on that city.
-      if (c.level + 1 >= HOTEL_LEVEL && s.players[seat].pos !== CITY_POS[id]) return { error: "must_be_on_city" };
+      if ((s.builtZones ?? []).includes(z)) return { error: "set_built_this_turn" }; // one level per set per turn
       const cost = upgradeCost(id);
       if (s.players[seat].cash < cost) return { error: "insufficient_funds" };
       s.players[seat].cash -= cost;
       c.level++;
+      s.builtZones = [...(s.builtZones ?? []), z];
       events.push({ type: "develop", seat, cityId: id, level: c.level, amount: cost });
-      // Build as much as you can afford this visit (houses → hotels) — stays in `manage` so
-      // you keep building or end the turn. You still can't build without landing on your set,
-      // so there's no roll-phase farming; deep development just needs the landing.
-      s.pendingCity = null;
-      s.pendingCompany = null;
+      s.phase = "manage"; // building is your turn: stay to build other sets, then end_turn
       return { state: s, events };
     }
 
