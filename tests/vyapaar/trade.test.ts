@@ -49,10 +49,25 @@ describe("card-to-card trading", () => {
     expect("error" in r).toBe(true);
   });
 
-  it("forbids proposing on your own turn", () => {
+  it("allows proposing on your own turn, and the recipient can accept (solo-human-vs-bots fix)", () => {
     const s = game();
-    s.cities[0].owner = 0; // active seat 0 tries to propose
+    s.cities[0].owner = 0; // active seat 0 proposes on its OWN turn
     s.cities[6].owner = 1;
+    const r = applyIntent(s, 0, { type: "propose_trade", to: 1, give: side([0]), get: side([6]) });
+    expect("state" in r).toBe(true);
+    expect(s.trades).toHaveLength(1);
+    // recipient (off-turn) accepts → assets swap
+    applyIntent(s, 1, { type: "respond_trade", tradeId: s.trades[0].id, accept: true });
+    expect(s.cities[0].owner).toBe(1);
+    expect(s.cities[6].owner).toBe(0);
+    expect(s.trades).toHaveLength(0);
+  });
+
+  it("still blocks proposing during an auction", () => {
+    const s = game();
+    s.cities[0].owner = 0;
+    s.cities[6].owner = 1;
+    s.auction = { cityId: 6, bids: [null, null, null], top: null } as unknown as typeof s.auction;
     const r = applyIntent(s, 0, { type: "propose_trade", to: 1, give: side([0]), get: side([6]) });
     expect("error" in r).toBe(true);
   });

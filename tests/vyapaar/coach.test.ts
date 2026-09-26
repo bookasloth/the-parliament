@@ -72,6 +72,8 @@ describe("coachTips — strategy advisor", () => {
     expect(swap).toBeTruthy();
     expect(swap!.text).toMatch(/Swap your/);
     expect(swap!.text).toMatch(/Aastha/);
+    // The one-tap trade payload: give your West piece (id17), get Aastha's North piece (id2).
+    expect(swap!.trade).toEqual({ to: 1, give: [17], get: [2] });
   });
 
   it("suggests clearing a mortgage that would restore zone control", () => {

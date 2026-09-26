@@ -1,5 +1,6 @@
 import { CITIES, COMPANIES, upgradeCost, SET_MULT, PAIR_MULT, DEV_MULT } from "@/modules/vyapaar/engine/data"
 import type { PublicView } from "@/modules/vyapaar/engine/view"
+import type { SeatStat } from "@/modules/vyapaar/analyze"
 
 const ZONE_NAME = ["North", "South", "East", "West", "Central"]
 // Slightly darker per-zone hues used for the OUTLINE pills (border + text) so every
@@ -37,9 +38,10 @@ function build(view: PublicView): Row[] {
 
 const MEDAL = ["🥇", "🥈", "🥉"]
 
-export function MatchResults({ view, playerImages = [], income }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number> }) {
+export function MatchResults({ view, playerImages = [], income, recap }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number>; recap?: SeatStat[] }) {
   const rows = build(view)
   const win = rows[0]
+  const stat = recap ? new Map(recap.map((s) => [s.seat, s])) : null
 
   const cityPill = (id: number) => {
     const z = CITIES[id].zone
@@ -135,6 +137,26 @@ export function MatchResults({ view, playerImages = [], income }: { view: Public
               <th className="vr-rl">Companies value</th>
               {rows.map((r, i) => <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>{r.comps ? inr(r.comps) : <span className="vr-dash">—</span>}</td>)}
             </tr>
+            {stat && (
+              <>
+                <tr className="vr-recap-sep">
+                  <th className="vr-rl">Rent collected</th>
+                  {rows.map((r, i) => { const s = stat.get(r.seat); return <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>{s?.rentCollected ? <span className="vr-gain">{inr(s.rentCollected)}</span> : <span className="vr-dash">—</span>}</td> })}
+                </tr>
+                <tr>
+                  <th className="vr-rl">Rent paid</th>
+                  {rows.map((r, i) => { const s = stat.get(r.seat); return <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>{s?.rentPaid ? <span className="vr-loss">{inr(s.rentPaid)}</span> : <span className="vr-dash">—</span>}</td> })}
+                </tr>
+                <tr>
+                  <th className="vr-rl">Trades · Builds</th>
+                  {rows.map((r, i) => { const s = stat.get(r.seat); return <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>{s && (s.tradesAccepted || s.builds) ? `${s.tradesAccepted} · ${s.builds}` : <span className="vr-dash">—</span>}</td> })}
+                </tr>
+                <tr>
+                  <th className="vr-rl">Jail terms</th>
+                  {rows.map((r, i) => { const s = stat.get(r.seat); return <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>{s?.jailTerms ? s.jailTerms : <span className="vr-dash">—</span>}</td> })}
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
@@ -179,5 +201,6 @@ const CSS = `
 .vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid currentColor;}
 .vr-pill.vr-co{color:var(--grey);}
 .vr-lvl{font-size:.62rem;font-weight:700;opacity:.95;}
+.vr-recap-sep th,.vr-recap-sep td{border-top:2px solid var(--line)!important;}
 .vr-foot{margin:0;padding:12px 22px 16px;font-size:.7rem;color:var(--faint);line-height:1.5;border-top:1px solid var(--line);background:var(--line2);}
 `

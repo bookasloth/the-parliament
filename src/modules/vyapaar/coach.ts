@@ -17,6 +17,9 @@ export interface Tip {
   pos?: number; // board position to open on click, if the tip points at a specific tile
   zone?: number; // zone index, for colour accents in the UI
   weight: number; // ranking score (higher = more valuable); stripped before render
+  // A ready-to-send trade (both sides known) that the UI can one-tap into the propose panel.
+  // Only set on a mutual swap, where the recipient and both cities are unambiguous.
+  trade?: { to: number; give: number[]; get: number[] };
 }
 
 const MAX_LEVEL = 6; // rent ladder tops out at level 6 (see CityDef.rent)
@@ -81,6 +84,7 @@ export function coachTips(v: PublicView): Tip[] {
             tips.push({
               kind: "swap", zone: z, pos: CITY_POS[need], weight: 95,
               text: `Swap your ${CITIES[give].name} for ${who(v, holder)}'s ${CITIES[need].name} — you'd each complete a set.`,
+              trade: { to: holder, give: [give], get: [need] },
             });
             break;
           }

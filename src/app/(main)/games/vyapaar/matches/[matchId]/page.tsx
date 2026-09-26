@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { MatchBoard } from "@/components/vyapaar/MatchBoard"
 import { assignTokens } from "@/modules/vyapaar/tokens"
 import { botToken } from "@/modules/vyapaar/bot"
+import { analyzeLog, type SeatStat, type LogStep } from "@/modules/vyapaar/analyze"
 
 export const dynamic = "force-dynamic"
 
@@ -29,6 +30,24 @@ export default async function MatchPage({ params }: { params: Promise<{ matchId:
   ])
   const playerImages: (string | null)[] = []
   for (const s of seats) playerImages[s.seat] = s.user.profile?.photoUrl ?? null
+
+  // On a finished match, replay the stored action log into per-seat "how you played" stats
+  // (rent, trades, jail terms, builds) for the results recap. Only when ended — mid-game this
+  // would be wasted work, and the live board shows the plain results table.
+  let recap: SeatStat[] | undefined
+  if (view.ended) {
+    const full = await prisma.vyapaarMatch.findUnique({
+      where: { id: matchId },
+      select: { state: true, actionLog: true, players: { select: { seat: true, openingCash: true } } },
+    })
+    if (full) {
+      const seed = Number((full.state as { seed?: number }).seed ?? 0)
+      const names = view.players.map((p) => p.name)
+      const openingCash: number[] = []
+      for (const p of full.players) openingCash[p.seat] = p.openingCash
+      recap = analyzeLog(seed, names, openingCash, (full.actionLog as LogStep[]) ?? []).seats
+    }
+  }
   // Bots keep their own signature token; humans draw from the shared piece pool.
   const playerTokens = assignTokens(seats.map((s) => ({ seat: s.seat, email: s.user.email, token: botToken(s.userId) })), matchId)
 
@@ -41,6 +60,7 @@ export default async function MatchPage({ params }: { params: Promise<{ matchId:
       playerImages={playerImages}
       playerTokens={playerTokens}
       roomCode={match?.room.code ?? null}
+      recap={recap}
     />
   )
 }

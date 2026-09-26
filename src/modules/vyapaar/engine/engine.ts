@@ -582,9 +582,12 @@ function applyIntentInner(s: GameState, seat: number, intent: Intent): Result {
     }
 
     case "propose_trade": {
-      // You may only propose on someone else's turn, and only one outgoing at a time.
+      // Propose any time it isn't an auction — including on your own turn. Trades are
+      // resolved by the recipient later, so this can't corrupt the active phase. Gating it
+      // off-turn (the old rule) left a solo human vs all-bots unable to trade at all: bots
+      // resolve their whole chain synchronously, so a lone human's only interactive window
+      // is their own turn. One outgoing at a time is still enforced below.
       if (s.auction) return { error: "auction_in_progress" };
-      if (seat === s.active) return { error: "not_while_your_turn" };
       if (!s.trades) s.trades = [];
       if (s.trades.some((t) => t.from === seat)) return { error: "trade_exists" };
       const to = intent.to;
