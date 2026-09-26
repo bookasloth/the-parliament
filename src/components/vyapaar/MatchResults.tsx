@@ -16,7 +16,7 @@ function controlsSet(view: PublicView, seat: number, zone: number): boolean {
 }
 
 type Row = {
-  seat: number; name: string; cash: number; netWorth: number
+  seat: number; name: string; cash: number; netWorth: number; left: boolean
   cities: { id: number }[]; companies: number[]
   props: number; comps: number; dev: number; sets: number; houses: number; hotels: number
 }
@@ -31,17 +31,34 @@ function build(view: PublicView): Row[] {
     const sets = ZONE_NAME.reduce((n, _, z) => n + (controlsSet(view, seat, z) ? 1 : 0), 0)
     const houses = cities.reduce((n, { c }) => n + (c.level <= 3 ? c.level : 0), 0)
     const hotels = cities.reduce((n, { c }) => n + Math.max(0, c.level - 3), 0)
-    return { seat, name: p.name, cash: p.cash, netWorth: p.netWorth, cities: cities.map(({ id }) => ({ id })), companies, props, comps, dev, sets, houses, hotels }
+    return { seat, name: p.name, cash: p.cash, netWorth: p.netWorth, left: p.left ?? false, cities: cities.map(({ id }) => ({ id })), companies, props, comps, dev, sets, houses, hotels }
   })
-  return rows.sort((a, b) => b.netWorth - a.netWorth)
+  // Players who left rank last (DNF), then by net worth — matches the engine's placement order.
+  return rows.sort((a, b) => (a.left ? 1 : 0) - (b.left ? 1 : 0) || b.netWorth - a.netWorth)
 }
 
 const MEDAL = ["🥇", "🥈", "🥉"]
 
-export function MatchResults({ view, playerImages = [], income, recap }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number>; recap?: SeatStat[] }) {
+export function MatchResults({ view, playerImages = [], income, recap, opening }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number>; recap?: SeatStat[]; opening?: Record<number, number> }) {
   const rows = build(view)
   const win = rows[0]
   const stat = recap ? new Map(recap.map((s) => [s.seat, s])) : null
+  // F1-style grid: starting position = rank by opening stack, finish = rank by net worth.
+  const startPos = opening
+    ? new Map([...rows.map((r) => r.seat)].sort((a, b) => (opening[b] ?? 0) - (opening[a] ?? 0)).map((seat, i) => [seat, i + 1] as const))
+    : null
+  // Places gained per row (grid − finish); DNFs don't score. Find the biggest climber ("Most
+  // Improved", tie-broken by profit %) and the biggest faller, for the badge + cell highlights.
+  const move = (r: Row, i: number) => (r.left || !startPos ? 0 : (startPos.get(r.seat) ?? i + 1) - (i + 1))
+  let mip: Row | null = null, mipGain = 0, mipPct = -Infinity, faller: Row | null = null, fall = 0
+  if (startPos) rows.forEach((r, i) => {
+    const d = move(r, i)
+    const pct = opening?.[r.seat] ? (income?.[r.seat] ?? 0) / opening[r.seat] : 0
+    if (d > 0 && (d > mipGain || (d === mipGain && pct > mipPct))) { mip = r; mipGain = d; mipPct = pct }
+    if (d < fall) { faller = r; fall = d }
+  })
+  const mipSeat = mip ? (mip as Row).seat : -1
+  const fallSeat = faller ? (faller as Row).seat : -1
 
   const cityPill = (id: number) => {
     const z = CITIES[id].zone
@@ -65,6 +82,9 @@ export function MatchResults({ view, playerImages = [], income, recap }: { view:
           <div className="vr-sub">{win.cities.length} cities · {win.sets} {win.sets === 1 ? "set" : "sets"}{win.companies.length ? ` · ${win.companies.length} companies` : ""}{win.houses + win.hotels ? ` · ${win.houses + win.hotels} built` : ""}</div>
         </div>
         <div className="vr-nw"><div className="vr-lab">Net worth</div><div className="vr-nw-v">{inr(win.netWorth)}</div></div>
+        {mip && mipSeat !== win.seat && (
+          <div className="vr-mip">🚀<div><div className="vr-lab">Most improved</div><div className="vr-mip-n">{(mip as Row).name} <span className="vr-gain">▲{mipGain}</span></div></div></div>
+        )}
       </header>
 
       <div className="vr-scroll">
@@ -90,6 +110,24 @@ export function MatchResults({ view, playerImages = [], income, recap }: { view:
               <th className="vr-rl">Net worth</th>
               {rows.map((r, i) => <td key={r.seat} className={i === 0 ? "vr-wincol" : ""}>{inr(r.netWorth)}</td>)}
             </tr>
+            {startPos && (
+              <tr>
+                <th className="vr-rl">Grid → Finish</th>
+                {rows.map((r, i) => {
+                  const start = startPos.get(r.seat) ?? i + 1
+                  const d = start - (i + 1) // + = places gained
+                  const hl = r.seat === mipSeat ? " vr-climb" : r.seat === fallSeat ? " vr-fall" : ""
+                  return (
+                    <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}${hl}`}>
+                      {r.left
+                        ? <><span className="vr-grid">P{start} → <b className="vr-dnf">DNF</b></span></>
+                        : <><span className="vr-grid">P{start} → P{i + 1}</span>{" "}
+                          <span className={d > 0 ? "vr-gain" : d < 0 ? "vr-loss" : "vr-flat"}>{d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "—"}</span></>}
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
             {income && (
               <tr>
                 <th className="vr-rl">Income this game</th>
@@ -161,6 +199,7 @@ export function MatchResults({ view, playerImages = [], income, recap }: { view:
         </table>
       </div>
 
+      {startPos && <p className="vr-foot">Grid → Finish = starting position (by opening cash) → finishing position (by net worth). ▲/▼ = places gained or lost; DNF = left the game.</p>}
       <p className="vr-foot">Net worth = cash + property (full price, ×1.4 for completed sets) + companies (full buy, ×1.4 for a pair) + development (build cost ×1.5). Sell to the bank pays full value − 2% TDS.</p>
     </div>
   )
@@ -197,6 +236,13 @@ const CSS = `
 .vr-dash{color:var(--faint);}
 .vr-gain{color:#1f9d55;font-weight:700;}
 .vr-loss{color:#e5484d;font-weight:700;}
+.vr-grid{font-weight:700;letter-spacing:.02em;}
+.vr-flat{color:var(--dim);font-weight:700;}
+.vr-dnf{color:#e5484d;}
+.vr-climb{background:rgba(31,157,85,.12);}
+.vr-fall{background:rgba(229,72,77,.10);}
+.vr-mip{display:flex;align-items:center;gap:.5rem;font-size:1.4rem;padding-left:1rem;border-left:1px solid var(--line);}
+.vr-mip-n{font-weight:800;font-size:.9rem;}
 .vr-pills{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;}
 .vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid currentColor;}
 .vr-pill.vr-co{color:var(--grey);}

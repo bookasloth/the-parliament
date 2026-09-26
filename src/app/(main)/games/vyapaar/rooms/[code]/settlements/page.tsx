@@ -29,6 +29,7 @@ export default async function SettlementsPage({ params }: { params: Promise<{ co
         <MatchResults
           view={data.resultsView}
           income={Object.fromEntries(data.players.map((p) => [p.seat, (p.resultCash ?? p.openingCash) - p.openingCash]))}
+          opening={Object.fromEntries(data.players.map((p) => [p.seat, p.openingCash]))}
         />
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">
