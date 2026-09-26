@@ -38,10 +38,14 @@ function build(view: PublicView): Row[] {
 
 const MEDAL = ["🥇", "🥈", "🥉"]
 
-export function MatchResults({ view, playerImages = [], income, recap }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number>; recap?: SeatStat[] }) {
+export function MatchResults({ view, playerImages = [], income, recap, opening }: { view: PublicView; playerImages?: (string | null)[]; income?: Record<number, number>; recap?: SeatStat[]; opening?: Record<number, number> }) {
   const rows = build(view)
   const win = rows[0]
   const stat = recap ? new Map(recap.map((s) => [s.seat, s])) : null
+  // F1-style grid: starting position = rank by opening stack, finish = rank by net worth.
+  const startPos = opening
+    ? new Map([...rows.map((r) => r.seat)].sort((a, b) => (opening[b] ?? 0) - (opening[a] ?? 0)).map((seat, i) => [seat, i + 1] as const))
+    : null
 
   const cityPill = (id: number) => {
     const z = CITIES[id].zone
@@ -90,6 +94,21 @@ export function MatchResults({ view, playerImages = [], income, recap }: { view:
               <th className="vr-rl">Net worth</th>
               {rows.map((r, i) => <td key={r.seat} className={i === 0 ? "vr-wincol" : ""}>{inr(r.netWorth)}</td>)}
             </tr>
+            {startPos && (
+              <tr>
+                <th className="vr-rl">Grid → Finish</th>
+                {rows.map((r, i) => {
+                  const start = startPos.get(r.seat) ?? i + 1
+                  const d = start - (i + 1) // + = places gained
+                  return (
+                    <td key={r.seat} className={`vr-num${i === 0 ? " vr-wincol" : ""}`}>
+                      <span className="vr-grid">P{start} → P{i + 1}</span>{" "}
+                      <span className={d > 0 ? "vr-gain" : d < 0 ? "vr-loss" : "vr-flat"}>{d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "—"}</span>
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
             {income && (
               <tr>
                 <th className="vr-rl">Income this game</th>
@@ -197,6 +216,8 @@ const CSS = `
 .vr-dash{color:var(--faint);}
 .vr-gain{color:#1f9d55;font-weight:700;}
 .vr-loss{color:#e5484d;font-weight:700;}
+.vr-grid{font-weight:700;letter-spacing:.02em;}
+.vr-flat{color:var(--dim);font-weight:700;}
 .vr-pills{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;}
 .vr-pill{font-size:.71rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid currentColor;}
 .vr-pill.vr-co{color:var(--grey);}
