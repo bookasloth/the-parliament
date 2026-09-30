@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { plusJakartaSans, poppins } from "@/lib/fonts";
+import { SwRegistrar } from "@/components/shared/SwRegistrar";
 import "./globals.css";
 
 // App-like on mobile: color the browser/status-bar chrome brand blue, extend
@@ -52,7 +53,10 @@ export default function RootLayout({
       lang="en"
       className={`${plusJakartaSans.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-body">{children}</body>
+      <body className="min-h-full flex flex-col font-body">
+        <SwRegistrar />
+        {children}
+      </body>
     </html>
   );
 }

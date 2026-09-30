@@ -1,6 +1,8 @@
 import { PrivateNavbar, type NavbarViewer } from "@/components/shared/PrivateNavbar"
 import { MobileTabBar } from "@/components/shared/MobileTabBar"
 import { PushRegistrar } from "@/components/shared/PushRegistrar"
+import { StatusBarColor } from "@/components/shared/StatusBarColor"
+import { houseColor } from "@/config/house-colors"
 import { FollowStoreProvider } from "@/components/shared/follow-store"
 import { optionalUser } from "@/modules/auth/session"
 import { loadViewer } from "@/lib/viewer"
@@ -16,10 +18,13 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   // /events). Private pages are gated by middleware (PRIVATE_PREFIXES). The
   // navbar renders a guest variant when viewer is null.
   let viewer: NavbarViewer | null = null
+  let statusBarColor: string | null = null
   if (session?.id) {
     const u = await loadViewer(session.id)
     if (u) {
       const name = u.displayName || u.legalName
+      // Tint the mobile status bar to the member's house colour.
+      statusBarColor = houseColor(u.profile?.house?.name)
       // Resolve tier from active Membership rows (same source as /membership),
       // NOT the denormalized User.membershipStatus column, which can drift and
       // made the navbar show "premium" while /membership showed "life".
@@ -48,6 +53,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   return (
     <FollowStoreProvider>
       {session?.id && <PushRegistrar />}
+      {statusBarColor && <StatusBarColor color={statusBarColor} />}
       <PrivateNavbar viewer={viewer} />
       {/* Reserve space for the mobile tab bar (incl. safe-area) so fixed bottom
           nav never covers page content. Desktop has no bottom bar. */}
