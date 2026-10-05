@@ -93,7 +93,10 @@ export function countryName(code: string): string | undefined {
 
 // 320px-wide PNG of the real flag. Used as the reference the drawing is scored
 // against and shown on reveal. w320 keeps it light; the scorer downscales it
-// to GRID×GRID anyway.
+// to GRID×GRID anyway. The code is stripped to ISO-style [a-z] so a value that
+// reached here from the DOM (e.g. a <select>) can't inject URL/HTML meta-chars
+// into the image src (CodeQL js/xss-through-dom).
 export function flagRefUrl(code: string): string {
-  return `https://flagcdn.com/w320/${code.toLowerCase()}.png`;
+  const safe = code.toLowerCase().replace(/[^a-z]/g, "");
+  return `https://flagcdn.com/w320/${safe}.png`;
 }
