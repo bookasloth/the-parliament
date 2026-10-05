@@ -20,6 +20,8 @@ import {
   loadMoreFeedAction,
   togglePinAction,
   votePollAction,
+  submitFlagAction,
+  loadFlagGalleryAction,
   countNewPostsAction,
   loadPostCommentsAction,
   recordImpressionsAction,
@@ -149,6 +151,8 @@ const FeedRow = memo(function FeedRow({
         onPollVote={
           post.poll?.id ? (optionId) => votePollAction(post.id, post.poll!.id!, optionId) : undefined
         }
+        onFlagSubmit={(challengeId, imageKey, score) => submitFlagAction(challengeId, imageKey, score)}
+        onLoadFlagGallery={(challengeId) => loadFlagGalleryAction(challengeId)}
         onDelete={
           isAuthor
             ? () => {

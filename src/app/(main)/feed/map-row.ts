@@ -2,6 +2,8 @@ import type { getFeed } from "@/modules/feed/query"
 import type { FeedPost, FeedMembership, BorderType } from "@/components/shared/FeedCard"
 import type { MediaItem } from "@/components/shared/MediaGallery"
 import { anonIdentity } from "@/config/anon-identities"
+import { publicUrlFor } from "@/lib/r2"
+import { flagRefUrl } from "@/config/flag-challenge"
 
 type FeedRow = Awaited<ReturnType<typeof getFeed>>["rows"][number]
 
@@ -170,6 +172,30 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>, viewe
       }
     : undefined
 
+  const fcRow = (
+    row as {
+      flagChallenge?: {
+        id: string
+        countryCode: string
+        countryName: string
+        submissionCount: number
+        submissions?: { imageKey: string; score: number }[]
+      } | null
+    }
+  ).flagChallenge
+  const flagChallenge = fcRow
+    ? {
+        id: fcRow.id,
+        countryCode: fcRow.countryCode,
+        countryName: fcRow.countryName,
+        flagRefUrl: flagRefUrl(fcRow.countryCode),
+        submissionCount: fcRow.submissionCount,
+        mySubmission: fcRow.submissions?.[0]
+          ? { score: fcRow.submissions[0].score, imageUrl: publicUrlFor(fcRow.submissions[0].imageKey) }
+          : null,
+      }
+    : undefined
+
   // Repost embed (audit repost-as-object). A repost Post carries the reshared
   // original in `repostOf` (already viewer-gated in getFeed/getPostById — a hidden
   // original arrives as null → tombstone). Presence of `repost` tells the card to
@@ -231,6 +257,7 @@ export function mapRowToFeedPost(row: FeedRow, followingIds?: Set<string>, viewe
     link,
     question,
     poll,
+    flagChallenge,
     mediaItems: mediaItemsFrom(row.media),
     image: images.length === 1 ? images[0] : undefined,
     images: images.length > 1 ? images : undefined,

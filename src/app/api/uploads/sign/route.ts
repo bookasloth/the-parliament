@@ -6,7 +6,7 @@ import { getSignedUpload, type UploadKind } from "@/lib/r2"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
 const schema = z.object({
-  kind: z.enum(["verification", "avatar", "post", "business", "event_banner"]),
+  kind: z.enum(["verification", "avatar", "post", "business", "event_banner", "game_submission"]),
   contentType: z.string(),
   ext: z.string().optional(), // accepted for backward compat, ignored — ext is derived from contentType server-side
 })

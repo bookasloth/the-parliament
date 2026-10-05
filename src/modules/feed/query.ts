@@ -15,7 +15,7 @@ export interface FeedFilters {
   categoryKey?: string
   batchId?: string
   houseId?: string
-  format?: "text" | "image" | "link" | "quote" | "poll" | "question"
+  format?: "text" | "image" | "link" | "quote" | "poll" | "question" | "flag"
   authorId?: string
   groupId?: string | null
   rankerName?: string
@@ -608,6 +608,17 @@ function postSelect(viewerId?: string) {
         },
         ...(viewerId
           ? { votes: { where: { userId: viewerId }, select: { optionId: true }, take: 1 } }
+          : {}),
+      },
+    },
+    flagChallenge: {
+      select: {
+        id: true,
+        countryCode: true,
+        countryName: true,
+        submissionCount: true,
+        ...(viewerId
+          ? { submissions: { where: { userId: viewerId }, select: { imageKey: true, score: true }, take: 1 } }
           : {}),
       },
     },

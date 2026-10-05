@@ -171,7 +171,7 @@ export async function recomputeAuthorRanking(authorId: string, limit = 100) {
   )
 }
 
-export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll"
+export type PostFormat = "text" | "image" | "link" | "quote" | "question" | "poll" | "flag"
 
 export interface CreatePostInput {
   authorId: string

@@ -125,6 +125,19 @@ export async function votePollAction(_postId: string, pollId: string, optionId: 
   return votePoll({ userId: user.id, pollId, optionId })
 }
 
+export async function submitFlagAction(challengeId: string, imageKey: string, score: number) {
+  const user = await requireUser()
+  await enforceRateLimit({ bucket: "feed.flagsubmit", identifier: user.id, limit: 20, windowSec: 300 })
+  const { submitFlag } = await import("@/modules/games/flag-challenge")
+  return submitFlag({ userId: user.id, challengeId, imageKey, score })
+}
+
+export async function loadFlagGalleryAction(challengeId: string) {
+  await requireUser()
+  const { listSubmissions } = await import("@/modules/games/flag-challenge")
+  return listSubmissions(challengeId)
+}
+
 export async function commentOnPost(postId: string, body: string, parentId?: string, imageUrl?: string) {
   const user = await requireUser()
   await enforceRateLimit({ bucket: "feed.comment", identifier: user.id, limit: 30, windowSec: 300 })
