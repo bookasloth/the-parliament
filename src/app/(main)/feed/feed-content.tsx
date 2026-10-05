@@ -22,6 +22,7 @@ import {
   votePollAction,
   submitFlagAction,
   loadFlagGalleryAction,
+  commentMyDrawingAction,
   countNewPostsAction,
   loadPostCommentsAction,
   recordImpressionsAction,
@@ -153,6 +154,7 @@ const FeedRow = memo(function FeedRow({
         }
         onFlagSubmit={(challengeId, imageKey, score) => submitFlagAction(challengeId, imageKey, score)}
         onLoadFlagGallery={(challengeId) => loadFlagGalleryAction(challengeId)}
+        onFlagComment={(challengeId, timeMs) => commentMyDrawingAction(challengeId, timeMs)}
         onDelete={
           isAuthor
             ? () => {

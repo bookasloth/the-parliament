@@ -11,6 +11,8 @@ import { enqueueBadgeEval } from "@/modules/badges/enqueue"
 import { audit } from "@/lib/audit"
 import { hotScore, authorQualitySignal } from "@/modules/feed/ranking"
 import { isOurPublicUrl } from "@/lib/supabase-storage"
+import { isOurPublicR2Url } from "@/lib/r2"
+import { flagCommentGate } from "@/modules/feed/query"
 import { fetchLinkPreview } from "@/lib/og-preview"
 import { getDefaultSchoolId } from "@/lib/school"
 import { getCurrent } from "@/modules/membership/service"
@@ -905,9 +907,18 @@ export async function createComment(input: {
   const image = input.imageUrl?.trim() || null
   if (!input.body.trim() && !image) throw new ForbiddenError("Empty comment")
   // Only accept image URLs that point at our own storage bucket — never an
-  // arbitrary client-supplied third-party URL.
-  if (image && !isOurPublicUrl(image)) throw new ForbiddenError("Invalid image reference")
+  // arbitrary client-supplied third-party URL. Comment drawings live on R2
+  // (game-submissions), avatars/comment photos on Supabase — accept either.
+  if (image && !isOurPublicUrl(image) && !isOurPublicR2Url(image)) {
+    throw new ForbiddenError("Invalid image reference")
+  }
   const post = await assertCanInteract(input.userId, input.postId)
+
+  // Flag Challenge threads are solver-only: a member who hasn't submitted a
+  // drawing for that day's challenge can't comment on it (same gate as reading).
+  if ((await flagCommentGate(input.postId, input.userId)).locked) {
+    throw new ForbiddenError("Draw the flag to join the discussion")
+  }
 
   const comment = await prisma.comment.create({
     data: {

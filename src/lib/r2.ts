@@ -116,6 +116,14 @@ export function publicUrlFor(key: string): string {
   return `${base.replace(/\/$/, "")}/${key}`
 }
 
+/** True if `url` points at our own R2 public bucket (post/game media live here,
+ *  separate from the Supabase bucket avatars/comments use). */
+export function isOurPublicR2Url(url: string): boolean {
+  const base = process.env.R2_PUBLIC_BASE_URL
+  if (!base) return false
+  return url.startsWith(base.replace(/\/$/, ""))
+}
+
 /** True only if `key` is under this owner's own post-media prefix. */
 export function isOwnedPostKey(ownerId: string, key: string): boolean {
   return key.startsWith(`${PREFIX.post}/${ownerId}/`)

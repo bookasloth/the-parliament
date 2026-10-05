@@ -18,20 +18,29 @@ export default function FlagChallengeCard({
   challenge,
   onSubmit,
   onLoadGallery,
+  onComment,
 }: {
   challenge: Challenge
   onSubmit?: (imageKey: string, score: number) => Promise<{ score: number }>
   onLoadGallery?: (challengeId: string) => Promise<GallerySubmission[]>
+  onComment?: (timeMs?: number) => Promise<{ id: string }>
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [result, setResult] = useState<{ score: number; imageUrl: string } | null>(
+  const [result, setResult] = useState<{ score: number; imageUrl: string; timeMs?: number } | null>(
     challenge.mySubmission ?? null,
   )
   const [gallery, setGallery] = useState<GallerySubmission[] | null>(null)
   const [count, setCount] = useState(challenge.submissionCount)
+  const [commentState, setCommentState] = useState<"idle" | "posting" | "done">("idle")
   const handle = useRef<FlagCanvasHandle | null>(null)
+  const openedAt = useRef<number | null>(null)
+
+  function openDraw() {
+    openedAt.current = Date.now()
+    setOpen(true)
+  }
 
   async function revealAndSubmit() {
     if (!handle.current || !onSubmit) return
@@ -46,9 +55,11 @@ export default function FlagChallengeCard({
       const key = await uploadDrawing(blob)
       const saved = await onSubmit(key, score)
 
+      const timeMs = openedAt.current ? Date.now() - openedAt.current : undefined
       const localUrl = URL.createObjectURL(blob)
       if (!challenge.mySubmission) setCount((c) => c + 1)
-      setResult({ score: saved.score, imageUrl: localUrl })
+      setResult({ score: saved.score, imageUrl: localUrl, timeMs })
+      setCommentState("idle")
       setOpen(false)
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong — try again.")
@@ -60,6 +71,18 @@ export default function FlagChallengeCard({
   async function showGallery() {
     if (!onLoadGallery) return
     setGallery(await onLoadGallery(challenge.id).catch(() => []))
+  }
+
+  async function postComment() {
+    if (!onComment || commentState !== "idle") return
+    setCommentState("posting")
+    try {
+      await onComment(result?.timeMs)
+      setCommentState("done")
+    } catch {
+      setCommentState("idle")
+      setErr("Couldn't post your drawing — try again.")
+    }
   }
 
   return (
@@ -79,12 +102,14 @@ export default function FlagChallengeCard({
           countryName={challenge.countryName}
           gallery={gallery}
           onShowGallery={onLoadGallery ? showGallery : undefined}
-          onRedraw={onSubmit ? () => setOpen(true) : undefined}
+          onRedraw={onSubmit ? openDraw : undefined}
+          onComment={onComment ? postComment : undefined}
+          commentState={commentState}
         />
       ) : onSubmit ? (
         <div className="px-4 pb-4">
           <button
-            onClick={() => setOpen(true)}
+            onClick={openDraw}
             className="w-full rounded-lg bg-brand py-2.5 font-semibold text-white transition hover:bg-brand-700"
           >
             Draw it from memory
@@ -122,13 +147,17 @@ function Result({
   gallery,
   onShowGallery,
   onRedraw,
+  onComment,
+  commentState = "idle",
 }: {
-  result: { score: number; imageUrl: string }
+  result: { score: number; imageUrl: string; timeMs?: number }
   flagRefUrl: string
   countryName: string
   gallery: GallerySubmission[] | null
   onShowGallery?: () => void
   onRedraw?: () => void
+  onComment?: () => void
+  commentState?: "idle" | "posting" | "done"
 }) {
   const great = result.score >= 90
   return (
@@ -136,6 +165,9 @@ function Result({
       <div className="mb-2 text-center">
         <span className={`text-3xl font-black ${great ? "text-green-600" : "text-brand"}`}>{result.score}%</span>
         <span className="ml-2 text-sm text-gray-600">match{great ? " 🎉" : ""}</span>
+        {result.timeMs != null && (
+          <span className="ml-2 text-xs text-gray-400">· {fmtTime(result.timeMs)}</span>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <figure>
@@ -149,7 +181,16 @@ function Result({
           <figcaption className="mt-1 text-center text-xs text-gray-500">Real flag</figcaption>
         </figure>
       </div>
-      <div className="mt-3 flex gap-2">
+      {onComment && (
+        <button
+          onClick={onComment}
+          disabled={commentState !== "idle"}
+          className="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+        >
+          {commentState === "done" ? "Posted to comments ✓" : commentState === "posting" ? "Posting…" : "Comment my drawing"}
+        </button>
+      )}
+      <div className="mt-2 flex gap-2">
         {onRedraw && (
           <button onClick={onRedraw} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Redraw
@@ -175,6 +216,14 @@ function Result({
       )}
     </div>
   )
+}
+
+function fmtTime(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return r ? `${m}m ${r}s` : `${m}m`
 }
 
 // ── client helpers ────────────────────────────────────────────────────────

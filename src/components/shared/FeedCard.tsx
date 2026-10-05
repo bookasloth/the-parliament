@@ -107,6 +107,7 @@ export function FeedCard({
   onPollVote,
   onFlagSubmit,
   onLoadFlagGallery,
+  onFlagComment,
   commentsLoader,
   commentViewer = null,
   defaultCommentsOpen = false,
@@ -133,6 +134,8 @@ export function FeedCard({
   onFlagSubmit?: (challengeId: string, imageKey: string, score: number) => Promise<{ score: number }>
   /** Flag Challenge: load the grid of everyone's drawings on demand. */
   onLoadFlagGallery?: (challengeId: string) => Promise<GallerySubmission[]>
+  /** Flag Challenge: auto-post the viewer's drawing (score + time + image) as a comment. */
+  onFlagComment?: (challengeId: string, timeMs?: number) => Promise<{ id: string }>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
   /** Viewer info for rendering the comment input instantly (before server data loads). */
@@ -498,6 +501,7 @@ export function FeedCard({
             challenge={post.flagChallenge}
             onSubmit={onFlagSubmit ? (key, score) => onFlagSubmit(post.flagChallenge!.id, key, score) : undefined}
             onLoadGallery={onLoadFlagGallery}
+            onComment={onFlagComment ? (timeMs) => onFlagComment(post.flagChallenge!.id, timeMs) : undefined}
           />
         )}
 

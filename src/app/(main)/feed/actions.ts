@@ -138,6 +138,15 @@ export async function loadFlagGalleryAction(challengeId: string) {
   return listSubmissions(challengeId)
 }
 
+export async function commentMyDrawingAction(challengeId: string, timeMs?: number) {
+  const user = await requireUser()
+  await enforceRateLimit({ bucket: "feed.flagcomment", identifier: user.id, limit: 10, windowSec: 300 })
+  const { commentMyDrawing } = await import("@/modules/games/flag-challenge")
+  const comment = await commentMyDrawing({ userId: user.id, challengeId, timeMs })
+  revalidatePath("/feed")
+  return { id: comment.id }
+}
+
 export async function commentOnPost(postId: string, body: string, parentId?: string, imageUrl?: string) {
   const user = await requireUser()
   await enforceRateLimit({ bucket: "feed.comment", identifier: user.id, limit: 30, windowSec: 300 })

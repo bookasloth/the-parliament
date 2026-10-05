@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError } from "@/lib/errors";
-import { assertCanInteract } from "@/modules/feed/posts";
+import { assertCanInteract, createComment } from "@/modules/feed/posts";
 import { botAnnounce } from "@/modules/bot/service";
 import { resolveGameSubmissionImage, publicUrlFor } from "@/lib/r2";
 import { getDefaultSchoolId } from "@/lib/school";
@@ -127,6 +127,38 @@ export async function submitFlag(input: {
   });
 
   return { score };
+}
+
+// Human-readable "time taken", clamped to [0, 24h]. Null when unknown/invalid.
+function formatDuration(ms: number | null | undefined): string | null {
+  if (ms == null || !Number.isFinite(ms) || ms <= 0) return null;
+  const s = Math.min(Math.round(ms / 1000), 86400);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r ? `${m}m ${r}s` : `${m}m`;
+}
+
+/**
+ * Post the member's own drawing as a comment on the challenge post: score,
+ * time taken, and the drawing image (served from the stored R2 key — the image
+ * URL is derived server-side, never trusted from the client). Requires an
+ * existing submission; the solver-only comment gate therefore passes.
+ */
+export async function commentMyDrawing(input: { userId: string; challengeId: string; timeMs?: number }) {
+  const sub = await prisma.flagSubmission.findUnique({
+    where: { userId_challengeId: { userId: input.userId, challengeId: input.challengeId } },
+    select: { score: true, imageKey: true, challenge: { select: { postId: true, countryName: true } } },
+  });
+  if (!sub || !sub.challenge.postId) throw new ForbiddenError("No submission to share");
+  const t = formatDuration(input.timeMs);
+  const body = `🏴 Drew the flag of ${sub.challenge.countryName} — ${sub.score}% match${t ? ` · ${t}` : ""}`;
+  return createComment({
+    userId: input.userId,
+    postId: sub.challenge.postId,
+    body,
+    imageUrl: publicUrlFor(sub.imageKey),
+  });
 }
 
 /** The viewer's own submission for a challenge (for feed hydration). */
