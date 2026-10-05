@@ -14,6 +14,7 @@
     { "path": "/api/cron/vyapaar-rooms", "schedule": "40 0 * * *" },
     { "path": "/api/cron/outbox", "schedule": "45 2 * * *" },
     { "path": "/api/cron/badges", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/retention", "schedule": "15 3 * * *" }
+    { "path": "/api/cron/retention", "schedule": "15 3 * * *" },
+    { "path": "/api/cron/flag-challenge", "schedule": "30 0 * * *" }
   ]
 }

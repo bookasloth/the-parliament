@@ -15,7 +15,7 @@ export interface FeedFilters {
   categoryKey?: string
   batchId?: string
   houseId?: string
-  format?: "text" | "image" | "link" | "quote" | "poll" | "question"
+  format?: "text" | "image" | "link" | "quote" | "poll" | "question" | "flag"
   authorId?: string
   groupId?: string | null
   rankerName?: string
@@ -462,6 +462,26 @@ const MAX_REPLIES = 500
 // walked up to its top-level ancestor for display and surfaces "replying to
 // @handle" for its real target (see organizeCommentThread). `viewerId` attaches
 // the viewer's own up/down vote per comment (for optimistic UI).
+/**
+ * Flag Challenge comment lock. `isFlag` is true only for a flag-challenge post;
+ * `locked` is true when it's a flag post AND the viewer hasn't submitted a
+ * drawing for it (anonymous viewers are always locked). One indexed lookup;
+ * no-op for non-flag posts.
+ */
+export async function flagCommentGate(
+  postId: string,
+  viewerId?: string,
+): Promise<{ isFlag: boolean; locked: boolean }> {
+  const fc = await prisma.flagChallenge.findUnique({ where: { postId }, select: { id: true } })
+  if (!fc) return { isFlag: false, locked: false }
+  if (!viewerId) return { isFlag: true, locked: true }
+  const sub = await prisma.flagSubmission.findUnique({
+    where: { userId_challengeId: { userId: viewerId, challengeId: fc.id } },
+    select: { userId: true },
+  })
+  return { isFlag: true, locked: !sub }
+}
+
 export async function listPostComments(
   postId: string,
   limit = 100,
@@ -470,6 +490,12 @@ export async function listPostComments(
    *  (audit P1-20 pagination — the old 100-cap left later comments unreachable). */
   afterCreatedAt?: string,
 ): Promise<PostCommentRow[]> {
+  // Flag Challenge comments are spoiler-locked: only members who have submitted a
+  // drawing for that day's challenge may see the thread (so scores/drawings in
+  // comments don't spoil the puzzle). This is the hard backstop — feed inline,
+  // detail page and load-more all route through here.
+  if ((await flagCommentGate(postId, viewerId)).locked) return []
+
   // author-status gate hides comments by suspended/banned authors (audit CP0-2).
   // NOTE: `deletedAt` is NOT filtered out here — a soft-deleted comment that still
   // has live replies must survive as a `[deleted]` tombstone so its children don't
@@ -608,6 +634,17 @@ function postSelect(viewerId?: string) {
         },
         ...(viewerId
           ? { votes: { where: { userId: viewerId }, select: { optionId: true }, take: 1 } }
+          : {}),
+      },
+    },
+    flagChallenge: {
+      select: {
+        id: true,
+        countryCode: true,
+        countryName: true,
+        submissionCount: true,
+        ...(viewerId
+          ? { submissions: { where: { userId: viewerId }, select: { imageKey: true, score: true }, take: 1 } }
           : {}),
       },
     },

@@ -25,6 +25,7 @@ model School {
   groups             Group[]
   events             Event[]
   games              Game[]
+  flagChallenges     FlagChallenge[]
   tournaments        Tournament[]
   rewardItems        RewardItem[]
   badges             Badge[]
@@ -208,6 +209,7 @@ model User {
   postImpressions          PostImpression[]
   postAwards               PostAward[]
   pollVotes                PollVote[]
+  flagSubmissions          FlagSubmission[]
   notifications            Notification[]
   interests                UserInterest[]
   onboardingProgress       OnboardingProgress[]
@@ -617,6 +619,7 @@ model Post {
   awards   PostAward[]
   hashtags PostHashtag[]
   poll     Poll?
+  flagChallenge FlagChallenge?
 
   @@index([authorId])
   @@index([createdAt])
@@ -925,6 +928,44 @@ model PollVote {
   @@id([userId, pollId])
   @@index([pollId])
   @@map("poll_votes")
+}
+
+// Flag Challenge — daily "draw the flag from memory" game.
+// Doubles as the schedule queue: an admin creates rows with a future
+// `scheduledFor` date and null `postId`; a daily cron finds today's unposted
+// row, creates the feed post, and sets `postId`.
+model FlagChallenge {
+  id              String   @id @default(uuid()) @db.Uuid
+  postId          String?  @unique @map("post_id") @db.Uuid
+  schoolId        String   @map("school_id") @db.Uuid
+  countryCode     String   @map("country_code") @db.VarChar(2) // ISO 3166-1 alpha-2
+  countryName     String   @map("country_name") @db.VarChar(100)
+  scheduledFor    DateTime @map("scheduled_for") @db.Date
+  submissionCount Int      @default(0) @map("submission_count")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
+  school      School           @relation(fields: [schoolId], references: [id])
+  submissions FlagSubmission[]
+
+  @@unique([schoolId, scheduledFor]) // one flag per school per day
+  @@index([postId])
+  @@map("flag_challenges")
+}
+
+model FlagSubmission {
+  userId      String   @map("user_id") @db.Uuid
+  challengeId String   @map("challenge_id") @db.Uuid
+  imageKey    String   @map("image_key") @db.VarChar(500) // R2 object key of the drawing PNG
+  score       Int // 0-100 colour-similarity match
+  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge FlagChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, challengeId]) // one submission per user per challenge
+  @@index([challengeId])
+  @@map("flag_submissions")
 }
 
 model Hashtag {

@@ -36,6 +36,7 @@ const ANON_ICON_MAP: Record<string, typeof Skull> = {
 import { useDropdown } from "./feed-card/use-dropdown"
 import { TEXT_BG, type FeedPost } from "./feed-card/types"
 import { VerifiedBadge, PollCard, RichText, RichTextInline, MediaSection, QuoteBlock, LinkPreviewCard, HelpCircle } from "./feed-card/blocks"
+import FlagChallengeCard, { type GallerySubmission } from "./feed-card/FlagChallengeCard"
 import { VerifiedTick } from "./VerifiedTick"
 import { useFollow } from "./follow-store"
 import { ReactionBar } from "./feed-card/reaction-bar"
@@ -104,6 +105,9 @@ export function FeedCard({
   onPin,
   canPin = false,
   onPollVote,
+  onFlagSubmit,
+  onLoadFlagGallery,
+  onFlagComment,
   commentsLoader,
   commentViewer = null,
   defaultCommentsOpen = false,
@@ -126,6 +130,12 @@ export function FeedCard({
   /** Viewer may pin (admin/owner) — surfaces the Pin action in the menu. */
   canPin?: boolean
   onPollVote?: (optionId: string) => void | Promise<unknown>
+  /** Flag Challenge: persist a drawing + score. Omit on read-only surfaces. */
+  onFlagSubmit?: (challengeId: string, imageKey: string, score: number) => Promise<{ score: number }>
+  /** Flag Challenge: load the grid of everyone's drawings on demand. */
+  onLoadFlagGallery?: (challengeId: string) => Promise<GallerySubmission[]>
+  /** Flag Challenge: auto-post the viewer's drawing (score + time + image) as a comment. */
+  onFlagComment?: (challengeId: string, timeMs?: number) => Promise<{ id: string }>
   /** When set, the comment button expands the thread inline (lazy-loaded). */
   commentsLoader?: (postId: string) => Promise<InlineComments>
   /** Viewer info for rendering the comment input instantly (before server data loads). */
@@ -485,6 +495,15 @@ export function FeedCard({
         )}
 
         {post.poll && <PollCard poll={post.poll} onVote={onPollVote} />}
+
+        {post.flagChallenge && (
+          <FlagChallengeCard
+            challenge={post.flagChallenge}
+            onSubmit={onFlagSubmit ? (key, score) => onFlagSubmit(post.flagChallenge!.id, key, score) : undefined}
+            onLoadGallery={onLoadFlagGallery}
+            onComment={onFlagComment ? (timeMs) => onFlagComment(post.flagChallenge!.id, timeMs) : undefined}
+          />
+        )}
 
         {post.quote && <QuoteBlock quote={post.quote} />}
 

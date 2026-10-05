@@ -27,7 +27,7 @@ function bucket(): string {
   return b
 }
 
-export type UploadKind = "verification" | "avatar" | "post" | "business" | "event_banner"
+export type UploadKind = "verification" | "avatar" | "post" | "business" | "event_banner" | "game_submission"
 
 const PREFIX: Record<UploadKind, string> = {
   verification: "verification",
@@ -35,6 +35,7 @@ const PREFIX: Record<UploadKind, string> = {
   post: "posts",
   business: "businesses",
   event_banner: "events",
+  game_submission: "game-submissions",
 }
 
 const MAX_BYTES: Record<UploadKind, number> = {
@@ -43,6 +44,7 @@ const MAX_BYTES: Record<UploadKind, number> = {
   post: POST_MEDIA_MAX_BYTES, // shared with the client composer
   business: 4 * 1024 * 1024,
   event_banner: 6 * 1024 * 1024,
+  game_submission: 2 * 1024 * 1024, // a small canvas PNG
 }
 
 const ALLOWED_MIME: Record<UploadKind, string[]> = {
@@ -51,6 +53,7 @@ const ALLOWED_MIME: Record<UploadKind, string[]> = {
   post: [...POST_MEDIA_MIME_TYPES], // shared with the client composer
   business: ["image/jpeg", "image/png", "image/webp"],
   event_banner: ["image/jpeg", "image/png", "image/webp"],
+  game_submission: ["image/png"], // canvas export is PNG
 }
 
 // The object-key extension is derived from the (allowlist-checked) content type,
@@ -113,6 +116,14 @@ export function publicUrlFor(key: string): string {
   return `${base.replace(/\/$/, "")}/${key}`
 }
 
+/** True if `url` points at our own R2 public bucket (post/game media live here,
+ *  separate from the Supabase bucket avatars/comments use). */
+export function isOurPublicR2Url(url: string): boolean {
+  const base = process.env.R2_PUBLIC_BASE_URL
+  if (!base) return false
+  return url.startsWith(base.replace(/\/$/, ""))
+}
+
 /** True only if `key` is under this owner's own post-media prefix. */
 export function isOwnedPostKey(ownerId: string, key: string): boolean {
   return key.startsWith(`${PREFIX.post}/${ownerId}/`)
@@ -121,6 +132,22 @@ export function isOwnedPostKey(ownerId: string, key: string): boolean {
 /** True only if `key` is under this owner's own business-media prefix. */
 export function isOwnedBusinessKey(ownerId: string, key: string): boolean {
   return key.startsWith(`${PREFIX.business}/${ownerId}/`)
+}
+
+/**
+ * Validate a just-uploaded game-submission drawing the client asks to attach:
+ * reject any key outside the caller's own game-submissions/<userId>/ prefix,
+ * HEAD it and delete+reject anything over the cap, then return the public URL
+ * to persist. Same trust model as validatePostMedia.
+ */
+export async function resolveGameSubmissionImage(ownerId: string, key: string): Promise<string> {
+  if (!key.startsWith(`${PREFIX.game_submission}/${ownerId}/`)) throw new Error("Invalid image reference")
+  const size = await objectSize(key)
+  if (size !== null && size > MAX_BYTES.game_submission) {
+    await deleteObject(key).catch(() => {})
+    throw new Error("Uploaded image exceeds the size limit")
+  }
+  return publicUrlFor(key)
 }
 
 /**

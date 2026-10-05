@@ -105,6 +105,7 @@ export const NAV: NavSection[] = [
       { label: "Themes", href: "/admin/themes", icon: "Palette", adminOnly: true },
       { label: "Rewards", href: "/admin/rewards", icon: "Trophy", adminOnly: true },
       { label: "Games", href: "/admin/games", icon: "GameController", adminOnly: true },
+      { label: "Flag Challenge", href: "/admin/flag-challenge", icon: "Flag", adminOnly: true },
       { label: "Messaging", href: "/admin/messaging", icon: "ChatsCircle", adminOnly: true },
       { label: "WhatsApp", href: "/admin/whatsapp", icon: "WhatsappLogo", permission: "whatsapp:send" },
     ],

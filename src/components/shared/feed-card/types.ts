@@ -53,6 +53,15 @@ export interface FeedPost {
     myOptionId?: string | null
     isClosed?: boolean
   }
+  /** Flag Challenge: draw-the-flag daily game rendered inline on the post. */
+  flagChallenge?: {
+    id: string
+    countryCode: string
+    countryName: string
+    flagRefUrl: string
+    submissionCount: number
+    mySubmission?: { score: number; imageUrl: string } | null
+  }
   /** Repost-as-object: present when this card is a reshare. The reposter is the
    *  card's own author; `original` is the embedded reshared post, or null when the
    *  viewer can't see it (deleted/removed/blocked/followers-only) → tombstone. */
