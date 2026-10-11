@@ -1,18 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import {
   UsersThree, Plus, MagnifyingGlass, DotsThreeVertical, Eye,
   Trash, Star, ChatCircle, UserGear, Globe,
 } from "@phosphor-icons/react"
-import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button, useRowAction } from "../admin-ui"
+import { PageHeader, StatCard, StatusBadge, ProgressBar, Table, Thead, Tbody, Tr, Th, Td, Button, Modal, useRowAction } from "../admin-ui"
 import type { AdminGroupRow } from "@/modules/groups/service"
-import { deleteGroupAction } from "./actions"
+import { createGroupAction, deleteGroupAction } from "./actions"
 
 export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
   const [search, setSearch] = useState("")
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [deleted, setDeleted] = useState<Record<string, boolean>>({})
+  const [createOpen, setCreateOpen] = useState(false)
   const { run, isBusy } = useRowAction()
 
   function deleteGroup(id: string) {
@@ -47,11 +48,12 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
         title="Groups"
         description="Oversee community groups, their members, and activity"
         actions={
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-3.5 w-3.5" weight="duotone" /> Create Group
           </Button>
         }
       />
+      <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Groups" value={String(visible.length)} icon={<UsersThree className="h-4.5 w-4.5" weight="duotone" />} accent="indigo" />
@@ -146,5 +148,55 @@ export default function GroupsClient({ groups }: { groups: AdminGroupRow[] }) {
         </div>
       </div>
     </div>
+  )
+}
+
+const fieldCls = "w-full rounded-[4px] border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+
+function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [visibility, setVisibility] = useState<"public" | "private">("public")
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    startTransition(async () => {
+      const r = await createGroupAction({ name, description, visibility })
+      if (!r.ok) return setError(r.error ?? "Failed to create group")
+      setName(""); setDescription(""); setVisibility("public")
+      onClose()
+    })
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Create Group">
+      <form onSubmit={submit} className="space-y-3">
+        <div>
+          <label htmlFor="group-name" className="block text-xs text-gray-600 mb-1">Name</label>
+          <input id="group-name" value={name} onChange={e => setName(e.target.value)} required minLength={3} maxLength={160}
+            placeholder="e.g. Mentorship Circle" className={fieldCls} />
+        </div>
+        <div>
+          <label htmlFor="group-desc" className="block text-xs text-gray-600 mb-1">Description</label>
+          <textarea id="group-desc" value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={2000}
+            placeholder="What is this group for?" className={`${fieldCls} resize-y`} />
+        </div>
+        <div>
+          <label htmlFor="group-visibility" className="block text-xs text-gray-600 mb-1">Visibility</label>
+          <select id="group-visibility" value={visibility} onChange={e => setVisibility(e.target.value as "public" | "private")} className={fieldCls}>
+            <option value="public">Public — posts visible to everyone</option>
+            <option value="private">Private — posts visible to members only</option>
+          </select>
+        </div>
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button type="submit" size="sm" disabled={pending}>{pending ? "Creating…" : "Create"}</Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
