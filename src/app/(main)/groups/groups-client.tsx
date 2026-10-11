@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import Image from "next/image"
 import {
-  Search, Plus, Users, Lock, Globe, ChevronRight, Bell, BellOff,
+  Search, Users, Lock, Globe, ChevronRight, Bell, BellOff,
   Home, Menu, X, Sparkles, Star, TrendingUp, BookOpen,
   Briefcase, Dumbbell, Music, Cpu, FlaskConical,
 } from "lucide-react"
@@ -96,10 +96,7 @@ export default function GroupsClient({
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-[4px] hover:bg-gray-100"><Menu className="h-5 w-5 text-gray-600" /></button>
             <span className="text-base font-bold text-gray-900">Groups</span>
           </div>
-          <a href="/groups/create"
-            className="flex items-center gap-1.5 rounded-[3px] bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm">
-            <Plus className="h-3.5 w-3.5" /> Create Group
-          </a>
+          {/* ponytail: no member group-creation flow exists (groups are seeded/auto-assigned); add a Create button when one ships. */}
         </div>
       </header>
 

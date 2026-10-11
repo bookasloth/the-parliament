@@ -222,6 +222,9 @@ export default function EventsClient({
     return true
   })
 
+  // Real list is sorted by startsAt asc, so the first non-past event is the next one.
+  const nextEvent = events.find(e => !e.isPast)
+
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "upcoming", label: "Upcoming", count: events.filter(e => !e.isPast).length },
     { key: "mine", label: "My Events", count: events.filter(e => e.interested).length },
@@ -235,12 +238,12 @@ export default function EventsClient({
         <div className="space-y-4">
 
         {/* Upcoming event alert */}
-        {alertOpen && (
+        {alertOpen && nextEvent && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-[5px] border border-green-200 bg-green-50 px-4 py-3">
             <p className="text-sm text-green-800 flex-1">
-              <strong>Upcoming event:</strong> JNV Nagpur Alumni Reunion 2026 on Oct 15, 2026
+              <strong>Upcoming event:</strong> {nextEvent.title} on {nextEvent.date}
             </p>
-            <a href="/events/alumni-reunion-2026" className="rounded-[4px] bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors text-center">
+            <a href={`/events/${nextEvent.slug}`} className="rounded-[4px] bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors text-center">
               View event
             </a>
             <button onClick={() => setAlertOpen(false)} className="text-green-600 hover:text-green-800 self-end sm:self-center">
