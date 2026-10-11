@@ -199,7 +199,7 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
         .catch(() => {}),
     )
   }
-  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current, taggedMentions, taggedBlocked] =
+  const [experiences, educations, feed, [followerRows, viewerFollowing], postsCount, karma, viewerFollowsRow, current, taggedMentions, taggedBlocked, ownedBusinesses] =
     await Promise.all([
       prisma.experience.findMany({
         where: { userId: user.id },
@@ -280,6 +280,12 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
       }),
       // Viewer's symmetric block set — tagged posts by blocked users are dropped.
       blockedIdsFor(viewerId),
+      // Approved businesses this member owns — shown as a "Businesses" card.
+      prisma.business.findMany({
+        where: { ownerId: user.id, status: "approved" },
+        orderBy: { createdAt: "asc" },
+        select: { slug: true, name: true, tagline: true, logoUrl: true, category: { select: { label: true } } },
+      }),
     ])
 
   const experienceItems: ExperienceItem[] = experiences.map((e) => ({
@@ -466,6 +472,13 @@ export async function loadProfile(handle: string, initialTab: TabKey) {
     // ponytail: a few extra queries per profile view; if profile latency matters,
     // lazy-fetch it client-side on first Badges click instead.
     achievements: await getUserAchievements(user.id),
+    businesses: ownedBusinesses.map((b) => ({
+      slug: b.slug,
+      name: b.name,
+      tagline: b.tagline,
+      logoUrl: b.logoUrl,
+      category: b.category.label,
+    })),
     karma: Math.round(karma.balance),
     eggs: user.eggBalance,
     shells: user.shellBalance,

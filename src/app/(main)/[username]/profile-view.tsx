@@ -114,6 +114,7 @@ export interface ProfileViewData {
     canListBusiness: boolean
     canApplyMentor: boolean
   } | null
+  businesses: { slug: string; name: string; tagline: string | null; logoUrl: string | null; category: string }[]
   badges: AchievementBadge[]
   totalBadges: number
   achievements: AchievementsSummary | null
@@ -521,6 +522,30 @@ export function ProfileView({ data, initialTab = "posts" }: { data: ProfileViewD
                     </div>
                   </div>
                 </Card>
+
+                {data.businesses.length > 0 && (
+                  <Card>
+                    <SectionTitle>Businesses</SectionTitle>
+                    <div className="divide-y divide-gray-100 px-7 pb-4 pt-2">
+                      {data.businesses.map((b) => (
+                        <Link key={b.slug} href={`/business/${b.slug}`} className="group flex gap-3.5 py-3.5 first:pt-0">
+                          {b.logoUrl ? (
+                            <Image src={b.logoUrl} alt={b.name} width={44} height={44} className="h-11 w-11 flex-shrink-0 rounded-[4px] object-cover ring-1 ring-gray-200" />
+                          ) : (
+                            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[4px] bg-brand-50 text-brand-600 ring-1 ring-gray-200">
+                              <Building2 className="h-5 w-5" />
+                            </span>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[15px] font-bold leading-tight text-gray-900 group-hover:text-brand">{b.name}</div>
+                            {b.tagline && <div className="truncate text-[13px] text-gray-700">{b.tagline}</div>}
+                            <div className="mt-0.5 text-xs text-gray-500">{b.category}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </Card>
+                )}
 
                 {data.owner && (
                   <Card>
