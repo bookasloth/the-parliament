@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
+import { HouseAdLine } from "@/components/shared/HouseAd"
 import {
   ThumbsUp,
   ThumbsDown,
@@ -131,6 +132,9 @@ function AwardModal({
                 </button>
               )
             })}
+          </div>
+          <div className="mt-4 flex justify-center">
+            <HouseAdLine product="coffeeToffee" />
           </div>
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">

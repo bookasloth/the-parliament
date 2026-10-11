@@ -5,7 +5,7 @@ import {
   reportTotals,
   type DeliveryCount,
 } from "@/modules/ads/dashboard"
-import { adCatalog, type AdCatalogEntry } from "@/config/ad-tracking"
+import { adCatalog, AD_PLACEMENTS, type AdCatalogEntry } from "@/config/ad-tracking"
 
 const CATALOG: AdCatalogEntry[] = [
   { adId: "ad-a", placement: "feed", name: "Alpha", href: "https://a.example" },
@@ -117,7 +117,7 @@ describe("adCatalog (real config)", () => {
     // Every entry has a non-empty human name and a known placement.
     for (const c of cat) {
       expect(c.name.length).toBeGreaterThan(0)
-      expect(["feed", "sidebar", "email", "alerts", "directory"]).toContain(c.placement)
+      expect(AD_PLACEMENTS).toContain(c.placement)
     }
     // A real sidebar set key gets its friendly label, not the raw key.
     const seo = cat.find((c) => c.adId === "seoAi")

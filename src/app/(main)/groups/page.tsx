@@ -30,5 +30,5 @@ export default async function GroupsPage() {
     groups = shared.map((g) => (joined.has(g.id) ? { ...g, isJoined: true } : g))
   }
 
-  return <GroupsClient groups={groups} sidebarViewer={sidebarViewer} adRail={<AdRail set="website" />} />
+  return <GroupsClient groups={groups} sidebarViewer={sidebarViewer} adRail={<AdRail product="alluminaty" />} />
 }

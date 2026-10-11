@@ -9,11 +9,13 @@
 import { FEED_ADS } from "./feed-ads"
 import { AD_SETS } from "./ad-sets"
 import { SHUBHAM_DATARKAR_AD, sponsorHref } from "./sponsor-ads"
+import { HOUSE_PRODUCTS, houseProductHref, type HouseProductKey } from "./house-products"
 
 /** Sellable placements. `feed` + `sidebar` render today; `email`/`alerts`/
  *  `directory` are the value-first build-outs and are accepted up-front so their
- *  beacons validate the day they ship. */
-export const AD_PLACEMENTS = ["feed", "sidebar", "email", "alerts", "directory"] as const
+ *  beacons validate the day they ship. `inline` = one-line house-product promos
+ *  inside a flow (create-event modal, award modal, list-your-business form). */
+export const AD_PLACEMENTS = ["feed", "sidebar", "email", "alerts", "directory", "inline"] as const
 export type AdPlacement = (typeof AD_PLACEMENTS)[number]
 
 export const AD_EVENT_KINDS = ["impression", "click"] as const
@@ -34,6 +36,7 @@ export function knownAdIds(): Set<string> {
   for (const ad of FEED_ADS) ids.add(ad.id)
   for (const key of Object.keys(AD_SETS)) ids.add(key)
   ids.add(SHUBHAM_DATARKAR_AD.id) // house sponsor for the email + alerts slots
+  for (const p of Object.values(HOUSE_PRODUCTS)) ids.add(p.id)
   return ids
 }
 
@@ -83,5 +86,14 @@ export function adCatalog(): AdCatalogEntry[] {
     name: SHUBHAM_DATARKAR_AD.advertiser,
     href: sponsorHref(placement),
   }))
-  return [...feed, ...sidebar, ...sponsor]
+  // Timewheel house products, one row per placement each actually renders in.
+  const house: AdCatalogEntry[] = (Object.keys(HOUSE_PRODUCTS) as HouseProductKey[]).flatMap((key) =>
+    HOUSE_PRODUCTS[key].placements.map((placement) => ({
+      adId: HOUSE_PRODUCTS[key].id,
+      placement,
+      name: HOUSE_PRODUCTS[key].name,
+      href: houseProductHref(key, placement),
+    })),
+  )
+  return [...feed, ...sidebar, ...sponsor, ...house]
 }

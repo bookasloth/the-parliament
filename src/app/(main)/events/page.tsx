@@ -40,5 +40,5 @@ export default async function EventsPage() {
     events = []
   }
 
-  return <EventsClient events={events} sidebarViewer={sidebarViewer} adRail={<AdRail set="website" />} />
+  return <EventsClient events={events} sidebarViewer={sidebarViewer} adRail={<AdRail product="ticketDino" />} />
 }

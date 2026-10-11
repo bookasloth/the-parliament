@@ -9,6 +9,7 @@ import {
 import { Expandable, ExpandableContent } from "@/components/ui/expandable"
 import type { EventItem } from "@/modules/events/service"
 import { rsvpAction, createEventAction } from "./actions"
+import { HouseAdLine } from "@/components/shared/HouseAd"
 import { RailColumns, type SidebarViewer } from "@/components/shared/ProfileSidebarView"
 import { SIDEBAR_NAV } from "@/config/sidebar-nav"
 
@@ -401,6 +402,7 @@ export default function EventsClient({
                 />
               </div>
               {createErr && <p className="text-xs font-medium text-rose-600">{createErr}</p>}
+              <HouseAdLine product="ticketDino" />
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">
               <button onClick={() => setCreateOpen(false)} className="rounded-[4px] border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
