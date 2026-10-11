@@ -11,6 +11,8 @@ import {
 import EventRegister from "./event-register"
 import AttendancePanel from "./attendance-panel"
 import FeedbackSection from "./feedback-section"
+import { HouseAdSlot } from "@/components/shared/AdRail"
+import { HouseAdLine } from "@/components/shared/HouseAd"
 
 export const dynamic = "force-dynamic"
 
@@ -157,6 +159,7 @@ export default async function EventDetailPage({
             </div>
           )}
 
+          {isHost && <HouseAdLine product="ticketDino" className="px-1" />}
           {isHost && <AttendancePanel eventId={event.id} attendees={attendees} />}
 
           {isPast && feedback && (
@@ -169,8 +172,8 @@ export default async function EventDetailPage({
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-[5px] p-5 lg:sticky lg:top-4">
+        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          <div className="bg-white border border-gray-200 rounded-[5px] p-5">
             <EventRegister
               eventId={event.id}
               priceInPaise={event.priceInPaise}
@@ -180,6 +183,7 @@ export default async function EventDetailPage({
               loggedIn={!!viewer}
             />
           </div>
+          <HouseAdSlot product="ticketDino" />
         </div>
       </div>
     </div>

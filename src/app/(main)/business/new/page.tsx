@@ -6,6 +6,7 @@ import { listBusinessCategories } from "@/modules/business/service"
 import { UpgradePrompt } from "@/components/shared/UpgradePrompt"
 import type { PlanCode } from "@/config/membership"
 import { NewBusinessForm } from "./form"
+import { HouseAdLine } from "@/components/shared/HouseAd"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +32,8 @@ export default async function NewBusinessPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
       <h1 className="font-heading text-2xl font-bold text-gray-900">List your business</h1>
-      <p className="mb-6 text-sm text-gray-500">Submitted listings are reviewed before they appear in the directory.</p>
+      <p className="text-sm text-gray-500">Submitted listings are reviewed before they appear in the directory.</p>
+      <HouseAdLine product="ezshop" className="mb-6 mt-2" />
       <NewBusinessForm categories={categories} />
     </div>
   )

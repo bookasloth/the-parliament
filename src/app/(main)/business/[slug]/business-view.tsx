@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import {
   Building2, MapPin, Star, BadgePercent, Globe, Mail, Phone,
   Pencil, Share2, Info, MessageSquare, Tag as TagIcon,
@@ -82,7 +82,7 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
   )
 }
 
-export function BusinessView({ data }: { data: BusinessViewData }) {
+export function BusinessView({ data, adSlot = null }: { data: BusinessViewData; adSlot?: ReactNode }) {
   const [tab, setTab] = useState<Tab>("about")
   const [copied, setCopied] = useState(false)
   const cover = data.bannerUrl ?? DEFAULT_COVER
@@ -317,6 +317,9 @@ export function BusinessView({ data }: { data: BusinessViewData }) {
                 </ul>
               </div>
             </Card>
+
+            {/* House ad (EZShop) — server-rendered + tier-gated in load-business. */}
+            {adSlot}
           </div>
         </div>
       </div>
