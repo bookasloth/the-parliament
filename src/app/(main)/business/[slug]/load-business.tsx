@@ -3,6 +3,7 @@ import { colorAvatar } from "@/lib/avatar"
 import { isFollowingBusiness, normalizeSocialLinks, type getBusinessBySlug } from "@/modules/business/service"
 import { relativeTime } from "../../feed/map-row"
 import { BusinessView, type BusinessViewData } from "./business-view"
+import { HouseAdSlot } from "@/components/shared/AdRail"
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const fmt = (d: Date) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
@@ -75,5 +76,5 @@ export async function loadBusiness(b: BusinessRow) {
     viewerReview: mine ? { rating: mine.rating, body: mine.body } : null,
   }
 
-  return <BusinessView data={data} />
+  return <BusinessView data={data} adSlot={<HouseAdSlot product="ezshop" />} />
 }

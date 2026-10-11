@@ -6,7 +6,8 @@
 // sections sees a different offer rather than the same creative everywhere:
 //
 //   seoAi   → /feed, /feed/[postId]
-//   website → /badges, /badges/[slug], /community, /events, /groups
+//   website → /badges, /badges/[slug]
+//   (events/groups/community/business carry Timewheel house products — house-products.ts)
 //   content → /gallery, /gallery/[slug], /store, /connections, /leaderboard, /network
 //
 // ponytail: static config, not a DB/admin surface. These are house ads for one
