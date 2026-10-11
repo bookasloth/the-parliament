@@ -27,7 +27,7 @@ export function HouseAdCard({ product }: { product: HouseProductKey }) {
       target="_blank"
       rel="noopener noreferrer sponsored"
       onClick={() => trackAdClick(p.id, "sidebar")}
-      className="group relative block overflow-hidden rounded-[5px] p-5 text-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md"
+      className="group relative block overflow-hidden rounded-[5px] p-5 text-white shadow-sm"
       style={{ backgroundImage: `linear-gradient(135deg, ${p.gradient[0]}, ${p.gradient[1]})` }}
     >
       {/* Decorative shapes — pure CSS, no artwork. */}
